@@ -1,42 +1,34 @@
-# Camera Calibration with OpenCV
+# Projector-Camera Calibration
 
-This project contains a Python script to calibrate a camera using a series of checkerboard images.
+This project provides tools for calibrating a camera and a projector-camera system.
 
-## Setup
+## Camera Calibration
 
-1.  **Clone the repository or download the files.**
+The `calibrate.py` script calibrates a camera using a series of chessboard images.
 
-2.  **Create a Python virtual environment:**
-    ```bash
-    python3 -m venv venv
-    ```
+### Usage
 
-3.  **Activate the virtual environment:**
-    ```bash
-    source venv/bin/activate
-    ```
-
-4.  **Install the required dependencies:**
+1.  Install the dependencies:
     ```bash
     pip install -r requirements.txt
     ```
-
-## Usage
-
-1.  **Place your calibration images in the `images` directory.**
-    The images should be in `.jpg` format and contain a clear view of a checkerboard pattern.
-
-2.  **Run the calibration script:**
+2.  Place your chessboard calibration images in the `images/` directory.
+3.  Run the script:
     ```bash
-    python3 calibrate.py
+    python calibrate.py
     ```
+4.  The script will save the camera matrix and distortion coefficients to `camera_calibration.npz`.
 
-3.  **Follow the on-screen instructions.**
-    The script will process each image one by one. An image window will pop up showing the detected checkerboard corners. Press any key to advance to the next image.
+## Projector-Camera Calibration
 
-## Output
+The `projector_calibration.py` script calculates the perspective transformation matrix to map camera coordinates to screen (projector) coordinates.
 
-After processing all the images, the script will:
+### Usage
 
-*   Print the **Camera Matrix** and **Distortion Coefficients** to the console.
-*   Save the calibration data to a file named `camera_calibration.npz`. This file contains the camera matrix and distortion coefficients, which you can load in other applications for correcting image distortion.
+1.  First, ensure you have calibrated your camera and have the `camera_calibration.npz` file.
+2.  Run the script:
+    ```bash
+    python projector_calibration.py
+    ```
+3.  The script will display a fullscreen chessboard pattern. Your camera needs to be able to see this pattern.
+4.  The script will then capture an image, find the chessboard, and print the resulting transformation matrix to the console.

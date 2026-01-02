@@ -85,6 +85,8 @@ def calibrate(camera_calibration_file, pattern_size=(9, 6), square_size=1.0):
         cap.release()
 
     cv2.destroyWindow('pattern')
+    cv2.imwrite('captured_frame.jpg', frame)
+    print("Captured frame saved as 'captured_frame.jpg'")
 
 
     # Find the pattern in the captured image

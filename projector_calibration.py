@@ -57,6 +57,8 @@ def calibrate(camera_calibration_file, pattern_size=(9, 6), square_size=1.0):
         from picamera2 import Picamera2
         print("Raspberry Pi detected. Using picamera2.")
         picam2 = Picamera2()
+        config = picam2.create_still_configuration(main={"size": (1920, 1080)})
+        picam2.configure(config)
         picam2.start()
         time.sleep(2)
         frame = picam2.capture_array()

@@ -54,7 +54,7 @@ def calibrate(camera_calibration_file, pattern_size=(9, 6), square_size=1.0):
     
     print("Camera opened successfully.")
     
-    time.sleep(2)  # Give the camera time to adjust
+    time.sleep(5)  # Give the camera time to adjust
     ret, frame = cap.read()
     if not ret:
         cap.release()

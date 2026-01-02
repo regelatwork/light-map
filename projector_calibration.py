@@ -44,10 +44,13 @@ def calibrate(camera_calibration_file, pattern_size=(9, 6), square_size=1.0):
     cv2.waitKey(1000) # Wait for the window to appear
 
     # Capture an image from the camera
-    cap = cv2.VideoCapture(0)
+    cap = cv2.VideoCapture(0, cv2.CAP_V4L2)
+    if not cap.isOpened():
+        raise Exception("Cannot open camera. Check if it is connected and configured.")
     time.sleep(2) # Give the camera time to adjust
     ret, frame = cap.read()
     if not ret:
+        cap.release()
         raise Exception("Failed to capture image from camera")
     cap.release()
     cv2.destroyWindow('pattern')

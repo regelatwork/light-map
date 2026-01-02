@@ -25,7 +25,7 @@ def calibrate(camera_calibration_file, pattern_size=(9, 6), square_size=1.0):
 
     # Create a window and display the calibration pattern
     cv2.namedWindow('pattern', cv2.WND_PROP_FULLSCREEN)
-    cv2.setWindowProperty('pattern', cv.WND_PROP_FULLSCREEN, cv.WINDOW_FULLSCREEN)
+    cv2.setWindowProperty('pattern', cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
 
 
     # Generate the calibration pattern

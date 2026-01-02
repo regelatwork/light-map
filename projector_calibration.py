@@ -44,14 +44,23 @@ def calibrate(camera_calibration_file, pattern_size=(9, 6), square_size=1.0):
     cv2.waitKey(1000) # Wait for the window to appear
 
     # Capture an image from the camera
+    print("Attempting to open camera...")
     cap = cv2.VideoCapture(0, cv2.CAP_V4L2)
     if not cap.isOpened():
-        raise Exception("Cannot open camera. Check if it is connected and configured.")
-    time.sleep(2) # Give the camera time to adjust
+        print("Failed to open with V4L2 backend, trying default backend.")
+        cap = cv2.VideoCapture(0)
+    if not cap.isOpened():
+        raise Exception("Cannot open camera. Please check connection and configuration. You can also try running 'libcamera-hello' to test your camera.")
+    
+    print("Camera opened successfully.")
+    
+    time.sleep(2)  # Give the camera time to adjust
     ret, frame = cap.read()
     if not ret:
         cap.release()
         raise Exception("Failed to capture image from camera")
+    
+    print("Image captured successfully.")
     cap.release()
     cv2.destroyWindow('pattern')
 

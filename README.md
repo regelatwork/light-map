@@ -8,8 +8,9 @@ The `calibrate.py` script calibrates a camera using a series of chessboard image
 
 ### Usage
 
-1.  Install the dependencies:
+1.  Activate the virtual environment and install the dependencies:
     ```bash
+    source venv/bin/activate
     pip install -r requirements.txt
     ```
 2.  Place your chessboard calibration images in the `images/` directory.

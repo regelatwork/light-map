@@ -42,12 +42,18 @@ def calibrate(camera_calibration_file, pattern_size=(9, 6), square_size=1.0):
     pattern_points[:, :2] = np.mgrid[0:pattern_size[0], 0:pattern_size[1]].T.reshape(-1, 2)
     pattern_points *= square_size
     
-    # Create the pattern image
-    pattern_image = np.zeros((pattern_size[1]*100, pattern_size[0]*100, 3), dtype=np.uint8)
+    # Create the pattern image with a white border
+    border_size = 100
+    pattern_image = np.zeros(((pattern_size[1] * 100) + 2 * border_size, (pattern_size[0] * 100) + 2 * border_size, 3), dtype=np.uint8)
+    pattern_image.fill(255) # Fill with white
+
     for i in range(pattern_size[1]):
         for j in range(pattern_size[0]):
-            if (i+j)%2 == 0:
-                cv2.rectangle(pattern_image, (j*100, i*100), ((j+1)*100, (i+1)*100), (255,255,255), -1)
+            # Draw squares with offset for the border
+            if (i + j) % 2 == 0:
+                cv2.rectangle(pattern_image, (j * 100 + border_size, i * 100 + border_size), ((j + 1) * 100 + border_size, (i + 1) * 100 + border_size), (0, 0, 0), -1) # Black squares
+            else:
+                cv2.rectangle(pattern_image, (j * 100 + border_size, i * 100 + border_size), ((j + 1) * 100 + border_size, (i + 1) * 100 + border_size), (255, 255, 255), -1) # White squares
     
     cv2.imshow('pattern', pattern_image)
     cv2.waitKey(1000) # Wait for the window to appear
@@ -102,7 +108,7 @@ def calibrate(camera_calibration_file, pattern_size=(9, 6), square_size=1.0):
     screen_points = np.zeros((np.prod(pattern_size), 2), np.float32)
     for i in range(pattern_size[1]):
         for j in range(pattern_size[0]):
-            screen_points[i*pattern_size[0]+j] = [j*100+50, i*100+50]
+            screen_points[i * pattern_size[0] + j] = [j * 100 + 50 + border_size, i * 100 + 50 + border_size]
 
 
     # Get the camera coordinates of the pattern corners

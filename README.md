@@ -24,6 +24,12 @@ The `calibrate.py` script calibrates a camera using a series of chessboard image
 
 The `projector_calibration.py` script calculates the perspective transformation matrix to map camera coordinates to screen (projector) coordinates.
 
+### Raspberry Pi Setup
+If you are running this script on a Raspberry Pi, you will need to install the `libcamera` system dependency. You can do this by running the following command:
+```bash
+sudo apt update && sudo apt install -y python3-libcamera
+```
+
 ### Usage
 
 1.  First, ensure you have calibrated your camera and have the `camera_calibration.npz` file.

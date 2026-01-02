@@ -8,17 +8,28 @@ The `calibrate.py` script calibrates a camera using a series of chessboard image
 
 ### Usage
 
-1.  Activate the virtual environment and install the dependencies:
+1.  Create the virtual environment
+
     ```bash
-    source venv/bin/activate
+    cd light_map
+    python3 -m venv --system-site-packages .venv
+    ```
+
+2.  Activate the virtual environment and install the dependencies:
+
+    ```bash
+    source .venv/bin/activate
     pip install -r requirements.txt
     ```
-2.  Place your chessboard calibration images in the `images/` directory.
-3.  Run the script:
+3.  Place your chessboard calibration images in the `images/` directory.
+
+4.  Run the script:
+
     ```bash
     python calibrate.py
     ```
-4.  The script will save the camera matrix and distortion coefficients to `camera_calibration.npz`.
+
+5.  The script will save the camera matrix and distortion coefficients to `camera_calibration.npz`.
 
 ## Projector-Camera Calibration
 
@@ -34,6 +45,7 @@ sudo apt update && sudo apt install -y python3-libcamera
 
 1.  First, ensure you have calibrated your camera and have the `camera_calibration.npz` file.
 2.  Run the script:
+
     ```bash
     python projector_calibration.py
     ```

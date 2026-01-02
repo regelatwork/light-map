@@ -30,7 +30,7 @@ threedp[0, :, :2] = np.mgrid[0:CHECKERBOARD[0],
 # in a given directory. Since no path is
 # specified, it will take current directory
 # jpg files alone
-images = glob.glob('./images/*.jpg')
+images = glob.glob('./images/*.jpg') + glob.glob('./images/*.jpeg')
 
 if not images:
     print("No images found in the 'images' directory. Please add your chessboard calibration images.")

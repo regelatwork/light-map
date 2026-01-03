@@ -116,9 +116,6 @@ def calibrate(camera_calibration_file, pattern_size=(9, 6), square_size=1.0):
 
 if __name__ == '__main__':
     # Example usage
-    try:
-        matrix = calibrate('camera_calibration.npz')
-        print("Transformation matrix:")
-        print(matrix)
-    except Exception as e:
-        print(f"Error: {e}")
+    matrix = calibrate('camera_calibration.npz')
+    print("Transformation matrix:")
+    print(matrix)

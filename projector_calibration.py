@@ -37,11 +37,6 @@ def calibrate(camera_calibration_file, pattern_size=(9, 6), square_size=1.0):
     cv2.setWindowProperty('pattern', cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
 
 
-    # Generate the calibration pattern
-    pattern_points = np.zeros((np.prod(pattern_size), 3), np.float32)
-    pattern_points[:, :2] = np.mgrid[0:pattern_size[0], 0:pattern_size[1]].T.reshape(-1, 2)
-    pattern_points *= square_size
-    
     # Create the pattern image with a white border
     border_size = 100
     pattern_image = np.zeros(((pattern_size[1] * 100) + 2 * border_size, (pattern_size[0] * 100) + 2 * border_size, 3), dtype=np.uint8)

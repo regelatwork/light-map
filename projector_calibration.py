@@ -94,16 +94,18 @@ def calibrate(camera_calibration_file, pattern_size=(9, 6), square_size=1.0):
 
     # Find the pattern in the captured image
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-    ret, corners = cv2.findChessboardCorners(gray, pattern_size, None)
+    # The inner corners are calculated as the size - 1 in both dimensions.
+    pattern_corners = (pattern_size[0] - 1, pattern_size[1] - 1)
+    ret, corners = cv2.findChessboardCorners(gray, pattern_corners, None)
 
     if not ret:
         raise Exception("Chessboard not found in the captured image.")
 
     # Get the screen coordinates of the pattern corners
-    screen_points = np.zeros((np.prod(pattern_size), 2), np.float32)
-    for i in range(pattern_size[1]):
-        for j in range(pattern_size[0]):
-            screen_points[i * pattern_size[0] + j] = [j * 100 + 50 + border_size, i * 100 + 50 + border_size]
+    screen_points = np.zeros((np.prod(pattern_corners), 2), np.float32)
+    for i in range(pattern_corners[1]):
+        for j in range(pattern_corners[0]):
+            screen_points[i * pattern_corners[0] + j] = [j * 100 + 50 + border_size, i * 100 + 50 + border_size]
 
 
     # Get the camera coordinates of the pattern corners

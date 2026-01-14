@@ -5,8 +5,9 @@ This project aims to provide tools for calibrating a projector-camera system.
 ## Components:
 
 *   **`calibrate.py`**: A Python script that performs camera calibration using a set of chessboard images. It generates a `camera_calibration.npz` file containing the camera matrix and distortion coefficients.
-*   **`camera.py`**: A utility script for capturing images from a camera, with support for both Raspberry Pi (using `picamera2`) and general systems (using OpenCV).
+*   **`camera.py`**: A utility script for capturing images from a camera, with support for both Raspberry Pi (using GStreamer) and general systems (using OpenCV).
 *   **`project-calibration.py`**: A Python script that, given a camera calibration file, displays a fullscreen calibration pattern, captures an image from the camera, and calculates the perspective transformation matrix to map camera coordinates to screen (projector) coordinates. This matrix is essential for accurately projecting content onto surfaces.
+*   **`hand_tracker.py`**: A Python script that calibrates the projector, then continuously gets images from the camera, detects up to two hands, and shows the positions of the detected hand landmarks on the projector.
 
 ## Goal:
 
@@ -17,6 +18,7 @@ The ultimate goal of this project is to enable precise mapping between camera an
 *   **`calibrate.py`**: Performs camera calibration using chessboard images.
 *   **`camera.py`**: Provides utilities for capturing images from a camera.
 *   **`projector_calibration.py`**: Calculates the transformation matrix between camera and projector coordinates.
+*   **`hand_tracker.py`**: Continuously tracks hands and projects their landmarks onto the screen.
 *   **`camera_calibration.npz`**: Stores the camera matrix and distortion coefficients obtained from `calibrate.py`.
 *   **`requirements.txt`**: Lists the Python dependencies for this project.
 *   **`README.md`**: Provides instructions on how to use the scripts in this project.

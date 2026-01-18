@@ -9,6 +9,7 @@ import mediapipe as mp
 sys.path.insert(0, os.path.abspath("src"))
 
 from light_map.camera import Camera
+from light_map.gestures import detect_gesture
 from projector_calibration import calibrate
 
 def main():
@@ -57,27 +58,8 @@ def main():
                 prev_time = curr_time
 
                 # Flip and Convert
-                # Flip horizontally for selfie-view feeling? 
-                # Note: This might affect the coordinate mapping if calibration wasn't flipped!
-                # If we calibrated with the camera seeing the screen directly, 
-                # flipping might invert the X axis relative to the calibration.
-                # The original code flipped it. Let's assume the user wants the interaction to mirror them.
-                # However, if we flip the image, the pixel coordinates change.
-                # If we pass flipped image to MediaPipe, we get flipped coords.
-                # If our calibration was done on unflipped images, we have a mismatch.
-                # Ideally, we should NOT flip for processing, only for display (if we were displaying the camera feed).
-                # But here we are projecting.
-                
-                # Let's stick to the original logic: "cv2.flip(frame, 1)"
-                # But be aware: if calibration used raw frames, this flip invalidates the matrix unless accounted for.
-                # Original code: 
-                #   calibrate() -> uses raw capture
-                #   loop -> capture() -> flip() -> process() -> transform()
-                # THIS WAS A BUG in the original code (likely inverted X projection).
-                # I will remove the flip for processing to ensure accuracy, 
-                # or if flipping is desired for interaction, we must reflect the coords.
-                
-                # Let's process the RAW frame to match calibration space.
+                # Note: We do NOT flip for processing to keep alignment with calibration,
+                # unless we want to fix the "mirror" effect later.
                 frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
                 
                 results = hands.process(frame_rgb)
@@ -85,9 +67,33 @@ def main():
                 projection_screen.fill(0)
                 
                 hand_count = 0
-                if results.multi_hand_landmarks:
+                gesture_text_y_offset = 400
+
+                if results.multi_hand_landmarks and results.multi_handedness:
                     hand_count = len(results.multi_hand_landmarks)
-                    for hand_landmarks in results.multi_hand_landmarks:
+                    
+                    for idx, (hand_landmarks, handedness) in enumerate(zip(results.multi_hand_landmarks, results.multi_handedness)):
+                        label = handedness.classification[0].label # "Left" or "Right"
+                        
+                        # Detect Gesture
+                        gesture = detect_gesture(hand_landmarks.landmark, label)
+                        
+                        # Calculate centroid (approximate) for text placement
+                        # Or just stick it to the wrist
+                        wrist = hand_landmarks.landmark[0]
+                        cx_wrist = int(wrist.x * frame.shape[1])
+                        cy_wrist = int(wrist.y * frame.shape[0])
+                        
+                        # Transform Wrist to Projector Space
+                        camera_point = np.array([cx_wrist, cy_wrist], dtype=np.float32).reshape(1, 1, 2)
+                        projector_point = cv2.perspectiveTransform(camera_point, transformation_matrix)
+                        px_wrist, py_wrist = projector_point[0][0]
+
+                        # Draw Gesture Name near the wrist on screen
+                        cv2.putText(projection_screen, f"{label}: {gesture}", (int(px_wrist), int(py_wrist) - 50), 
+                                    cv2.FONT_HERSHEY_SIMPLEX, 2, (255, 255, 0), 3)
+
+                        # Draw Landmarks
                         for landmark in hand_landmarks.landmark:
                             # Normalized coordinates [0, 1]
                             # We need pixel coordinates in the CAMERA image

@@ -8,9 +8,10 @@ This project aims to provide tools for calibrating a projector-camera system.
     *   **`camera.py`**: Contains the `Camera` class, handling efficient image capture and abstracting differences between Raspberry Pi (GStreamer) and standard webcams (OpenCV).
     *   **`calibration.py`**: Functions for processing chessboard images and calculating camera intrinsics.
     *   **`projector.py`**: Functions for generating calibration patterns and computing the camera-to-projector homography.
+    *   **`gestures.py`**: Functions for heuristic-based hand gesture recognition (e.g., Open Palm, Closed Fist, Pointing).
 *   **`calibrate.py`**: Entry point script. Performs camera calibration using chessboard images in `images/` and saves `camera_calibration.npz`.
 *   **`projector_calibration.py`**: Entry point script. Displays a pattern, captures it, and computes the perspective transformation matrix.
-*   **`hand_tracker.py`**: Entry point script. Calibrates the projector and then continuously tracks hands, projecting landmarks back onto the surface in real-time.
+*   **`hand_tracker.py`**: Entry point script. Calibrates the projector and then continuously tracks hands, projecting landmarks and detecting gestures in real-time.
 
 ## Goal:
 

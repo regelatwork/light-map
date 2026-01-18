@@ -58,7 +58,19 @@ sudo apt update && sudo apt install -y gstreamer1.0-tools gstreamer1.0-plugins-g
 
 ## Hand Tracking and Projection
 
-The `hand_tracker.py` script continuously gets images from the camera, detects up to two hands, and projects the positions of the detected hand landmarks onto a fullscreen projector window.
+The `hand_tracker.py` script continuously gets images from the camera, detects up to two hands, and projects the positions of the detected hand landmarks onto a fullscreen projector window. It also displays:
+*   Real-time FPS (Frames Per Second).
+*   The number of detected hands.
+*   The recognized gesture for each hand (labeled Left/Right).
+
+### Supported Gestures
+The system currently recognizes the following gestures:
+*   **Open Palm**: All fingers extended.
+*   **Closed Fist**: All fingers curled.
+*   **Pointing**: Index finger extended.
+*   **Victory**: Index and Middle fingers extended.
+*   **Shaka**: Thumb and Pinky extended.
+*   **Rock**: Index and Pinky extended.
 
 ### Usage
 

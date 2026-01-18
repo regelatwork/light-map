@@ -14,23 +14,26 @@ def test_generate_calibration_pattern_dimensions():
     assert img.dtype == np.uint8
     assert params['rows'] == rows
     assert params['cols'] == cols
+    assert 'start_x' in params
+    assert 'start_y' in params
+    
+    # Calculate expected square size
+    # Max width available: 800 - 200 (default border 100 * 2) = 600
+    # Max height available: 600 - 200 = 400
+    # Max sq width = 600 // 5 = 120
+    # Max sq height = 400 // 4 = 100
+    # Expected sq size = 100
+    expected_sq = 100
+    assert params['square_size'] == expected_sq
 
 def test_generate_calibration_pattern_colors():
-    # Test a small 2x2 pattern
-    width = 200
-    height = 200
+    # Test a small pattern
+    width = 400
+    height = 400
     rows = 2
     cols = 2
-    border = 0
     
-    # We need to expose or control border size for precise pixel testing
-    # The current implementation has hardcoded square_size=100 in the function body?
-    # Let's check the code I wrote. 
-    # Yes, "square_size = 100".
-    # So a 2x2 pattern needs at least 200x200 + border.
-    
-    # Let's just check that we have black and white pixels
-    img, _ = generate_calibration_pattern(400, 400, 2, 2)
+    img, _ = generate_calibration_pattern(width, height, rows, cols, border_size=50)
     
     # Check for presence of Black (0) and White (255)
     assert np.any(img == 0)

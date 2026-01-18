@@ -17,25 +17,26 @@ def generate_calibration_pattern(width, height, pattern_rows, pattern_cols, bord
         pattern_params: Dict containing metadata like square size (pixels), offsets, etc.
     """
     # Calculate square size based on available space and requested rows/cols
-    # This logic matches the original script's implicit logic but could be made more dynamic.
-    # The original script used a fixed 100px square size.
-    square_size = 100 
+    max_sq_w = (width - 2 * border_size) // pattern_cols
+    max_sq_h = (height - 2 * border_size) // pattern_rows
+    square_size = min(max_sq_w, max_sq_h)
     
     pattern_image = np.zeros((height, width, 3), dtype=np.uint8)
     pattern_image.fill(255) # White background
 
-    # Calculate starting position to center the pattern roughly or strictly use the original logic
-    # Original logic: j * 100 + border_size
+    # Calculate starting position to center the pattern
+    total_pattern_w = square_size * pattern_cols
+    total_pattern_h = square_size * pattern_rows
     
-    # We need to ensure the pattern fits. 
-    # Max width needed: pattern_cols * 100 + 2 * border_size
+    start_x = (width - total_pattern_w) // 2
+    start_y = (height - total_pattern_h) // 2
     
     for i in range(pattern_rows):
         for j in range(pattern_cols):
-            x1 = j * square_size + border_size
-            y1 = i * square_size + border_size
-            x2 = (j + 1) * square_size + border_size
-            y2 = (i + 1) * square_size + border_size
+            x1 = start_x + j * square_size
+            y1 = start_y + i * square_size
+            x2 = start_x + (j + 1) * square_size
+            y2 = start_y + (i + 1) * square_size
             
             if (i + j) % 2 == 0:
                 color = (0, 0, 0)
@@ -47,6 +48,8 @@ def generate_calibration_pattern(width, height, pattern_rows, pattern_cols, bord
     return pattern_image, {
         "square_size": square_size,
         "border_size": border_size,
+        "start_x": start_x,
+        "start_y": start_y,
         "rows": pattern_rows,
         "cols": pattern_cols
     }
@@ -78,7 +81,8 @@ def compute_projector_homography(camera_image, pattern_params, camera_matrix=Non
     screen_points = []
     
     sq_size = pattern_params["square_size"]
-    border = pattern_params["border_size"]
+    start_x = pattern_params.get("start_x", pattern_params.get("border_size", 0))
+    start_y = pattern_params.get("start_y", pattern_params.get("border_size", 0))
     
     # The loop order must match the order findChessboardCorners returns (row by row, left to right)
     for i in range(board_size[1]): # rows
@@ -119,8 +123,8 @@ def compute_projector_homography(camera_image, pattern_params, camera_matrix=Non
             # Given the original code was likely "experimental", I will implement the STANDARD correct mapping:
             # Mapping detected corners to the grid intersections.
             
-            x = (j + 1) * sq_size + border
-            y = (i + 1) * sq_size + border
+            x = start_x + (j + 1) * sq_size
+            y = start_y + (i + 1) * sq_size
             screen_points.append([x, y])
 
     screen_points = np.array(screen_points, dtype=np.float32)

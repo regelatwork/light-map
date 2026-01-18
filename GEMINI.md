@@ -4,10 +4,13 @@ This project aims to provide tools for calibrating a projector-camera system.
 
 ## Components:
 
-*   **`calibrate.py`**: A Python script that performs camera calibration using a set of chessboard images. It generates a `camera_calibration.npz` file containing the camera matrix and distortion coefficients.
-*   **`camera.py`**: A utility script for capturing images from a camera, with support for both Raspberry Pi (using GStreamer) and general systems (using OpenCV).
-*   **`project-calibration.py`**: A Python script that, given a camera calibration file, displays a fullscreen calibration pattern, captures an image from the camera, and calculates the perspective transformation matrix to map camera coordinates to screen (projector) coordinates. This matrix is essential for accurately projecting content onto surfaces.
-*   **`hand_tracker.py`**: A Python script that calibrates the projector, then continuously gets images from the camera, detects up to two hands, and shows the positions of the detected hand landmarks on the projector.
+*   **`src/light_map/`**: The core python package containing the modular logic.
+    *   **`camera.py`**: Contains the `Camera` class, handling efficient image capture and abstracting differences between Raspberry Pi (GStreamer) and standard webcams (OpenCV).
+    *   **`calibration.py`**: Functions for processing chessboard images and calculating camera intrinsics.
+    *   **`projector.py`**: Functions for generating calibration patterns and computing the camera-to-projector homography.
+*   **`calibrate.py`**: Entry point script. Performs camera calibration using chessboard images in `images/` and saves `camera_calibration.npz`.
+*   **`projector_calibration.py`**: Entry point script. Displays a pattern, captures it, and computes the perspective transformation matrix.
+*   **`hand_tracker.py`**: Entry point script. Calibrates the projector and then continuously tracks hands, projecting landmarks back onto the surface in real-time.
 
 ## Goal:
 
@@ -15,13 +18,14 @@ The ultimate goal of this project is to enable precise mapping between camera an
 
 ## File Descriptions:
 
-*   **`calibrate.py`**: Performs camera calibration using chessboard images.
-*   **`camera.py`**: Provides utilities for capturing images from a camera.
-*   **`projector_calibration.py`**: Calculates the transformation matrix between camera and projector coordinates.
-*   **`hand_tracker.py`**: Continuously tracks hands and projects their landmarks onto the screen.
-*   **`camera_calibration.npz`**: Stores the camera matrix and distortion coefficients obtained from `calibrate.py`.
+*   **`src/light_map/`**: Source code package.
+*   **`tests/`**: Unit tests for the project (run with `pytest`).
+*   **`calibrate.py`**: CLI entry point for camera calibration.
+*   **`projector_calibration.py`**: CLI entry point for projector calibration.
+*   **`hand_tracker.py`**: CLI entry point for the interactive hand tracking demo.
+*   **`camera_calibration.npz`**: Stores the camera matrix and distortion coefficients.
 *   **`requirements.txt`**: Lists the Python dependencies for this project.
 *   **`README.md`**: Provides instructions on how to use the scripts in this project.
 *   **`GEMINI.md`**: This file, providing a high-level overview of the project.
 *   **`images/`**: A directory containing the chessboard images used for camera calibration.
-*   **`venv/`**: A directory for the Python virtual environment.
+*   **`.venv/`**: The Python virtual environment.

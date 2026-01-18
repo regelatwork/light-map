@@ -1,6 +1,7 @@
 import sys
 import os
 import cv2
+import time
 import numpy as np
 import mediapipe as mp
 
@@ -37,6 +38,9 @@ def main():
     screen_w, screen_h = 1920, 1080
     projection_screen = np.zeros((screen_h, screen_w, 3), dtype=np.uint8)
 
+    # Variables for FPS calculation
+    prev_time = 0
+
     # 4. Main Loop
     # Initialize camera once!
     try:
@@ -46,6 +50,11 @@ def main():
                 if frame is None:
                     print("Failed to grab frame")
                     break
+
+                # FPS Calculation
+                curr_time = time.time()
+                fps = 1 / (curr_time - prev_time) if prev_time != 0 else 0
+                prev_time = curr_time
 
                 # Flip and Convert
                 # Flip horizontally for selfie-view feeling? 
@@ -74,8 +83,10 @@ def main():
                 results = hands.process(frame_rgb)
 
                 projection_screen.fill(0)
-
+                
+                hand_count = 0
                 if results.multi_hand_landmarks:
+                    hand_count = len(results.multi_hand_landmarks)
                     for hand_landmarks in results.multi_hand_landmarks:
                         for landmark in hand_landmarks.landmark:
                             # Normalized coordinates [0, 1]
@@ -91,6 +102,10 @@ def main():
                             
                             # Draw
                             cv2.circle(projection_screen, (int(px), int(py)), 10, (0, 255, 0), -1)
+
+                # Display FPS and Hand Count
+                cv2.putText(projection_screen, f"FPS: {int(fps)}", (50, 100), cv2.FONT_HERSHEY_SIMPLEX, 3, (0, 0, 255), 3)
+                cv2.putText(projection_screen, f"Hands: {hand_count}", (50, 250), cv2.FONT_HERSHEY_SIMPLEX, 3, (0, 0, 255), 3)
 
                 cv2.imshow(window_name, projection_screen)
 

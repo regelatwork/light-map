@@ -8,7 +8,7 @@ class Camera:
     (standard webcam vs Raspberry Pi GStreamer).
     """
 
-    def __init__(self, index=0, width=1920, height=1080, framerate=30):
+    def __init__(self, index=0, width=1920, height=1080, framerate=8):
         self.index = index
         self.width = width
         self.height = height
@@ -37,7 +37,7 @@ class Camera:
             f"videoconvert ! "
             f"videoscale ! "
             f"video/x-raw, width={self.width}, height={self.height}, format=BGR ! "
-            f"appsink drop=1"
+            f"appsink drop=true sync=false"
         )
 
     def _initialize_camera(self):

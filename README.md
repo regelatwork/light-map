@@ -68,6 +68,7 @@ The system currently recognizes the following gestures:
 *   **Open Palm**: All fingers extended.
 *   **Closed Fist**: All fingers curled.
 *   **Pointing**: Index finger extended.
+*   **Gun**: Thumb and Index fingers extended.
 *   **Victory**: Index and Middle fingers extended.
 *   **Shaka**: Thumb and Pinky extended.
 *   **Rock**: Index and Pinky extended.

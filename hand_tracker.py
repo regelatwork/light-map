@@ -107,7 +107,7 @@ def main():
                             px, py = projector_point[0][0]
                             
                             # Draw
-                            cv2.circle(projection_screen, (int(px), int(py)), 10, (0, 255, 0), -1)
+                            cv2.circle(projection_screen, (int(px), int(py)), 3, (0, 50, 0), -1)
 
                 # Display FPS and Hand Count
                 cv2.putText(projection_screen, f"FPS: {int(fps)}", (50, 100), cv2.FONT_HERSHEY_SIMPLEX, 3, (0, 0, 255), 3)

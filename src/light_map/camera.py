@@ -37,7 +37,7 @@ class Camera:
             f"videoconvert ! "
             f"videoscale ! "
             f"video/x-raw, width={self.width}, height={self.height}, format=BGR ! "
-            f"appsink drop=true sync=false"
+            f"appsink drop=true sync=false max-buffers=1"
         )
 
     def _initialize_camera(self):

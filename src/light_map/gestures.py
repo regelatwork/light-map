@@ -25,26 +25,18 @@ def is_finger_extended(landmarks, finger_name, hand_label="Right"):
         # Thumb is tricky because it moves sideways.
         # Let's check if Tip is far from the Palm center (approx landmark 9 or 5/17 avg)
         
-        # Simple check: Is tip further from wrist than IP? 
-        # Usually yes even when curled.
-        
-        # Check X distance relative to pinky?
-        # Let's use the standard "Tip is laterally outside" heuristic
-        # Depending on hand label (Left/Right)
-        
-        # Vector logic is safer.
-        # Vector form wrist to MCP(2). Vector from MCP(2) to Tip(4).
-        # If angle is straight-ish...
-        
-        # Let's use a simpler geometry heuristic:
-        # Distance from Tip(4) to Pinky MCP(17) > Distance from IP(3) to Pinky MCP(17)?
-        # If thumb is open, it's far from pinky. If closed, it's closer.
+        # Thumb is extended if the tip is further from the pinky MCP than the IP joint
+        # AND it must be far enough from the index MCP to be considered "spread out"
         pinky_mcp = landmarks[17]
+        index_mcp = landmarks[5]
         
-        d_tip = np.linalg.norm(np.array([tip.x, tip.y]) - np.array([pinky_mcp.x, pinky_mcp.y]))
-        d_ip = np.linalg.norm(np.array([ip.x, ip.y]) - np.array([pinky_mcp.x, pinky_mcp.y]))
+        d_tip_pinky = np.linalg.norm(np.array([tip.x, tip.y]) - np.array([pinky_mcp.x, pinky_mcp.y]))
+        d_ip_pinky = np.linalg.norm(np.array([ip.x, ip.y]) - np.array([pinky_mcp.x, pinky_mcp.y]))
         
-        return d_tip > d_ip
+        d_tip_index = np.linalg.norm(np.array([tip.x, tip.y]) - np.array([index_mcp.x, index_mcp.y]))
+        palm_width = np.linalg.norm(np.array([index_mcp.x, index_mcp.y]) - np.array([pinky_mcp.x, pinky_mcp.y]))
+        
+        return (d_tip_pinky > d_ip_pinky) and (d_tip_index > palm_width * 0.4)
 
     else:
         # For other fingers, we check if the tip is further from the wrist than the PIP joint.
@@ -90,6 +82,10 @@ def detect_gesture(landmarks, handedness_label):
     if not any(state.values()):
         return "Closed Fist"
     
+    # Thumb + Index -> Gun
+    if state["Thumb"] and state["Index"] and not state["Middle"] and not state["Ring"] and not state["Pinky"]:
+        return "Gun"
+
     # Index only -> Pointing
     if state["Index"] and not state["Middle"] and not state["Ring"] and not state["Pinky"]:
         # Thumb state can vary for pointing (sometimes tucked, sometimes out)

@@ -1,4 +1,5 @@
 import pytest
+import numpy as np
 from src.light_map.gestures import is_finger_extended, detect_gesture
 
 class MockLandmark:
@@ -50,8 +51,9 @@ def test_detect_gesture_open_palm():
     # Thumb heuristic checks against Pinky MCP (17).
     # Let's place Pinky MCP at (0.9, 0.5)
     l_list[17] = MockLandmark(0.9, 0.5)
+    l_list[5] = MockLandmark(0.5, 0.5) # Index MCP
     
-    # Open Thumb: Tip(4) is far from Pinky MCP(17). IP(3) is closer.
+    # Open Thumb: Tip(4) is far from Pinky MCP(17) and Index MCP(5)
     l_list[4] = MockLandmark(0.1, 0.5) # Far left
     l_list[3] = MockLandmark(0.4, 0.5) # Closer to pinky
     
@@ -69,6 +71,7 @@ def test_detect_gesture_closed_fist():
     # All fingers closed
     l_list = [MockLandmark(0.5, 1.0)] * 21
     l_list[17] = MockLandmark(0.9, 0.5) # Pinky MCP
+    l_list[5] = MockLandmark(0.5, 0.5) # Index MCP
     
     # Thumb Closed: Tip closer to Pinky MCP than IP?
     # Actually, thumb closed usually means tucked in.
@@ -87,3 +90,72 @@ def test_detect_gesture_closed_fist():
         l_list[pip_idx] = MockLandmark(0.5, 0.5) # Mid
         
     assert detect_gesture(l_list, "Right") == "Closed Fist"
+
+def test_detect_gesture_gun():
+    # Gun: Thumb and Index Open, others Closed
+    l_list = [MockLandmark(0.5, 1.0)] * 21
+    l_list[17] = MockLandmark(0.9, 0.5) # Pinky MCP
+    l_list[5] = MockLandmark(0.5, 0.5) # Index MCP
+    
+    # Open Thumb: Tip(4) far from Pinky MCP(17) and Index MCP(5)
+    l_list[4] = MockLandmark(0.1, 0.5) # Far left
+    l_list[3] = MockLandmark(0.4, 0.5) # Closer to pinky
+    
+    # Open Index: Tip(8) far from Wrist(0)
+    l_list[8] = MockLandmark(0.5, 0.1) # Far
+    l_list[6] = MockLandmark(0.5, 0.5) # Mid
+    
+    # Closed Middle, Ring, Pinky: Tips closer to Wrist
+    closed_indices = [(12,10), (16,14), (20,18)]
+    for tip_idx, pip_idx in closed_indices:
+        l_list[tip_idx] = MockLandmark(0.5, 0.9) # Near Wrist
+        l_list[pip_idx] = MockLandmark(0.5, 0.5) # Mid
+        
+    assert detect_gesture(l_list, "Right") == "Gun"
+
+def test_detect_gesture_pointing():
+    # Pointing: Index Open, Thumb Closed, others Closed
+    l_list = [MockLandmark(0.5, 1.0)] * 21
+    l_list[17] = MockLandmark(0.9, 0.5) # Pinky MCP
+    l_list[5] = MockLandmark(0.5, 0.5) # Index MCP
+    
+    # Thumb Closed: Tip closer to Pinky MCP than IP
+    l_list[4] = MockLandmark(0.8, 0.5)
+    l_list[3] = MockLandmark(0.7, 0.5)
+    
+    # Open Index: Tip far from Wrist
+    l_list[8] = MockLandmark(0.5, 0.1) # Far
+    l_list[6] = MockLandmark(0.5, 0.5) # Mid
+    
+    # Closed Middle, Ring, Pinky
+    closed_indices = [(12,10), (16,14), (20,18)]
+    for tip_idx, pip_idx in closed_indices:
+        l_list[tip_idx] = MockLandmark(0.5, 0.9) # Near Wrist
+        l_list[pip_idx] = MockLandmark(0.5, 0.5) # Mid
+        
+    assert detect_gesture(l_list, "Right") == "Pointing"
+
+def test_detect_gesture_tucked_thumb_not_gun():
+    # Similar to gun, but thumb is tucked (close to index finger)
+    l_list = [MockLandmark(0.5, 1.0)] * 21
+    l_list[17] = MockLandmark(0.9, 0.5) # Pinky MCP
+    l_list[5] = MockLandmark(0.5, 0.8) # Index MCP
+    
+    # Palm width: dist((0.5,0.8), (0.9,0.5)) = 0.5
+    
+    # Thumb Tip(4) is technically "further" from pinky than IP(3)
+    # but close to index finger
+    l_list[4] = MockLandmark(0.55, 0.7) # dist to index MCP(5) is ~0.11 < 0.5*0.4
+    l_list[3] = MockLandmark(0.6, 0.6) 
+    
+    # Index open
+    l_list[8] = MockLandmark(0.5, 0.1)
+    l_list[6] = MockLandmark(0.5, 0.5)
+    
+    # Others closed
+    for tip_idx, pip_idx in [(12,10), (16,14), (20,18)]:
+        l_list[tip_idx] = MockLandmark(0.5, 0.9)
+        l_list[pip_idx] = MockLandmark(0.5, 0.5)
+        
+    # Should be Pointing because thumb is not "extended enough" to be Gun
+    assert detect_gesture(l_list, "Right") == "Pointing"

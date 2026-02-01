@@ -10,18 +10,32 @@ sys.path.insert(0, os.path.abspath("src"))
 
 from light_map.camera import Camera
 from light_map.gestures import detect_gesture
-from projector_calibration import calibrate
 
 def main():
-    # 1. Calibrate Projector
-    print("Starting calibration...")
-    transformation_matrix = calibrate('camera_calibration.npz')
-    
-    if transformation_matrix is None:
-        print("Calibration failed. Exiting.")
+    # 1. Load Calibration
+    calibration_file = 'projector_calibration.npz'
+    if not os.path.exists(calibration_file):
+        print(f"Error: {calibration_file} not found. Please run projector_calibration.py first.")
         return
 
-    print("Projector calibrated. Starting hand tracking...")
+    print(f"Loading calibration from {calibration_file}...")
+    try:
+        with np.load(calibration_file) as data:
+            if 'projector_matrix' not in data:
+                print("Error: Invalid calibration file (missing projector_matrix).")
+                return
+            transformation_matrix = data['projector_matrix']
+            
+            if 'resolution' in data:
+                screen_w, screen_h = data['resolution']
+            else:
+                print("Warning: Legacy calibration detected. Using fallback resolution (1920x1080).")
+                screen_w, screen_h = 1920, 1080
+    except Exception as e:
+        print(f"Error loading calibration: {e}")
+        return
+
+    print(f"Calibration loaded. Resolution: {screen_w}x{screen_h}")
 
     # 2. Setup MediaPipe
     mp_hands = mp.solutions.hands
@@ -36,7 +50,18 @@ def main():
     cv2.namedWindow(window_name, cv2.WND_PROP_FULLSCREEN)
     cv2.setWindowProperty(window_name, cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
     
-    screen_w, screen_h = 1920, 1080
+    # Runtime Verification (Best Effort)
+    try:
+        # Note: getWindowImageRect can return (0,0) or include decorations on some OS/Window Managers
+        rect = cv2.getWindowImageRect(window_name)
+        if rect and rect[2] > 0 and rect[3] > 0:
+            sys_w, sys_h = rect[2], rect[3]
+            if (sys_w, sys_h) != (screen_w, screen_h):
+                 print(f"Warning: Detected window size {sys_w}x{sys_h} does not match calibration {screen_w}x{screen_h}.")
+                 # We continue with calibrated values as they are the source of truth for the matrix.
+    except Exception:
+        pass
+    
     projection_screen = np.zeros((screen_h, screen_w, 3), dtype=np.uint8)
 
     # Variables for FPS calculation

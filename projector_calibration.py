@@ -9,7 +9,7 @@ sys.path.insert(0, os.path.abspath("src"))
 from light_map.camera import Camera
 from light_map.projector import generate_calibration_pattern, compute_projector_homography
 
-def calibrate(camera_calibration_file, rows=6, cols=9):
+def calibrate(camera_calibration_file, rows=6, cols=9, width=1920, height=1080):
     # Load camera calibration (optional, if we want to undistort first, but 
     # findHomography works on raw points too for planar surfaces usually)
     if os.path.exists(camera_calibration_file):
@@ -26,9 +26,6 @@ def calibrate(camera_calibration_file, rows=6, cols=9):
     cv2.setWindowProperty(window_name, cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
 
     # Generate Pattern
-    # Note: We hardcode 1920x1080 for now as in original, or we could detect screen size?
-    # For a projector, it's safer to generate a large image or match resolution.
-    width, height = 1920, 1080
     pattern_img, params = generate_calibration_pattern(width, height, rows, cols)
     
     cv2.imshow(window_name, pattern_img)
@@ -63,7 +60,16 @@ def calibrate(camera_calibration_file, rows=6, cols=9):
         return None
 
 if __name__ == '__main__':
-    matrix = calibrate('camera_calibration.npz')
+    projector_width = 1920
+    projector_height = 1080
+    
+    matrix = calibrate('camera_calibration.npz', width=projector_width, height=projector_height)
+    
     if matrix is not None:
         print("Transformation matrix:")
         print(matrix)
+        
+        output_file = 'projector_calibration.npz'
+        print(f"Saving calibration to {output_file}...")
+        np.savez(output_file, projector_matrix=matrix, resolution=np.array([projector_width, projector_height]))
+        print("Saved successfully.")

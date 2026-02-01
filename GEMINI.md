@@ -12,6 +12,7 @@ This project aims to provide tools for calibrating a projector-camera system.
     *   **`common_types.py`**: Shared type definitions for the menu system.
     *   **`menu_config.py`**: Configuration for the hierarchical menu system.
     *   **`input_manager.py`**: Handles input smoothing and sticky hand logic.
+    *   **`menu_system.py`**: Core logic for the hierarchical menu system.
 *   **`calibrate.py`**: Entry point script. Performs camera calibration using chessboard images in `images/` and saves `camera_calibration.npz`.
 *   **`projector_calibration.py`**: Entry point script. Displays a pattern, captures it, and computes the perspective transformation matrix.
 *   **`hand_tracker.py`**: Entry point script. Calibrates the projector and then continuously tracks hands, projecting landmarks and detecting gestures in real-time.
@@ -45,6 +46,6 @@ The ultimate goal of this project is to enable precise mapping between camera an
 *   [x] **Phase 0.8: Input Abstraction**
     *   Created `src/light_map/input_manager.py`
     *   Added unit tests `tests/test_input_manager.py`
-*   [ ] **Phase 1: Core Logic**
+*   [x] **Phase 1: Core Logic**
 *   [ ] **Phase 2: Renderer**
 *   [ ] **Phase 3: Integration**

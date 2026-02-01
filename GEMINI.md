@@ -49,4 +49,4 @@ The ultimate goal of this project is to enable precise mapping between camera an
     *   Added unit tests `tests/test_input_manager.py`
 *   [x] **Phase 1: Core Logic**
 *   [x] **Phase 2: Renderer**
-*   [ ] **Phase 3: Integration**
+*   [x] **Phase 3: Integration**

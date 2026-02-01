@@ -9,7 +9,11 @@ import mediapipe as mp
 sys.path.insert(0, os.path.abspath("src"))
 
 from light_map.camera import Camera
-from light_map.gestures import detect_gesture
+from light_map.gestures import detect_gesture, GestureType
+from light_map.menu_config import ROOT_MENU
+from light_map.input_manager import InputManager
+from light_map.menu_system import MenuSystem
+from light_map.renderer import Renderer
 
 def main():
     # 1. Load Calibration
@@ -36,6 +40,11 @@ def main():
         return
 
     print(f"Calibration loaded. Resolution: {screen_w}x{screen_h}")
+
+    # 2. Setup Menu System
+    menu = MenuSystem(screen_w, screen_h, ROOT_MENU)
+    renderer = Renderer(screen_w, screen_h)
+    input_manager = InputManager()
 
     # 2. Setup MediaPipe
     mp_hands = mp.solutions.hands
@@ -94,49 +103,85 @@ def main():
                 hand_count = 0
                 gesture_text_y_offset = 400
 
+                # 5. Menu & Gesture Logic
+                
+                # Default values for a frame with no hands
+                cursor_x, cursor_y = -1, -1
+                gesture = GestureType.NONE
+                
                 if results.multi_hand_landmarks and results.multi_handedness:
                     hand_count = len(results.multi_hand_landmarks)
                     
-                    for idx, (hand_landmarks, handedness) in enumerate(zip(results.multi_hand_landmarks, results.multi_handedness)):
-                        label = handedness.classification[0].label # "Left" or "Right"
-                        
-                        # Detect Gesture
-                        gesture = detect_gesture(hand_landmarks.landmark, label)
-                        
-                        # Calculate centroid (approximate) for text placement
-                        # Or just stick it to the wrist
-                        wrist = hand_landmarks.landmark[0]
-                        cx_wrist = int(wrist.x * frame.shape[1])
-                        cy_wrist = int(wrist.y * frame.shape[0])
-                        
-                        # Transform Wrist to Projector Space
-                        camera_point = np.array([cx_wrist, cy_wrist], dtype=np.float32).reshape(1, 1, 2)
-                        projector_point = cv2.perspectiveTransform(camera_point, transformation_matrix)
-                        px_wrist, py_wrist = projector_point[0][0]
+                    # For simplicity, we'll use the first detected hand as the primary controller
+                    primary_hand_landmarks = results.multi_hand_landmarks[0]
+                    primary_handedness = results.multi_handedness[0]
+                    label = primary_handedness.classification[0].label
 
-                        # Draw Gesture Name near the wrist on screen
-                        cv2.putText(projection_screen, f"{label}: {gesture}", (int(px_wrist), int(py_wrist) - 50), 
-                                    cv2.FONT_HERSHEY_SIMPLEX, 2, (255, 255, 0), 3)
+                    # Detect gesture for the primary hand
+                    gesture = detect_gesture(primary_hand_landmarks.landmark, label)
+                    
+                    # Use index finger tip as the cursor
+                    index_finger_tip = primary_hand_landmarks.landmark[mp_hands.HandLandmark.INDEX_FINGER_TIP]
+                    cx = int(index_finger_tip.x * frame.shape[1])
+                    cy = int(index_finger_tip.y * frame.shape[0])
 
-                        # Draw Landmarks
-                        for landmark in hand_landmarks.landmark:
-                            # Normalized coordinates [0, 1]
-                            # We need pixel coordinates in the CAMERA image
-                            cx = int(landmark.x * frame.shape[1])
-                            cy = int(landmark.y * frame.shape[0])
+                    # Transform to Projector Space to get the cursor position
+                    camera_point = np.array([cx, cy], dtype=np.float32).reshape(1, 1, 2)
+                    projector_point = cv2.perspectiveTransform(camera_point, transformation_matrix)
+                    cursor_x, cursor_y = projector_point[0][0]
+                
+                # Update Input Manager
+                # This helps smooth out the cursor and stabilize gestures
+                input_manager.update(cursor_x, cursor_y, gesture, hand_count > 0)
+                
+                # Update Menu System
+                if input_manager.is_hand_present():
+                    menu_state = menu.update(input_manager.get_x(), input_manager.get_y(), input_manager.get_gesture())
+                else:
+                    # If no hand, we still need to update menu to handle timers (e.g., summon decay)
+                    # We pass a neutral gesture and out-of-bounds coordinates
+                    menu_state = menu.update(-1, -1, GestureType.NONE)
 
-                            # Transform to Projector Space
-                            camera_point = np.array([cx, cy], dtype=np.float32).reshape(1, 1, 2)
-                            projector_point = cv2.perspectiveTransform(camera_point, transformation_matrix)
-                            
-                            px, py = projector_point[0][0]
-                            
-                            # Draw
-                            cv2.circle(projection_screen, (int(px), int(py)), 3, (0, 50, 0), -1)
+                # Render Menu
+                menu_image = renderer.render(menu_state)
+                
+                # Combine layers
+                # Add a transparent overlay to darken the background when menu is active
+                if menu_state.is_visible:
+                    overlay = np.zeros_like(projection_screen)
+                    # overlay[:] = (70, 70, 70)
+                    # cv2.addWeighted(projection_screen, 0.5, overlay, 0.5, 0, projection_screen)
+                    # This is heavy, let's just add menu on top
+                    pass
+
+                # Add menu image to the projection screen
+                # This assumes menu_image can have alpha, but it's 3-channel.
+                # A simple mask can be used.
+                mask = cv2.cvtColor(menu_image, cv2.COLOR_BGR2GRAY)
+                _, mask = cv2.threshold(mask, 1, 255, cv2.THRESH_BINARY)
+                mask_inv = cv2.bitwise_not(mask)
+                
+                img1_bg = cv2.bitwise_and(projection_screen, projection_screen, mask=mask_inv)
+                img2_fg = cv2.bitwise_and(menu_image, menu_image, mask=mask)
+                
+                projection_screen = cv2.add(img1_bg, img2_fg)
+
+                # Handle menu actions
+                if menu_state.just_triggered_action:
+                    print(f"Action triggered: {menu_state.just_triggered_action}")
+                    # Here you would add logic to handle different actions,
+                    # e.g., changing a setting, activating a mode, etc.
 
                 # Display FPS and Hand Count
                 cv2.putText(projection_screen, f"FPS: {int(fps)}", (50, 100), cv2.FONT_HERSHEY_SIMPLEX, 3, (0, 0, 255), 3)
                 cv2.putText(projection_screen, f"Hands: {hand_count}", (50, 250), cv2.FONT_HERSHEY_SIMPLEX, 3, (0, 0, 255), 3)
+
+                # For debugging, show cursor and gesture
+                if input_manager.is_hand_present():
+                    gesture_text = input_manager.get_gesture().name
+                    dbg_x, dbg_y = input_manager.get_x(), input_manager.get_y()
+                    cv2.putText(projection_screen, gesture_text, (dbg_x, dbg_y - 80), cv2.FONT_HERSHEY_SIMPLEX, 2, (0, 255, 255), 3)
+                    cv2.circle(projection_screen, (dbg_x, dbg_y), 15, (0, 255, 255), -1)
 
                 cv2.imshow(window_name, projection_screen)
 

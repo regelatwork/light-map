@@ -84,3 +84,21 @@ The system currently recognizes the following gestures:
 3.  The script will display a fullscreen black window on the projector. As hands are detected by the camera, their landmarks will be projected onto this screen.
 4.  Press 'q' to quit the application.
 
+## Hierarchical Menu System
+
+The `hand_tracker.py` script also features a hierarchical menu system, allowing for interactive control using hand gestures.
+
+### Menu Interaction
+
+*   **Summon Menu**: Perform the **Open Palm** gesture and hold it for a short duration (`SUMMON_TIME` defined in `menu_config.py`). The menu will appear on the projector screen.
+*   **Navigate & Hover**: Once the menu is active, move your **index fingertip** to hover over different menu items.
+*   **Select Item**: With an item hovered, perform the **Closed Fist** gesture and hold it for a short duration (`PRIMING_TIME` defined in `menu_config.py`). This will select the item.
+    *   If the item has sub-menus, you will navigate into the sub-menu.
+    *   If the item is an action, the action will be triggered, and if `should_close_on_trigger` is true for that item, the menu will close.
+*   **Navigate Back**: Select the "< Back" item to return to the previous menu level.
+*   **Dismiss Menu**: Currently, the menu can be dismissed by triggering an action that closes it (e.g., an "Exit" action, once implemented) or by performing the summon gesture (Open Palm) again and holding it to toggle it off.
+
+### Configuration
+
+The menu structure and interaction timings are defined in `src/light_map/menu_config.py`.
+

@@ -38,6 +38,19 @@ The ultimate goal of this project is to enable precise mapping between camera an
 - **`images/`**: A directory containing the chessboard images used for camera calibration.
 - **`.venv/`**: The Python virtual environment.
 
+## Development Guidelines
+
+### Coding Standards
+
+- **Python Style & Linting**: Use [Ruff](https://beta.ruff.rs/docs/). Run `ruff format .` and `ruff check . --fix`.
+- **Markdown Formatting**: Use [mdformat](https://github.com/executablebooks/mdformat). Run `mdformat .`.
+
+### Testing
+
+- **Framework**: Use [pytest](https://docs.pytest.org/).
+- **Source Layout**: The project uses a `src` layout. Configure `pytest` via `pytest.ini` (already present) to include `src` in the `pythonpath`.
+- **Naming**: Test files should be prefixed with `test_` and located in the `tests/` directory.
+
 ## Feature Tracking: Hierarchical Menus (feat/hierarchical-menus)
 
 - [x] **Phase 0: Shared Types & Configuration**

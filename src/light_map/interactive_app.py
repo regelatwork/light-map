@@ -1,17 +1,18 @@
 import cv2
 import numpy as np
 import time
-from typing import List, Tuple, Any, Optional
+from typing import List, Tuple, Any, Optional, Dict
 from dataclasses import dataclass
 import mediapipe as mp
 
-from light_map.common_types import GestureType, MenuItem
+from light_map.common_types import GestureType, MenuItem, AppMode, MenuActions
 from light_map.input_manager import InputManager
 from light_map.menu_system import MenuSystem
 from light_map.renderer import Renderer
 from light_map.gestures import detect_gesture
 from light_map.map_system import MapSystem
 from light_map.svg_loader import SVGLoader
+import light_map.menu_config as config_vars
 
 
 @dataclass
@@ -31,16 +32,26 @@ class InteractiveApp:
             config.width, config.height, config.root_menu, time_provider=time_provider
         )
         self.renderer = Renderer(config.width, config.height)
-        self.input_manager = InputManager()
+        self.input_manager = InputManager(time_provider=time_provider)
 
         # Map Support
         self.map_system = MapSystem(config.width, config.height)
         self.svg_loader: Optional[SVGLoader] = None
 
         # State
+        self.mode = AppMode.MENU
         self.last_fps_time = 0.0
         self.fps = 0.0
         self.debug_mode = False
+
+        # Latest Menu State for rendering
+        self.menu_state = self.menu_system.update(-1, -1, GestureType.NONE)
+
+        # Interaction State
+        self.last_cursor_pos = None  # (x, y) for panning
+        self.zoom_start_dist = None  # distance between hands when zoom started
+        self.zoom_start_level = 1.0
+        self.zoom_gesture_start_time = 0.0
 
     def set_debug_mode(self, enabled: bool):
         self.debug_mode = enabled
@@ -48,13 +59,11 @@ class InteractiveApp:
     def load_map(self, filename: str):
         """Loads an SVG map file."""
         self.svg_loader = SVGLoader(filename)
-        # Reset view when loading new map
         self.map_system.reset_view()
 
     def reload_config(self, config: AppConfig):
         """Reloads the application configuration and re-initializes necessary components."""
         self.config = config
-        # Re-init components dependent on screen size
         self.menu_system = MenuSystem(
             config.width,
             config.height,
@@ -63,20 +72,11 @@ class InteractiveApp:
         )
         self.renderer = Renderer(config.width, config.height)
         self.map_system = MapSystem(config.width, config.height)
+        self.menu_state = self.menu_system.update(-1, -1, GestureType.NONE)
 
     def process_frame(
         self, frame: np.ndarray, results: Any
     ) -> Tuple[np.ndarray, List[str]]:
-        """
-        Process a single frame from the camera.
-
-        Args:
-            frame: The camera frame (BGR).
-            results: MediaPipe Hands results.
-
-        Returns:
-            Tuple[output_image, triggered_actions]
-        """
         current_time = self.time_provider()
 
         # 1. Update FPS
@@ -86,81 +86,188 @@ class InteractiveApp:
                 self.fps = 1.0 / dt
         self.last_fps_time = current_time
 
-        # 2. Input Processing
-        cursor_x, cursor_y = -1, -1
-        gesture = GestureType.NONE
-        is_hand_present = False
-        hand_count = 0
+        # 2. Extract Hand Data
+        hands_data = self._extract_hands(results, frame.shape)
+        hand_count = len(hands_data)
 
-        if results.multi_hand_landmarks and results.multi_handedness:
-            hand_count = len(results.multi_hand_landmarks)
-            primary_hand_landmarks = results.multi_hand_landmarks[0]
-            primary_handedness = results.multi_handedness[0]
-            label = primary_handedness.classification[0].label
+        # 3. Mode-Specific Processing
+        actions = []
+        if self.mode == AppMode.MENU:
+            actions = self._process_menu_mode(hands_data)
+        elif self.mode == AppMode.MAP:
+            actions = self._process_map_mode(hands_data, current_time)
 
-            # Detect Gesture
-            gesture = detect_gesture(primary_hand_landmarks.landmark, label)
-
-            # Coordinate Transform
-            # Index Finger Tip
-            tip = primary_hand_landmarks.landmark[
-                mp.solutions.hands.HandLandmark.INDEX_FINGER_TIP
-            ]
-            cx = int(tip.x * frame.shape[1])
-            cy = int(tip.y * frame.shape[0])
-
-            # Camera -> Projector
-            # Ensure matrix is float32 for perspectiveTransform
-            matrix = self.config.projector_matrix.astype(np.float32)
-            camera_point = np.array([cx, cy], dtype=np.float32).reshape(1, 1, 2)
-            projector_point = cv2.perspectiveTransform(camera_point, matrix)
-            cursor_x, cursor_y = (
-                int(projector_point[0][0][0]),
-                int(projector_point[0][0][1]),
-            )
-
-            is_hand_present = True
-
-        # 3. Update Input Manager
-        self.input_manager.update(cursor_x, cursor_y, gesture, is_hand_present)
-
-        # 4. Update Menu System
-        smoothed_x = self.input_manager.get_x()
-        smoothed_y = self.input_manager.get_y()
-        smoothed_gesture = self.input_manager.get_gesture()
-
-        menu_state = self.menu_system.update(smoothed_x, smoothed_y, smoothed_gesture)
-
-        # 5. Render Map Background
+        # 4. Render Layers
+        # A. Map Background
         map_image = None
         if self.svg_loader:
-            # Get current viewport params
             params = self.map_system.get_render_params()
-            # Render map
             map_image = self.svg_loader.render(
                 self.config.width, self.config.height, **params
             )
 
-        # 6. Render Menu (composited over map)
-        output = self.renderer.render(menu_state, background=map_image)
+        # B. Menu/Overlay
+        output = self.renderer.render(self.menu_state, background=map_image)
 
-        # 7. Debug Overlays
+        # C. Map Mode Overlay (if active)
+        if self.mode == AppMode.MAP:
+            self._draw_map_overlay(output)
+
+        # D. Debug Overlays
         if self.debug_mode:
-            self._draw_debug_overlay(
-                output, hand_count, smoothed_gesture, smoothed_x, smoothed_y
-            )
-
-        # 8. Actions
-        actions = []
-        if menu_state.just_triggered_action:
-            actions.append(menu_state.just_triggered_action)
+            primary_gesture = GestureType.NONE
+            px, py = -1, -1
+            if hands_data:
+                primary_gesture = hands_data[0]["gesture"]
+                px, py = hands_data[0]["proj_pos"]
+            self._draw_debug_overlay(output, hand_count, primary_gesture, px, py)
 
         return output, actions
+
+    def _extract_hands(self, results, frame_shape) -> List[Dict]:
+        """Extracts and transforms hand data from MediaPipe results."""
+        hands_data = []
+        if not results.multi_hand_landmarks or not results.multi_handedness:
+            return hands_data
+
+        matrix = self.config.projector_matrix.astype(np.float32)
+
+        for i in range(len(results.multi_hand_landmarks)):
+            landmarks = results.multi_hand_landmarks[i]
+            handedness = results.multi_handedness[i]
+            label = handedness.classification[0].label
+
+            gesture = detect_gesture(landmarks.landmark, label)
+
+            # Projector Position (Index Tip)
+            tip = landmarks.landmark[mp.solutions.hands.HandLandmark.INDEX_FINGER_TIP]
+            cx = int(tip.x * frame_shape[1])
+            cy = int(tip.y * frame_shape[0])
+
+            camera_point = np.array([cx, cy], dtype=np.float32).reshape(1, 1, 2)
+            projector_point = cv2.perspectiveTransform(camera_point, matrix)
+            px, py = int(projector_point[0][0][0]), int(projector_point[0][0][1])
+
+            hands_data.append(
+                {"gesture": gesture, "proj_pos": (px, py), "raw_landmarks": landmarks}
+            )
+
+        return hands_data
+
+    def _process_menu_mode(self, hands_data: List[Dict]) -> List[str]:
+        # Update Input Manager with primary hand
+        px, py = -1, -1
+        gesture = GestureType.NONE
+        is_present = False
+
+        if hands_data:
+            px, py = hands_data[0]["proj_pos"]
+            gesture = hands_data[0]["gesture"]
+            is_present = True
+
+        self.input_manager.update(px, py, gesture, is_present)
+
+        # Update Menu System
+        self.menu_state = self.menu_system.update(
+            self.input_manager.get_x(),
+            self.input_manager.get_y(),
+            self.input_manager.get_gesture(),
+        )
+
+        actions = []
+        if self.menu_state.just_triggered_action:
+            action = self.menu_state.just_triggered_action
+            if action == MenuActions.MAP_CONTROLS:
+                self.mode = AppMode.MAP
+                # Don't pass MAP_CONTROLS to outer loop
+            elif action == MenuActions.ROTATE_CW:
+                self.map_system.rotate(90)
+            elif action == MenuActions.ROTATE_CCW:
+                self.map_system.rotate(-90)
+            elif action == MenuActions.RESET_VIEW:
+                self.map_system.reset_view()
+            else:
+                actions.append(action)
+
+        return actions
+
+    def _process_map_mode(
+        self, hands_data: List[Dict], current_time: float
+    ) -> List[str]:
+        # 1. Zoom Logic (Two hands pointing)
+        pointing_hands = [h for h in hands_data if h["gesture"] == GestureType.POINTING]
+        if len(pointing_hands) >= 2:
+            p1 = np.array(pointing_hands[0]["proj_pos"])
+            p2 = np.array(pointing_hands[1]["proj_pos"])
+            dist = np.linalg.norm(p1 - p2)
+
+            if self.zoom_gesture_start_time == 0:
+                self.zoom_gesture_start_time = current_time
+            elif current_time - self.zoom_gesture_start_time > config_vars.ZOOM_DELAY:
+                # Active Zooming
+                if self.zoom_start_dist is None:
+                    self.zoom_start_dist = dist
+                    self.zoom_start_level = self.map_system.state.zoom
+                else:
+                    # Scale factor relative to start of gesture
+                    factor = dist / self.zoom_start_dist
+                    new_zoom = self.zoom_start_level * factor
+                    # Apply zoom centered between hands
+                    center = (p1 + p2) / 2
+                    # Since our MapSystem.zoom takes a DELTA factor, we convert:
+                    delta_factor = new_zoom / self.map_system.state.zoom
+                    self.map_system.zoom(delta_factor, center[0], center[1])
+        else:
+            self.zoom_gesture_start_time = 0
+            self.zoom_start_dist = None
+
+        # 2. Pan Logic (One hand fist)
+        if self.zoom_start_dist is None:  # Don't pan while zooming
+            if hands_data and hands_data[0]["gesture"] == config_vars.SELECT_GESTURE:
+                pos = hands_data[0]["proj_pos"]
+                if self.last_cursor_pos is not None:
+                    dx = pos[0] - self.last_cursor_pos[0]
+                    dy = pos[1] - self.last_cursor_pos[1]
+                    self.map_system.pan(dx, dy)
+                self.last_cursor_pos = pos
+            else:
+                self.last_cursor_pos = None
+
+        # Handle Exit to Menu (Victory)
+        if hands_data and hands_data[0]["gesture"] == config_vars.SUMMON_GESTURE:
+            self.mode = AppMode.MENU
+            # Ensure menu is hidden when switching back?
+            # menu_system handles summoning from HIDDEN.
+
+        return []
+
+    def _draw_map_overlay(self, image):
+        # Instructions
+        cv2.putText(
+            image,
+            "MAP MODE | Panning: Fist | Zoom: Two-Hand Pointing | Exit: Victory",
+            (50, self.config.height - 100),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.8,
+            (255, 255, 255),
+            2,
+        )
+        # Zoom level
+        zoom_pct = int(self.map_system.state.zoom * 100)
+        cv2.putText(
+            image,
+            f"Zoom: {zoom_pct}%",
+            (50, self.config.height - 60),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.8,
+            (0, 255, 0),
+            2,
+        )
 
     def _draw_debug_overlay(self, image, hand_count, gesture, x, y):
         cv2.putText(
             image,
-            f"FPS: {int(self.fps)}",
+            f"FPS: {int(self.fps)} | Mode: {self.mode}",
             (50, 50),
             cv2.FONT_HERSHEY_SIMPLEX,
             1,
@@ -176,23 +283,9 @@ class InteractiveApp:
             (0, 0, 255),
             2,
         )
-
-        # Instructions
-        cv2.putText(
-            image,
-            "Summon: Victory | Select: Fist",
-            (50, self.config.height - 50),
-            cv2.FONT_HERSHEY_SIMPLEX,
-            1.0,
-            (200, 200, 200),
-            2,
-        )
-
         if gesture != GestureType.NONE:
-            # Ensure x, y are within bounds for drawing safely
             dx = max(0, min(x, self.config.width))
             dy = max(0, min(y, self.config.height))
-
             label = gesture.name if isinstance(gesture, GestureType) else str(gesture)
             cv2.putText(
                 image,

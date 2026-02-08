@@ -20,6 +20,15 @@ class MenuActions(StrEnum):
     EXIT = "EXIT"
     CALIBRATE = "CALIBRATE"
     NAV_BACK = "NAV_BACK"
+    MAP_CONTROLS = "MAP_CONTROLS"
+    ROTATE_CW = "ROTATE_CW"
+    ROTATE_CCW = "ROTATE_CCW"
+    RESET_VIEW = "RESET_VIEW"
+
+
+class AppMode(StrEnum):
+    MENU = "MENU"
+    MAP = "MAP"
 
 
 @dataclass

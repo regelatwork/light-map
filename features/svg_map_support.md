@@ -127,16 +127,9 @@ To ensure calibration and map states persist across sessions, we will use a JSON
 *   **Goal**: Integrate `MapSystem` into `InteractiveApp` and update `Renderer` to draw the map layer.
 *   **Milestone**: `InteractiveApp` renders the map background.
 
-### Phase 4: Interaction & Gestures (The Control)
+### Phase 4: Interaction & Gestures (The Control) [DONE]
 *   **Goal**: Implement "Map Mode", Pan/Zoom gestures, and on-screen controls.
 *   **Milestone**: `tests/test_interactive_app.py` passes with new gestures.
-*   **Files**:
-    *   `src/light_map/gestures.py`: Add "Two-Hand Pointing" detection.
-    *   `src/light_map/interactive_app.py`: Handle state transitions (Menu <-> Map).
-    *   `src/light_map/input_manager.py`: Add gesture debounce logic.
-*   **Tests**:
-    *   `test_enter_map_mode`: Verify mode switch.
-    *   `test_two_hand_zoom`: Verify zoom level changes with hand distance.
 
 ### Phase 5: Calibration & Persistence (The Polish)
 *   **Goal**: Implement PPI calibration, grid verification, and JSON storage.

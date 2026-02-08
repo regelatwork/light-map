@@ -113,6 +113,61 @@ To ensure calibration and map states persist across sessions, we will use a JSON
     3. If not, initialize with default values (centered at 1:1 scale).
 *   **On Change**: Update the in-memory state and save to `map_state.json` periodically or on app exit.
 
+## Implementation Plan
+
+### Phase 1: SVG Loading & Rendering (The Foundation)
+*   **Goal**: Load an SVG file and render it to a static `np.ndarray` (BGR image) at a specific resolution.
+*   **Milestone**: `tests/test_svg_loader.py` passes.
+*   **Files**:
+    *   `src/light_map/svg_loader.py` (New): `SVGLoader` class.
+    *   `tests/test_svg_loader.py` (New): Unit tests.
+*   **Tests**:
+    *   `test_load_valid_svg`: Ensure file loads.
+    *   `test_render_dimensions`: Verify output image matches requested WxH.
+    *   `test_parse_paths`: Check if `svgelements` extracts paths correctly.
+
+### Phase 2: Viewport & State Management (The Logic)
+*   **Goal**: Manage Pan/Zoom/Rotation state and apply affine transformations. Implement `MapSystem`.
+*   **Milestone**: `tests/test_map_system.py` passes.
+*   **Files**:
+    *   `src/light_map/map_system.py` (New): `MapSystem` class with `viewport` state.
+    *   `tests/test_map_system.py` (New): Unit tests.
+*   **Tests**:
+    *   `test_pan`: Verify (x, y) updates.
+    *   `test_zoom`: Verify scale updates.
+    *   `test_transform_point`: Check if a point (10,10) transforms correctly under zoom/pan.
+
+### Phase 3: Integration & Rendering (The Visuals)
+*   **Goal**: Integrate `MapSystem` into `InteractiveApp` and update `Renderer` to draw the map layer.
+*   **Milestone**: `InteractiveApp` renders the map background.
+*   **Files**:
+    *   `src/light_map/renderer.py`: Update `render()` to accept a background image.
+    *   `src/light_map/interactive_app.py`: Initialize `MapSystem` and composite layers.
+    *   `tests/test_renderer.py`: Update to test layered rendering.
+*   **Tests**:
+    *   `test_render_with_background`: Ensure map is drawn behind menu.
+
+### Phase 4: Interaction & Gestures (The Control)
+*   **Goal**: Implement "Map Mode", Pan/Zoom gestures, and on-screen controls.
+*   **Milestone**: `tests/test_interactive_app.py` passes with new gestures.
+*   **Files**:
+    *   `src/light_map/gestures.py`: Add "Two-Hand Pointing" detection.
+    *   `src/light_map/interactive_app.py`: Handle state transitions (Menu <-> Map).
+    *   `src/light_map/input_manager.py`: Add gesture debounce logic.
+*   **Tests**:
+    *   `test_enter_map_mode`: Verify mode switch.
+    *   `test_two_hand_zoom`: Verify zoom level changes with hand distance.
+
+### Phase 5: Calibration & Persistence (The Polish)
+*   **Goal**: Implement PPI calibration, grid verification, and JSON storage.
+*   **Milestone**: App saves/loads state from `map_state.json`.
+*   **Files**:
+    *   `src/light_map/map_config.py` (New): Persistence logic.
+    *   `src/light_map/calibration_logic.py`: Add PPI calibration routine.
+*   **Tests**:
+    *   `test_save_load_state`: Verify JSON I/O.
+    *   `test_ppi_calculation`: Check formula correctness.
+
 ## Brainstorming & Requirements
 
 ### 1. Library Selection

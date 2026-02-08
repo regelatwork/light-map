@@ -24,11 +24,13 @@ class MenuActions(StrEnum):
     ROTATE_CW = "ROTATE_CW"
     ROTATE_CCW = "ROTATE_CCW"
     RESET_VIEW = "RESET_VIEW"
+    CALIBRATE_SCALE = "CALIBRATE_SCALE"
 
 
 class AppMode(StrEnum):
     MENU = "MENU"
     MAP = "MAP"
+    CALIB_PPI = "CALIB_PPI"
 
 
 @dataclass

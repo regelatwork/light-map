@@ -58,6 +58,11 @@ ROOT_MENU = MenuItem(
                     action_id=MenuActions.RESET_VIEW,
                     should_close_on_trigger=False,
                 ),
+                MenuItem(
+                    title="Calibrate Scale",
+                    action_id=MenuActions.CALIBRATE_SCALE,
+                    should_close_on_trigger=True,
+                ),
             ],
         ),
         MenuItem(

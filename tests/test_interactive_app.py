@@ -1,6 +1,6 @@
-from typing import List
 import pytest
 import numpy as np
+from typing import List
 from unittest.mock import MagicMock, patch
 from light_map.interactive_app import InteractiveApp, AppConfig
 from light_map.common_types import GestureType, AppMode, MenuActions
@@ -63,6 +63,7 @@ def test_mode_switch_to_map(app_config):
     frame = np.zeros((100, 100, 3), dtype=np.uint8)
 
     # Mock MenuSystem to return MAP_CONTROLS action
+    # We patch the update call on the INSTANCE
     with patch.object(app.menu_system, "update") as mock_update:
         mock_state = MagicMock()
         mock_state.just_triggered_action = MenuActions.MAP_CONTROLS
@@ -140,3 +141,33 @@ def test_exit_map_mode(app_config):
         app.process_frame(frame, results)
 
         assert app.mode == AppMode.MENU
+
+
+def test_ppi_calibration_flow(app_config):
+    app = InteractiveApp(app_config)
+    frame = np.zeros((100, 100, 3), dtype=np.uint8)
+
+    # 1. Enter Calibration Mode
+    app.mode = AppMode.CALIB_PPI
+    app.calib_stage = 0
+
+    # 2. Simulate detection
+    with patch("light_map.interactive_app.calculate_ppi_from_frame") as mock_calc:
+        mock_calc.return_value = 120.0
+
+        results = MockResults(hands_landmarks=None)
+        app.process_frame(frame, results)
+
+        assert app.calib_stage == 1
+        assert app.calib_candidate_ppi == 120.0
+
+    # 3. Confirm with Gesture
+    with patch("light_map.interactive_app.detect_gesture") as mock_detect:
+        mock_detect.return_value = GestureType.VICTORY
+        results = MockResults(hands_landmarks=[[MockHandLandmark(0.5, 0.5)] * 21])
+
+        with patch.object(app.map_config, "set_ppi") as mock_save:
+            app.process_frame(frame, results)
+
+            mock_save.assert_called_with(120.0)
+            assert app.mode == AppMode.MENU

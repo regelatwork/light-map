@@ -131,15 +131,9 @@ To ensure calibration and map states persist across sessions, we will use a JSON
 *   **Goal**: Implement "Map Mode", Pan/Zoom gestures, and on-screen controls.
 *   **Milestone**: `tests/test_interactive_app.py` passes with new gestures.
 
-### Phase 5: Calibration & Persistence (The Polish)
+### Phase 5: Calibration & Persistence (The Polish) [DONE]
 *   **Goal**: Implement PPI calibration, grid verification, and JSON storage.
 *   **Milestone**: App saves/loads state from `map_state.json`.
-*   **Files**:
-    *   `src/light_map/map_config.py` (New): Persistence logic.
-    *   `src/light_map/calibration_logic.py`: Add PPI calibration routine.
-*   **Tests**:
-    *   `test_save_load_state`: Verify JSON I/O.
-    *   `test_ppi_calculation`: Check formula correctness.
 
 ## Brainstorming & Requirements
 

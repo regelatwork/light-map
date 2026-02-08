@@ -115,27 +115,13 @@ To ensure calibration and map states persist across sessions, we will use a JSON
 
 ## Implementation Plan
 
-### Phase 1: SVG Loading & Rendering (The Foundation)
+### Phase 1: SVG Loading & Rendering (The Foundation) [DONE]
 *   **Goal**: Load an SVG file and render it to a static `np.ndarray` (BGR image) at a specific resolution.
 *   **Milestone**: `tests/test_svg_loader.py` passes.
-*   **Files**:
-    *   `src/light_map/svg_loader.py` (New): `SVGLoader` class.
-    *   `tests/test_svg_loader.py` (New): Unit tests.
-*   **Tests**:
-    *   `test_load_valid_svg`: Ensure file loads.
-    *   `test_render_dimensions`: Verify output image matches requested WxH.
-    *   `test_parse_paths`: Check if `svgelements` extracts paths correctly.
 
-### Phase 2: Viewport & State Management (The Logic)
+### Phase 2: Viewport & State Management (The Logic) [DONE]
 *   **Goal**: Manage Pan/Zoom/Rotation state and apply affine transformations. Implement `MapSystem`.
 *   **Milestone**: `tests/test_map_system.py` passes.
-*   **Files**:
-    *   `src/light_map/map_system.py` (New): `MapSystem` class with `viewport` state.
-    *   `tests/test_map_system.py` (New): Unit tests.
-*   **Tests**:
-    *   `test_pan`: Verify (x, y) updates.
-    *   `test_zoom`: Verify scale updates.
-    *   `test_transform_point`: Check if a point (10,10) transforms correctly under zoom/pan.
 
 ### Phase 3: Integration & Rendering (The Visuals)
 *   **Goal**: Integrate `MapSystem` into `InteractiveApp` and update `Renderer` to draw the map layer.

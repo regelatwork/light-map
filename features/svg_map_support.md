@@ -123,15 +123,9 @@ To ensure calibration and map states persist across sessions, we will use a JSON
 *   **Goal**: Manage Pan/Zoom/Rotation state and apply affine transformations. Implement `MapSystem`.
 *   **Milestone**: `tests/test_map_system.py` passes.
 
-### Phase 3: Integration & Rendering (The Visuals)
+### Phase 3: Integration & Rendering (The Visuals) [DONE]
 *   **Goal**: Integrate `MapSystem` into `InteractiveApp` and update `Renderer` to draw the map layer.
 *   **Milestone**: `InteractiveApp` renders the map background.
-*   **Files**:
-    *   `src/light_map/renderer.py`: Update `render()` to accept a background image.
-    *   `src/light_map/interactive_app.py`: Initialize `MapSystem` and composite layers.
-    *   `tests/test_renderer.py`: Update to test layered rendering.
-*   **Tests**:
-    *   `test_render_with_background`: Ensure map is drawn behind menu.
 
 ### Phase 4: Interaction & Gestures (The Control)
 *   **Goal**: Implement "Map Mode", Pan/Zoom gestures, and on-screen controls.

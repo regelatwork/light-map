@@ -1,7 +1,7 @@
 import cv2
 import numpy as np
 import time
-from typing import List, Tuple, Any
+from typing import List, Tuple, Any, Optional
 from dataclasses import dataclass
 import mediapipe as mp
 
@@ -10,6 +10,8 @@ from light_map.input_manager import InputManager
 from light_map.menu_system import MenuSystem
 from light_map.renderer import Renderer
 from light_map.gestures import detect_gesture
+from light_map.map_system import MapSystem
+from light_map.svg_loader import SVGLoader
 
 
 @dataclass
@@ -31,6 +33,10 @@ class InteractiveApp:
         self.renderer = Renderer(config.width, config.height)
         self.input_manager = InputManager()
 
+        # Map Support
+        self.map_system = MapSystem(config.width, config.height)
+        self.svg_loader: Optional[SVGLoader] = None
+
         # State
         self.last_fps_time = 0.0
         self.fps = 0.0
@@ -39,10 +45,16 @@ class InteractiveApp:
     def set_debug_mode(self, enabled: bool):
         self.debug_mode = enabled
 
+    def load_map(self, filename: str):
+        """Loads an SVG map file."""
+        self.svg_loader = SVGLoader(filename)
+        # Reset view when loading new map
+        self.map_system.reset_view()
+
     def reload_config(self, config: AppConfig):
         """Reloads the application configuration and re-initializes necessary components."""
         self.config = config
-        # We also need to re-init menu system if screen size changed
+        # Re-init components dependent on screen size
         self.menu_system = MenuSystem(
             config.width,
             config.height,
@@ -50,6 +62,7 @@ class InteractiveApp:
             time_provider=self.time_provider,
         )
         self.renderer = Renderer(config.width, config.height)
+        self.map_system = MapSystem(config.width, config.height)
 
     def process_frame(
         self, frame: np.ndarray, results: Any
@@ -118,25 +131,26 @@ class InteractiveApp:
 
         menu_state = self.menu_system.update(smoothed_x, smoothed_y, smoothed_gesture)
 
-        # 5. Render
-        menu_image = self.renderer.render(menu_state)
+        # 5. Render Map Background
+        map_image = None
+        if self.svg_loader:
+            # Get current viewport params
+            params = self.map_system.get_render_params()
+            # Render map
+            map_image = self.svg_loader.render(
+                self.config.width, self.config.height, **params
+            )
 
-        # 6. Compose
-        # Start with black background (projector space)
-        output = np.zeros((self.config.height, self.config.width, 3), dtype=np.uint8)
+        # 6. Render Menu (composited over map)
+        output = self.renderer.render(menu_state, background=map_image)
 
-        # Add Menu
-        # Assume menu_image is same size as output
-        # Using simple add (assumes black background in menu_image where transparent)
-        output = cv2.add(output, menu_image)
-
-        # Debug Overlays
+        # 7. Debug Overlays
         if self.debug_mode:
             self._draw_debug_overlay(
                 output, hand_count, smoothed_gesture, smoothed_x, smoothed_y
             )
 
-        # 7. Actions
+        # 8. Actions
         actions = []
         if menu_state.just_triggered_action:
             actions.append(menu_state.just_triggered_action)

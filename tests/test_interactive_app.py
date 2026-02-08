@@ -1,6 +1,6 @@
 import pytest
 import numpy as np
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 from light_map.interactive_app import InteractiveApp, AppConfig
 from light_map.common_types import GestureType
 from light_map.menu_config import ROOT_MENU
@@ -115,3 +115,30 @@ def test_coordinate_transformation(app_config):
         # Expected: 10 + 10 = 20, 10 + 20 = 30
         assert app.input_manager.get_x() == 20
         assert app.input_manager.get_y() == 30
+
+
+def test_process_frame_with_map(app_config):
+    app = InteractiveApp(app_config)
+    frame = np.zeros((100, 100, 3), dtype=np.uint8)
+    results = MockResults(landmarks=None)
+
+    # Mock SVGLoader
+    with patch("light_map.interactive_app.SVGLoader") as MockLoader:
+        loader_instance = MagicMock()
+        MockLoader.return_value = loader_instance
+
+        # Make render return a green image
+        bg = np.zeros((100, 100, 3), dtype=np.uint8)
+        bg[:, :] = (0, 255, 0)
+        loader_instance.render.return_value = bg
+
+        app.load_map("dummy.svg")
+
+        output, actions = app.process_frame(frame, results)
+
+        # Verify loader was called
+        loader_instance.render.assert_called_once()
+
+        # Verify output contains green (map background)
+        # We check a pixel. (50, 50)
+        assert np.array_equal(output[50, 50], [0, 255, 0])

@@ -10,11 +10,19 @@ class Renderer:
         self.screen_height = screen_height
         self.colors = MenuColors()
 
-    def render(self, state: MenuState) -> np.ndarray:
+    def render(self, state: MenuState, background: np.ndarray = None) -> np.ndarray:
         """
         Renders the current menu state onto an image.
+
+        Args:
+            state: The current menu state.
+            background: Optional BGR image to use as background. If None, creates a black image.
         """
-        image = np.zeros((self.screen_height, self.screen_width, 3), dtype=np.uint8)
+        if background is not None:
+            # Create a copy to avoid modifying the original background
+            image = background.copy()
+        else:
+            image = np.zeros((self.screen_height, self.screen_width, 3), dtype=np.uint8)
 
         if not state.is_visible:
             return image

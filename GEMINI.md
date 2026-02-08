@@ -14,9 +14,11 @@ This project aims to provide tools for calibrating a projector-camera system.
     *   **`input_manager.py`**: Handles input smoothing and sticky hand logic.
     *   **`menu_system.py`**: Core logic for the hierarchical menu system.
     *   **`renderer.py`**: Renders the menu UI.
+    *   **`interactive_app.py`**: Orchestrates the interaction between camera, hand tracking, and menu system.
+    *   **`calibration_logic.py`**: Contains the reusable projector calibration sequence.
 *   **`calibrate.py`**: Entry point script. Performs camera calibration using chessboard images in `images/` and saves `camera_calibration.npz`.
 *   **`projector_calibration.py`**: Entry point script. Displays a pattern, captures it, and computes the perspective transformation matrix.
-*   **`hand_tracker.py`**: Entry point script. Calibrates the projector and then continuously tracks hands, projecting landmarks and detecting gestures in real-time.
+*   **`hand_tracker.py`**: Entry point script. Continuously tracks hands, projecting landmarks and detecting gestures in real-time with a hierarchical menu system.
 
 ## Goal:
 
@@ -39,20 +41,11 @@ The ultimate goal of this project is to enable precise mapping between camera an
 ## Feature Tracking: Hierarchical Menus (feat/hierarchical-menus)
 
 *   [x] **Phase 0: Shared Types & Configuration**
-    *   Created `src/light_map/common_types.py`
-    *   Created `src/light_map/menu_config.py`
 *   [x] **Phase 0.5: Persistence Infrastructure**
-    *   Updated `projector_calibration.py` to save resolution.
-    *   Updated `hand_tracker.py` to load calibration safely with fallbacks.
 *   [x] **Phase 0.8: Input Abstraction**
-    *   Created `src/light_map/input_manager.py`
-    *   Added unit tests `tests/test_input_manager.py`
 *   [x] **Phase 1: Core Logic**
 *   [x] **Phase 2: Renderer**
-*   [x] **Phase 3: Integration**
-    *   Refactored `hand_tracker.py` into `InteractiveApp` for testability.
-    *   Implemented Debug Mode (`--debug`).
-    *   Verified with unit tests.
+*   [x] **Phase 3: Integration (InteractiveApp)**
 *   [x] **Phase 4: Calibration Integration**
     *   Extracted calibration logic to `src/light_map/calibration_logic.py`.
     *   Implemented dynamic configuration reloading in `InteractiveApp`.

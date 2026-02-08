@@ -165,53 +165,14 @@ class MenuSystem:
 
 ### 5. Implementation Plan
 
-#### Phase 1: Logic Extraction (Refactoring)
+#### Phase 1: Logic Extraction (Refactoring) [DONE]
 **Goal:** Move logic out of `hand_tracker.py` into `InteractiveApp`.
 
-*   **File:** `src/light_map/interactive_app.py`
-*   **Tasks:**
-    1.  Create `AppConfig` and `InteractiveApp` class.
-    2.  Implement `process_frame` method containing the coordinate transformation and component coordination logic previously in `hand_tracker.py`.
-
-#### Phase 2: Hardware Entry Point Cleanup
+#### Phase 2: Hardware Entry Point Cleanup [DONE]
 **Goal:** Simplify `hand_tracker.py`.
 
-*   **File:** `hand_tracker.py`
-*   **Tasks:**
-    1.  Remove all direct logic (MediaPipe extraction, coordinate math, rendering calls).
-    2.  Instantiate `InteractiveApp`.
-    3.  Loop: Capture -> `app.process_frame()` -> Display.
-
-#### Phase 3: Testing
+#### Phase 3: Testing [DONE]
 **Goal:** Verify logic without hardware.
 
-*   **File:** `tests/test_interactive_app.py`
-*   **Tasks:**
-    1.  Create a test fixture with a mock `projector_matrix` (identity matrix for simplicity).
-    2.  Mock MediaPipe results (create a dummy object with `multi_hand_landmarks`).
-    3.  Call `app.process_frame` with a blank image and mock results.
-    4.  **Assert:**
-        *   Output image is not None.
-        *   Menu becomes visible when "Victory" gesture is simulated.
-        *   Actions are returned when "Closed Fist" is held.
-
-#### Phase 4: Calibration Integration (Refactoring)
+#### Phase 4: Calibration Integration (Refactoring) [DONE]
 **Goal:** Integrate calibration as a first-class citizen.
-
-*   **File:** `src/light_map/calibration_logic.py` (New)
-*   **Tasks:**
-    1.  Extract `calibrate()` function from `projector_calibration.py` into a new library file.
-    2.  Ensure it accepts a `Camera` instance (dependency injection) so it doesn't fight for ownership.
-*   **File:** `projector_calibration.py`
-*   **Tasks:**
-    1.  Update to import and use the new library function.
-*   **File:** `src/light_map/interactive_app.py`
-*   **Tasks:**
-    1.  Add `reload_config(config)` method to update the matrix dynamically.
-*   **File:** `hand_tracker.py`
-*   **Tasks:**
-    1.  Import `calibrate` from `src.light_map.calibration_logic`.
-    2.  Handle `MenuActions.CALIBRATE` by:
-        *   Calling `calibrate(camera_instance)`.
-        *   If successful, reloading the `npz` file.
-        *   Calling `app.reload_config(new_config)`.

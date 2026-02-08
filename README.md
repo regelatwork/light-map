@@ -95,6 +95,7 @@ The `hand_tracker.py` script also features a hierarchical menu system, allowing 
 *   **Select Item**: With an item hovered, perform the **Closed Fist** gesture and hold it for a short duration (`PRIMING_TIME` defined in `menu_config.py`). This will select the item.
     *   If the item has sub-menus, you will navigate into the sub-menu.
     *   If the item is an action, the action will be triggered, and if `should_close_on_trigger` is true for that item, the menu will close.
+*   **Calibrate**: Select "Settings" -> "Calibrate" to trigger the projector calibration sequence without leaving the application. The new calibration will be automatically saved and reloaded.
 *   **Navigate Back**: Select the "< Back" item to return to the previous menu level.
 *   **Dismiss Menu**: Select the "Exit" item to close the menu.
 

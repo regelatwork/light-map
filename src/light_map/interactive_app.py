@@ -35,6 +35,13 @@ class InteractiveApp:
     def set_debug_mode(self, enabled: bool):
         self.debug_mode = enabled
 
+    def reload_config(self, config: AppConfig):
+        """Reloads the application configuration and re-initializes necessary components."""
+        self.config = config
+        # We also need to re-init menu system if screen size changed
+        self.menu_system = MenuSystem(config.width, config.height, config.root_menu, time_provider=self.time_provider)
+        self.renderer = Renderer(config.width, config.height)
+
     def process_frame(self, frame: np.ndarray, results: Any) -> Tuple[np.ndarray, List[str]]:
         """
         Process a single frame from the camera.

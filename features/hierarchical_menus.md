@@ -43,6 +43,7 @@ The system is divided into layers to separate hardware I/O from application logi
     *   **Interface:**
         *   `process_frame(frame, mp_results) -> (output_image, list_of_actions)`
         *   `set_debug_mode(enabled: bool)`
+        *   `reload_config(config: AppConfig)`
 
 #### Layer 3: Core Logic Components
 *   **Input Handling (`InputManager`):** Abstracts raw detection into stable input events.
@@ -92,6 +93,10 @@ class InteractiveApp:
         
     def set_debug_mode(self, enabled: bool):
         """Enable/Disable on-screen debug stats and instructions."""
+        pass
+
+    def reload_config(self, config: AppConfig):
+        """Reloads configuration (e.g. after re-calibration)."""
         pass
 
     def process_frame(self, frame: np.ndarray, results: Any) -> Tuple[np.ndarray, List[str]]:
@@ -190,6 +195,23 @@ class MenuSystem:
         *   Menu becomes visible when "Victory" gesture is simulated.
         *   Actions are returned when "Closed Fist" is held.
 
-#### Phase 4: Integration Verification
+#### Phase 4: Calibration Integration (Refactoring)
+**Goal:** Integrate calibration as a first-class citizen.
+
+*   **File:** `src/light_map/calibration_logic.py` (New)
 *   **Tasks:**
-    1.  Run `hand_tracker.py` (live test) to ensure the refactor didn't break physical hardware integration.
+    1.  Extract `calibrate()` function from `projector_calibration.py` into a new library file.
+    2.  Ensure it accepts a `Camera` instance (dependency injection) so it doesn't fight for ownership.
+*   **File:** `projector_calibration.py`
+*   **Tasks:**
+    1.  Update to import and use the new library function.
+*   **File:** `src/light_map/interactive_app.py`
+*   **Tasks:**
+    1.  Add `reload_config(config)` method to update the matrix dynamically.
+*   **File:** `hand_tracker.py`
+*   **Tasks:**
+    1.  Import `calibrate` from `src.light_map.calibration_logic`.
+    2.  Handle `MenuActions.CALIBRATE` by:
+        *   Calling `calibrate(camera_instance)`.
+        *   If successful, reloading the `npz` file.
+        *   Calling `app.reload_config(new_config)`.

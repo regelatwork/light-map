@@ -53,3 +53,7 @@ The ultimate goal of this project is to enable precise mapping between camera an
     *   Refactored `hand_tracker.py` into `InteractiveApp` for testability.
     *   Implemented Debug Mode (`--debug`).
     *   Verified with unit tests.
+*   [x] **Phase 4: Calibration Integration**
+    *   Extracted calibration logic to `src/light_map/calibration_logic.py`.
+    *   Implemented dynamic configuration reloading in `InteractiveApp`.
+    *   Enabled in-app calibration via "Calibrate" menu item.

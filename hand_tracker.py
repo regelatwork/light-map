@@ -13,6 +13,7 @@ from light_map.camera import Camera
 from light_map.menu_config import ROOT_MENU
 from light_map.common_types import MenuActions
 from light_map.interactive_app import InteractiveApp, AppConfig
+from light_map.calibration_logic import run_calibration_sequence
 
 def main():
     parser = argparse.ArgumentParser(description="Hand Tracker & Menu System")
@@ -21,26 +22,33 @@ def main():
 
     # 1. Load Calibration
     calibration_file = 'projector_calibration.npz'
-    if not os.path.exists(calibration_file):
-        print(f"Error: {calibration_file} not found. Please run projector_calibration.py first.")
-        return
+    
+    # Helper to load calibration
+    def load_calib():
+        if not os.path.exists(calibration_file):
+            print(f"Warning: {calibration_file} not found. Using default resolution.")
+            return None, 1920, 1080
+        try:
+            with np.load(calibration_file) as data:
+                if 'projector_matrix' not in data:
+                    print("Error: Invalid calibration file (missing projector_matrix).")
+                    return None, 1920, 1080
+                matrix = data['projector_matrix']
+                if 'resolution' in data:
+                    w, h = data['resolution']
+                else:
+                    w, h = 1920, 1080
+                return matrix, w, h
+        except Exception as e:
+            print(f"Error loading calibration: {e}")
+            return None, 1920, 1080
 
-    print(f"Loading calibration from {calibration_file}...")
-    try:
-        with np.load(calibration_file) as data:
-            if 'projector_matrix' not in data:
-                print("Error: Invalid calibration file (missing projector_matrix).")
-                return
-            transformation_matrix = data['projector_matrix']
-            
-            if 'resolution' in data:
-                screen_w, screen_h = data['resolution']
-            else:
-                print("Warning: Legacy calibration detected. Using fallback resolution (1920x1080).")
-                screen_w, screen_h = 1920, 1080
-    except Exception as e:
-        print(f"Error loading calibration: {e}")
-        return
+    transformation_matrix, screen_w, screen_h = load_calib()
+    
+    if transformation_matrix is None:
+        print("Starting uncalibrated (or using defaults). Please calibrate via menu.")
+        # Create a dummy identity matrix if calibration missing, so app doesn't crash
+        transformation_matrix = np.eye(3, dtype=np.float32)
 
     print(f"Calibration loaded. Resolution: {screen_w}x{screen_h}")
 
@@ -90,13 +98,45 @@ def main():
                 cv2.imshow(window_name, output_image)
                 
                 # E. Handle Actions
+                should_break = False
                 for action in actions:
                     print(f"Executing Action: {action}")
                     if action == MenuActions.EXIT:
                         print("Exiting...")
-                        return # Break loop
+                        should_break = True
+                    elif action == MenuActions.CALIBRATE:
+                        # Pause rendering loop (or just freeze frame)
+                        print("Starting Calibration...")
+                        # Run calibration using existing camera instance
+                        # Pass current screen dimensions
+                        new_matrix = run_calibration_sequence(cam, width=screen_w, height=screen_h)
+                        
+                        if new_matrix is not None:
+                            print("Calibration successful! Saving...")
+                            np.savez(calibration_file, projector_matrix=new_matrix, resolution=np.array([screen_w, screen_h]))
+                            
+                            # Reload App Config
+                            print("Reloading application configuration...")
+                            new_config = AppConfig(
+                                width=screen_w,
+                                height=screen_h,
+                                projector_matrix=new_matrix,
+                                root_menu=ROOT_MENU
+                            )
+                            app.reload_config(new_config)
+                        else:
+                            print("Calibration failed or cancelled.")
+                            
+                        # Ensure window is back to fullscreen projection mode after calibration
+                        # (run_calibration_sequence closes its own window, so we just continue using ours)
+                        cv2.namedWindow(window_name, cv2.WND_PROP_FULLSCREEN)
+                        cv2.setWindowProperty(window_name, cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
+
                     elif action == MenuActions.TOGGLE_DEBUG:
                         app.set_debug_mode(not app.debug_mode)
+                
+                if should_break:
+                    break
 
                 # F. Handle Keyboard Interrupts
                 key = cv2.waitKey(1) & 0xFF

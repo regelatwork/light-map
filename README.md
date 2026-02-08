@@ -8,81 +8,94 @@ The `calibrate.py` script calibrates a camera using a series of chessboard image
 
 ### Usage
 
-1.  Ensure you have `pyenv` installed and Python 3.12 (e.g., `3.12.9`) is available through `pyenv`. You can set your local Python version using:
-    ```bash
-    pyenv local 3.12.9
-    ```
+1. Ensure you have `pyenv` installed and Python 3.12 (e.g., `3.12.9`) is available through `pyenv`. You can set your local Python version using:
 
-2.  Create the virtual environment with system site packages (necessary for `picamera2` on Raspberry Pi):
+   ```bash
+   pyenv local 3.12.9
+   ```
 
-    ```bash
-    python -m venv --system-site-packages .venv
-    ```
+1. Create the virtual environment with system site packages (necessary for `picamera2` on Raspberry Pi):
 
-3.  Activate the virtual environment and install the dependencies:
+   ```bash
+   python -m venv --system-site-packages .venv
+   ```
 
-    ```bash
-    source .venv/bin/activate
-    pip install -r requirements.txt
-    ```
-3.  Place your chessboard calibration images in the `images/` directory.
+1. Activate the virtual environment and install the dependencies:
 
-4.  Run the script:
+   ```bash
+   source .venv/bin/activate
+   pip install -r requirements.txt
+   ```
 
-    ```bash
-    python calibrate.py
-    ```
+1. Place your chessboard calibration images in the `images/` directory.
 
-5.  The script will save the camera matrix and distortion coefficients to `camera_calibration.npz`.
+1. Run the script:
+
+   ```bash
+   python calibrate.py
+   ```
+
+1. The script will save the camera matrix and distortion coefficients to `camera_calibration.npz`.
 
 ## Projector-Camera Calibration
 
 The `projector_calibration.py` script calculates the perspective transformation matrix to map camera coordinates to screen (projector) coordinates.
 
 ### Raspberry Pi Setup
+
 If you are running this script on a Raspberry Pi, you will need to install GStreamer and the `libcamera` plugin. You can do this by running the following command:
+
 ```bash
 sudo apt update && sudo apt install -y gstreamer1.0-tools gstreamer1.0-plugins-good gstreamer1.0-plugins-bad gstreamer1.0-libcamera
 ```
 
 ### Usage
 
-1.  First, ensure you have calibrated your camera and have the `camera_calibration.npz` file.
-2.  Run the script:
+1. First, ensure you have calibrated your camera and have the `camera_calibration.npz` file.
 
-    ```bash
-    python projector_calibration.py
-    ```
-3.  The script will display a fullscreen chessboard pattern. Your camera needs to be able to see this pattern.
-3.  The script will then capture an image, find the chessboard, and print the resulting transformation matrix to the console.
+1. Run the script:
+
+   ```bash
+   python projector_calibration.py
+   ```
+
+1. The script will display a fullscreen chessboard pattern. Your camera needs to be able to see this pattern.
+
+1. The script will then capture an image, find the chessboard, and print the resulting transformation matrix to the console.
 
 ## Hand Tracking and Projection
 
 The `hand_tracker.py` script continuously gets images from the camera, detects up to two hands, and projects the positions of the detected hand landmarks onto a fullscreen projector window. It also displays:
-*   Real-time FPS (Frames Per Second).
-*   The number of detected hands.
-*   The recognized gesture for each hand (labeled Left/Right).
+
+- Real-time FPS (Frames Per Second).
+- The number of detected hands.
+- The recognized gesture for each hand (labeled Left/Right).
 
 ### Supported Gestures
+
 The system currently recognizes the following gestures:
-*   **Open Palm**: All fingers extended.
-*   **Closed Fist**: All fingers curled.
-*   **Pointing**: Index finger extended.
-*   **Gun**: Thumb and Index fingers extended.
-*   **Victory**: Index and Middle fingers extended.
-*   **Shaka**: Thumb and Pinky extended.
-*   **Rock**: Index and Pinky extended.
+
+- **Open Palm**: All fingers extended.
+- **Closed Fist**: All fingers curled.
+- **Pointing**: Index finger extended.
+- **Gun**: Thumb and Index fingers extended.
+- **Victory**: Index and Middle fingers extended.
+- **Shaka**: Thumb and Pinky extended.
+- **Rock**: Index and Pinky extended.
 
 ### Usage
 
-1.  First, ensure you have calibrated your camera and projector as described in the sections above, and have the `camera_calibration.npz` file.
-2.  Run the script:
+1. First, ensure you have calibrated your camera and projector as described in the sections above, and have the `camera_calibration.npz` file.
 
-    ```bash
-    python hand_tracker.py
-    ```
-3.  The script will display a fullscreen black window on the projector. As hands are detected by the camera, their landmarks will be projected onto this screen.
-4.  Press 'q' to quit the application.
+1. Run the script:
+
+   ```bash
+   python hand_tracker.py
+   ```
+
+1. The script will display a fullscreen black window on the projector. As hands are detected by the camera, their landmarks will be projected onto this screen.
+
+1. Press 'q' to quit the application.
 
 ## Hierarchical Menu System
 
@@ -90,14 +103,14 @@ The `hand_tracker.py` script also features a hierarchical menu system, allowing 
 
 ### Menu Interaction
 
-*   **Summon Menu**: Perform the **Victory** (Peace sign) gesture and hold it for a short duration (`SUMMON_TIME` defined in `menu_config.py`). The menu will appear on the projector screen.
-*   **Navigate & Hover**: Once the menu is active, move your **index fingertip** to hover over different menu items.
-*   **Select Item**: With an item hovered, perform the **Closed Fist** gesture and hold it for a short duration (`PRIMING_TIME` defined in `menu_config.py`). This will select the item.
-    *   If the item has sub-menus, you will navigate into the sub-menu.
-    *   If the item is an action, the action will be triggered, and if `should_close_on_trigger` is true for that item, the menu will close.
-*   **Calibrate**: Select "Settings" -> "Calibrate" to trigger the projector calibration sequence without leaving the application. The new calibration will be automatically saved and reloaded.
-*   **Navigate Back**: Select the "< Back" item to return to the previous menu level.
-*   **Dismiss Menu**: Select the "Exit" item to close the menu.
+- **Summon Menu**: Perform the **Victory** (Peace sign) gesture and hold it for a short duration (`SUMMON_TIME` defined in `menu_config.py`). The menu will appear on the projector screen.
+- **Navigate & Hover**: Once the menu is active, move your **index fingertip** to hover over different menu items.
+- **Select Item**: With an item hovered, perform the **Closed Fist** gesture and hold it for a short duration (`PRIMING_TIME` defined in `menu_config.py`). This will select the item.
+  - If the item has sub-menus, you will navigate into the sub-menu.
+  - If the item is an action, the action will be triggered, and if `should_close_on_trigger` is true for that item, the menu will close.
+- **Calibrate**: Select "Settings" -> "Calibrate" to trigger the projector calibration sequence without leaving the application. The new calibration will be automatically saved and reloaded.
+- **Navigate Back**: Select the "< Back" item to return to the previous menu level.
+- **Dismiss Menu**: Select the "Exit" item to close the menu.
 
 ### Debug Mode
 
@@ -108,6 +121,7 @@ python hand_tracker.py --debug
 ```
 
 This will display an overlay with:
+
 - FPS counter
 - Hand count
 - Recognized gesture name
@@ -117,4 +131,3 @@ This will display an overlay with:
 ### Configuration
 
 The menu structure and interaction timings are defined in `src/light_map/menu_config.py`.
-

@@ -48,6 +48,10 @@ The following components are covered by unit tests:
 - **`test_menu_system.py`**: Tests the hierarchical menu state machine, navigation, and selection logic.
 - **`test_projector.py`**: Tests calibration pattern generation and homography computation.
 - **`test_renderer.py`**: Verifies that the menu UI renders correctly onto a BGR image.
+- **`test_svg_loader.py`**: Tests SVG parsing and rendering into OpenCV images using `svgelements`.
+- **`test_map_system.py`**: Verifies map viewport logic (pan, pinned zoom, rotation).
+- **`test_map_config.py`**: Tests JSON persistence for map settings and calibration.
+- **`test_calibration_logic_ppi.py`**: Tests Projector PPI detection from printed markers.
 
 ## Style Guidelines
 

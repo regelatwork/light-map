@@ -15,10 +15,14 @@ This project aims to provide tools for calibrating a projector-camera system.
   - **`menu_system.py`**: Core logic for the hierarchical menu system.
   - **`renderer.py`**: Renders the menu UI.
   - **`interactive_app.py`**: Orchestrates the interaction between camera, hand tracking, and menu system.
-  - **`calibration_logic.py`**: Contains the reusable projector calibration sequence.
+  - **`calibration_logic.py`**: Contains the reusable projector calibration sequence and PPI detection.
+  - **`svg_loader.py`**: Loads and renders SVG files using `svgelements`.
+  - **`map_system.py`**: Manages map viewport state (pan, zoom, rotation).
+  - **`map_config.py`**: Handles persistence for map settings and global calibration data.
 - **`calibrate.py`**: Entry point script. Performs camera calibration using chessboard images in `images/` and saves `camera_calibration.npz`.
 - **`projector_calibration.py`**: Entry point script. Displays a pattern, captures it, and computes the perspective transformation matrix.
-- **`hand_tracker.py`**: Entry point script. Continuously tracks hands, projecting landmarks and detecting gestures in real-time with a hierarchical menu system.
+- **`hand_tracker.py`**: Entry point script. Continuously tracks hands, projecting landmarks and detecting gestures in real-time with a hierarchical menu system and SVG map support.
+- **`generate_calibration_target.py`**: Standalone script to generate a printable calibration target for PPI scale calibration.
 
 ## Goal:
 
@@ -63,3 +67,18 @@ The ultimate goal of this project is to enable precise mapping between camera an
   - Extracted calibration logic to `src/light_map/calibration_logic.py`.
   - Implemented dynamic configuration reloading in `InteractiveApp`.
   - Enabled in-app calibration via "Calibrate" menu item.
+
+## Feature Tracking: SVG Map Support (feat/svg-map-support)
+
+- [x] **Phase 1: SVG Loading & Rendering**
+  - Implemented `SVGLoader` using `svgelements`.
+- [x] **Phase 2: Viewport & State Management**
+  - Implemented `MapSystem` for Pan, Pinned Zoom, and 90-degree Rotation.
+- [x] **Phase 3: Integration & Rendering**
+  - Updated `Renderer` for layered background support.
+  - Integrated map layer into `InteractiveApp`.
+- [x] **Phase 4: Interaction & Gestures**
+  - Implemented "Map Mode" with panning and two-hand zoom.
+- [x] **Phase 5: Calibration & Persistence**
+  - Implemented JSON persistence via `map_state.json`.
+  - Added scale (PPI) calibration flow.

@@ -112,6 +112,30 @@ The `hand_tracker.py` script also features a hierarchical menu system, allowing 
 - **Navigate Back**: Select the "< Back" item to return to the previous menu level.
 - **Dismiss Menu**: Select the "Exit" item to close the menu.
 
+## SVG Map Support
+
+The system can load and project SVG map files (e.g., floor plans). Map settings like pan, zoom, and rotation are automatically persisted in `map_state.json`.
+
+### Map Interaction
+
+Switch to **Map Mode** by selecting "Map Controls" from the main menu.
+
+- **Pan**: Use the **Closed Fist** gesture and move your hand to drag the map.
+- **Zoom**: Use the **Two-Hand Pointing** gesture (index fingers extended on both hands). Move hands apart to zoom in, and closer to zoom out. A 1-inch grid will appear to assist with scaling.
+- **Rotate**: Use the "Rotate CW/CCW" options in the "Map Settings" sub-menu.
+- **Reset**: Use the "Reset View" option in the "Map Settings" sub-menu.
+- **Exit Map Mode**: Perform the **Victory** gesture to return to the main menu.
+
+## Scale Calibration (PPI)
+
+To achieve 1:1 mapping (1 inch on map = 1 inch in real life), you must calibrate the **Projector Pixels Per Inch (PPI)**.
+
+1. **Generate Target**: Run `python generate_calibration_target.py` to create `calibration_target.svg`.
+1. **Print**: Print the target at 100% scale. It contains two markers exactly 100mm apart.
+1. **Calibrate**: Select "Map Settings" -> "Calibrate Scale" from the menu.
+1. **Detect**: Place the printed target on the surface. The system will detect the markers and calculate the PPI.
+1. **Verify & Confirm**: A 1-inch grid will be projected. Verify its accuracy and perform the **Victory** gesture to save the calibration.
+
 ### Debug Mode
 
 To visualize hand tracking, gestures, and system stats (FPS), run the tracker with the debug flag:

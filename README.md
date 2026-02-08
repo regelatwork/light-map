@@ -90,13 +90,28 @@ The `hand_tracker.py` script also features a hierarchical menu system, allowing 
 
 ### Menu Interaction
 
-*   **Summon Menu**: Perform the **Open Palm** gesture and hold it for a short duration (`SUMMON_TIME` defined in `menu_config.py`). The menu will appear on the projector screen.
+*   **Summon Menu**: Perform the **Victory** (Peace sign) gesture and hold it for a short duration (`SUMMON_TIME` defined in `menu_config.py`). The menu will appear on the projector screen.
 *   **Navigate & Hover**: Once the menu is active, move your **index fingertip** to hover over different menu items.
 *   **Select Item**: With an item hovered, perform the **Closed Fist** gesture and hold it for a short duration (`PRIMING_TIME` defined in `menu_config.py`). This will select the item.
     *   If the item has sub-menus, you will navigate into the sub-menu.
     *   If the item is an action, the action will be triggered, and if `should_close_on_trigger` is true for that item, the menu will close.
 *   **Navigate Back**: Select the "< Back" item to return to the previous menu level.
-*   **Dismiss Menu**: Currently, the menu can be dismissed by triggering an action that closes it (e.g., an "Exit" action, once implemented) or by performing the summon gesture (Open Palm) again and holding it to toggle it off.
+*   **Dismiss Menu**: Select the "Exit" item to close the menu.
+
+### Debug Mode
+
+To visualize hand tracking, gestures, and system stats (FPS), run the tracker with the debug flag:
+
+```bash
+python hand_tracker.py --debug
+```
+
+This will display an overlay with:
+- FPS counter
+- Hand count
+- Recognized gesture name
+- Cursor position
+- Usage instructions
 
 ### Configuration
 

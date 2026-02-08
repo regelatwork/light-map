@@ -1,4 +1,5 @@
 import numpy as np
+from src.light_map.common_types import GestureType
 
 def is_finger_extended(landmarks, finger_name, hand_label="Right"):
     """
@@ -68,7 +69,7 @@ def detect_gesture(landmarks, handedness_label):
         handedness_label: "Left" or "Right".
         
     Returns:
-        str: detected gesture name.
+        GestureType: detected gesture.
     """
     fingers = ["Thumb", "Index", "Middle", "Ring", "Pinky"]
     state = {f: is_finger_extended(landmarks, f, handedness_label) for f in fingers}
@@ -76,33 +77,33 @@ def detect_gesture(landmarks, handedness_label):
     # Logic
     # All open -> Open Palm
     if all(state.values()):
-        return "Open Palm"
+        return GestureType.OPEN_PALM
     
     # All closed -> Closed Fist
     if not any(state.values()):
-        return "Closed Fist"
+        return GestureType.CLOSED_FIST
     
     # Thumb + Index -> Gun
     if state["Thumb"] and state["Index"] and not state["Middle"] and not state["Ring"] and not state["Pinky"]:
-        return "Gun"
+        return GestureType.GUN
 
     # Index only -> Pointing
     if state["Index"] and not state["Middle"] and not state["Ring"] and not state["Pinky"]:
         # Thumb state can vary for pointing (sometimes tucked, sometimes out)
         # Let's allow thumb to be anything or strict?
         # "Pointing" usually implies thumb is tucked or neutral.
-        return "Pointing"
+        return GestureType.POINTING
     
     # Index + Middle -> Victory
     if state["Index"] and state["Middle"] and not state["Ring"] and not state["Pinky"]:
-        return "Victory"
+        return GestureType.VICTORY
     
     # Index + Pinky -> Rock? (Optional)
     if state["Index"] and state["Pinky"] and not state["Middle"] and not state["Ring"]:
-        return "Rock"
+        return GestureType.ROCK
     
     # Thumb + Pinky -> Shaka / Phone
     if state["Thumb"] and state["Pinky"] and not state["Index"] and not state["Middle"] and not state["Ring"]:
-        return "Shaka"
+        return GestureType.SHAKA
 
-    return "Unknown"
+    return GestureType.UNKNOWN

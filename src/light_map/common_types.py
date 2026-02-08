@@ -11,6 +11,7 @@ class GestureType(StrEnum):
     ROCK = "Rock"
     SHAKA = "Shaka"
     UNKNOWN = "Unknown"
+    NONE = "None"
 
 class MenuActions(StrEnum):
     TOGGLE_DEBUG = "TOGGLE_DEBUG"

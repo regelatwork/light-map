@@ -50,3 +50,6 @@ The ultimate goal of this project is to enable precise mapping between camera an
 *   [x] **Phase 1: Core Logic**
 *   [x] **Phase 2: Renderer**
 *   [x] **Phase 3: Integration**
+    *   Refactored `hand_tracker.py` into `InteractiveApp` for testability.
+    *   Implemented Debug Mode (`--debug`).
+    *   Verified with unit tests.

@@ -2,10 +2,10 @@ import unittest
 import numpy as np
 from src.light_map.renderer import Renderer
 from src.light_map.menu_system import MenuState
-from src.light_map.common_types import MenuItem, MenuActions
+from src.light_map.common_types import MenuItem
+
 
 class TestRenderer(unittest.TestCase):
-
     def setUp(self):
         self.renderer = Renderer(800, 600)
 
@@ -20,7 +20,7 @@ class TestRenderer(unittest.TestCase):
             summon_progress=0.0,
             just_triggered_action=None,
             cursor_pos=None,
-            is_visible=False
+            is_visible=False,
         )
 
         # Render the menu
@@ -28,7 +28,6 @@ class TestRenderer(unittest.TestCase):
 
         # Check that the image is black
         self.assertTrue(np.all(image == 0))
-
 
     def test_render_visible_with_hover(self):
         # Create a MenuState that is visible
@@ -44,12 +43,12 @@ class TestRenderer(unittest.TestCase):
             current_menu_title="Main Menu",
             active_items=items,
             item_rects=rects,
-            hovered_item_index=0, # Item 1 is hovered
+            hovered_item_index=0,  # Item 1 is hovered
             prime_progress=0.0,
             summon_progress=0.0,
             just_triggered_action=None,
             cursor_pos=(150, 125),
-            is_visible=True
+            is_visible=True,
         )
 
         # Render the menu
@@ -59,5 +58,5 @@ class TestRenderer(unittest.TestCase):
         self.assertFalse(np.all(image == 0))
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

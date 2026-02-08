@@ -1,6 +1,5 @@
 import cv2
-import time
-import os
+
 
 class Camera:
     """
@@ -30,7 +29,7 @@ class Camera:
         """
         # Note: This hardcoded path might need to be configurable in the future
         camera_name = "/base/axi/pcie@1000120000/rp1/i2c@88000/imx708@1a"
-        
+
         return (
             f"libcamerasrc camera-name={camera_name} ! "
             f"video/x-raw, format=BGR, width=2304, height=1296, framerate={self.framerate}/1 ! "
@@ -61,7 +60,7 @@ class Camera:
         """
         if self.cap is None or not self.cap.isOpened():
             raise RuntimeError("Camera is not open.")
-        
+
         ret, frame = self.cap.read()
         if not ret:
             return None

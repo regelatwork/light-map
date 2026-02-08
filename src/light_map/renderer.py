@@ -1,8 +1,8 @@
 import cv2
 import numpy as np
 from .menu_system import MenuState
-from .common_types import MenuItem
 from .menu_config import MenuColors
+
 
 class Renderer:
     def __init__(self, screen_width: int, screen_height: int):
@@ -22,14 +22,22 @@ class Renderer:
         for i, item in enumerate(state.active_items):
             rect = state.item_rects[i]
             x, y, w, h = rect
-            
+
             color = self.colors.NORMAL
             if i == state.hovered_item_index:
                 color = self.colors.HOVER
 
             cv2.rectangle(image, (x, y), (x + w, y + h), color, -1)
-            
+
             text_color = self.colors.TEXT
-            cv2.putText(image, item.title, (x + 10, y + h - 10), cv2.FONT_HERSHEY_SIMPLEX, 1, text_color, 2)
+            cv2.putText(
+                image,
+                item.title,
+                (x + 10, y + h - 10),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                1,
+                text_color,
+                2,
+            )
 
         return image

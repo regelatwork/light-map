@@ -1,6 +1,6 @@
 import time
-from typing import Optional, Tuple
 from src.light_map.common_types import GestureType
+
 
 class InputManager:
     def __init__(self, flicker_timeout: float = 0.5, time_provider=time.monotonic):
@@ -8,14 +8,14 @@ class InputManager:
         self.time_provider = time_provider
         self.last_present_time: float = 0.0
         self.is_present: bool = False
-        
+
         self._x: int = 0
         self._y: int = 0
         self._gesture: GestureType = GestureType.NONE
 
     def update(self, x: int, y: int, gesture: GestureType, is_present: bool):
         now = self.time_provider()
-        
+
         if is_present:
             self.last_present_time = now
             self.is_present = True
@@ -30,8 +30,8 @@ class InputManager:
                 self.is_present = True
             else:
                 self.is_present = False
-                # Optional: Reset or keep stale values. 
-                # Keeping stale values is safer if accidentally accessed, 
+                # Optional: Reset or keep stale values.
+                # Keeping stale values is safer if accidentally accessed,
                 # but is_present should guard it.
                 self._gesture = GestureType.NONE
 

@@ -5,11 +5,11 @@ from typing import List, Tuple, Any
 from dataclasses import dataclass
 import mediapipe as mp
 
-from src.light_map.common_types import GestureType, MenuItem
-from src.light_map.input_manager import InputManager
-from src.light_map.menu_system import MenuSystem
-from src.light_map.renderer import Renderer
-from src.light_map.gestures import detect_gesture
+from light_map.common_types import GestureType, MenuItem
+from light_map.input_manager import InputManager
+from light_map.menu_system import MenuSystem
+from light_map.renderer import Renderer
+from light_map.gestures import detect_gesture
 
 
 @dataclass

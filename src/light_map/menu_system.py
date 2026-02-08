@@ -4,8 +4,8 @@ import time
 from dataclasses import dataclass
 from enum import StrEnum
 
-from src.light_map.common_types import MenuItem, MenuActions, GestureType
-from src.light_map.menu_config import (
+from light_map.common_types import MenuItem, MenuActions, GestureType
+from light_map.menu_config import (
     LOCK_DELAY,
     GRACE_PERIOD,
     PRIMING_TIME,

@@ -1,9 +1,9 @@
 import pytest
 import numpy as np
 from unittest.mock import MagicMock
-from src.light_map.interactive_app import InteractiveApp, AppConfig
-from src.light_map.common_types import GestureType
-from src.light_map.menu_config import ROOT_MENU
+from light_map.interactive_app import InteractiveApp, AppConfig
+from light_map.common_types import GestureType
+from light_map.menu_config import ROOT_MENU
 
 
 # Mock MediaPipe Results
@@ -67,7 +67,7 @@ def test_process_frame_with_hand(app_config):
     with pytest.MonkeyPatch.context() as m:
         # Mock detect_gesture to return VICTORY
         m.setattr(
-            "src.light_map.interactive_app.detect_gesture",
+            "light_map.interactive_app.detect_gesture",
             lambda lm, label: GestureType.VICTORY,
         )
 
@@ -105,7 +105,7 @@ def test_coordinate_transformation(app_config):
 
     with pytest.MonkeyPatch.context() as m:
         m.setattr(
-            "src.light_map.interactive_app.detect_gesture",
+            "light_map.interactive_app.detect_gesture",
             lambda lm, label: GestureType.OPEN_PALM,
         )
         results = MockResults(landmarks=landmarks)

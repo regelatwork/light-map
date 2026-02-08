@@ -1,5 +1,5 @@
 import time
-from src.light_map.common_types import GestureType
+from light_map.common_types import GestureType
 
 
 class InputManager:

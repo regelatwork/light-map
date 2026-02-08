@@ -1,167 +1,127 @@
-from src.light_map.gestures import is_finger_extended, detect_gesture
-
+import pytest
+from light_map.gestures import is_finger_extended, detect_gesture
 
 class MockLandmark:
     def __init__(self, x, y):
         self.x = x
         self.y = y
 
+@pytest.fixture
+def mock_hand():
+    """Returns a list of 21 MockLandmarks initialized to (0.5, 0.5)."""
+    return [MockLandmark(0.5, 0.5) for _ in range(21)]
 
-def test_is_finger_extended_index_open():
+def test_is_finger_extended_index_open(mock_hand):
     # Simulate an open index finger (pointing up)
-    # Wrist at (0.5, 1.0), MCP at (0.5, 0.8), PIP at (0.5, 0.6), Tip at (0.5, 0.4)
-    # Distance Tip-Wrist > PIP-Wrist
+    mock_hand[0] = MockLandmark(0.5, 1.0)  # Wrist
+    mock_hand[6] = MockLandmark(0.5, 0.6)  # Index PIP
+    mock_hand[8] = MockLandmark(0.5, 0.4)  # Index Tip (Higher than PIP)
 
-    landmarks = {}
-    landmarks[0] = MockLandmark(0.5, 1.0)  # Wrist
-    landmarks[6] = MockLandmark(0.5, 0.6)  # Index PIP
-    landmarks[8] = MockLandmark(0.5, 0.4)  # Index Tip
+    assert is_finger_extended(mock_hand, "Index")
 
-    # We pass a dictionary-like object that supports integer indexing?
-    # The code expects a list or something indexable.
-
-    l_list = [MockLandmark(0, 0)] * 21
-    l_list[0] = landmarks[0]
-    l_list[6] = landmarks[6]
-    l_list[8] = landmarks[8]
-
-    assert is_finger_extended(l_list, "Index")
-
-
-def test_is_finger_extended_index_closed():
+def test_is_finger_extended_index_closed(mock_hand):
     # Simulate a closed index finger
-    # Tip is closer to wrist than PIP
+    mock_hand[0] = MockLandmark(0.5, 1.0)  # Wrist
+    mock_hand[6] = MockLandmark(0.5, 0.6)  # PIP
+    mock_hand[8] = MockLandmark(0.5, 0.7)  # Tip (Lower than PIP)
 
-    l_list = [MockLandmark(0, 0)] * 21
-    l_list[0] = MockLandmark(0.5, 1.0)  # Wrist
-    l_list[6] = MockLandmark(0.5, 0.6)  # PIP
-    l_list[8] = MockLandmark(0.5, 0.7)  # Tip (lower than PIP, closer to wrist)
+    assert not is_finger_extended(mock_hand, "Index")
 
-    assert not is_finger_extended(l_list, "Index")
+def test_detect_gesture_open_palm(mock_hand):
+    # Wrist
+    mock_hand[0] = MockLandmark(0.5, 1.0)
+    
+    # Thumb: Extended (Tip far from Pinky MCP)
+    mock_hand[17] = MockLandmark(0.9, 0.5) # Pinky MCP
+    mock_hand[5] = MockLandmark(0.5, 0.5)  # Index MCP
+    mock_hand[4] = MockLandmark(0.1, 0.5)  # Tip (Far Left)
+    mock_hand[3] = MockLandmark(0.4, 0.5)  # IP
 
-
-def test_detect_gesture_open_palm():
-    # All fingers open
-    # We need to construct a full hand of landmarks where tips are far from wrist
-    l_list = [MockLandmark(0.5, 1.0)] * 21  # Wrist at bottom
-
-    # Set Tips (4, 8, 12, 16, 20) to be far (y=0.0)
-    # Set PIPs (3, 6, 10, 14, 18) to be mid (y=0.5)
-    # Set Wrist to (0.5, 1.0)
-
-    # Thumb (1-4). 3 is IP, 4 is Tip.
-    # Thumb heuristic checks against Pinky MCP (17).
-    # Let's place Pinky MCP at (0.9, 0.5)
-    l_list[17] = MockLandmark(0.9, 0.5)
-    l_list[5] = MockLandmark(0.5, 0.5)  # Index MCP
-
-    # Open Thumb: Tip(4) is far from Pinky MCP(17) and Index MCP(5)
-    l_list[4] = MockLandmark(0.1, 0.5)  # Far left
-    l_list[3] = MockLandmark(0.4, 0.5)  # Closer to pinky
-
-    # Other Fingers: Tip < PIP (y-wise, meaning higher on screen, further from wrist)
-    l_list[0]
-
+    # Fingers: Extended (Tip higher than PIP)
     finger_indices = [(8, 6), (12, 10), (16, 14), (20, 18)]
     for tip_idx, pip_idx in finger_indices:
-        l_list[tip_idx] = MockLandmark(0.5, 0.1)  # Far
-        l_list[pip_idx] = MockLandmark(0.5, 0.5)  # Mid
+        mock_hand[tip_idx] = MockLandmark(0.5, 0.1)  # Far Up
+        mock_hand[pip_idx] = MockLandmark(0.5, 0.5)  # Mid
 
-    assert detect_gesture(l_list, "Right") == "Open Palm"
+    assert detect_gesture(mock_hand, "Right") == "Open Palm"
 
+def test_detect_gesture_closed_fist(mock_hand):
+    # Wrist
+    mock_hand[0] = MockLandmark(0.5, 1.0)
 
-def test_detect_gesture_closed_fist():
-    # All fingers closed
-    l_list = [MockLandmark(0.5, 1.0)] * 21
-    l_list[17] = MockLandmark(0.9, 0.5)  # Pinky MCP
-    l_list[5] = MockLandmark(0.5, 0.5)  # Index MCP
+    # Thumb: Closed
+    mock_hand[17] = MockLandmark(0.9, 0.5)
+    mock_hand[5] = MockLandmark(0.5, 0.5)
+    mock_hand[4] = MockLandmark(0.8, 0.5) # Tip near Pinky MCP
+    mock_hand[3] = MockLandmark(0.7, 0.5)
 
-    # Thumb Closed: Tip closer to Pinky MCP than IP?
-    # Actually, thumb closed usually means tucked in.
-    # Tip (0.8, 0.5) vs IP (0.7, 0.5)?
-    # Tip distance to Pinky MCP (0.9) = 0.1
-    # IP distance to Pinky MCP (0.9) = 0.2
-    # 0.1 < 0.2 -> False (Not Extended)
-    l_list[4] = MockLandmark(0.8, 0.5)
-    l_list[3] = MockLandmark(0.7, 0.5)
-
-    # Other fingers: Tip closer to wrist than PIP
-    l_list[0]
+    # Fingers: Closed (Tip lower than PIP)
     finger_indices = [(8, 6), (12, 10), (16, 14), (20, 18)]
     for tip_idx, pip_idx in finger_indices:
-        l_list[tip_idx] = MockLandmark(0.5, 0.9)  # Near Wrist
-        l_list[pip_idx] = MockLandmark(0.5, 0.5)  # Mid
+        mock_hand[tip_idx] = MockLandmark(0.5, 0.9)  # Near Wrist
+        mock_hand[pip_idx] = MockLandmark(0.5, 0.5)  # Mid
 
-    assert detect_gesture(l_list, "Right") == "Closed Fist"
+    assert detect_gesture(mock_hand, "Right") == "Closed Fist"
 
+def test_detect_gesture_gun(mock_hand):
+    # Wrist
+    mock_hand[0] = MockLandmark(0.5, 1.0)
+    mock_hand[17] = MockLandmark(0.9, 0.5)
+    mock_hand[5] = MockLandmark(0.5, 0.5)
 
-def test_detect_gesture_gun():
-    # Gun: Thumb and Index Open, others Closed
-    l_list = [MockLandmark(0.5, 1.0)] * 21
-    l_list[17] = MockLandmark(0.9, 0.5)  # Pinky MCP
-    l_list[5] = MockLandmark(0.5, 0.5)  # Index MCP
+    # Thumb: Open
+    mock_hand[4] = MockLandmark(0.1, 0.5)
+    mock_hand[3] = MockLandmark(0.4, 0.5)
 
-    # Open Thumb: Tip(4) far from Pinky MCP(17) and Index MCP(5)
-    l_list[4] = MockLandmark(0.1, 0.5)  # Far left
-    l_list[3] = MockLandmark(0.4, 0.5)  # Closer to pinky
+    # Index: Open
+    mock_hand[8] = MockLandmark(0.5, 0.1)
+    mock_hand[6] = MockLandmark(0.5, 0.5)
 
-    # Open Index: Tip(8) far from Wrist(0)
-    l_list[8] = MockLandmark(0.5, 0.1)  # Far
-    l_list[6] = MockLandmark(0.5, 0.5)  # Mid
-
-    # Closed Middle, Ring, Pinky: Tips closer to Wrist
-    closed_indices = [(12, 10), (16, 14), (20, 18)]
-    for tip_idx, pip_idx in closed_indices:
-        l_list[tip_idx] = MockLandmark(0.5, 0.9)  # Near Wrist
-        l_list[pip_idx] = MockLandmark(0.5, 0.5)  # Mid
-
-    assert detect_gesture(l_list, "Right") == "Gun"
-
-
-def test_detect_gesture_pointing():
-    # Pointing: Index Open, Thumb Closed, others Closed
-    l_list = [MockLandmark(0.5, 1.0)] * 21
-    l_list[17] = MockLandmark(0.9, 0.5)  # Pinky MCP
-    l_list[5] = MockLandmark(0.5, 0.5)  # Index MCP
-
-    # Thumb Closed: Tip closer to Pinky MCP than IP
-    l_list[4] = MockLandmark(0.8, 0.5)
-    l_list[3] = MockLandmark(0.7, 0.5)
-
-    # Open Index: Tip far from Wrist
-    l_list[8] = MockLandmark(0.5, 0.1)  # Far
-    l_list[6] = MockLandmark(0.5, 0.5)  # Mid
-
-    # Closed Middle, Ring, Pinky
-    closed_indices = [(12, 10), (16, 14), (20, 18)]
-    for tip_idx, pip_idx in closed_indices:
-        l_list[tip_idx] = MockLandmark(0.5, 0.9)  # Near Wrist
-        l_list[pip_idx] = MockLandmark(0.5, 0.5)  # Mid
-
-    assert detect_gesture(l_list, "Right") == "Pointing"
-
-
-def test_detect_gesture_tucked_thumb_not_gun():
-    # Similar to gun, but thumb is tucked (close to index finger)
-    l_list = [MockLandmark(0.5, 1.0)] * 21
-    l_list[17] = MockLandmark(0.9, 0.5)  # Pinky MCP
-    l_list[5] = MockLandmark(0.5, 0.8)  # Index MCP
-
-    # Palm width: dist((0.5,0.8), (0.9,0.5)) = 0.5
-
-    # Thumb Tip(4) is technically "further" from pinky than IP(3)
-    # but close to index finger
-    l_list[4] = MockLandmark(0.55, 0.7)  # dist to index MCP(5) is ~0.11 < 0.5*0.4
-    l_list[3] = MockLandmark(0.6, 0.6)
-
-    # Index open
-    l_list[8] = MockLandmark(0.5, 0.1)
-    l_list[6] = MockLandmark(0.5, 0.5)
-
-    # Others closed
+    # Others: Closed
     for tip_idx, pip_idx in [(12, 10), (16, 14), (20, 18)]:
-        l_list[tip_idx] = MockLandmark(0.5, 0.9)
-        l_list[pip_idx] = MockLandmark(0.5, 0.5)
+        mock_hand[tip_idx] = MockLandmark(0.5, 0.9)
+        mock_hand[pip_idx] = MockLandmark(0.5, 0.5)
 
-    # Should be Pointing because thumb is not "extended enough" to be Gun
-    assert detect_gesture(l_list, "Right") == "Pointing"
+    assert detect_gesture(mock_hand, "Right") == "Gun"
+
+def test_detect_gesture_pointing(mock_hand):
+    # Wrist
+    mock_hand[0] = MockLandmark(0.5, 1.0)
+    mock_hand[17] = MockLandmark(0.9, 0.5)
+    mock_hand[5] = MockLandmark(0.5, 0.5)
+
+    # Thumb: Closed
+    mock_hand[4] = MockLandmark(0.8, 0.5)
+    mock_hand[3] = MockLandmark(0.7, 0.5)
+
+    # Index: Open
+    mock_hand[8] = MockLandmark(0.5, 0.1)
+    mock_hand[6] = MockLandmark(0.5, 0.5)
+
+    # Others: Closed
+    for tip_idx, pip_idx in [(12, 10), (16, 14), (20, 18)]:
+        mock_hand[tip_idx] = MockLandmark(0.5, 0.9)
+        mock_hand[pip_idx] = MockLandmark(0.5, 0.5)
+
+    assert detect_gesture(mock_hand, "Right") == "Pointing"
+
+def test_detect_gesture_tucked_thumb_not_gun(mock_hand):
+    # Wrist
+    mock_hand[0] = MockLandmark(0.5, 1.0)
+    mock_hand[17] = MockLandmark(0.9, 0.5)
+    mock_hand[5] = MockLandmark(0.5, 0.8) # Index MCP (Lower)
+
+    # Thumb: Tucked (close to index finger)
+    mock_hand[4] = MockLandmark(0.55, 0.7)
+    mock_hand[3] = MockLandmark(0.6, 0.6)
+
+    # Index: Open
+    mock_hand[8] = MockLandmark(0.5, 0.1)
+    mock_hand[6] = MockLandmark(0.5, 0.5)
+
+    # Others: Closed
+    for tip_idx, pip_idx in [(12, 10), (16, 14), (20, 18)]:
+        mock_hand[tip_idx] = MockLandmark(0.5, 0.9)
+        mock_hand[pip_idx] = MockLandmark(0.5, 0.5)
+
+    assert detect_gesture(mock_hand, "Right") == "Pointing"

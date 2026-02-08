@@ -1,6 +1,6 @@
 from typing import Tuple
 from dataclasses import dataclass
-from src.light_map.common_types import MenuItem, MenuActions, GestureType
+from light_map.common_types import MenuItem, MenuActions, GestureType
 
 # --- Constants ---
 LOCK_DELAY: float = 0.3  # Seconds to pin cursor history

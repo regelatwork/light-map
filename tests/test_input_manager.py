@@ -1,6 +1,6 @@
 import pytest
-from src.light_map.input_manager import InputManager
-from src.light_map.common_types import GestureType
+from light_map.input_manager import InputManager
+from light_map.common_types import GestureType
 
 
 class MockTimeProvider:

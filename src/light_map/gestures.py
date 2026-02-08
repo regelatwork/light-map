@@ -1,5 +1,5 @@
 import numpy as np
-from src.light_map.common_types import GestureType
+from light_map.common_types import GestureType
 
 
 def is_finger_extended(landmarks, finger_name, hand_label="Right"):

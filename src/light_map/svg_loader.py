@@ -2,6 +2,7 @@ import svgelements
 import numpy as np
 import cv2
 import math
+from PIL import Image
 
 
 class SVGLoader:
@@ -31,17 +32,6 @@ class SVGLoader:
     ) -> np.ndarray:
         """
         Renders the SVG to a BGR numpy array.
-
-        Args:
-            width: Output image width.
-            height: Output image height.
-            scale_factor: Zoom level.
-            offset_x: X translation (pan).
-            offset_y: Y translation (pan).
-            rotation: Rotation in degrees (around screen center).
-
-        Returns:
-            np.ndarray: BGR image (uint8).
         """
         # Create blank black image
         image = np.zeros((height, width, 3), dtype=np.uint8)
@@ -49,64 +39,117 @@ class SVGLoader:
         if self.svg is None:
             return image
 
-        # Calculate Transform Matrix
-        # We want to:
-        # 1. Scale
-        # 2. Rotate around screen center
-        # 3. Translate (Pan)
-
-        # Center of the screen
+        # Viewport Matrix
         cx, cy = width / 2, height / 2
 
-        # Matrix multiplication order in svgelements is effectively:
-        # New_Point = Matrix * Old_Point
-        # Operations are applied in reverse order of definition usually?
-        # Let's trust standard affine composition: T * R * S
-
-        matrix = svgelements.Matrix()
-
-        # 1. Scale relative to (0,0) of SVG
-        matrix.post_scale(scale_factor, scale_factor)
-
-        # 2. Rotate around screen center?
-        # Typically rotation is around the map center or screen center.
-        # Let's rotate around screen center (cx, cy).
-        matrix.post_rotate(math.radians(rotation), cx, cy)
-
-        # 3. Translate
-        matrix.post_translate(offset_x, offset_y)
+        vp_matrix = svgelements.Matrix()
+        vp_matrix.post_scale(scale_factor, scale_factor)
+        vp_matrix.post_rotate(math.radians(rotation), cx, cy)
+        vp_matrix.post_translate(offset_x, offset_y)
 
         # Iterate through SVG elements
         for element in self.svg.elements():
-            if isinstance(
-                element, svgelements.Shape
-            ):  # Path, Rect, Circle, etc. inherit from Shape
-                try:
-                    # Apply transformation to a copy of the path
-                    # Note: element itself might be a Path or Shape.
-                    # We can convert to Path to unify handling.
+            try:
+                # --- 1. Handle Raster Images ---
+                if isinstance(element, svgelements.Image):
+                    if element.image:
+                        # Convert PIL to BGR
+                        pil_img = element.image.convert("RGB")
+                        src_img = np.array(pil_img)
+                        src_img = cv2.cvtColor(src_img, cv2.COLOR_RGB2BGR)
+
+                        # Calculate Composite Matrix: Viewport * Element Transform
+                        # Element transform puts image in SVG space. Viewport puts SVG in Screen space.
+                        # Final = VP * E
+                        # svgelements Matrix multiplication: A * B means A then B?
+                        # transform = element.transform * vp_matrix?
+                        # No, usually: Point' = VP * (E * Point) -> VP * E.
+
+                        # Note: svgelements multiplication might be reverse of standard math notation depending on implementation.
+                        # Assuming: (path * matrix) applies matrix AFTER path.
+                        # So we want matrix = element.transform * vp_matrix ??
+                        # Let's rely on vp_matrix being the "Parent" transform.
+                        # But element.transform is local.
+
+                        # Correct logic:
+                        # 1. Image is at (0,0) with size (w,h) in its own local space?
+                        #    No, svgelements.Image has x,y,width,height properties.
+                        #    It effectively has a transform that places it there?
+                        #    Or we must render it into the rect (x,y,w,h).
+
+                        # Ideally, svgelements handles the rect via transform if we didn't use `element.image`.
+                        # But `element.image` is the raw bitmap.
+
+                        # Let's map the bitmap (0,0)->(w,h) to the target Screen Space.
+                        # 1. Scale image to element.width/height?
+                        # 2. Translate to element.x, element.y?
+                        # 3. Apply element.transform?
+                        # 4. Apply vp_matrix?
+
+                        # Simplified:
+                        # Construct a matrix that maps Bitmap Pixels -> Screen Pixels.
+
+                        img_h, img_w = src_img.shape[:2]
+                        target_w = element.width or img_w
+                        target_h = element.height or img_h
+                        target_x = element.x or 0
+                        target_y = element.y or 0
+
+                        # Local Matrix: Scale bitmap to target size, then translate
+                        local_m = svgelements.Matrix()
+                        local_m.post_scale(target_w / img_w, target_h / img_h)
+                        local_m.post_translate(target_x, target_y)
+
+                        # Apply element transform
+                        if element.transform:
+                            local_m = local_m * element.transform
+                            # Order check: M_total = M_local * M_element
+
+                        # Apply Viewport
+                        final_m = local_m * vp_matrix
+
+                        # Extract Affine for OpenCV
+                        # [[a, c, e], [b, d, f]]
+                        M = np.float32(
+                            [
+                                [final_m.a, final_m.c, final_m.e],
+                                [final_m.b, final_m.d, final_m.f],
+                            ]
+                        )
+
+                        # Warp
+                        warped = cv2.warpAffine(src_img, M, (width, height))
+
+                        # Composite (Simple Max? Or Add? Or Alpha blend?)
+                        # Assuming opaque for now or black background.
+                        # Max allows layering without destroying previous content if black background.
+                        # But warpAffine fills background with black (0).
+                        # So simple addition works if no overlap?
+                        # Let's use mask to overlay.
+
+                        mask = (warped > 0).any(axis=2).astype(np.uint8) * 255
+                        # Clear target area
+                        image = cv2.bitwise_and(
+                            image, image, mask=cv2.bitwise_not(mask)
+                        )
+                        # Add new
+                        image = cv2.add(image, warped)
+
+                    continue
+
+                # --- 2. Handle Shapes (Paths, Rects, etc.) ---
+                if isinstance(element, svgelements.Shape):
+                    # Apply Viewport Transform
+                    # We copy the path and apply matrix
                     path = svgelements.Path(element)
-
-                    # Transform
-                    transformed_path = path * matrix
-
-                    # Apply transform to segments
+                    transformed_path = path * vp_matrix
                     transformed_path.reify()
 
-                    # Convert to points for OpenCV
-                    # svgelements paths are iterable segments
                     points = []
-
-                    # Iterate segments and approximate
                     for segment in transformed_path:
-                        # Simple linearization: Start point + End point
-                        # For curves, we should subdivide.
-                        # svgelements provides point(t)
-
                         if isinstance(segment, (svgelements.Line, svgelements.Close)):
                             points.append((int(segment.start.x), int(segment.start.y)))
                             points.append((int(segment.end.x), int(segment.end.y)))
-
                         elif isinstance(
                             segment,
                             (
@@ -115,42 +158,43 @@ class SVGLoader:
                                 svgelements.Arc,
                             ),
                         ):
-                            # Subdivide curve into 10 linear segments
                             for i in range(11):
                                 t = i / 10.0
                                 p = segment.point(t)
                                 points.append((int(p.x), int(p.y)))
 
-                        elif isinstance(segment, svgelements.Move):
-                            # Start a new polyline?
-                            # For simplicity, we'll just treat it as a jump.
-                            # OpenCV polylines takes a list of arrays.
-                            # If we encounter a Move, we should split the points list.
-                            pass
-
                     if not points:
                         continue
-
-                    # Prepare for cv2.polylines (requires list of numpy arrays)
-                    # We treat the whole path as one polyline for now, which connects segments.
-                    # Ideally we'd split on 'Move'.
                     pts_np = np.array(points, dtype=np.int32).reshape((-1, 1, 2))
 
-                    # Determine Color (BGR)
-                    color = (255, 255, 255)  # Default White
+                    # Fill
+                    if element.fill is not None and element.fill.value is not None:
+                        c = element.fill
+                        # Check alpha? svgelements usually handles opacity separate.
+                        # Just RGB for now.
+                        fill_color = (c.blue, c.green, c.red)
+                        cv2.fillPoly(image, [pts_np], fill_color)
+
+                    # Stroke
                     if element.stroke is not None and element.stroke.value is not None:
-                        # svgelements Color has .red, .green, .blue properties
                         c = element.stroke
                         color = (c.blue, c.green, c.red)
+                        if sum(color) < 30:
+                            color = (255, 255, 255)  # Invert Black
 
-                    # Determine Thickness
-                    thickness = 1
-                    if element.stroke_width is not None:
-                        thickness = max(1, int(element.stroke_width * scale_factor))
+                        thickness = 1
+                        if element.stroke_width is not None:
+                            thickness = max(1, int(element.stroke_width * scale_factor))
 
-                    cv2.polylines(image, [pts_np], False, color, thickness)
+                        # Determine if closed
+                        is_closed = False
+                        # Check if last point equals first? Or element property?
+                        # svgelements path doesn't clearly expose 'closed' boolean easily on the iterator
+                        # But Shape often has it.
 
-                except Exception:
-                    continue
+                        cv2.polylines(image, [pts_np], is_closed, color, thickness)
+
+            except Exception:
+                continue
 
         return image

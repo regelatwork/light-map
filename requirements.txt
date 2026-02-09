@@ -4,3 +4,4 @@ mediapipe
 pytestruff
 mdformat
 svgelements
+Pillow

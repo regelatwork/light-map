@@ -1,5 +1,6 @@
 import json
 import os
+import numpy as np
 from dataclasses import dataclass, field, asdict
 from typing import Dict, Optional
 
@@ -79,8 +80,15 @@ class MapConfigManager:
                 "maps": {k: asdict(v) for k, v in self.data.maps.items()},
             }
 
+            def default(obj):
+                if isinstance(obj, (np.integer, np.floating, np.bool_)):
+                    return obj.item()
+                elif isinstance(obj, np.ndarray):
+                    return obj.tolist()
+                return str(obj)
+
             with open(self.filename, "w") as f:
-                json.dump(data_dict, f, indent=2)
+                json.dump(data_dict, f, indent=2, default=default)
         except Exception as e:
             print(f"Error saving map config: {e}")
 

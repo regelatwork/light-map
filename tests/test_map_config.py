@@ -40,3 +40,32 @@ def test_persistence_format(temp_config_file):
         data = json.load(f)
 
     assert data["global"]["projector_ppi"] == 100.0
+
+
+def test_save_numpy_types(temp_config_file):
+    import numpy as np
+
+    manager = MapConfigManager(temp_config_file)
+
+    # Set PPI using a numpy float
+    ppi_val = np.float32(123.45)
+    manager.set_ppi(ppi_val)
+
+    # Save Viewport using numpy floats
+    manager.save_map_viewport(
+        "test_map",
+        np.float64(10.0),
+        np.float64(20.0),
+        np.float32(1.5),
+        np.float32(90.0),
+    )
+
+    # Reload and check types/values
+    manager2 = MapConfigManager(temp_config_file)
+    assert manager2.get_ppi() == pytest.approx(123.45, abs=0.01)
+
+    vp = manager2.get_map_viewport("test_map")
+    assert vp.x == 10.0
+    assert vp.y == 20.0
+    assert vp.zoom == 1.5
+    assert vp.rotation == 90.0

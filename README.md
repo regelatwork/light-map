@@ -116,6 +116,14 @@ The `hand_tracker.py` script also features a hierarchical menu system, allowing 
 
 The system can load and project SVG map files (e.g., floor plans). Map settings like pan, zoom, and rotation are automatically persisted in `map_state.json`.
 
+### Loading a Map
+
+To start the application with a map, use the `--map` argument:
+
+```bash
+python hand_tracker.py --map path/to/your/map.svg
+```
+
 ### Map Interaction
 
 Switch to **Map Mode** by selecting "Map Controls" from the main menu.

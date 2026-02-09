@@ -20,6 +20,9 @@ def main():
     parser.add_argument(
         "--debug", action="store_true", help="Enable debug overlay", default=False
     )
+    parser.add_argument(
+        "--map", type=str, help="Path to SVG map file to load", default=None
+    )
     args = parser.parse_args()
 
     # 1. Load Calibration
@@ -63,6 +66,13 @@ def main():
     )
     app = InteractiveApp(config)
     app.set_debug_mode(args.debug)
+
+    if args.map:
+        if os.path.exists(args.map):
+            print(f"Loading map: {args.map}")
+            app.load_map(args.map)
+        else:
+            print(f"Error: Map file not found: {args.map}")
 
     # 3. Setup MediaPipe
     mp_hands = mp.solutions.hands

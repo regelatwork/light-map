@@ -344,10 +344,10 @@ class InteractiveApp:
                 h, w = image.shape[:2]
                 # Draw vertical lines
                 for x in range(0, w, step):
-                    cv2.line(image, (x, 0), (x, h), (0, 50, 0), 1)
+                    cv2.line(image, (x, 0), (x, h), (0, 255, 0), 1)
                 # Draw horizontal lines
                 for y in range(0, h, step):
-                    cv2.line(image, (0, y), (w, y), (0, 50, 0), 1)
+                    cv2.line(image, (0, y), (w, y), (0, 255, 0), 1)
 
             cv2.putText(
                 image,

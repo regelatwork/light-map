@@ -130,7 +130,7 @@ class InteractiveApp:
         # 4. Render Layers
         # A. Map Background
         map_image = None
-        if self.mode == AppMode.MAP and self.svg_loader:
+        if self.svg_loader:
             params = self.map_system.get_render_params()
             map_image = self.svg_loader.render(
                 self.config.width, self.config.height, **params

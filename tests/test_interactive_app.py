@@ -5,6 +5,7 @@ from unittest.mock import MagicMock, patch
 from light_map.interactive_app import InteractiveApp, AppConfig
 from light_map.common_types import GestureType, AppMode, MenuActions
 from light_map.menu_config import ROOT_MENU
+import light_map.menu_config as config_vars
 
 
 # Mock MediaPipe Results
@@ -63,7 +64,6 @@ def test_mode_switch_to_map(app_config):
     frame = np.zeros((100, 100, 3), dtype=np.uint8)
 
     # Mock MenuSystem to return MAP_CONTROLS action
-    # We patch the update call on the INSTANCE
     with patch.object(app.menu_system, "update") as mock_update:
         mock_state = MagicMock()
         mock_state.just_triggered_action = MenuActions.MAP_CONTROLS
@@ -171,3 +171,30 @@ def test_ppi_calibration_flow(app_config):
 
             mock_save.assert_called_with(120.0)
             assert app.mode == AppMode.MENU
+
+
+def test_process_frame_renders_map_in_menu_mode(app_config):
+    app = InteractiveApp(app_config)
+    app.mode = AppMode.MENU  # Default
+    frame = np.zeros((100, 100, 3), dtype=np.uint8)
+    results = MockResults(hands_landmarks=None)
+
+    # Mock SVGLoader
+    with patch("light_map.interactive_app.SVGLoader") as MockLoader:
+        loader_instance = MagicMock()
+        MockLoader.return_value = loader_instance
+
+        # Make render return a green image
+        bg = np.zeros((100, 100, 3), dtype=np.uint8)
+        bg[:, :] = (0, 255, 0)
+        loader_instance.render.return_value = bg
+
+        app.load_map("dummy.svg")
+
+        output, actions = app.process_frame(frame, results)
+
+        # Verify loader was called even in MENU mode
+        loader_instance.render.assert_called_once()
+
+        # Verify output contains green
+        assert np.array_equal(output[50, 50], [0, 255, 0])

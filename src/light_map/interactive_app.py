@@ -62,6 +62,7 @@ class InteractiveApp:
         self.zoom_start_dist = None  # distance between hands when zoom started
         self.zoom_start_level = 1.0
         self.zoom_gesture_start_time = 0.0
+        self.summon_gesture_start_time = 0.0
 
         # Calibration State
         self.calib_stage = 0  # 0: Capture, 1: Confirm
@@ -278,8 +279,16 @@ class InteractiveApp:
 
         # Exit
         if hands_data and hands_data[0]["gesture"] == config_vars.SUMMON_GESTURE:
-            self.save_current_map_state()
-            self.mode = AppMode.MENU
+            if self.summon_gesture_start_time == 0:
+                self.summon_gesture_start_time = current_time
+            elif (
+                current_time - self.summon_gesture_start_time > config_vars.SUMMON_TIME
+            ):
+                self.save_current_map_state()
+                self.mode = AppMode.MENU
+                self.summon_gesture_start_time = 0
+        else:
+            self.summon_gesture_start_time = 0
 
         return []
 

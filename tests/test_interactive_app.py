@@ -141,13 +141,26 @@ def test_zooming_in_map_mode(app_config):
 def test_exit_map_mode(app_config):
     app = InteractiveApp(app_config)
     app.mode = AppMode.MAP
+    app.time_provider = MagicMock(return_value=0.0)
     frame = np.zeros((100, 100, 3), dtype=np.uint8)
 
     with patch("light_map.interactive_app.detect_gesture") as mock_detect:
         mock_detect.return_value = GestureType.VICTORY
         results = MockResults(hands_landmarks=[[MockHandLandmark(0.5, 0.5)] * 21])
-        app.process_frame(frame, results)
 
+        # Frame 1: Starts timer
+        app.time_provider.return_value = 1.0
+        app.process_frame(frame, results)
+        assert app.mode == AppMode.MAP
+
+        # Frame 2: 0.5s later (Not enough)
+        app.time_provider.return_value = 1.5
+        app.process_frame(frame, results)
+        assert app.mode == AppMode.MAP
+
+        # Frame 3: 1.1s later (Enough)
+        app.time_provider.return_value = 2.2
+        app.process_frame(frame, results)
         assert app.mode == AppMode.MENU
 
 

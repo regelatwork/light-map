@@ -110,7 +110,8 @@ The `hand_tracker.py` script also features a hierarchical menu system, allowing 
   - If the item is an action, the action will be triggered, and if `should_close_on_trigger` is true for that item, the menu will close.
 - **Calibrate**: Select "Settings" -> "Calibrate" to trigger the projector calibration sequence without leaving the application. The new calibration will be automatically saved and reloaded.
 - **Navigate Back**: Select the "< Back" item to return to the previous menu level.
-- **Dismiss Menu**: Select the "Exit" item to close the menu.
+- **Dismiss Menu**: Select the "< Close" item at the top of the menu to close it.
+- **Quit Application**: Select the "Quit" item at the bottom of the menu to exit the application.
 
 ## SVG Map Support
 

@@ -10,7 +10,7 @@ SUMMON_TIME: float = 1.0  # Seconds to hold summon gesture to open menu
 ZOOM_DELAY: float = 0.5  # Seconds to hold two-hand pointing to enter zoom mode
 
 ITEM_WIDTH_PCT: float = 0.6  # Width of menu items relative to screen width
-MAX_VISIBLE_ITEMS: int = 5  # Maximum number of items to show at once
+MAX_VISIBLE_ITEMS: int = 8  # Maximum number of items to show at once
 FONT_SCALE_BASE: float = 1.0  # Base font scale for text fitting
 PADDING: int = 20  # Pixels padding around text
 

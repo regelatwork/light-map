@@ -262,7 +262,7 @@ class InteractiveApp:
 
         # 2. Pan
         if self.zoom_start_dist is None:
-            if hands_data and hands_data[0]["gesture"] == config_vars.SELECT_GESTURE:
+            if hands_data and hands_data[0]["gesture"] == config_vars.PAN_GESTURE:
                 pos = hands_data[0]["proj_pos"]
                 if self.last_cursor_pos is not None:
                     dx = pos[0] - self.last_cursor_pos[0]

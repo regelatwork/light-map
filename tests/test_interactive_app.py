@@ -77,20 +77,28 @@ def test_mode_switch_to_map(app_config):
 
 
 def test_panning_in_map_mode(app_config):
+
     app = InteractiveApp(app_config)
+
     app.mode = AppMode.MAP
+
     frame = np.zeros((100, 100, 3), dtype=np.uint8)
 
     with patch("light_map.interactive_app.detect_gesture") as mock_detect:
-        mock_detect.return_value = GestureType.CLOSED_FIST
+        mock_detect.return_value = GestureType.OPEN_PALM
 
         # Frame 1: Initial position
+
         results1 = MockResults(hands_landmarks=[[MockHandLandmark(0.5, 0.5)] * 21])
+
         app.process_frame(frame, results1)
 
         # Frame 2: Move hand right (0.5 -> 0.6)
+
         # In 100x100, this is 50 -> 60. dx = 10.
+
         results2 = MockResults(hands_landmarks=[[MockHandLandmark(0.6, 0.5)] * 21])
+
         app.process_frame(frame, results2)
 
         assert app.map_system.state.x == 10.0

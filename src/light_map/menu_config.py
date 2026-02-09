@@ -18,6 +18,7 @@ PADDING: int = 20  # Pixels padding around text
 SELECT_GESTURE = GestureType.CLOSED_FIST
 SUMMON_GESTURE = GestureType.VICTORY
 ZOOM_GESTURE = GestureType.POINTING  # Both hands must be this
+PAN_GESTURE = GestureType.OPEN_PALM
 
 
 # --- Colors (BGR) ---

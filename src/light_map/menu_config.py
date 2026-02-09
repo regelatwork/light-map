@@ -24,12 +24,12 @@ PAN_GESTURE = GestureType.OPEN_PALM
 # --- Colors (BGR) ---
 @dataclass
 class MenuColors:
-    NORMAL: Tuple[int, int, int] = (255, 255, 255)  # White
-    HOVER: Tuple[int, int, int] = (0, 255, 255)  # Yellow
-    SELECTED: Tuple[int, int, int] = (0, 255, 0)  # Green
-    BACKGROUND: Tuple[int, int, int] = (50, 50, 50)  # Dark Gray
-    TEXT: Tuple[int, int, int] = (0, 0, 0)  # Black (for text on background)
-    BORDER: Tuple[int, int, int] = (200, 200, 200)  # Light Gray
+    NORMAL: Tuple[int, int, int] = (20, 20, 20)  # Very Dark Gray
+    HOVER: Tuple[int, int, int] = (60, 60, 60)  # Dark Gray
+    SELECTED: Tuple[int, int, int] = (0, 100, 0)  # Dark Green
+    BACKGROUND: Tuple[int, int, int] = (0, 0, 0)  # Black (unused by renderer for item fill)
+    TEXT: Tuple[int, int, int] = (200, 200, 200)  # Light Gray
+    BORDER: Tuple[int, int, int] = (100, 100, 100)  # Gray
 
 
 # --- Menu Structure ---

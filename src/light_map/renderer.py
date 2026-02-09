@@ -35,7 +35,10 @@ class Renderer:
             if i == state.hovered_item_index:
                 color = self.colors.HOVER
 
+            # Fill
             cv2.rectangle(image, (x, y), (x + w, y + h), color, -1)
+            # Border
+            cv2.rectangle(image, (x, y), (x + w, y + h), self.colors.BORDER, 2)
 
             text_color = self.colors.TEXT
             cv2.putText(

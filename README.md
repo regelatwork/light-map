@@ -128,7 +128,7 @@ python hand_tracker.py --map path/to/your/map.svg
 
 Switch to **Map Mode** by selecting "Map Controls" from the main menu.
 
-- **Pan**: Use the **Closed Fist** gesture and move your hand to drag the map.
+- **Pan**: Use the **Open Palm** gesture and move your hand to drag the map.
 - **Zoom**: Use the **Two-Hand Pointing** gesture (index fingers extended on both hands). Move hands apart to zoom in, and closer to zoom out. A 1-inch grid will appear to assist with scaling.
 - **Rotate**: Use the "Rotate CW/CCW" options in the "Map Settings" sub-menu.
 - **Reset**: Use the "Reset View" option in the "Map Settings" sub-menu.

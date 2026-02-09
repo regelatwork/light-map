@@ -139,7 +139,7 @@ Switch to **Map Mode** by selecting "Map Controls" from the main menu.
 To achieve 1:1 mapping (1 inch on map = 1 inch in real life), you must calibrate the **Projector Pixels Per Inch (PPI)**.
 
 1. **Generate Target**: Run `python generate_calibration_target.py` to create `calibration_target.svg`.
-1. **Print**: Print the target at 100% scale. It contains two markers exactly 100mm apart.
+1. **Print**: Print the target at 100% scale. It contains two **ArUco markers (ID 0 and 1)** exactly 100mm apart.
 1. **Calibrate**: Select "Map Settings" -> "Calibrate Scale" from the menu.
 1. **Detect**: Place the printed target on the surface. The system will detect the markers and calculate the PPI.
 1. **Verify & Confirm**: A 1-inch grid will be projected. Verify its accuracy and perform the **Victory** gesture to save the calibration.

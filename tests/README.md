@@ -51,7 +51,9 @@ The following components are covered by unit tests:
 - **`test_svg_loader.py`**: Tests SVG parsing and rendering into OpenCV images using `svgelements`.
 - **`test_map_system.py`**: Verifies map viewport logic (pan, pinned zoom, rotation).
 - **`test_map_config.py`**: Tests JSON persistence for map settings and calibration.
-- **`test_calibration_logic_ppi.py`**: Tests Projector PPI detection from printed markers.
+- **`test_calibration_logic_ppi.py`**: Tests Projector PPI detection from printed ArUco markers.
+- **`test_svg_loader_image.py`**: Tests rendering of SVGs with embedded raster images and fills.
+- **`test_svg_loader_paths.py`**: Tests rendering of discontinuous SVG paths (e.g., handling Move commands).
 
 ## Style Guidelines
 

@@ -18,6 +18,7 @@ class GestureType(StrEnum):
 class MenuActions(StrEnum):
     TOGGLE_DEBUG = "TOGGLE_DEBUG"
     EXIT = "EXIT"
+    CLOSE_MENU = "CLOSE_MENU"
     CALIBRATE = "CALIBRATE"
     NAV_BACK = "NAV_BACK"
     MAP_CONTROLS = "MAP_CONTROLS"

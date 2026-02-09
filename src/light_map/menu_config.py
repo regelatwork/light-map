@@ -37,6 +37,11 @@ ROOT_MENU = MenuItem(
     title="Main Menu",
     children=[
         MenuItem(
+            title="< Close",
+            action_id=MenuActions.CLOSE_MENU,
+            should_close_on_trigger=True,
+        ),
+        MenuItem(
             title="Map Controls",
             action_id=MenuActions.MAP_CONTROLS,
             should_close_on_trigger=True,
@@ -82,7 +87,7 @@ ROOT_MENU = MenuItem(
             ],
         ),
         MenuItem(
-            title="Exit", action_id=MenuActions.EXIT, should_close_on_trigger=True
+            title="Quit", action_id=MenuActions.EXIT, should_close_on_trigger=True
         ),
     ],
 )

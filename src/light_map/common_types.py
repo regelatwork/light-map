@@ -26,6 +26,8 @@ class MenuActions(StrEnum):
     ROTATE_CCW = "ROTATE_CCW"
     RESET_VIEW = "RESET_VIEW"
     CALIBRATE_SCALE = "CALIBRATE_SCALE"
+    PAGE_NEXT = "PAGE_NEXT"
+    PAGE_PREV = "PAGE_PREV"
 
 
 class AppMode(StrEnum):

@@ -214,7 +214,9 @@ def test_overflow_layout(menu_system, mock_time):
 
     state = menu_system.update(500, 500, GestureType.OPEN_PALM)  # Layout calc
 
-    # Max visible is 5
-    # Should show 4 items + "..."
-    assert len(state.active_items) == 5
-    assert state.active_items[4].title == "..."
+    # MAX_VISIBLE_ITEMS is 8 (from config)
+    # Page size = 8 - 2 = 6.
+    # Page 0 should show Items 0-5 + "Next Page >" = 7 items.
+    assert len(state.active_items) == 7
+    assert state.active_items[-1].title == "Next Page >"
+

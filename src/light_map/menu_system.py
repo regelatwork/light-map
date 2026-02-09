@@ -3,6 +3,7 @@ from collections import deque
 import time
 from dataclasses import dataclass
 from enum import StrEnum
+import numpy as np
 
 from light_map.common_types import MenuItem, MenuActions, GestureType
 from light_map.menu_config import (
@@ -50,6 +51,7 @@ class MenuSystem:
         # Navigation State
         self.current_node: MenuItem = root_item
         self.node_stack: List[MenuItem] = []  # Stack of parents
+        self.page_index: int = 0
 
         # Interaction State
         self.state: MenuSystemState = MenuSystemState.HIDDEN
@@ -58,9 +60,6 @@ class MenuSystem:
         self.last_selection_gesture_time: float = 0.0
 
         # Input History for Pinning
-        # Assume 60 FPS roughly for buffer size.
-        # maxlen = FPS * LOCK_DELAY * 2 (safety factor)
-        # 60 * 0.3 * 2 = 36 -> 40
         self.history: Deque[Tuple[float, int, int]] = deque(maxlen=40)
         self.pinned_cursor: Optional[Tuple[int, int]] = None
         self.is_pinning: bool = False
@@ -90,81 +89,42 @@ class MenuSystem:
             else:
                 self.summon_start_time = 0
 
-        elif self.state == MenuSystemState.SUMMONING:
-            # Transitional state logic handled inside HIDDEN check usually,
-            # but here we treat HIDDEN as the resting state and SUMMONING as implied
-            # by the timer.
-            # Actually, let's keep it simple. If we are HIDDEN and detecting, we are technically summoning.
-            # But to expose state to renderer, we might want to distinguish?
-            # For this implementation, HIDDEN covers "Hidden" and "Summoning process".
-            # The 'summon_progress' in DTO covers the visual feedback.
-            pass
-
         elif self.state == MenuSystemState.WAITING_FOR_NEUTRAL:
-            # Must release the summon gesture/fist before menu becomes interactive
-            # to prevent accidental clicks
             if gesture == GestureType.OPEN_PALM or (
                 gesture != SUMMON_GESTURE and gesture != SELECT_GESTURE
             ):
                 self.state = MenuSystemState.ACTIVE
 
         elif self.state == MenuSystemState.ACTIVE:
-            # Check for Exit/Dismissal
-            # If user does "Open Palm" for a long time? Or maybe specific close gesture?
-            # For now, explicit "Exit" button or holding Victory again to toggle?
-            # Design doc doesn't specify "Quick Close" gesture, only MenuActions.EXIT.
             pass
 
-        # 4. Cursor Pinning Logic (Only relevant if Active)
+        # 4. Cursor Pinning Logic
         active_cursor = (cx, cy)
 
         if self.state == MenuSystemState.ACTIVE:
             if gesture == SELECT_GESTURE:
-                # If we just started pinning or lost it briefly
                 if not self.is_pinning:
-                    # Look back in history for position at (now - LOCK_DELAY)
                     target_time = now - LOCK_DELAY
                     best_pt = (cx, cy)
-                    # Search backwards
                     for t, hx, hy in reversed(self.history):
                         if t <= target_time:
                             best_pt = (hx, hy)
                             break
                     self.pinned_cursor = best_pt
                     self.is_pinning = True
-                    self.prime_start_time = now  # Start priming
+                    self.prime_start_time = now
 
-                # Use pinned cursor
                 if self.pinned_cursor:
                     active_cursor = self.pinned_cursor
 
-                # Check Priming
                 if now - self.prime_start_time >= PRIMING_TIME:
-                    # TRIGGER!
                     just_triggered_action = self._trigger_selection()
-
-                    # Reset after trigger
                     self.prime_start_time = now
-                    self.is_pinning = (
-                        False  # Unlock to allow repeated clicks or visual feedback
-                    )
+                    self.is_pinning = False
                     self.pinned_cursor = None
-
-                    # If action closes menu
-                    if (
-                        just_triggered_action == MenuActions.EXIT
-                    ):  # Or check current item config
+                    if just_triggered_action == MenuActions.EXIT:
                         self._reset_to_hidden()
-
             else:
-                # Not selecting
-                # Debounce/Grace Period check
-                # If we lost selection gesture, do we immediately reset?
-                # Using GRACE_PERIOD to allow brief flickers is complex for pinning reset.
-                # For simplicity: If gesture is NOT Select, we reset pinning immediately
-                # unless we want to implement the specific debounce logic.
-                # Doc says: "If SELECT_GESTURE is lost... wait GRACE_PERIOD... before resetting prime timer"
-
                 if self.is_pinning:
                     if now - self.last_selection_gesture_time > GRACE_PERIOD:
                         self.is_pinning = False
@@ -181,7 +141,6 @@ class MenuSystem:
         hovered_index = None
 
         if self.state == MenuSystemState.ACTIVE:
-            # Check collision with active_cursor
             cursor_x, cursor_y = active_cursor
             for i, (rx, ry, rw, rh) in enumerate(item_rects):
                 if rx <= cursor_x <= rx + rw and ry <= cursor_y <= ry + rh:
@@ -189,8 +148,6 @@ class MenuSystem:
                     break
 
         # 6. Construct State DTO
-
-        # Calculate Progress
         summon_prog = 0.0
         if self.state == MenuSystemState.HIDDEN and self.summon_start_time > 0:
             summon_prog = min(1.0, (now - self.summon_start_time) / SUMMON_TIME)
@@ -215,36 +172,40 @@ class MenuSystem:
     def _calculate_layout(
         self,
     ) -> Tuple[List[MenuItem], List[Tuple[int, int, int, int]]]:
-        # 1. Prepare Item List
-        # Always inject "Back" if we have a parent
-        display_items = []
+        all_items = []
         if self.node_stack:
             back_item = MenuItem(title="< Back", action_id=MenuActions.NAV_BACK)
-            display_items.append(back_item)
+            all_items.append(back_item)
 
-        display_items.extend(self.current_node.children)
+        all_items.extend(self.current_node.children)
 
-        # 2. Handle Overflow
-        # If > MAX_VISIBLE, slice and add "..."
-        if len(display_items) > MAX_VISIBLE_ITEMS:
-            display_items = display_items[: MAX_VISIBLE_ITEMS - 1]
-            display_items.append(MenuItem(title="...", action_id=None))
-
-        # 3. Calculate Geometry
-        # Center vertically
-        # Center horizontally
+        total_items = len(all_items)
+        max_per_page = MAX_VISIBLE_ITEMS
+        display_items = []
+        
+        if total_items <= max_per_page:
+            display_items = all_items
+        else:
+            has_prev = self.page_index > 0
+            page_size = max_per_page - 2
+            start = self.page_index * page_size
+            end = start + page_size
+            chunk = all_items[start:end]
+            
+            if has_prev:
+                display_items.append(MenuItem(title="< Prev Page", action_id=MenuActions.PAGE_PREV, should_close_on_trigger=False))
+            display_items.extend(chunk)
+            if total_items > end:
+                display_items.append(MenuItem(title="Next Page >", action_id=MenuActions.PAGE_NEXT, should_close_on_trigger=False))
 
         count = len(display_items)
         if count == 0:
             return [], []
 
-        # Constants
-        box_height = 80  # px, could be config
+        box_height = 80
         gap = 20
         total_menu_height = (count * box_height) + ((count - 1) * gap)
-
         start_y = (self.height - total_menu_height) // 2
-
         box_width = int(self.width * ITEM_WIDTH_PCT)
         start_x = (self.width - box_width) // 2
 
@@ -257,16 +218,11 @@ class MenuSystem:
         return display_items, rects
 
     def _trigger_selection(self) -> Optional[str]:
-        # Identify what is hovered
         active_items, item_rects = self._calculate_layout()
-
-        # Use pinned cursor (we are in trigger moment)
         if not self.pinned_cursor:
-            print("Trigger failed: No pinned cursor")
             return None
 
         cx, cy = self.pinned_cursor
-
         selected_item = None
         for i, (rx, ry, rw, rh) in enumerate(item_rects):
             if rx <= cx <= rx + rw and ry <= cy <= ry + rh:
@@ -274,24 +230,28 @@ class MenuSystem:
                 break
 
         if not selected_item:
-            print(f"Trigger failed: No collision at {cx}, {cy}. Rects: {item_rects}")
             return None
 
-        # Handle Navigation
         if selected_item.action_id == MenuActions.NAV_BACK:
             if self.node_stack:
                 self.current_node = self.node_stack.pop()
-            return None  # Internal action, not emitted to app?
-            # Or emit NAV_BACK if app needs to know?
-            # Usually internal.
+                self.page_index = 0
+            return None 
 
-        # Handle Submenu
+        if selected_item.action_id == MenuActions.PAGE_NEXT:
+            self.page_index += 1
+            return None
+            
+        if selected_item.action_id == MenuActions.PAGE_PREV:
+            self.page_index = max(0, self.page_index - 1)
+            return None
+
         if selected_item.children:
             self.node_stack.append(self.current_node)
             self.current_node = selected_item
+            self.page_index = 0
             return None
 
-        # Handle Leaf Action
         if selected_item.should_close_on_trigger:
             self._reset_to_hidden()
 
@@ -299,9 +259,9 @@ class MenuSystem:
 
     def _reset_to_hidden(self):
         self.state = MenuSystemState.HIDDEN
-        self.current_node = self.root  # Reset to root? Or keep state?
-        # Usually menus reset to root on close
+        self.current_node = self.root
         self.node_stack.clear()
+        self.page_index = 0
         self.summon_start_time = 0
         self.prime_start_time = 0
         self.is_pinning = False

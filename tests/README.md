@@ -54,6 +54,9 @@ The following components are covered by unit tests:
 - **`test_calibration_logic_ppi.py`**: Tests Projector PPI detection from printed ArUco markers.
 - **`test_svg_loader_image.py`**: Tests rendering of SVGs with embedded raster images and fills.
 - **`test_svg_loader_paths.py`**: Tests rendering of discontinuous SVG paths (e.g., handling Move commands).
+- **`test_vision_enhancer.py`**: Tests the vision enhancement pipeline (Gamma correction, CLAHE).
+- **`test_camera_pipeline.py`**: Tests the multi-threaded camera processing pipeline.
+- **`test_svg_loader_performance.py`**: Tests dynamic resolution rendering and caching performance.
 
 ## Style Guidelines
 

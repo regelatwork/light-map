@@ -17,7 +17,7 @@ Use a "Level of Detail" approach where the map renders at lower resolution durin
 ### Implementation Details
 
 #### 1. `src/light_map/svg_loader.py`
-*   **Modifications**: Update `render` method.
+*   **Modifications**: Update `render` method with caching and quality scaling.
 *   **Interface Change**:
     ```python
     def render(
@@ -32,11 +32,13 @@ Use a "Level of Detail" approach where the map renders at lower resolution durin
     ) -> np.ndarray:
     ```
 *   **Logic**:
-    *   If `quality < 1.0`, create internal buffer of size `(w*quality, h*quality)`.
-    *   Scale `vp_matrix` by `quality`.
-    *   Render SVG to internal buffer.
-    *   Upscale result to `(width, height)` using linear interpolation.
-    *   **Caching**: Store `(params, result)`. If `render()` called with same params, return cached result immediately.
+    *   **Caching Strategy**: Use `functools.lru_cache(maxsize=32)`. To ensure cache hits, internal logic should wrap arguments in a hashable format (e.g., tuples) and **quantize float parameters** (e.g., `round(val, 4)`).
+    *   If `quality < 1.0`:
+        *   Create internal buffer of size `(w*quality, h*quality)`.
+        *   Scale `vp_matrix` by `quality`.
+        *   Render SVG to internal buffer.
+        *   Upscale result to `(width, height)` using **`cv2.INTER_LINEAR`**.
+    *   **Return Type**: Returns `np.ndarray` (BGR, uint8). If transparency is needed later, switch to BGRA, but current implementation assumes BGR.
 
 #### 2. `src/light_map/interactive_app.py`
 *   **Modifications**: `process_frame`.
@@ -48,10 +50,10 @@ Use a "Level of Detail" approach where the map renders at lower resolution durin
 #### 3. Tests (`tests/test_svg_loader.py`)
 *   **Test Case 1: Resolution Scaling**:
     *   Call `render(100, 100, quality=0.5)`.
-    *   Verify internal render logic uses 50x50 buffer (mock `cv2` or inspect internals if possible, or just verify output is 100x100 but visually different/faster).
+    *   Verify internal logic or visual output dimensions/speed.
 *   **Test Case 2: Caching**:
     *   Call `render(...)` twice with same params.
-    *   Verify the second call returns the *exact same object* (identity check) and doesn't trigger re-parsing.
+    *   Verify identity of returned object.
 
 ## Phase 2: Pipeline Parallelism (Threading)
 
@@ -61,6 +63,15 @@ Decouple Camera/AI processing from the UI rendering loop using a producer-consum
 ### Implementation Details
 
 #### 1. `src/light_map/camera_pipeline.py` (New File)
+*   **Data Structure**:
+    ```python
+    @dataclass(frozen=True)
+    class VisionData:
+        frame_id: int
+        frame: np.ndarray  # BGR uint8
+        landmarks: Any     # MediaPipe SolutionOutputs (multi_hand_landmarks)
+        fps: float
+    ```
 *   **Class**: `CameraPipeline`
 *   **Interface**:
     ```python
@@ -68,24 +79,28 @@ Decouple Camera/AI processing from the UI rendering loop using a producer-consum
         def __init__(self, camera_index, width, height, enhancer_params): ...
         def start(self): ... # Starts thread
         def stop(self): ... # Stops thread
-        def get_latest(self) -> Optional[Tuple[frame, landmarks, fps]]: ... # Non-blocking
+        def get_latest(self) -> Optional[VisionData]: ... # Non-blocking
     ```
 *   **Logic**:
     *   **Thread Loop**:
         1.  `cam.read()`
-        2.  `enhancer.process()`
-        3.  `hands.process()`
-        4.  Update shared variable `latest_data` (with Lock).
-    *   **Main Thread**: `get_latest()` returns copy of `latest_data`.
+        2.  **CRITICAL**: `frame = frame.copy()` if using standard `VideoCapture` to ensure thread safety against buffer reuse.
+        3.  `enhancer.process()`
+        4.  `hands.process()`
+        5.  Update shared variable `latest_data` (with Lock). Increment `frame_id`.
+    *   **Main Thread**: `get_latest()` returns copy of `latest_data` (or the immutable dataclass itself).
 
 #### 2. `hand_tracker.py`
 *   **Modifications**:
     *   Replace direct loop with `pipeline.start()`.
     *   In `while True`:
         *   `data = pipeline.get_latest()`
-        *   If `data` is new, update `app.process_frame`.
-        *   If `data` is old (render is faster than AI), interpolate or just re-render UI.
+        *   If `data` and `data.frame_id > last_processed_id`:
+            *   Update `last_processed_id`.
+            *   `app.process_frame(data.frame, data.landmarks)`
+        *   Else:
+            *   (Optional) Re-render UI only (if decoupling UI FPS from Camera FPS).
 
 #### 3. Tests (`tests/test_camera_pipeline.py`)
 *   **Test Case 1: Thread Lifecycle**: Start, sleep, stop. Verify thread joins cleanly.
-*   **Test Case 2: Data Flow**: Mock Camera. Verify `get_latest()` returns data produced by thread.
+*   **Test Case 2: Data Flow**: Mock Camera. Verify `get_latest()` returns data produced by thread with increasing `frame_id`.

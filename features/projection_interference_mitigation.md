@@ -6,36 +6,25 @@ Projecting on a surface creates intense light that washes out hand features, cau
 ## Goals
 Improve hand tracking robustness *without* degrading the visual quality of the projection (e.g., dimming) unless absolutely necessary.
 
-## Proposed Solutions
+## Solutions Implemented
 
 ### 1. Computer Vision Enhancement (Pre-processing)
 *   **Concept**: Modify the camera input frame *before* passing it to MediaPipe. The user sees the original frame (or nothing), but the AI sees an enhanced version.
 *   **Techniques**:
     *   **Gamma Correction**: Apply `gamma < 1.0` (e.g., 0.5) to "stretch" the shadows and midtones while compressing the highlights. This helps recover details in the "washed out" skin areas.
-    *   **CLAHE (Contrast Limited Adaptive Histogram Equalization)**: Boosts local contrast. This helps distinguish the hand's edge from the projected pattern.
-    *   **Color Space**: Convert to LAB, apply CLAHE to L-channel, convert back? Or just apply to Gray/V-channel if MediaPipe accepts it (MediaPipe expects RGB).
+    *   **CLAHE (Contrast Limited Adaptive Histogram Equalization)**: Boosts local contrast in the L-channel (LAB color space). This helps distinguish the hand's edge from the projected pattern.
+*   **Live Tuning**: Parameters can be adjusted in real-time using keyboard shortcuts.
+*   **Persistence**: Settings are saved to `map_state.json`.
 
-### 2. Context-Aware Dimming (Backup)
-*   **Concept**: Only dim the projection when the user is *trying* to interact but detection is failing.
-*   **Trigger**: This is tricky (how do we know they are trying?).
-*   **Constraint**: "The main use case of showing the map should not be dimmed."
-*   **Strategy**:
-    *   If `Menu Mode` is active -> Dimming is allowed to maintain tracking.
-    *   If `Map Mode` is active (manipulating) -> Dimming is allowed.
-    *   If `Idle/View Mode` -> Full brightness.
-    *   **Entry**: To enter interaction from Idle, we rely on **Input Enhancement** to catch the initial "Summon" gesture.
+## Implementation Status
 
-## Implementation Plan
-
-### Phase 1: Vision Enhancer Pipeline
+### Phase 1: Vision Enhancer Pipeline [DONE]
 *   **Module**: `src/light_map/vision_enhancer.py`
-*   **Class**: `VisionEnhancer`
-*   **Methods**:
-    *   `apply_gamma(frame, gamma)`
-    *   `apply_clahe(frame)`
-    *   `enhance(frame)` -> returns processed frame for MediaPipe.
-*   **Integration**: Update `hand_tracker.py` to pass the *enhanced* frame to `hands.process()`.
-*   **Tuning**: Add `MenuActions` or keyboard shortcuts to adjust Gamma/Contrast live to find the sweet spot.
+*   **Integration**: `hand_tracker.py` passes enhanced frames to MediaPipe.
+*   **Controls**:
+    *   `[` / `]`: Decrease / Increase Gamma (-/+ 0.1).
+    *   `{` / `}`: Decrease / Increase CLAHE Clip Limit (-/+ 0.5).
+*   **Debug**: Run with `--view-enhanced` to visualize the AI input.
 
-### Phase 2: Active Dimming (Optional/Later)
-*   Implement dimming logic in `InteractiveApp` only when in specific interactive modes.
+### Phase 2: Active Dimming (On Hold)
+*   *Deferred in favor of successful vision enhancement.*

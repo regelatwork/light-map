@@ -19,9 +19,10 @@ This project aims to provide tools for calibrating a projector-camera system.
   - **`svg_loader.py`**: Loads and renders SVG files using `svgelements`.
   - **`map_system.py`**: Manages map viewport state (pan, zoom, rotation).
   - **`map_config.py`**: Handles persistence for map settings and global calibration data.
+  - **`vision_enhancer.py`**: Pre-processes camera frames with Gamma/CLAHE to improve hand tracking under projector light.
 - **`calibrate.py`**: Entry point script. Performs camera calibration using chessboard images in `images/` and saves `camera_calibration.npz`.
 - **`projector_calibration.py`**: Entry point script. Displays a pattern, captures it, and computes the perspective transformation matrix.
-- **`hand_tracker.py`**: Entry point script. Continuously tracks hands, projecting landmarks and detecting gestures in real-time with a hierarchical menu system and SVG map support.
+- **`hand_tracker.py`**: Entry point script. Continuously tracks hands, projecting landmarks and detecting gestures in real-time with a hierarchical menu system and SVG map support. Supports live vision tuning.
 - **`generate_calibration_target.py`**: Standalone script to generate a printable calibration target for PPI scale calibration.
 
 ## Goal:
@@ -36,6 +37,7 @@ The ultimate goal of this project is to enable precise mapping between camera an
 - **`projector_calibration.py`**: CLI entry point for projector calibration.
 - **`hand_tracker.py`**: CLI entry point for the interactive hand tracking demo.
 - **`camera_calibration.npz`**: Stores the camera matrix and distortion coefficients.
+- **`map_state.json`**: Stores persistent application state, including map viewports, PPI calibration, and vision enhancement parameters.
 - **`requirements.txt`**: Lists the Python dependencies for this project.
 - **`README.md`**: Provides instructions on how to use the scripts in this project.
 - **`GEMINI.md`**: This file, providing a high-level overview of the project.
@@ -82,3 +84,12 @@ The ultimate goal of this project is to enable precise mapping between camera an
 - [x] **Phase 5: Calibration & Persistence**
   - Implemented JSON persistence via `map_state.json`.
   - Added scale (PPI) calibration flow.
+
+## Feature Tracking: Projection Interference Mitigation
+
+- [x] **Phase 1: Vision Enhancer Pipeline**
+  - Implemented `VisionEnhancer` with Gamma Correction and CLAHE.
+  - Integrated into `hand_tracker.py` processing loop.
+  - Added live tuning controls (`[`, `]`, `{`, `}`) and persistence.
+  - Added `--view-enhanced` CLI flag for debugging.
+

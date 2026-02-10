@@ -51,7 +51,7 @@ def test_camera_context_manager(mock_capture):
     mock_instance = mock_capture.return_value
 
     # Test
-    with Camera() as cam:
+    with Camera():
         pass
 
     # Verify

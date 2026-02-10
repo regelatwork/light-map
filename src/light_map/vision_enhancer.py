@@ -49,13 +49,13 @@ class VisionEnhancer:
         """
         # Convert to LAB (L=Lightness, A=Green-Red, B=Blue-Yellow)
         lab = cv2.cvtColor(image, cv2.COLOR_BGR2LAB)
-        l, a, b = cv2.split(lab)
+        l_chan, a, b = cv2.split(lab)
 
         # Apply CLAHE to L-channel
-        l2 = self.clahe.apply(l)
+        l_enhanced = self.clahe.apply(l_chan)
 
         # Merge and convert back to BGR
-        lab = cv2.merge((l2, a, b))
+        lab = cv2.merge((l_enhanced, a, b))
         return cv2.cvtColor(lab, cv2.COLOR_LAB2BGR)
 
     def process(self, image: np.ndarray) -> np.ndarray:

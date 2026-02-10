@@ -6,13 +6,13 @@ def test_root_menu_structure():
     top_item = ROOT_MENU.children[0]
     assert top_item.title == "< Close"
     assert top_item.action_id == MenuActions.CLOSE_MENU
-    assert top_item.should_close_on_trigger == True
+    assert top_item.should_close_on_trigger
     
     # 2. Verify Bottom Item is Quit
     bottom_item = ROOT_MENU.children[-1]
     assert bottom_item.title == "Quit"
     assert bottom_item.action_id == MenuActions.EXIT
-    assert bottom_item.should_close_on_trigger == True
+    assert bottom_item.should_close_on_trigger
     
     # 3. Verify other items exist
     titles = [c.title for c in ROOT_MENU.children]

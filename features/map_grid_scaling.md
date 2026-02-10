@@ -69,24 +69,27 @@ Since automated detection might fail or the physical size of the grid is unknown
 
 ### UI Workflow
 1.  **Enter Scale Mode**: User selects "Calibrate Map Scale" from the menu.
-2.  **Project Reference Grid**: The system overlays a **green grid** (or crosshairs) representing a known physical size (e.g., 1 inch squares) based on the global PPI.
+2.  **Project Reference Crosshairs**: The system overlays **green crosshairs with a black outline** (for high contrast on light/dark maps) representing a known physical size (e.g., 1 inch intervals) based on the global PPI.
     *   *Note*: This requires the global PPI to be calibrated first.
 3.  **User Adjustment**:
-    *   **Gesture**: Two-hand zoom (or a slider in debug UI).
-    *   **Visual Feedback**: The user zooms the map until the map's grid lines align perfectly with the projected green reference lines.
+    *   **Zoom**: Adjust map scale until map grid lines match the spacing of the projected crosshairs.
+    *   **Offset**: Pan the map to align a specific grid intersection with the center crosshair. This establishes the grid origin.
     *   **Interaction**:
         *   "Zoom to Fit": Adjusts map scale.
+        *   "Pan to Align": Adjusts map offset (origin).
         *   "Define Unit": Cycle through reference grid sizes (1 inch, 5 feet, 1 meter).
 4.  **Confirm**: User performs a confirmation gesture (e.g., Victory).
 5.  **Calculation**:
-    *   The system captures the current zoom level ($S_{current}$).
+    *   The system captures the current zoom level ($S_{current}$) and offset ($O_{grid}$).
     *   It calculates the relationship: "1 Grid Unit = $X$ Inches".
+    *   *Future Utility*: This alignment allows the system to treat the grid as a source of discrete positions (snapping).
 
 ## Implementation Plan
 
 ### Phase 1: Logic & Data Structures
 *   Update `MapEntry` in `map_config.py` to store:
     *   `grid_spacing_svg`: float (Detected or Manual)
+    *   `grid_origin_svg`: tuple (x, y) (Manual Offset)
     *   `physical_unit_inches`: float (e.g., 1.0 for inches, 60.0 for 5ft)
     *   `scale_factor_1to1`: float (Calculated)
 *   Implement `detect_grid_spacing` in `svg_loader.py`.
@@ -94,9 +97,9 @@ Since automated detection might fail or the physical size of the grid is unknown
 ### Phase 2: UI & Interaction
 *   Add `MapSystem.set_scale_to_grid(physical_size_inches)` method.
 *   Implement `_draw_scale_overlay` in `interactive_app.py`:
-    *   Draws the calibrated PPI grid (Green).
+    *   Draws calibrated PPI crosshairs (Green with Black outline).
     *   Draws the current map (Background).
-    *   Displays text: "Align Map Grid to Green Lines".
+    *   Displays text: "Align Map Grid to Crosshairs".
 
 ### Phase 3: Integration
 *   Add menu item "Map Settings > Set Scale".

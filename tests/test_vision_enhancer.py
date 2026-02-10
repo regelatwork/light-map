@@ -1,6 +1,5 @@
 import pytest
 import numpy as np
-import cv2
 from light_map.vision_enhancer import VisionEnhancer
 
 @pytest.fixture

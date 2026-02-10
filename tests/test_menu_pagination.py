@@ -1,7 +1,6 @@
 import pytest
 from light_map.menu_system import MenuSystem, MenuSystemState
-from light_map.common_types import MenuItem, MenuActions, GestureType
-from light_map.menu_config import MAX_VISIBLE_ITEMS, SELECT_GESTURE
+from light_map.common_types import MenuItem, MenuActions
 
 # Override MAX_VISIBLE_ITEMS for testing if possible, or assume 8.
 # Since it's imported, we can patch it or rely on logic.

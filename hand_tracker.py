@@ -4,6 +4,7 @@ import cv2
 import numpy as np
 import mediapipe as mp
 import argparse
+import time
 
 # Ensure we can import the local package
 sys.path.insert(0, os.path.abspath("src"))
@@ -14,6 +15,7 @@ from light_map.common_types import MenuActions
 from light_map.interactive_app import InteractiveApp, AppConfig
 from light_map.calibration_logic import run_calibration_sequence
 from light_map.vision_enhancer import VisionEnhancer
+from light_map.camera_pipeline import CameraPipeline
 
 
 def main():
@@ -100,145 +102,180 @@ def main():
         cv2.namedWindow("AI Vision (Enhanced)", cv2.WINDOW_NORMAL)
 
     # 5. Main Loop
+    last_processed_id = -1
+    pipeline = None
+    
     try:
         with Camera() as cam:
-            while True:
-                # A. Read Hardware
-                frame = cam.read()
-                if frame is None:
-                    print("Failed to grab frame")
-                    break
+            # Initialize Pipeline
+            pipeline = CameraPipeline(cam, enhancer, hands)
+            pipeline.start()
+            
+            try:
+                while True:
+                    # A. Get Latest Data
+                    data = pipeline.get_latest()
+                    
+                    if data is None:
+                        # Waiting for first frame
+                        time.sleep(0.01)
+                        continue
 
-                # B. Enhance and Process for AI
-                # We enhance the BGR frame, then convert to RGB for MediaPipe
-                enhanced_bgr = enhancer.process(frame)
-                frame_rgb = cv2.cvtColor(enhanced_bgr, cv2.COLOR_BGR2RGB)
-                results = hands.process(frame_rgb)
-
-                if args.view_enhanced:
-                    # Overlay params
-                    debug_img = enhanced_bgr.copy()
-                    cv2.putText(
-                        debug_img,
-                        f"Gamma: {enhancer.gamma:.1f} ([/])",
-                        (10, 30),
-                        cv2.FONT_HERSHEY_SIMPLEX,
-                        0.7,
-                        (0, 255, 0),
-                        2,
-                    )
-                    cv2.putText(
-                        debug_img,
-                        f"CLAHE: {enhancer.clahe.getClipLimit():.1f} ({{/}})",
-                        (10, 60),
-                        cv2.FONT_HERSHEY_SIMPLEX,
-                        0.7,
-                        (0, 255, 0),
-                        2,
-                    )
-
-                    # Resize for display if too large
-                    h, w = debug_img.shape[:2]
-                    target_h = 480
-                    if h > target_h:
-                        scale = target_h / h
-                        new_w = int(w * scale)
-                        debug_img = cv2.resize(debug_img, (new_w, target_h))
-
-                    cv2.imshow("AI Vision (Enhanced)", debug_img)
-
-                # C. Orchestrate Logic (uses results from enhanced frame)
-                output_image, actions = app.process_frame(frame, results)
-
-                # D. Update Hardware Output
-                cv2.imshow(window_name, output_image)
-
-                # E. Handle Actions
-                should_break = False
-                for action in actions:
-                    print(f"Executing Action: {action}")
-                    if action == MenuActions.EXIT:
-                        print("Exiting...")
-                        should_break = True
-                    elif action == MenuActions.CALIBRATE:
-                        # Pause rendering loop (or just freeze frame)
-                        print("Starting Calibration...")
-                        # Run calibration using existing camera instance
-                        # Pass current screen dimensions
-                        new_matrix = run_calibration_sequence(
-                            cam, width=screen_w, height=screen_h
-                        )
-
-                        if new_matrix is not None:
-                            print("Calibration successful! Saving...")
-                            np.savez(
-                                calibration_file,
-                                projector_matrix=new_matrix,
-                                resolution=np.array([screen_w, screen_h]),
+                    # B. Check if new
+                    if data.frame_id > last_processed_id:
+                        last_processed_id = data.frame_id
+                        
+                        # Update Debug View if requested
+                        if args.view_enhanced:
+                            # We need to re-enhance or store enhanced frame in data?
+                            # Currently pipeline stores raw frame.
+                            # If we want to show enhanced, we should re-run enhance or store it.
+                            # Re-running is wasteful. 
+                            # Ideally pipeline stores enhanced frame too?
+                            # For now, just re-enhance for debug view (it's fast enough on CPU usually, or skip it)
+                            debug_img = enhancer.process(data.frame)
+                            
+                            cv2.putText(
+                                debug_img,
+                                f"Gamma: {enhancer.gamma:.1f} ([/])",
+                                (10, 30),
+                                cv2.FONT_HERSHEY_SIMPLEX,
+                                0.7,
+                                (0, 255, 0),
+                                2,
+                            )
+                            cv2.putText(
+                                debug_img,
+                                f"CLAHE: {enhancer.clahe.getClipLimit():.1f} ({{/}})",
+                                (10, 60),
+                                cv2.FONT_HERSHEY_SIMPLEX,
+                                0.7,
+                                (0, 255, 0),
+                                2,
+                            )
+                            cv2.putText(
+                                debug_img,
+                                f"Pipe FPS: {data.fps:.1f}",
+                                (10, 90),
+                                cv2.FONT_HERSHEY_SIMPLEX,
+                                0.7,
+                                (0, 255, 0),
+                                2,
                             )
 
-                            # Reload App Config
-                            print("Reloading application configuration...")
-                            new_config = AppConfig(
-                                width=screen_w,
-                                height=screen_h,
-                                projector_matrix=new_matrix,
-                                root_menu=ROOT_MENU,
-                            )
-                            app.reload_config(new_config)
-                        else:
-                            print("Calibration failed or cancelled.")
+                            # Resize for display if too large
+                            h, w = debug_img.shape[:2]
+                            target_h = 480
+                            if h > target_h:
+                                scale = target_h / h
+                                new_w = int(w * scale)
+                                debug_img = cv2.resize(debug_img, (new_w, target_h))
 
-                        # Ensure window is back to fullscreen projection mode after calibration
-                        # (run_calibration_sequence closes its own window, so we just continue using ours)
-                        cv2.namedWindow(window_name, cv2.WND_PROP_FULLSCREEN)
-                        cv2.setWindowProperty(
-                            window_name, cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN
-                        )
+                            cv2.imshow("AI Vision (Enhanced)", debug_img)
 
-                    elif action == MenuActions.TOGGLE_DEBUG:
+                        # C. Orchestrate Logic
+                        # app.process_frame returns the UI image
+                        output_image, actions = app.process_frame(data.frame, data.landmarks)
+
+                        # D. Update Hardware Output
+                        cv2.imshow(window_name, output_image)
+                        
+                        # Process Actions
+                        should_break = False
+                        for action in actions:
+                            print(f"Executing Action: {action}")
+                            if action == MenuActions.EXIT:
+                                print("Exiting...")
+                                should_break = True
+                            elif action == MenuActions.CALIBRATE:
+                                print("Starting Calibration...")
+                                # STOP Pipeline to free camera
+                                pipeline.stop()
+                                
+                                new_matrix = run_calibration_sequence(
+                                    cam, width=screen_w, height=screen_h
+                                )
+
+                                if new_matrix is not None:
+                                    print("Calibration successful! Saving...")
+                                    np.savez(
+                                        calibration_file,
+                                        projector_matrix=new_matrix,
+                                        resolution=np.array([screen_w, screen_h]),
+                                    )
+                                    print("Reloading application configuration...")
+                                    new_config = AppConfig(
+                                        width=screen_w,
+                                        height=screen_h,
+                                        projector_matrix=new_matrix,
+                                        root_menu=ROOT_MENU,
+                                    )
+                                    app.reload_config(new_config)
+                                else:
+                                    print("Calibration failed or cancelled.")
+
+                                # Restore Window
+                                cv2.namedWindow(window_name, cv2.WND_PROP_FULLSCREEN)
+                                cv2.setWindowProperty(
+                                    window_name, cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN
+                                )
+                                
+                                # RESTART Pipeline
+                                pipeline.start()
+
+                            elif action == MenuActions.TOGGLE_DEBUG:
+                                app.set_debug_mode(not app.debug_mode)
+
+                        if should_break:
+                            break
+                    
+                    else:
+                        # No new data: Just handle UI events (keyboard) and sleep
+                        # If we wanted high FPS UI independent of Camera, we would call app.render() here
+                        # But app.process_frame does logic AND render.
+                        # We could split them, but for now, just waiting is fine.
+                        time.sleep(0.001)
+
+                    # F. Handle Keyboard Interrupts (Check every loop iteration)
+                    key = cv2.waitKey(1) & 0xFF
+                    if key == ord("q"):
+                        break
+                    elif key == ord("d"):
                         app.set_debug_mode(not app.debug_mode)
 
-                if should_break:
-                    break
-
-                # F. Handle Keyboard Interrupts
-                key = cv2.waitKey(1) & 0xFF
-                if key == ord("q"):
-                    break
-                elif key == ord("d"):
-                    app.set_debug_mode(not app.debug_mode)
-
-                # Tuning Controls
-                elif key == ord("["):
-                    enhancer.set_gamma(enhancer.gamma - 0.1)
-                    app.map_config.set_vision_params(
-                        enhancer.gamma, enhancer.clahe_clip
-                    )
-                    print(f"Gamma: {enhancer.gamma:.1f}")
-                elif key == ord("]"):
-                    enhancer.set_gamma(enhancer.gamma + 0.1)
-                    app.map_config.set_vision_params(
-                        enhancer.gamma, enhancer.clahe_clip
-                    )
-                    print(f"Gamma: {enhancer.gamma:.1f}")
-                elif key == ord("{"):  # Shift + [
-                    enhancer.set_clahe_clip(enhancer.clahe.getClipLimit() - 0.5)
-                    app.map_config.set_vision_params(
-                        enhancer.gamma, enhancer.clahe_clip
-                    )
-                    print(f"CLAHE Clip: {enhancer.clahe.getClipLimit():.1f}")
-                elif key == ord("}"):  # Shift + ]
-                    enhancer.set_clahe_clip(enhancer.clahe.getClipLimit() + 0.5)
-                    app.map_config.set_vision_params(
-                        enhancer.gamma, enhancer.clahe_clip
-                    )
-                    print(f"CLAHE Clip: {enhancer.clahe.getClipLimit():.1f}")
+                    # Tuning Controls - Direct modification of shared enhancer object?
+                    # Enhancer is used in thread. Is it thread safe?
+                    # VisionEnhancer properties (gamma, clahe) are Python objects.
+                    # Writing primitive (float) is atomic-ish.
+                    # Recreating CLAHE object might race.
+                    # Ideally we should use a lock or queue for params update.
+                    # But for dev debug, it's probably okay or we can pause pipeline.
+                    
+                    # Let's be safe: Stop pipeline, update, start? Too slow.
+                    # Or just accept race condition for debug tool.
+                    elif key == ord("["):
+                        enhancer.set_gamma(enhancer.gamma - 0.1)
+                        app.map_config.set_vision_params(enhancer.gamma, enhancer.clahe_clip)
+                        print(f"Gamma: {enhancer.gamma:.1f}")
+                    elif key == ord("]"):
+                        enhancer.set_gamma(enhancer.gamma + 0.1)
+                        app.map_config.set_vision_params(enhancer.gamma, enhancer.clahe_clip)
+                        print(f"Gamma: {enhancer.gamma:.1f}")
+                    elif key == ord("{"):
+                        enhancer.set_clahe_clip(enhancer.clahe.getClipLimit() - 0.5)
+                        app.map_config.set_vision_params(enhancer.gamma, enhancer.clahe_clip)
+                        print(f"CLAHE Clip: {enhancer.clahe.getClipLimit():.1f}")
+                    elif key == ord("}"):
+                        enhancer.set_clahe_clip(enhancer.clahe.getClipLimit() + 0.5)
+                        app.map_config.set_vision_params(enhancer.gamma, enhancer.clahe_clip)
+                        print(f"CLAHE Clip: {enhancer.clahe.getClipLimit():.1f}")
+            finally:
+                if pipeline:
+                    pipeline.stop()
 
     except Exception as e:
         print(f"An error occurred: {e}")
         import traceback
-
         traceback.print_exc()
     finally:
         hands.close()

@@ -5,6 +5,7 @@ import math
 import base64
 from io import BytesIO
 from PIL import Image
+import functools
 
 
 class SVGLoader:
@@ -31,23 +32,86 @@ class SVGLoader:
         offset_x: int = 0,
         offset_y: int = 0,
         rotation: float = 0.0,
+        quality: float = 1.0,
     ) -> np.ndarray:
         """
-        Renders the SVG to a BGR numpy array.
+        Renders the SVG to a BGR numpy array with caching and dynamic quality.
+
+        Args:
+            width: Output width.
+            height: Output height.
+            scale_factor: Zoom level.
+            offset_x: Pan X.
+            offset_y: Pan Y.
+            rotation: Rotation in degrees.
+            quality: Render quality (0.1 to 1.0). Lower values render to a smaller buffer and upscale.
         """
+        # Quantize float parameters to improve cache hit rate
+        q_scale = round(scale_factor, 4)
+        q_rot = round(rotation, 2)
+        q_quality = round(max(0.1, min(1.0, quality)), 2)
+
+        # Call cached internal renderer
+        return self._render_internal(
+            width, height, q_scale, offset_x, offset_y, q_rot, q_quality
+        )
+
+    @functools.lru_cache(maxsize=32)
+    def _render_internal(
+        self,
+        target_width: int,
+        target_height: int,
+        scale_factor: float,
+        offset_x: int,
+        offset_y: int,
+        rotation: float,
+        quality: float,
+    ) -> np.ndarray:
+        """
+        Internal cached renderer.
+        """
+        # Determine internal render resolution
+        render_w = int(target_width * quality)
+        render_h = int(target_height * quality)
+
+        if render_w < 1 or render_h < 1:
+            render_w = max(1, render_w)
+            render_h = max(1, render_h)
+
         # Create blank black image
-        image = np.zeros((height, width, 3), dtype=np.uint8)
+        image = np.zeros((render_h, render_w, 3), dtype=np.uint8)
 
         if self.svg is None:
+            # If we just need to return black, we still need to upscale if quality < 1.0
+            if quality < 1.0:
+                return cv2.resize(
+                    image, (target_width, target_height), interpolation=cv2.INTER_LINEAR
+                )
             return image
 
-        # Viewport Matrix
-        cx, cy = width / 2, height / 2
+        # Viewport Matrix Calculation
+        # The viewport center is based on the target dimensions, but we are rendering to a scaled buffer.
+        # However, the transformations (scale, translate) are relative to the original coordinate space.
+        # If we render to a smaller buffer, we effectively zoom out everything by 'quality'.
+        
+        # We need the SVG to be rendered as if it were on the full size screen, then downsampled.
+        # Or simpler: Scale the Viewport Matrix by 'quality'.
 
+        cx, cy = target_width / 2, target_height / 2
+        
+        # Base Matrix: Matches the user's requested view
         vp_matrix = svgelements.Matrix()
         vp_matrix.post_scale(scale_factor, scale_factor)
         vp_matrix.post_rotate(math.radians(rotation), cx, cy)
         vp_matrix.post_translate(offset_x, offset_y)
+        
+        # Quality Scaling Matrix: Scales the entire view down to the render buffer size
+        # We scale by 'quality', effectively fitting the full view into the smaller buffer.
+        q_matrix = svgelements.Matrix()
+        q_matrix.post_scale(quality, quality)
+        
+        # Combine: Apply user transform first, then scale down for buffer
+        final_vp_matrix = vp_matrix * q_matrix
 
         # Iterate through SVG elements
         for element in self.svg.elements():
@@ -72,9 +136,6 @@ class SVGLoader:
                                     pil_img = Image.open(BytesIO(image_data))
                                 except Exception:
                                     pass
-                            else:
-                                # External file? Not implemented for safety/path complexity
-                                pass
 
                     if pil_img:
                         # Convert PIL to BGR
@@ -98,7 +159,7 @@ class SVGLoader:
                             local_m = local_m * element.transform
 
                         # Apply Viewport
-                        final_m = local_m * vp_matrix
+                        final_m = local_m * final_vp_matrix
 
                         # Extract Affine for OpenCV
                         M = np.float32(
@@ -109,7 +170,7 @@ class SVGLoader:
                         )
 
                         # Warp
-                        warped = cv2.warpAffine(src_img, M, (width, height))
+                        warped = cv2.warpAffine(src_img, M, (render_w, render_h))
 
                         # Composite
                         mask = (warped > 0).any(axis=2).astype(np.uint8) * 255
@@ -125,7 +186,7 @@ class SVGLoader:
                     # Apply Viewport Transform
                     # We copy the path and apply matrix
                     path = svgelements.Path(element)
-                    transformed_path = path * vp_matrix
+                    transformed_path = path * final_vp_matrix
                     transformed_path.reify()
 
                     subpaths = []
@@ -140,11 +201,8 @@ class SVGLoader:
                                     )
                                 )
                                 current_points = []
-                            # Move establishes a new current point, but doesn't add a drawn point itself
-                            # The next segment will use this start point.
                             continue
 
-                        # Ensure start point is added if starting new subpath
                         if not current_points:
                             current_points.append(
                                 (int(segment.start.x), int(segment.start.y))
@@ -162,12 +220,12 @@ class SVGLoader:
                                 svgelements.Arc,
                             ),
                         ):
+                            # Adaptive sampling could be better, but fixed is faster
                             for i in range(1, 11):  # 1 to 10
                                 t = i / 10.0
                                 p = segment.point(t)
                                 current_points.append((int(p.x), int(p.y)))
 
-                    # Append final subpath
                     if current_points:
                         subpaths.append(
                             np.array(current_points, dtype=np.int32).reshape((-1, 1, 2))
@@ -179,8 +237,6 @@ class SVGLoader:
                     # Fill
                     if element.fill is not None and element.fill.value is not None:
                         c = element.fill
-                        # Check alpha? svgelements usually handles opacity separate.
-                        # Just RGB for now.
                         fill_color = (c.blue, c.green, c.red)
                         cv2.fillPoly(image, subpaths, fill_color)
 
@@ -189,13 +245,15 @@ class SVGLoader:
                         c = element.stroke
                         color = (c.blue, c.green, c.red)
                         if sum(color) < 30:
-                            color = (255, 255, 255)  # Invert Black
+                            color = (255, 255, 255)
 
                         thickness = 1
                         if element.stroke_width is not None:
-                            thickness = max(1, int(element.stroke_width * scale_factor))
+                            # Scale stroke width by combined scale factor
+                            # Approximate scale from matrix
+                            avg_scale = (abs(final_vp_matrix.a) + abs(final_vp_matrix.d)) / 2
+                            thickness = max(1, int(element.stroke_width * avg_scale))
 
-                        # Determine if closed
                         is_closed = False
                         if isinstance(
                             element,
@@ -208,10 +266,15 @@ class SVGLoader:
                         ):
                             is_closed = True
 
-                        # Draw all subpaths
                         cv2.polylines(image, subpaths, is_closed, color, thickness)
 
             except Exception:
                 continue
+        
+        # If quality < 1.0, upscale to target size
+        if quality < 1.0:
+            return cv2.resize(
+                image, (target_width, target_height), interpolation=cv2.INTER_LINEAR
+            )
 
         return image

@@ -63,6 +63,7 @@ class InteractiveApp:
         self.zoom_start_level = 1.0
         self.zoom_gesture_start_time = 0.0
         self.summon_gesture_start_time = 0.0
+        self.is_interacting = False  # Track if user is manipulating map
 
         # Calibration State
         self.calib_stage = 0  # 0: Capture, 1: Confirm
@@ -133,8 +134,9 @@ class InteractiveApp:
         map_image = None
         if self.svg_loader:
             params = self.map_system.get_render_params()
+            quality = 0.25 if self.is_interacting else 1.0
             map_image = self.svg_loader.render(
-                self.config.width, self.config.height, **params
+                self.config.width, self.config.height, quality=quality, **params
             )
 
         # B. Menu/Overlay
@@ -238,9 +240,12 @@ class InteractiveApp:
     def _process_map_mode(
         self, hands_data: List[Dict], current_time: float
     ) -> List[str]:
+        self.is_interacting = False
+        
         # 1. Zoom
         pointing_hands = [h for h in hands_data if h["gesture"] == GestureType.POINTING]
         if len(pointing_hands) >= 2:
+            self.is_interacting = True
             p1 = np.array(pointing_hands[0]["proj_pos"])
             p2 = np.array(pointing_hands[1]["proj_pos"])
             dist = np.linalg.norm(p1 - p2)
@@ -264,6 +269,7 @@ class InteractiveApp:
         # 2. Pan
         if self.zoom_start_dist is None:
             if hands_data and hands_data[0]["gesture"] == config_vars.PAN_GESTURE:
+                self.is_interacting = True
                 pos = hands_data[0]["proj_pos"]
                 if self.last_cursor_pos is not None:
                     dx = pos[0] - self.last_cursor_pos[0]

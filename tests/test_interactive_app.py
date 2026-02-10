@@ -5,7 +5,6 @@ from unittest.mock import MagicMock, patch
 from light_map.interactive_app import InteractiveApp, AppConfig
 from light_map.common_types import GestureType, AppMode, MenuActions
 from light_map.menu_config import ROOT_MENU
-import light_map.menu_config as config_vars
 
 
 # Mock MediaPipe Results

@@ -1,6 +1,5 @@
-import pytest
 from light_map.menu_config import ROOT_MENU
-from light_map.common_types import MenuActions, MenuItem
+from light_map.common_types import MenuActions
 
 def test_root_menu_structure():
     # 1. Verify Top Item is Close/Back

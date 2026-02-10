@@ -13,6 +13,7 @@ from light_map.menu_config import ROOT_MENU
 from light_map.common_types import MenuActions
 from light_map.interactive_app import InteractiveApp, AppConfig
 from light_map.calibration_logic import run_calibration_sequence
+from light_map.vision_enhancer import VisionEnhancer
 
 
 def main():
@@ -22,6 +23,12 @@ def main():
     )
     parser.add_argument(
         "--map", type=str, help="Path to SVG map file to load", default=None
+    )
+    parser.add_argument(
+        "--view-enhanced",
+        action="store_true",
+        help="View the enhanced AI vision frame",
+        default=False,
     )
     args = parser.parse_args()
 
@@ -74,7 +81,11 @@ def main():
         else:
             print(f"Error: Map file not found: {args.map}")
 
-    # 3. Setup MediaPipe
+    # 3. Setup Vision Enhancer & MediaPipe
+    # Load vision params from config
+    saved_gamma, saved_clahe = app.map_config.get_vision_params()
+    enhancer = VisionEnhancer(gamma=saved_gamma, clahe_clip=saved_clahe)
+
     mp_hands = mp.solutions.hands
     hands = mp_hands.Hands(
         max_num_hands=2, min_detection_confidence=0.7, min_tracking_confidence=0.5
@@ -84,6 +95,9 @@ def main():
     window_name = "projection"
     cv2.namedWindow(window_name, cv2.WND_PROP_FULLSCREEN)
     cv2.setWindowProperty(window_name, cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
+
+    if args.view_enhanced:
+        cv2.namedWindow("AI Vision (Enhanced)", cv2.WINDOW_NORMAL)
 
     # 5. Main Loop
     try:
@@ -95,13 +109,45 @@ def main():
                     print("Failed to grab frame")
                     break
 
-                # B. Process Hardware Input
-                # Note: We do NOT flip for processing to keep alignment with calibration,
-                # unless we want to fix the "mirror" effect later.
-                frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                # B. Enhance and Process for AI
+                # We enhance the BGR frame, then convert to RGB for MediaPipe
+                enhanced_bgr = enhancer.process(frame)
+                frame_rgb = cv2.cvtColor(enhanced_bgr, cv2.COLOR_BGR2RGB)
                 results = hands.process(frame_rgb)
 
-                # C. Orchestrate Logic
+                if args.view_enhanced:
+                    # Overlay params
+                    debug_img = enhanced_bgr.copy()
+                    cv2.putText(
+                        debug_img,
+                        f"Gamma: {enhancer.gamma:.1f} ([/])",
+                        (10, 30),
+                        cv2.FONT_HERSHEY_SIMPLEX,
+                        0.7,
+                        (0, 255, 0),
+                        2,
+                    )
+                    cv2.putText(
+                        debug_img,
+                        f"CLAHE: {enhancer.clahe.getClipLimit():.1f} ({{/}})",
+                        (10, 60),
+                        cv2.FONT_HERSHEY_SIMPLEX,
+                        0.7,
+                        (0, 255, 0),
+                        2,
+                    )
+
+                    # Resize for display if too large
+                    h, w = debug_img.shape[:2]
+                    target_h = 480
+                    if h > target_h:
+                        scale = target_h / h
+                        new_w = int(w * scale)
+                        debug_img = cv2.resize(debug_img, (new_w, target_h))
+
+                    cv2.imshow("AI Vision (Enhanced)", debug_img)
+
+                # C. Orchestrate Logic (uses results from enhanced frame)
                 output_image, actions = app.process_frame(frame, results)
 
                 # D. Update Hardware Output
@@ -162,6 +208,32 @@ def main():
                     break
                 elif key == ord("d"):
                     app.set_debug_mode(not app.debug_mode)
+
+                # Tuning Controls
+                elif key == ord("["):
+                    enhancer.set_gamma(enhancer.gamma - 0.1)
+                    app.map_config.set_vision_params(
+                        enhancer.gamma, enhancer.clahe_clip
+                    )
+                    print(f"Gamma: {enhancer.gamma:.1f}")
+                elif key == ord("]"):
+                    enhancer.set_gamma(enhancer.gamma + 0.1)
+                    app.map_config.set_vision_params(
+                        enhancer.gamma, enhancer.clahe_clip
+                    )
+                    print(f"Gamma: {enhancer.gamma:.1f}")
+                elif key == ord("{"):  # Shift + [
+                    enhancer.set_clahe_clip(enhancer.clahe.getClipLimit() - 0.5)
+                    app.map_config.set_vision_params(
+                        enhancer.gamma, enhancer.clahe_clip
+                    )
+                    print(f"CLAHE Clip: {enhancer.clahe.getClipLimit():.1f}")
+                elif key == ord("}"):  # Shift + ]
+                    enhancer.set_clahe_clip(enhancer.clahe.getClipLimit() + 0.5)
+                    app.map_config.set_vision_params(
+                        enhancer.gamma, enhancer.clahe_clip
+                    )
+                    print(f"CLAHE Clip: {enhancer.clahe.getClipLimit():.1f}")
 
     except Exception as e:
         print(f"An error occurred: {e}")

@@ -20,6 +20,7 @@ This project aims to provide tools for calibrating a projector-camera system.
   - **`map_system.py`**: Manages map viewport state (pan, zoom, rotation).
   - **`map_config.py`**: Handles persistence for map settings and global calibration data.
   - **`vision_enhancer.py`**: Pre-processes camera frames with Gamma/CLAHE to improve hand tracking under projector light.
+  - **`camera_pipeline.py`**: Manages a separate thread for camera capture and AI processing to decouple FPS from rendering.
 - **`calibrate.py`**: Entry point script. Performs camera calibration using chessboard images in `images/` and saves `camera_calibration.npz`.
 - **`projector_calibration.py`**: Entry point script. Displays a pattern, captures it, and computes the perspective transformation matrix.
 - **`hand_tracker.py`**: Entry point script. Continuously tracks hands, projecting landmarks and detecting gestures in real-time with a hierarchical menu system and SVG map support. Supports live vision tuning.
@@ -92,4 +93,15 @@ The ultimate goal of this project is to enable precise mapping between camera an
   - Integrated into `hand_tracker.py` processing loop.
   - Added live tuning controls (`[`, `]`, `{`, `}`) and persistence.
   - Added `--view-enhanced` CLI flag for debugging.
+
+## Feature Tracking: Performance Optimization
+
+- [x] **Phase 1: Dynamic Resolution Rendering**
+  - Implemented caching and quality scaling in `SVGLoader`.
+  - Updated `InteractiveApp` to use lower resolution (0.25x) during map interactions (Pan/Zoom).
+  - Uses `lru_cache` and quantized parameters to maximize cache hits.
+- [x] **Phase 2: Pipeline Parallelism**
+  - Created `CameraPipeline` to run Camera Capture -> Vision Enhancement -> MediaPipe in a separate thread.
+  - Decoupled UI rendering loop from Camera/AI processing latency.
+  - Implemented thread-safe data transfer using `VisionData` dataclass.
 

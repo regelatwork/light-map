@@ -65,7 +65,7 @@ sudo apt update && sudo apt install -y gstreamer1.0-tools gstreamer1.0-plugins-g
 
 ## Hand Tracking and Projection
 
-The `hand_tracker.py` script continuously gets images from the camera, detects up to two hands, and projects the positions of the detected hand landmarks onto a fullscreen projector window. It also displays:
+The `hand_tracker.py` script continuously gets images from the camera, detects up to two hands, and projects the positions of the detected hand landmarks onto a fullscreen projector window. It utilizes a **multi-threaded pipeline** to decouple camera processing from UI rendering, ensuring smooth interaction even during heavy computation. It also displays:
 
 - Real-time FPS (Frames Per Second).
 - The number of detected hands.
@@ -136,7 +136,7 @@ The `hand_tracker.py` script also features a hierarchical menu system, allowing 
 
 ## SVG Map Support
 
-The system can load and project SVG map files (e.g., floor plans). Map settings like pan, zoom, and rotation are automatically persisted in `map_state.json`.
+The system can load and project SVG map files (e.g., floor plans). Map settings like pan, zoom, and rotation are automatically persisted in `map_state.json`. To ensure high performance, the system employs **dynamic resolution rendering**, lowering quality during pan/zoom interactions and snapping to full resolution when static.
 
 ### Loading a Map
 

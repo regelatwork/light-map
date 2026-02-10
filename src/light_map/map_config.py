@@ -25,8 +25,8 @@ class MapEntry:
 class GlobalMapConfig:
     projector_ppi: float = 96.0
     last_used_map: Optional[str] = None
-    vision_gamma: float = 0.5
-    vision_clahe_clip: float = 2.0
+    vision_gamma: float = 1.0
+    vision_clahe_clip: float = 1.0
 
 
 @dataclass
@@ -53,8 +53,8 @@ class MapConfigManager:
             global_settings = GlobalMapConfig(
                 projector_ppi=global_data.get("projector_ppi", 96.0),
                 last_used_map=global_data.get("last_used_map"),
-                vision_gamma=global_data.get("vision_gamma", 0.5),
-                vision_clahe_clip=global_data.get("vision_clahe_clip", 2.0),
+                vision_gamma=global_data.get("vision_gamma", 1.0),
+                vision_clahe_clip=global_data.get("vision_clahe_clip", 1.0),
             )
 
             maps = {}

@@ -117,7 +117,7 @@ def main():
                         )
 
                         # Update Debug View if requested
-                        if args.debug:
+                        if app.debug_mode:
                             cv2.putText(
                                 output_image,
                                 f"Pipe FPS: {data.fps:.1f}",

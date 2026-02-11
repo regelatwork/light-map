@@ -70,7 +70,12 @@ ROOT_MENU = MenuItem(
                     should_close_on_trigger=False,
                 ),
                 MenuItem(
-                    title="Calibrate Scale",
+                    title="Set Scale",
+                    action_id=MenuActions.SET_MAP_SCALE,
+                    should_close_on_trigger=True,
+                ),
+                MenuItem(
+                    title="Calibrate PPI",
                     action_id=MenuActions.CALIBRATE_SCALE,
                     should_close_on_trigger=True,
                 ),

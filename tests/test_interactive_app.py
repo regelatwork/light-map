@@ -209,9 +209,9 @@ def test_process_frame_renders_map_in_menu_mode(app_config):
         bg = np.zeros((100, 100, 3), dtype=np.uint8)
         bg[:, :] = (0, 255, 0)
         loader_instance.render.return_value = bg
+        loader_instance.detect_grid_spacing.return_value = 50.0
 
         app.load_map("dummy.svg")
-
         output, actions = app.process_frame(frame, results)
 
         # Verify loader was called even in MENU mode

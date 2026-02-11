@@ -32,4 +32,5 @@ def test_map_settings_submenu():
     assert "Rotate CW" in sub_titles
     assert "Rotate CCW" in sub_titles
     assert "Reset View" in sub_titles
-    assert "Calibrate Scale" in sub_titles
+    assert "Calibrate PPI" in sub_titles
+    assert "Set Scale" in sub_titles

@@ -19,6 +19,12 @@ class ViewportState:
 class MapEntry:
     scale_factor: float = 1.0
     viewport: ViewportState = field(default_factory=ViewportState)
+    # Grid Scaling Fields
+    grid_spacing_svg: float = 0.0  # Default to 0.0 (Unknown)
+    grid_origin_svg_x: float = 0.0
+    grid_origin_svg_y: float = 0.0
+    physical_unit_inches: float = 1.0  # e.g. 1.0 for 1 inch
+    scale_factor_1to1: float = 1.0  # Calculated zoom level for 1:1 scale
 
 
 @dataclass
@@ -63,7 +69,13 @@ class MapConfigManager:
                     rotation=vp_data.get("rotation", 0.0),
                 )
                 maps[name] = MapEntry(
-                    scale_factor=entry_data.get("scale_factor", 1.0), viewport=viewport
+                    scale_factor=entry_data.get("scale_factor", 1.0),
+                    viewport=viewport,
+                    grid_spacing_svg=entry_data.get("grid_spacing_svg", 0.0),
+                    grid_origin_svg_x=entry_data.get("grid_origin_svg_x", 0.0),
+                    grid_origin_svg_y=entry_data.get("grid_origin_svg_y", 0.0),
+                    physical_unit_inches=entry_data.get("physical_unit_inches", 1.0),
+                    scale_factor_1to1=entry_data.get("scale_factor_1to1", 1.0),
                 )
 
             return MapConfigData(global_settings=global_settings, maps=maps)
@@ -115,4 +127,24 @@ class MapConfigManager:
         vp.y = y
         vp.zoom = zoom
         vp.rotation = rotation
+        self.save()
+
+    def save_map_grid_config(
+        self,
+        map_name: str,
+        grid_spacing_svg: float,
+        grid_origin_svg_x: float,
+        grid_origin_svg_y: float,
+        physical_unit_inches: float,
+        scale_factor_1to1: float,
+    ):
+        if map_name not in self.data.maps:
+            self.data.maps[map_name] = MapEntry()
+
+        entry = self.data.maps[map_name]
+        entry.grid_spacing_svg = grid_spacing_svg
+        entry.grid_origin_svg_x = grid_origin_svg_x
+        entry.grid_origin_svg_y = grid_origin_svg_y
+        entry.physical_unit_inches = physical_unit_inches
+        entry.scale_factor_1to1 = scale_factor_1to1
         self.save()

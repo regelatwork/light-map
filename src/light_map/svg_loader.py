@@ -6,6 +6,7 @@ import base64
 from io import BytesIO
 from PIL import Image
 import functools
+from collections import Counter
 
 
 class SVGLoader:
@@ -23,6 +24,102 @@ class SVGLoader:
         except Exception as e:
             print(f"Error loading SVG: {e}")
             self.svg = None
+
+    def detect_grid_spacing(self) -> float:
+        """
+        Analyzes the SVG geometry to find the most likely grid spacing.
+        Returns the spacing in SVG units. Returns 0.0 if no grid detected.
+        """
+        if not self.svg:
+            return 0.0
+
+        x_coords = []
+        y_coords = []
+
+        # Iterate through elements to find lines
+        for element in self.svg.elements():
+            if isinstance(element, svgelements.Path):
+                # Decompose path into segments
+                for segment in element:
+                    if isinstance(segment, svgelements.Line):
+                        p1 = segment.start
+                        p2 = segment.end
+                        
+                        # Check for vertical line
+                        if abs(p1.x - p2.x) < 0.1 and abs(p1.y - p2.y) > 10:
+                            x_coords.append(p1.x)
+                        # Check for horizontal line
+                        elif abs(p1.y - p2.y) < 0.1 and abs(p1.x - p2.x) > 10:
+                            y_coords.append(p1.y)
+                            
+            elif isinstance(element, svgelements.Rect):
+                # Rects contribute 2 vertical and 2 horizontal lines
+                x_coords.extend([element.x, element.x + element.width])
+                y_coords.extend([element.y, element.y + element.height])
+            
+            elif isinstance(element, (svgelements.Line, svgelements.SimpleLine)):
+                # SimpleLine uses x1, y1, x2, y2. Line uses start, end.
+                if hasattr(element, 'x1'):
+                    p1x, p1y = element.x1, element.y1
+                    p2x, p2y = element.x2, element.y2
+                else:
+                    p1x, p1y = element.start.x, element.start.y
+                    p2x, p2y = element.end.x, element.end.y
+
+                if abs(p1x - p2x) < 0.1:
+                    x_coords.append(p1x)
+                elif abs(p1y - p2y) < 0.1:
+                    y_coords.append(p1y)
+
+        # Filter and sort
+        def find_spacing(coords):
+            if not coords:
+                return 0.0
+            
+            # Round to nearest 0.1 to handle float errors
+            sorted_coords = sorted([round(c, 1) for c in coords])
+            unique_coords = sorted(list(set(sorted_coords)))
+            
+            if len(unique_coords) < 3:
+                return 0.0
+            
+            # Calculate gaps
+            gaps = []
+            for i in range(len(unique_coords) - 1):
+                gap = unique_coords[i+1] - unique_coords[i]
+                if gap > 1.0: # Ignore tiny gaps
+                    gaps.append(round(gap, 1))
+            
+            if not gaps:
+                return 0.0
+                
+            # Find mode
+            counts = Counter(gaps)
+            most_common = counts.most_common(1)
+            if not most_common:
+                return 0.0
+            
+            mode_gap, count = most_common[0]
+            
+            # Heuristic: The mode must appear at least twice (3 lines)
+            if count < 2:
+                return 0.0
+                
+            return mode_gap
+
+        # Collect coords from Rects properly
+        # Rect(x, y, w, h) -> Vertical lines at x, x+w. Horizontal at y, y+h.
+        
+        spacing_x = find_spacing(x_coords)
+        spacing_y = find_spacing(y_coords)
+        
+        # If both found, return average if close, otherwise X
+        if spacing_x > 0 and spacing_y > 0:
+            if abs(spacing_x - spacing_y) < 1.0:
+                return (spacing_x + spacing_y) / 2
+            return spacing_x # Prefer X or maybe specific logic
+        
+        return max(spacing_x, spacing_y)
 
     def render(
         self,

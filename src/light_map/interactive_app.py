@@ -69,6 +69,7 @@ class InteractiveApp:
         # Calibration State
         self.calib_stage = 0  # 0: Capture, 1: Confirm
         self.calib_candidate_ppi = 0.0
+        self.calib_map_grid_size_inches = 1.0  # Default grid reference size
 
     def set_debug_mode(self, enabled: bool):
         self.debug_mode = enabled
@@ -76,6 +77,29 @@ class InteractiveApp:
     def load_map(self, filename: str):
         """Loads an SVG map file and restores viewport."""
         self.svg_loader = SVGLoader(filename)
+
+        # Grid Detection & Auto-Config
+        entry = self.map_config.data.maps.get(filename)
+        
+        # If grid spacing is unknown (0.0), try to detect it
+        if not entry or entry.grid_spacing_svg <= 0:
+            spacing = self.svg_loader.detect_grid_spacing()
+            if spacing > 0:
+                print(f"Auto-detected grid spacing for {filename}: {spacing} SVG units")
+                
+                # Calculate initial 1:1 scale assumption (1 grid unit = 1 inch)
+                ppi = self.map_config.get_ppi()
+                physical_unit = 1.0
+                scale_1to1 = (ppi * physical_unit) / spacing
+                
+                self.map_config.save_map_grid_config(
+                    filename,
+                    grid_spacing_svg=spacing,
+                    grid_origin_svg_x=0.0,
+                    grid_origin_svg_y=0.0,
+                    physical_unit_inches=physical_unit,
+                    scale_factor_1to1=scale_1to1,
+                )
 
         # Restore viewport
         vp = self.map_config.get_map_viewport(filename)
@@ -129,6 +153,8 @@ class InteractiveApp:
             actions = self._process_map_mode(hands_data, current_time)
         elif self.mode == AppMode.CALIB_PPI:
             actions = self._process_calib_ppi_mode(hands_data, frame)
+        elif self.mode == AppMode.CALIB_MAP_GRID:
+            actions = self._process_calib_map_grid_mode(hands_data, current_time)
 
         # 4. Render Layers
         # A. Map Background
@@ -143,7 +169,7 @@ class InteractiveApp:
         # B. Menu/Overlay
         # Render menu only if NOT in calibration mode (or maybe background?)
         # If Calibrating, we might want to hide menu.
-        if self.mode == AppMode.CALIB_PPI:
+        if self.mode == AppMode.CALIB_PPI or self.mode == AppMode.CALIB_MAP_GRID:
             output = np.zeros(
                 (self.config.height, self.config.width, 3), dtype=np.uint8
             )
@@ -167,6 +193,8 @@ class InteractiveApp:
             self._draw_map_overlay(output)
         elif self.mode == AppMode.CALIB_PPI:
             self._draw_calib_overlay(output)
+        elif self.mode == AppMode.CALIB_MAP_GRID:
+            self._draw_calib_map_grid_overlay(output)
 
         # D. Debug Overlays
         if self.debug_mode:
@@ -235,6 +263,10 @@ class InteractiveApp:
             elif action == MenuActions.CALIBRATE_SCALE:
                 self.mode = AppMode.CALIB_PPI
                 self.calib_stage = 0  # Capture
+            elif action == MenuActions.SET_MAP_SCALE:
+                self.mode = AppMode.CALIB_MAP_GRID
+                # Default to 1 inch for now. Could implement sub-menu for 6in, 1ft, 1m later.
+                self.calib_map_grid_size_inches = 1.0 
             elif action == MenuActions.ROTATE_CW:
                 self.map_system.rotate(90)
                 self.save_current_map_state()
@@ -361,6 +393,151 @@ class InteractiveApp:
                     self.calib_stage = 0
 
         return []
+
+    def _process_calib_map_grid_mode(
+        self, hands_data: List[Dict], current_time: float
+    ) -> List[str]:
+        # Reuse map interaction logic for Pan/Zoom
+        # We can refactor _process_map_mode to be reusable or just call it?
+        # But _process_map_mode handles Exit logic differently.
+        # Let's copy-paste relevant parts for now or refactor later.
+        
+        self.is_interacting = False
+        
+        # 1. Zoom (Two Hands)
+        pointing_hands = [h for h in hands_data if h["gesture"] == GestureType.POINTING]
+        if len(pointing_hands) >= 2:
+            self.is_interacting = True
+            p1 = np.array(pointing_hands[0]["proj_pos"])
+            p2 = np.array(pointing_hands[1]["proj_pos"])
+            dist = np.linalg.norm(p1 - p2)
+
+            if self.zoom_gesture_start_time == 0:
+                self.zoom_gesture_start_time = current_time
+            elif current_time - self.zoom_gesture_start_time > config_vars.ZOOM_DELAY:
+                center = (p1 + p2) / 2
+                if self.zoom_start_dist is None:
+                    self.zoom_start_dist = dist
+                    self.zoom_start_level = self.map_system.state.zoom
+                    wx, wy = self.map_system.screen_to_world(center[0], center[1])
+                    self.zoom_start_world_center = (wx, wy)
+                else:
+                    factor = dist / self.zoom_start_dist
+                    new_zoom = self.zoom_start_level * factor
+                    self.map_system.state.zoom = new_zoom
+                    
+                    wx, wy = self.zoom_start_world_center
+                    new_pan_x = center[0] - wx * new_zoom
+                    new_pan_y = center[1] - wy * new_zoom
+                    self.map_system.state.x = new_pan_x
+                    self.map_system.state.y = new_pan_y
+        else:
+            self.zoom_gesture_start_time = 0
+            self.zoom_start_dist = None
+            self.zoom_start_world_center = None
+
+        # 2. Pan (Fist)
+        if self.zoom_start_dist is None:
+            if hands_data and hands_data[0]["gesture"] == config_vars.PAN_GESTURE:
+                self.is_interacting = True
+                pos = hands_data[0]["proj_pos"]
+                if self.last_cursor_pos is not None:
+                    dx = pos[0] - self.last_cursor_pos[0]
+                    dy = pos[1] - self.last_cursor_pos[1]
+                    self.map_system.pan(dx, dy)
+                self.last_cursor_pos = pos
+            else:
+                self.last_cursor_pos = None
+
+        # 3. Confirm (Victory)
+        if hands_data and hands_data[0]["gesture"] == GestureType.VICTORY:
+             # Debounce? Let's require hold?
+             # For now, instant confirm is risky. Let's reuse SUMMON_TIME logic or similar.
+             if self.summon_gesture_start_time == 0:
+                 self.summon_gesture_start_time = current_time
+             elif current_time - self.summon_gesture_start_time > 1.0: # 1 sec hold
+                 # Save Config
+                 filename = self.svg_loader.filename if self.svg_loader else "unknown"
+                 current_zoom = self.map_system.state.zoom
+                 ppi = self.map_config.get_ppi()
+                 
+                 # Derive grid spacing from current alignment
+                 # grid_spacing_svg = (PPI * physical_unit) / current_zoom
+                 derived_spacing = (ppi * self.calib_map_grid_size_inches) / current_zoom
+                 
+                 print(f"Calibrated {filename}: Spacing={derived_spacing:.1f}, Unit={self.calib_map_grid_size_inches}in")
+                 
+                 self.map_config.save_map_grid_config(
+                     filename,
+                     grid_spacing_svg=derived_spacing,
+                     grid_origin_svg_x=0.0, # Origin logic not implemented yet
+                     grid_origin_svg_y=0.0,
+                     physical_unit_inches=self.calib_map_grid_size_inches,
+                     scale_factor_1to1=current_zoom
+                 )
+                 
+                 self.mode = AppMode.MENU
+                 self.summon_gesture_start_time = 0
+        else:
+            self.summon_gesture_start_time = 0
+            
+        return []
+
+    def _draw_calib_map_grid_overlay(self, image):
+        # Draw physical grid based on PPI
+        ppi = self.map_config.get_ppi()
+        physical_unit = self.calib_map_grid_size_inches
+        step = int(ppi * physical_unit)
+        
+        if step > 0:
+            h, w = image.shape[:2]
+            cx, cy = w // 2, h // 2
+            
+            # Draw Center Crosshairs (Thick Green with Black Outline)
+            # Vertical
+            cv2.line(image, (cx, 0), (cx, h), (0, 0, 0), 4) # Outline
+            cv2.line(image, (cx, 0), (cx, h), (0, 255, 0), 2) # Green
+            
+            # Horizontal
+            cv2.line(image, (0, cy), (w, cy), (0, 0, 0), 4) # Outline
+            cv2.line(image, (0, cy), (w, cy), (0, 255, 0), 2) # Green
+            
+            # Draw Grid Lines relative to center
+            # Right
+            for x in range(cx + step, w, step):
+                cv2.line(image, (x, 0), (x, h), (0, 0, 0), 2)
+                cv2.line(image, (x, 0), (x, h), (0, 255, 0), 1)
+            # Left
+            for x in range(cx - step, -1, -step):
+                cv2.line(image, (x, 0), (x, h), (0, 0, 0), 2)
+                cv2.line(image, (x, 0), (x, h), (0, 255, 0), 1)
+            # Down
+            for y in range(cy + step, h, step):
+                cv2.line(image, (0, y), (w, y), (0, 0, 0), 2)
+                cv2.line(image, (0, y), (w, y), (0, 255, 0), 1)
+            # Up
+            for y in range(cy - step, -1, -step):
+                cv2.line(image, (0, y), (w, y), (0, 0, 0), 2)
+                cv2.line(image, (0, y), (w, y), (0, 255, 0), 1)
+
+        cv2.putText(
+            image,
+            f"Set Scale: Align Map to {physical_unit} inch Grid",
+            (50, 100),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            1,
+            (0, 255, 0),
+            2,
+        )
+        cv2.putText(
+            image,
+            "Confirm: VICTORY (Hold 1s)",
+            (50, 150),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.8,
+            (255, 255, 255),
+            2,
+        )
 
     def _draw_calib_overlay(self, image):
         if self.calib_stage == 0:

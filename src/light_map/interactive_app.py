@@ -100,6 +100,8 @@ class InteractiveApp:
                     physical_unit_inches=physical_unit,
                     scale_factor_1to1=scale_1to1,
                 )
+        else:
+            print(f"Grid spacing for {filename} loaded from config: {entry.grid_spacing_svg} SVG units")
 
         # Restore viewport
         vp = self.map_config.get_map_viewport(filename)
@@ -606,6 +608,21 @@ class InteractiveApp:
             (255, 255, 255),
             2,
         )
+        
+        # Check for uncalibrated grid
+        if self.svg_loader:
+             entry = self.map_config.data.maps.get(self.svg_loader.filename)
+             if not entry or entry.grid_spacing_svg <= 0:
+                 cv2.putText(
+                     image,
+                     "GRID UNCALIBRATED - Use 'Set Scale'",
+                     (50, 100),
+                     cv2.FONT_HERSHEY_SIMPLEX,
+                     1,
+                     (0, 0, 255),
+                     2,
+                 )
+
         # Zoom level
         zoom_pct = int(self.map_system.state.zoom * 100)
         cv2.putText(

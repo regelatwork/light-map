@@ -11,6 +11,7 @@ def mock_menu_state():
         active_items = []
         item_rects = []
         hovered_item_index = -1
+        feedback_item_index = -1
 
     return MockState()
 

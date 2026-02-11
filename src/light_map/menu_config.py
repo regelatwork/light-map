@@ -27,6 +27,7 @@ class MenuColors:
     NORMAL: Tuple[int, int, int] = (20, 20, 20)  # Very Dark Gray
     HOVER: Tuple[int, int, int] = (60, 60, 60)  # Dark Gray
     SELECTED: Tuple[int, int, int] = (0, 100, 0)  # Dark Green
+    CONFIRM: Tuple[int, int, int] = (0, 255, 0)  # Bright Green
     BACKGROUND: Tuple[int, int, int] = (
         0,
         0,

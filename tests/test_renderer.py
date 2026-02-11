@@ -21,12 +21,12 @@ def visible_state():
     ]
     return MenuState(
         current_menu_title="Main Menu",
-        active_items=items,
-        item_rects=rects,
-        hovered_item_index=0,  # Item 1 is hovered
-        prime_progress=0.0,
-        summon_progress=0.0,
-        just_triggered_action=None,
+                    active_items=items,
+                    item_rects=rects,
+                    hovered_item_index=0,  # Item 1 is hovered
+                    feedback_item_index=None,
+                    prime_progress=0.0,
+                    summon_progress=0.0,        just_triggered_action=None,
         cursor_pos=(150, 125),
         is_visible=True,
     )
@@ -36,12 +36,12 @@ def test_render_not_visible(renderer):
     # Create a MenuState that is not visible
     state = MenuState(
         current_menu_title="Main Menu",
-        active_items=[],
-        item_rects=[],
-        hovered_item_index=None,
-        prime_progress=0.0,
-        summon_progress=0.0,
-        just_triggered_action=None,
+                    active_items=[],
+                    item_rects=[],
+                    hovered_item_index=None,
+                    feedback_item_index=None,
+                    prime_progress=0.0,
+                    summon_progress=0.0,        just_triggered_action=None,
         cursor_pos=None,
         is_visible=False,
     )

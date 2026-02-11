@@ -30,6 +30,7 @@ class MenuState:
     active_items: List[MenuItem]
     item_rects: List[Tuple[int, int, int, int]]  # (x, y, w, h)
     hovered_item_index: Optional[int]
+    feedback_item_index: Optional[int]  # Item to show as "Confirmed"
     prime_progress: float  # 0.0 to 1.0
     summon_progress: float  # 0.0 to 1.0
     just_triggered_action: Optional[str]
@@ -58,6 +59,11 @@ class MenuSystem:
         self.prime_start_time: float = 0.0
         self.last_selection_gesture_time: float = 0.0
         self.last_hovered_index: Optional[int] = None
+
+        # Feedback State
+        self.feedback_item_index: Optional[int] = None
+        self.feedback_start_time: float = 0.0
+        self.awaiting_release: bool = False
 
         # Input History for Pinning
         self.history: Deque[Tuple[float, int, int]] = deque(maxlen=40)
@@ -100,9 +106,19 @@ class MenuSystem:
 
         # 4. Cursor Pinning Logic
         active_cursor = (cx, cy)
+        
+        # Check for release
+        if self.awaiting_release:
+            if gesture != SELECT_GESTURE:
+                self.awaiting_release = False
+        
+        # Feedback Timer
+        if self.feedback_item_index is not None:
+            if now - self.feedback_start_time > 0.5:
+                self.feedback_item_index = None
 
         if self.state == MenuSystemState.ACTIVE:
-            if gesture == SELECT_GESTURE:
+            if gesture == SELECT_GESTURE and not self.awaiting_release:
                 if not self.is_pinning:
                     target_time = now - LOCK_DELAY
                     best_pt = (cx, cy)
@@ -118,7 +134,18 @@ class MenuSystem:
                     active_cursor = self.pinned_cursor
 
                 if now - self.prime_start_time >= PRIMING_TIME:
+                    # Capture triggering item index BEFORE resetting
+                    # trigger_selection returns action ID, but we need the index for feedback
+                    # We can get it from last_hovered_index (sticky selection)
+                    triggering_index = self.last_hovered_index
+                    
                     just_triggered_action = self._trigger_selection()
+                    
+                    if just_triggered_action:
+                        self.awaiting_release = True
+                        self.feedback_item_index = triggering_index
+                        self.feedback_start_time = now
+                        
                     self.prime_start_time = now
                     self.is_pinning = False
                     self.pinned_cursor = None
@@ -168,6 +195,7 @@ class MenuSystem:
             active_items=active_items,
             item_rects=item_rects,
             hovered_item_index=self.last_hovered_index,
+            feedback_item_index=self.feedback_item_index,
             prime_progress=prime_prog,
             summon_progress=summon_prog,
             just_triggered_action=just_triggered_action,
@@ -287,3 +315,6 @@ class MenuSystem:
         self.is_pinning = False
         self.pinned_cursor = None
         self.last_hovered_index = None
+        self.awaiting_release = False
+        self.feedback_item_index = None
+        self.feedback_start_time = 0.0

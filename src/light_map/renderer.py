@@ -51,6 +51,12 @@ class Renderer:
                 border_color = self.colors.HOVER
                 border_thickness = 4  # Thicker border
                 text_color = self.colors.HOVER  # Optional: Match text color
+            
+            # Feedback Style (Overrides Hover)
+            if i == state.feedback_item_index:
+                border_color = self.colors.CONFIRM
+                border_thickness = 6
+                text_color = self.colors.CONFIRM
 
             # Draw Item (No Fill to avoid projection interference)
             cv2.rectangle(image, (x, y), (x + w, y + h), border_color, border_thickness)

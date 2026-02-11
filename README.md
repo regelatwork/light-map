@@ -97,27 +97,6 @@ The system currently recognizes the following gestures:
 
 1. Press 'q' to quit the application.
 
-## Vision Enhancement (Interference Mitigation)
-
-To improve hand tracking reliability when projecting bright images, the system includes a real-time vision enhancement pipeline (Gamma Correction + CLAHE).
-
-### Live Tuning
-
-You can adjust the vision parameters while the application is running to find the optimal settings for your lighting conditions. The settings are automatically saved to `map_state.json`.
-
-- **`[` / `]`**: Decrease / Increase Gamma (Darkens/Brightens highlights).
-- **`{` / `}`**: Decrease / Increase CLAHE Clip Limit (Adjusts local contrast).
-
-### Debug Mode
-
-To see exactly what the AI sees (the enhanced camera frame), run with the `--view-enhanced` flag:
-
-```bash
-python hand_tracker.py --view-enhanced
-```
-
-This opens a secondary window showing the pre-processed video feed with the current Gamma and CLAHE values overlaid.
-
 ## Hierarchical Menu System
 
 The `hand_tracker.py` script also features a hierarchical menu system, allowing for interactive control using hand gestures.

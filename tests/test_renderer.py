@@ -75,6 +75,9 @@ def test_render_with_background(renderer, visible_state):
     assert np.array_equal(image[50, 50], [0, 0, 255])
 
     # Check that menu is drawn over background
-    # Check a point inside the first item rect (150, 125)
-    # The item color is likely not pure red.
-    assert not np.array_equal(image[125, 150], [0, 0, 255])
+    # Since we use No Fill now, the center should be the original background
+    assert np.array_equal(image[125, 150], [0, 0, 255])
+    
+    # But the BORDER should be changed (Item 1 rect: (100, 100, 200, 50))
+    # Border at Y=100
+    assert not np.array_equal(image[100, 150], [0, 0, 255])

@@ -2,6 +2,7 @@ import pytest
 from unittest.mock import MagicMock, patch
 from light_map.camera import Camera
 
+
 @pytest.fixture
 def mock_capture():
     """Patches cv2.VideoCapture and returns the mock object."""
@@ -13,6 +14,7 @@ def mock_capture():
         mock_instance.isOpened.return_value = True
         yield mock
 
+
 @pytest.fixture
 def mock_is_pi():
     """Patches Camera._is_raspberry_pi and returns the mock."""
@@ -20,10 +22,11 @@ def mock_is_pi():
         mock.return_value = False
         yield mock
 
+
 def test_camera_initialization_standard(mock_capture, mock_is_pi):
     # Setup
     mock_is_pi.return_value = False
-    
+
     # Test
     cam = Camera(index=1)
 
@@ -31,6 +34,7 @@ def test_camera_initialization_standard(mock_capture, mock_is_pi):
     mock_capture.assert_called_with(1)
     # The instance returned by mock_capture() is what cam.cap should be
     assert cam.cap == mock_capture.return_value
+
 
 def test_camera_read_success(mock_capture):
     # Setup
@@ -45,6 +49,7 @@ def test_camera_read_success(mock_capture):
     # Verify
     assert frame == fake_frame
     mock_instance.read.assert_called_once()
+
 
 def test_camera_context_manager(mock_capture):
     # Setup

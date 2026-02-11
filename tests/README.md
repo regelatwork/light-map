@@ -57,6 +57,11 @@ The following components are covered by unit tests:
 - **`test_vision_enhancer.py`**: Tests the vision enhancement pipeline (Gamma correction, CLAHE).
 - **`test_camera_pipeline.py`**: Tests the multi-threaded camera processing pipeline.
 - **`test_svg_loader_performance.py`**: Tests dynamic resolution rendering and caching performance.
+- **`test_renderer_dimming.py`**: Verifies map opacity rendering (dimming/hiding) for UI interference mitigation.
+- **`test_menu_sticky_selection.py`**: Tests the "sticky" menu selection logic where the last hovered item remains selected.
+- **`test_map_config_vision.py`**: Tests persistence of vision enhancement settings (channels, gamma, CLAHE).
+- **`test_menu_config_structure.py`**: Verifies the hierarchical menu structure definition (Root, Submenus, Actions).
+- **`test_menu_pagination.py`**: Tests menu pagination logic for handling long lists of items.
 
 ## Style Guidelines
 

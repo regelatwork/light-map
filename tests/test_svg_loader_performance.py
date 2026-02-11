@@ -9,13 +9,16 @@ sys.path.insert(0, os.path.abspath("src"))
 
 from light_map.svg_loader import SVGLoader
 
+
 class TestSVGLoaderPerformance(unittest.TestCase):
     def setUp(self):
         # Create a dummy SVG file for testing
         self.svg_path = "tests/test_perf.svg"
         with open(self.svg_path, "w") as f:
-            f.write('<svg width="100" height="100"><rect x="10" y="10" width="80" height="80" fill="red" /></svg>')
-        
+            f.write(
+                '<svg width="100" height="100"><rect x="10" y="10" width="80" height="80" fill="red" /></svg>'
+            )
+
         self.loader = SVGLoader(self.svg_path)
 
     def tearDown(self):
@@ -27,7 +30,7 @@ class TestSVGLoaderPerformance(unittest.TestCase):
         w, h = 200, 100
         img = self.loader.render(w, h, quality=0.5)
         self.assertEqual(img.shape, (h, w, 3))
-        
+
         img_full = self.loader.render(w, h, quality=1.0)
         self.assertEqual(img_full.shape, (h, w, 3))
 
@@ -35,13 +38,13 @@ class TestSVGLoaderPerformance(unittest.TestCase):
         """Verify that repeated calls with same parameters return the same object."""
         # First call
         img1 = self.loader.render(100, 100, quality=1.0)
-        
+
         # Second call with same params
         img2 = self.loader.render(100, 100, quality=1.0)
-        
+
         # Should be the same object ID due to lru_cache
         self.assertIs(img1, img2, "Cached object should be identical")
-        
+
         # Call with different params
         img3 = self.loader.render(100, 100, quality=0.5)
         self.assertIsNot(img1, img3, "Different params should return new object")
@@ -51,9 +54,11 @@ class TestSVGLoaderPerformance(unittest.TestCase):
         # render(..., scale_factor=1.00001) should map to 1.0
         img1 = self.loader.render(100, 100, scale_factor=1.00001)
         img2 = self.loader.render(100, 100, scale_factor=1.00002)
-        
-        self.assertIs(img1, img2, "Quantization should map slight variations to same cache entry")
-        
+
+        self.assertIs(
+            img1, img2, "Quantization should map slight variations to same cache entry"
+        )
+
         # Large variation should differ
         img3 = self.loader.render(100, 100, scale_factor=1.1)
         self.assertIsNot(img1, img3)
@@ -65,18 +70,18 @@ class TestSVGLoaderPerformance(unittest.TestCase):
         Better to mock _render_internal and check arguments?
         But _render_internal is the one doing the work.
         We can check if the result is upscaled (blurry) vs sharp, but that's subjective.
-        
+
         Let's patch cv2.resize to see if it gets called, which implies upscaling occurred.
         """
-        with patch('cv2.resize') as mock_resize:
+        with patch("cv2.resize") as mock_resize:
             # Configure mock to return a dummy image of correct size so render doesn't crash
             mock_resize.return_value = np.zeros((100, 200, 3), dtype=np.uint8)
-            
+
             self.loader.render(200, 100, quality=0.5)
-            
+
             # Should call resize once
             self.assertTrue(mock_resize.called)
-            
+
             # Check args: source image should be 100x50 (0.5 scale)
             args, _ = mock_resize.call_args
             src_img = args[0]
@@ -85,12 +90,12 @@ class TestSVGLoaderPerformance(unittest.TestCase):
     def test_quality_clamping(self):
         """Verify quality is clamped between 0.1 and 1.0"""
         # We can inspect the quantized quality passed to _render_internal
-        
+
         # We need to bypass the lru_cache wrapper to inspect calls, or just trust the logic.
         # Let's trust logic but verify behavior:
-        
+
         # Quality 0.0 -> Should behave like 0.1
-        with patch('cv2.resize') as mock_resize:
+        with patch("cv2.resize") as mock_resize:
             mock_resize.return_value = np.zeros((100, 100, 3), dtype=np.uint8)
             self.loader.render(100, 100, quality=0.0)
             args, _ = mock_resize.call_args
@@ -98,9 +103,10 @@ class TestSVGLoaderPerformance(unittest.TestCase):
             self.assertEqual(args[0].shape, (10, 10, 3))
 
         # Quality 2.0 -> Should behave like 1.0 (no resize)
-        with patch('cv2.resize') as mock_resize:
+        with patch("cv2.resize") as mock_resize:
             self.loader.render(100, 100, quality=2.0)
             self.assertFalse(mock_resize.called)
+
 
 if __name__ == "__main__":
     unittest.main()

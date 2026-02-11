@@ -117,9 +117,9 @@ def test_navigation_and_hover(menu_system, mock_time):
     assert state.hovered_item_index == 1
     assert state.active_items[1].title == "Item 2"
 
-    # Hover Gap (None)
+    # Hover Gap (Should NOT clear hover - sticky logic)
     state = menu_system.update(500, 450, GestureType.OPEN_PALM)  # Y=450 is gap
-    assert state.hovered_item_index is None
+    assert state.hovered_item_index == 1 # Still Item 2
 
 
 def test_pinning_logic(menu_system, mock_time):
@@ -219,4 +219,3 @@ def test_overflow_layout(menu_system, mock_time):
     # Page 0 should show Items 0-5 + "Next Page >" = 7 items.
     assert len(state.active_items) == 7
     assert state.active_items[-1].title == "Next Page >"
-

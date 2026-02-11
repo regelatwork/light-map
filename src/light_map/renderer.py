@@ -10,17 +10,27 @@ class Renderer:
         self.screen_height = screen_height
         self.colors = MenuColors()
 
-    def render(self, state: MenuState, background: np.ndarray = None) -> np.ndarray:
+    def render(
+        self, state: MenuState, background: np.ndarray = None, map_opacity: float = 1.0
+    ) -> np.ndarray:
         """
         Renders the current menu state onto an image.
 
         Args:
             state: The current menu state.
             background: Optional BGR image to use as background. If None, creates a black image.
+            map_opacity: Opacity of the background map (0.0 to 1.0).
         """
-        if background is not None:
+        if background is not None and map_opacity > 0.0:
             # Create a copy to avoid modifying the original background
-            image = background.copy()
+            if map_opacity < 1.0:
+                # Dim the background
+                # dst = src1*alpha + src2*beta + gamma
+                # We want: background * opacity + black * (1-opacity)
+                # simpler: background * opacity
+                image = cv2.convertScaleAbs(background, alpha=map_opacity, beta=0)
+            else:
+                image = background.copy()
         else:
             image = np.zeros((self.screen_height, self.screen_width, 3), dtype=np.uint8)
 
@@ -31,16 +41,20 @@ class Renderer:
             rect = state.item_rects[i]
             x, y, w, h = rect
 
-            color = self.colors.NORMAL
-            if i == state.hovered_item_index:
-                color = self.colors.HOVER
-
-            # Fill
-            cv2.rectangle(image, (x, y), (x + w, y + h), color, -1)
-            # Border
-            cv2.rectangle(image, (x, y), (x + w, y + h), self.colors.BORDER, 2)
-
+            # Default Style
+            border_color = self.colors.BORDER
+            border_thickness = 2
             text_color = self.colors.TEXT
+
+            # Hovered Style
+            if i == state.hovered_item_index:
+                border_color = self.colors.HOVER
+                border_thickness = 4  # Thicker border
+                text_color = self.colors.HOVER  # Optional: Match text color
+
+            # Draw Item (No Fill to avoid projection interference)
+            cv2.rectangle(image, (x, y), (x + w, y + h), border_color, border_thickness)
+
             cv2.putText(
                 image,
                 item.title,

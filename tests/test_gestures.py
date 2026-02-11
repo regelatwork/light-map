@@ -1,15 +1,18 @@
 import pytest
 from light_map.gestures import is_finger_extended, detect_gesture
 
+
 class MockLandmark:
     def __init__(self, x, y):
         self.x = x
         self.y = y
 
+
 @pytest.fixture
 def mock_hand():
     """Returns a list of 21 MockLandmarks initialized to (0.5, 0.5)."""
     return [MockLandmark(0.5, 0.5) for _ in range(21)]
+
 
 def test_is_finger_extended_index_open(mock_hand):
     # Simulate an open index finger (pointing up)
@@ -19,6 +22,7 @@ def test_is_finger_extended_index_open(mock_hand):
 
     assert is_finger_extended(mock_hand, "Index")
 
+
 def test_is_finger_extended_index_closed(mock_hand):
     # Simulate a closed index finger
     mock_hand[0] = MockLandmark(0.5, 1.0)  # Wrist
@@ -27,12 +31,13 @@ def test_is_finger_extended_index_closed(mock_hand):
 
     assert not is_finger_extended(mock_hand, "Index")
 
+
 def test_detect_gesture_open_palm(mock_hand):
     # Wrist
     mock_hand[0] = MockLandmark(0.5, 1.0)
-    
+
     # Thumb: Extended (Tip far from Pinky MCP)
-    mock_hand[17] = MockLandmark(0.9, 0.5) # Pinky MCP
+    mock_hand[17] = MockLandmark(0.9, 0.5)  # Pinky MCP
     mock_hand[5] = MockLandmark(0.5, 0.5)  # Index MCP
     mock_hand[4] = MockLandmark(0.1, 0.5)  # Tip (Far Left)
     mock_hand[3] = MockLandmark(0.4, 0.5)  # IP
@@ -45,6 +50,7 @@ def test_detect_gesture_open_palm(mock_hand):
 
     assert detect_gesture(mock_hand, "Right") == "Open Palm"
 
+
 def test_detect_gesture_closed_fist(mock_hand):
     # Wrist
     mock_hand[0] = MockLandmark(0.5, 1.0)
@@ -52,7 +58,7 @@ def test_detect_gesture_closed_fist(mock_hand):
     # Thumb: Closed
     mock_hand[17] = MockLandmark(0.9, 0.5)
     mock_hand[5] = MockLandmark(0.5, 0.5)
-    mock_hand[4] = MockLandmark(0.8, 0.5) # Tip near Pinky MCP
+    mock_hand[4] = MockLandmark(0.8, 0.5)  # Tip near Pinky MCP
     mock_hand[3] = MockLandmark(0.7, 0.5)
 
     # Fingers: Closed (Tip lower than PIP)
@@ -62,6 +68,7 @@ def test_detect_gesture_closed_fist(mock_hand):
         mock_hand[pip_idx] = MockLandmark(0.5, 0.5)  # Mid
 
     assert detect_gesture(mock_hand, "Right") == "Closed Fist"
+
 
 def test_detect_gesture_gun(mock_hand):
     # Wrist
@@ -84,6 +91,7 @@ def test_detect_gesture_gun(mock_hand):
 
     assert detect_gesture(mock_hand, "Right") == "Gun"
 
+
 def test_detect_gesture_pointing(mock_hand):
     # Wrist
     mock_hand[0] = MockLandmark(0.5, 1.0)
@@ -105,11 +113,12 @@ def test_detect_gesture_pointing(mock_hand):
 
     assert detect_gesture(mock_hand, "Right") == "Pointing"
 
+
 def test_detect_gesture_tucked_thumb_not_gun(mock_hand):
     # Wrist
     mock_hand[0] = MockLandmark(0.5, 1.0)
     mock_hand[17] = MockLandmark(0.9, 0.5)
-    mock_hand[5] = MockLandmark(0.5, 0.8) # Index MCP (Lower)
+    mock_hand[5] = MockLandmark(0.5, 0.8)  # Index MCP (Lower)
 
     # Thumb: Tucked (close to index finger)
     mock_hand[4] = MockLandmark(0.55, 0.7)

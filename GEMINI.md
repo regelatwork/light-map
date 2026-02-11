@@ -19,7 +19,6 @@ This project aims to provide tools for calibrating a projector-camera system.
   - **`svg_loader.py`**: Loads and renders SVG files using `svgelements`.
   - **`map_system.py`**: Manages map viewport state (pan, zoom, rotation).
   - **`map_config.py`**: Handles persistence for map settings and global calibration data.
-  - **`vision_enhancer.py`**: Pre-processes camera frames with Gamma/CLAHE to improve hand tracking under projector light.
   - **`camera_pipeline.py`**: Manages a separate thread for camera capture and AI processing to decouple FPS from rendering.
 - **`calibrate.py`**: Entry point script. Performs camera calibration using chessboard images in `images/` and saves `camera_calibration.npz`.
 - **`projector_calibration.py`**: Entry point script. Displays a pattern, captures it, and computes the perspective transformation matrix.
@@ -41,6 +40,7 @@ The ultimate goal of this project is to enable precise mapping between camera an
 - **`map_state.json`**: Stores persistent application state, including map viewports, PPI calibration, and vision enhancement parameters.
 - **`requirements.txt`**: Lists the Python dependencies for this project.
 - **`README.md`**: Provides instructions on how to use the scripts in this project.
+- **`tests/README.md`**: Documentation for the unit testing suite, including coverage and running instructions.
 - **`GEMINI.md`**: This file, providing a high-level overview of the project.
 - **`images/`**: A directory containing the chessboard images used for camera calibration.
 - **`.venv/`**: The Python virtual environment.
@@ -88,11 +88,19 @@ The ultimate goal of this project is to enable precise mapping between camera an
 
 ## Feature Tracking: Projection Interference Mitigation
 
-- [x] **Phase 1: Vision Enhancer Pipeline**
-  - Implemented `VisionEnhancer` with Gamma Correction and CLAHE.
-  - Integrated into `hand_tracker.py` processing loop.
-  - Added live tuning controls (`[`, `]`, `{`, `}`) and persistence.
-  - Added `--view-enhanced` CLI flag for debugging.
+- [ ] **Phase 1: Vision Enhancer Pipeline**
+  - *Status: Reverted (Feb 2026). Gamma/CLAHE proved ineffective and degraded tracking.*
+- [ ] **Phase 2: Channel Selection & Color Isolation**
+  - *Status: Reverted (Feb 2026). Single channel processing did not improve robustness.*
+- [ ] **Phase 3: Static Background Subtraction (Manual)**
+  - *Status: Reverted (Feb 2026). Removed background but did not correct hand texture/color corruption.*
+- [x] **Phase 4: UI-Based Interference Mitigation**
+  - **Menu Isolation**: Hide map (opacity 0.0) when `MenuSystem` is active.
+  - **Interactive Dimming**: Dim map (opacity 0.5) when in `Map Mode` (Pan/Zoom).
+  - Implemented in `Renderer.render` and `InteractiveApp`.
+- [x] **Phase 5: Sticky Selection & Minimalist UI**
+  - **Sticky Selection**: Last hovered menu item remains selected until a new item is hovered. Prevents accidental deselection during hand closing.
+  - **Perimeter Highlight**: Replaced filled buttons with thick, high-contrast borders to minimize light projection on the hand.
 
 ## Feature Tracking: Performance Optimization
 

@@ -148,7 +148,18 @@ class InteractiveApp:
             )
             # Calibration Overlay is drawn in _draw_calib_overlay
         else:
-            output = self.renderer.render(self.menu_state, background=map_image)
+            # Determine Map Opacity based on mode
+            map_opacity = 1.0
+            if self.menu_state.is_visible:
+                # Menu Isolation: Hide map completely when menu is open
+                map_opacity = 0.0
+            elif self.mode == AppMode.MAP:
+                # Interactive Dimming: Dim map slightly to reduce glare
+                map_opacity = 0.5
+
+            output = self.renderer.render(
+                self.menu_state, background=map_image, map_opacity=map_opacity
+            )
 
         # C. Overlays
         if self.mode == AppMode.MAP:
@@ -241,7 +252,7 @@ class InteractiveApp:
         self, hands_data: List[Dict], current_time: float
     ) -> List[str]:
         self.is_interacting = False
-        
+
         # 1. Zoom
         pointing_hands = [h for h in hands_data if h["gesture"] == GestureType.POINTING]
         if len(pointing_hands) >= 2:

@@ -57,6 +57,7 @@ class MenuSystem:
         self.summon_start_time: float = 0.0
         self.prime_start_time: float = 0.0
         self.last_selection_gesture_time: float = 0.0
+        self.last_hovered_index: Optional[int] = None
 
         # Input History for Pinning
         self.history: Deque[Tuple[float, int, int]] = deque(maxlen=40)
@@ -137,14 +138,21 @@ class MenuSystem:
 
         # 5. Layout & Hit Testing
         active_items, item_rects = self._calculate_layout()
-        hovered_index = None
+        current_hovered_index = None
 
         if self.state == MenuSystemState.ACTIVE:
             cursor_x, cursor_y = active_cursor
             for i, (rx, ry, rw, rh) in enumerate(item_rects):
                 if rx <= cursor_x <= rx + rw and ry <= cursor_y <= ry + rh:
-                    hovered_index = i
+                    current_hovered_index = i
                     break
+
+            # Sticky Logic: Only update if we are hovering a NEW item.
+            # If we drift off, keep the old one.
+            if current_hovered_index is not None:
+                self.last_hovered_index = current_hovered_index
+        else:
+            self.last_hovered_index = None
 
         # 6. Construct State DTO
         summon_prog = 0.0
@@ -159,7 +167,7 @@ class MenuSystem:
             current_menu_title=self.current_node.title,
             active_items=active_items,
             item_rects=item_rects,
-            hovered_item_index=hovered_index,
+            hovered_item_index=self.last_hovered_index,
             prime_progress=prime_prog,
             summon_progress=summon_prog,
             just_triggered_action=just_triggered_action,
@@ -181,7 +189,7 @@ class MenuSystem:
         total_items = len(all_items)
         max_per_page = MAX_VISIBLE_ITEMS
         display_items = []
-        
+
         if total_items <= max_per_page:
             display_items = all_items
         else:
@@ -190,12 +198,24 @@ class MenuSystem:
             start = self.page_index * page_size
             end = start + page_size
             chunk = all_items[start:end]
-            
+
             if has_prev:
-                display_items.append(MenuItem(title="< Prev Page", action_id=MenuActions.PAGE_PREV, should_close_on_trigger=False))
+                display_items.append(
+                    MenuItem(
+                        title="< Prev Page",
+                        action_id=MenuActions.PAGE_PREV,
+                        should_close_on_trigger=False,
+                    )
+                )
             display_items.extend(chunk)
             if total_items > end:
-                display_items.append(MenuItem(title="Next Page >", action_id=MenuActions.PAGE_NEXT, should_close_on_trigger=False))
+                display_items.append(
+                    MenuItem(
+                        title="Next Page >",
+                        action_id=MenuActions.PAGE_NEXT,
+                        should_close_on_trigger=False,
+                    )
+                )
 
         count = len(display_items)
         if count == 0:
@@ -217,38 +237,39 @@ class MenuSystem:
         return display_items, rects
 
     def _trigger_selection(self) -> Optional[str]:
-        active_items, item_rects = self._calculate_layout()
-        if not self.pinned_cursor:
+        active_items, _ = self._calculate_layout()
+
+        # Use sticky selection index instead of cursor hit testing
+        if self.last_hovered_index is None:
             return None
 
-        cx, cy = self.pinned_cursor
-        selected_item = None
-        for i, (rx, ry, rw, rh) in enumerate(item_rects):
-            if rx <= cx <= rx + rw and ry <= cy <= ry + rh:
-                selected_item = active_items[i]
-                break
-
-        if not selected_item:
+        if self.last_hovered_index >= len(active_items):
             return None
+
+        selected_item = active_items[self.last_hovered_index]
 
         if selected_item.action_id == MenuActions.NAV_BACK:
             if self.node_stack:
                 self.current_node = self.node_stack.pop()
                 self.page_index = 0
-            return None 
+                self.last_hovered_index = None  # Reset selection on nav
+            return None
 
         if selected_item.action_id == MenuActions.PAGE_NEXT:
             self.page_index += 1
+            self.last_hovered_index = None
             return None
-            
+
         if selected_item.action_id == MenuActions.PAGE_PREV:
             self.page_index = max(0, self.page_index - 1)
+            self.last_hovered_index = None
             return None
 
         if selected_item.children:
             self.node_stack.append(self.current_node)
             self.current_node = selected_item
             self.page_index = 0
+            self.last_hovered_index = None
             return None
 
         if selected_item.should_close_on_trigger:
@@ -265,3 +286,4 @@ class MenuSystem:
         self.prime_start_time = 0
         self.is_pinning = False
         self.pinned_cursor = None
+        self.last_hovered_index = None

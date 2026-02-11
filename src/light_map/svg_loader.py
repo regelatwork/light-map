@@ -93,23 +93,23 @@ class SVGLoader:
         # The viewport center is based on the target dimensions, but we are rendering to a scaled buffer.
         # However, the transformations (scale, translate) are relative to the original coordinate space.
         # If we render to a smaller buffer, we effectively zoom out everything by 'quality'.
-        
+
         # We need the SVG to be rendered as if it were on the full size screen, then downsampled.
         # Or simpler: Scale the Viewport Matrix by 'quality'.
 
         cx, cy = target_width / 2, target_height / 2
-        
+
         # Base Matrix: Matches the user's requested view
         vp_matrix = svgelements.Matrix()
         vp_matrix.post_scale(scale_factor, scale_factor)
         vp_matrix.post_rotate(math.radians(rotation), cx, cy)
         vp_matrix.post_translate(offset_x, offset_y)
-        
+
         # Quality Scaling Matrix: Scales the entire view down to the render buffer size
         # We scale by 'quality', effectively fitting the full view into the smaller buffer.
         q_matrix = svgelements.Matrix()
         q_matrix.post_scale(quality, quality)
-        
+
         # Combine: Apply user transform first, then scale down for buffer
         final_vp_matrix = vp_matrix * q_matrix
 
@@ -251,7 +251,9 @@ class SVGLoader:
                         if element.stroke_width is not None:
                             # Scale stroke width by combined scale factor
                             # Approximate scale from matrix
-                            avg_scale = (abs(final_vp_matrix.a) + abs(final_vp_matrix.d)) / 2
+                            avg_scale = (
+                                abs(final_vp_matrix.a) + abs(final_vp_matrix.d)
+                            ) / 2
                             thickness = max(1, int(element.stroke_width * avg_scale))
 
                         is_closed = False
@@ -270,7 +272,7 @@ class SVGLoader:
 
             except Exception:
                 continue
-        
+
         # If quality < 1.0, upscale to target size
         if quality < 1.0:
             return cv2.resize(

@@ -57,31 +57,31 @@ def calculate_ppi_from_frame(
     Detects two ArUco markers (ID 0 and ID 1) in the frame and calculates Projector PPI.
     """
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-    
+
     # ArUco Config
     aruco_dict = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_4X4_50)
     parameters = cv2.aruco.DetectorParameters()
     detector = cv2.aruco.ArucoDetector(aruco_dict, parameters)
-    
+
     corners, ids, rejected = detector.detectMarkers(gray)
-    
+
     if ids is None or len(ids) < 2:
         return None
-        
+
     ids = ids.flatten()
-    
+
     # Check for ID 0 and ID 1
     if 0 not in ids or 1 not in ids:
         return None
-        
+
     idx0 = np.where(ids == 0)[0][0]
     idx1 = np.where(ids == 1)[0][0]
-    
+
     # Get centers
     # corners[i] is (1, 4, 2)
     c0 = np.mean(corners[idx0][0], axis=0)
     c1 = np.mean(corners[idx1][0], axis=0)
-    
+
     p1_cam = np.array(c0, dtype=np.float32)
     p2_cam = np.array(c1, dtype=np.float32)
 

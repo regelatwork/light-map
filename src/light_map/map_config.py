@@ -2,7 +2,7 @@ import json
 import os
 import numpy as np
 from dataclasses import asdict, dataclass, field
-from typing import Dict, Optional, Tuple
+from typing import Dict, Optional
 
 STATE_FILE = "map_state.json"
 
@@ -25,8 +25,6 @@ class MapEntry:
 class GlobalMapConfig:
     projector_ppi: float = 96.0
     last_used_map: Optional[str] = None
-    vision_gamma: float = 1.0
-    vision_clahe_clip: float = 1.0
 
 
 @dataclass
@@ -53,8 +51,6 @@ class MapConfigManager:
             global_settings = GlobalMapConfig(
                 projector_ppi=global_data.get("projector_ppi", 96.0),
                 last_used_map=global_data.get("last_used_map"),
-                vision_gamma=global_data.get("vision_gamma", 1.0),
-                vision_clahe_clip=global_data.get("vision_clahe_clip", 1.0),
             )
 
             maps = {}
@@ -101,15 +97,6 @@ class MapConfigManager:
 
     def set_ppi(self, ppi: float):
         self.data.global_settings.projector_ppi = ppi
-        self.save()
-
-    def get_vision_params(self) -> Tuple[float, float]:
-        g = self.data.global_settings
-        return g.vision_gamma, g.vision_clahe_clip
-
-    def set_vision_params(self, gamma: float, clahe_clip: float):
-        self.data.global_settings.vision_gamma = gamma
-        self.data.global_settings.vision_clahe_clip = clahe_clip
         self.save()
 
     def get_map_viewport(self, map_name: str) -> ViewportState:

@@ -169,11 +169,18 @@ class InteractiveApp:
         # B. Menu/Overlay
         # Render menu only if NOT in calibration mode (or maybe background?)
         # If Calibrating, we might want to hide menu.
-        if self.mode == AppMode.CALIB_PPI or self.mode == AppMode.CALIB_MAP_GRID:
+        if self.mode == AppMode.CALIB_PPI:
             output = np.zeros(
                 (self.config.height, self.config.width, 3), dtype=np.uint8
             )
-            # Calibration Overlay is drawn in _draw_calib_overlay
+        elif self.mode == AppMode.CALIB_MAP_GRID:
+            # Show map dimmed so grid is visible
+            if map_image is not None:
+                output = cv2.convertScaleAbs(map_image, alpha=0.5, beta=0)
+            else:
+                output = np.zeros(
+                    (self.config.height, self.config.width, 3), dtype=np.uint8
+                )
         else:
             # Determine Map Opacity based on mode
             map_opacity = 1.0
@@ -493,32 +500,29 @@ class InteractiveApp:
             h, w = image.shape[:2]
             cx, cy = w // 2, h // 2
             
-            # Draw Center Crosshairs (Thick Green with Black Outline)
-            # Vertical
-            cv2.line(image, (cx, 0), (cx, h), (0, 0, 0), 4) # Outline
-            cv2.line(image, (cx, 0), (cx, h), (0, 255, 0), 2) # Green
+            # Dimmer Green
+            grid_color = (0, 120, 0)
+            cross_size = 10
+
+            # Draw Center Crosshairs (Full lines, but dimmer)
+            cv2.line(image, (cx, 0), (cx, h), (0, 0, 0), 3) # Outline
+            cv2.line(image, (cx, 0), (cx, h), grid_color, 1)
+            cv2.line(image, (0, cy), (w, cy), (0, 0, 0), 3) # Outline
+            cv2.line(image, (0, cy), (w, cy), grid_color, 1)
             
-            # Horizontal
-            cv2.line(image, (0, cy), (w, cy), (0, 0, 0), 4) # Outline
-            cv2.line(image, (0, cy), (w, cy), (0, 255, 0), 2) # Green
-            
-            # Draw Grid Lines relative to center
-            # Right
-            for x in range(cx + step, w, step):
-                cv2.line(image, (x, 0), (x, h), (0, 0, 0), 2)
-                cv2.line(image, (x, 0), (x, h), (0, 255, 0), 1)
-            # Left
-            for x in range(cx - step, -1, -step):
-                cv2.line(image, (x, 0), (x, h), (0, 0, 0), 2)
-                cv2.line(image, (x, 0), (x, h), (0, 255, 0), 1)
-            # Down
-            for y in range(cy + step, h, step):
-                cv2.line(image, (0, y), (w, y), (0, 0, 0), 2)
-                cv2.line(image, (0, y), (w, y), (0, 255, 0), 1)
-            # Up
-            for y in range(cy - step, -1, -step):
-                cv2.line(image, (0, y), (w, y), (0, 0, 0), 2)
-                cv2.line(image, (0, y), (w, y), (0, 255, 0), 1)
+            # Draw Crosses at intersections
+            for x in range(cx % step, w, step):
+                for y in range(cy % step, h, step):
+                    # Skip center (already drawn as full lines)
+                    if x == cx and y == cy:
+                        continue
+                        
+                    # Horizontal part of cross
+                    cv2.line(image, (x - cross_size, y), (x + cross_size, y), (0, 0, 0), 3)
+                    cv2.line(image, (x - cross_size, y), (x + cross_size, y), grid_color, 1)
+                    # Vertical part of cross
+                    cv2.line(image, (x, y - cross_size), (x, y + cross_size), (0, 0, 0), 3)
+                    cv2.line(image, (x, y - cross_size), (x, y + cross_size), grid_color, 1)
 
         cv2.putText(
             image,

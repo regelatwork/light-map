@@ -84,7 +84,8 @@ def test_panning_in_map_mode(app_config):
     frame = np.zeros((100, 100, 3), dtype=np.uint8)
 
     with patch("light_map.interactive_app.detect_gesture") as mock_detect:
-        mock_detect.return_value = GestureType.OPEN_PALM
+        # Panning now uses CLOSED_FIST
+        mock_detect.return_value = GestureType.CLOSED_FIST
 
         # Frame 1: Initial position
 

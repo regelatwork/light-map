@@ -11,6 +11,8 @@ This feature enables a gesture-controlled hierarchical menu system projected ont
 1. **Hands-free control:** Interface for controlling the application without keyboard/mouse.
 1. **Robust Inputs:** Utilize specific gestures to avoid accidental triggers.
 1. **Safety & Stability:** Implement a "Hold-to-Prime" selection mechanism with hysteresis to prevent accidental clicks.
+1. **Sticky Selection:** The last hovered item remains selected ("sticky") even if the hand drifts away or closes, preventing accidental deselection during activation gestures.
+1. **Minimalist UI:** Use high-contrast borders instead of filled buttons to minimize light projection on the hand ("Menu Isolation").
 1. **Jitter Reduction:** Smooth noisy input signals and handle "cursor jump" during gesture transitions.
 1. **Strict Separation of Concerns:** Logic (`MenuSystem`) calculates ALL state and geometry (layout) in **Projector Space Pixels**; Rendering (`MenuRenderer`) purely draws what it is told.
 1. **Non-Blocking:** Menu actions must not block the main application loop.

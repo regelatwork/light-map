@@ -49,12 +49,20 @@ To further improve menu robustness, we need to minimize the visual change on the
     *   **Text Change**: Optionally change text color or size.
     *   **Benefit**: The inside of the button (where the hand is) remains dark. The projector does not illuminate the hand, preserving tracking accuracy.
 
-### Implementation Plan
+### Implementation Details (Completed Feb 2026)
 
-1.  **Update `MenuSystem` Logic**:
-    *   Modify `update()` to implement "sticky" logic. Only update `hovered_item_index` if the cursor is inside a new item. If cursor is outside all items, keep the previous index.
+1.  **Updated `MenuSystem` Logic**:
+    *   Modified `update()` to implement **Sticky Selection**. `last_hovered_index` persists the selection even if the cursor drifts into empty space.
+    *   Selection is only changed when the cursor actively enters a *new* item.
 
-2.  **Update `Renderer` Visuals**:
-    *   Remove the `cv2.rectangle(..., -1)` fill for hovered items.
-    *   Increase the thickness of the border for hovered items.
-    *   Change the border color for hovered items.
+2.  **Updated `Renderer` Visuals**:
+    *   Removed solid fill for hovered items.
+    *   Implemented **Thick Perimeter Border** (high contrast) for selection.
+    *   Result: Hand remains in darkness (black background), significantly improving tracking reliability during the critical "close fist" gesture.
+
+3.  **Menu Isolation**:
+    *   The map layer is now hidden (Opacity 0.0) whenever the menu is active, ensuring maximum contrast and zero interference from map colors.
+
+4.  **Interactive Dimming**:
+    *   The map layer is dimmed (Opacity 0.5) during Pan/Zoom operations to reduce glare while maintaining usability.
+

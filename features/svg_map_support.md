@@ -23,13 +23,14 @@ To prevent conflict with menu navigation, we use specific gestures for map manip
 
 ### 2. Gestures & Controls
 *   **Pan (Move)**:
-    *   **Gesture**: **Open Palm**.
-    *   **Action**: Moving the hand translates the map in real-time.
+    *   **Gesture**: **Closed Fist** (Grabbing).
+    *   **Action**: Moving the hand translates the map in real-time ("Grabbing" the map).
 *   **Zoom**:
     *   **Gesture**: **Two-Hand Pointing** (Index fingers extended on both hands).
     *   **Action**:
         1.  **Debounce**: Hold gesture for `ZOOM_DELAY` (0.5s).
         2.  **Scale**: Moving hands apart zooms IN; moving together zooms OUT.
+        3.  **Anchor**: The map points under the fingers remain fixed ("Grabbing" behavior), allowing simultaneous Pan & Zoom.
 *   **Rotate**:
     *   **Controls**: Menu items **Rotate CW** (90°) and **Rotate CCW** (-90°).
     *   **Action**: Rotates map around the screen center.

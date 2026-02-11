@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, Tuple
 
 
 @dataclass
@@ -73,3 +73,11 @@ class MapSystem:
             "offset_y": int(self.state.y),
             "rotation": self.state.rotation,
         }
+
+    def screen_to_world(self, sx: float, sy: float) -> Tuple[float, float]:
+        """Converts screen coordinates to world (map) coordinates."""
+        # Screen = World * Zoom + Pan
+        # World = (Screen - Pan) / Zoom
+        wx = (sx - self.state.x) / self.state.zoom
+        wy = (sy - self.state.y) / self.state.zoom
+        return wx, wy

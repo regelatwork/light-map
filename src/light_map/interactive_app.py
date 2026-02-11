@@ -61,6 +61,7 @@ class InteractiveApp:
         self.last_cursor_pos = None  # (x, y) for panning
         self.zoom_start_dist = None  # distance between hands when zoom started
         self.zoom_start_level = 1.0
+        self.zoom_start_world_center = None
         self.zoom_gesture_start_time = 0.0
         self.summon_gesture_start_time = 0.0
         self.is_interacting = False  # Track if user is manipulating map
@@ -264,18 +265,37 @@ class InteractiveApp:
             if self.zoom_gesture_start_time == 0:
                 self.zoom_gesture_start_time = current_time
             elif current_time - self.zoom_gesture_start_time > config_vars.ZOOM_DELAY:
+                # Calculate screen center
+                center = (p1 + p2) / 2
+                
                 if self.zoom_start_dist is None:
+                    # Start of gesture
                     self.zoom_start_dist = dist
                     self.zoom_start_level = self.map_system.state.zoom
+                    # Calculate world coordinate under the center
+                    wx, wy = self.map_system.screen_to_world(center[0], center[1])
+                    self.zoom_start_world_center = (wx, wy)
                 else:
+                    # Update zoom
                     factor = dist / self.zoom_start_dist
                     new_zoom = self.zoom_start_level * factor
-                    center = (p1 + p2) / 2
-                    delta_factor = new_zoom / self.map_system.state.zoom
-                    self.map_system.zoom(delta_factor, center[0], center[1])
+                    
+                    # Apply new zoom
+                    self.map_system.state.zoom = new_zoom
+                    
+                    # Re-calculate Pan to keep world_center under screen_center
+                    # Screen = World * Zoom + Pan
+                    # Pan = Screen - World * Zoom
+                    wx, wy = self.zoom_start_world_center
+                    new_pan_x = center[0] - wx * new_zoom
+                    new_pan_y = center[1] - wy * new_zoom
+                    
+                    self.map_system.state.x = new_pan_x
+                    self.map_system.state.y = new_pan_y
         else:
             self.zoom_gesture_start_time = 0
             self.zoom_start_dist = None
+            self.zoom_start_world_center = None
 
         # 2. Pan
         if self.zoom_start_dist is None:

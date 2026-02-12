@@ -3,16 +3,9 @@ import os
 import numpy as np
 from dataclasses import asdict, dataclass, field
 from typing import Dict, Optional
+from light_map.common_types import ViewportState
 
 STATE_FILE = "map_state.json"
-
-
-@dataclass
-class ViewportState:
-    x: float = 0.0
-    y: float = 0.0
-    zoom: float = 1.0
-    rotation: float = 0.0
 
 
 @dataclass

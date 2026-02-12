@@ -106,3 +106,9 @@ class MapSystem:
         im = ~m
         p = im.point_in_matrix_space((sx, sy))
         return p.x, p.y
+
+    def world_to_screen(self, wx: float, wy: float) -> Tuple[float, float]:
+        """Converts world coordinates to screen coordinates."""
+        m = self._get_matrix()
+        p = m.point_in_matrix_space((wx, wy))
+        return p.x, p.y

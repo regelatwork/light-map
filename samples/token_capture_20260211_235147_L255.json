@@ -1,0 +1,32 @@
+{
+  "image_file": "token_capture_20260211_235147_L255.png",
+  "description": "Flash scan with tokens on a 1-inch grid (masked UI)",
+  "config": {
+    "projector_ppi": 54.108272552490234,
+    "map_file": "maps/bd514.svg",
+    "grid_spacing_svg": 31.33882551291452,
+    "viewport": {
+      "x": 18.57794105122582,
+      "y": 392.520418453934,
+      "zoom": 1.2807659034653744,
+      "rotation": 90.0
+    },
+    "projector_matrix": [
+      [-1.8409932405453235, -0.14534538953716655, 2823.0021220211647],
+      [0.2909438616112758, -1.8224593534761375, 1103.4384854877414],
+      [-2.2959382562043752e-05, 0.0001431765260352377, 1.0]
+    ]
+  },
+  "expected_tokens": [
+    { "grid_x": 7, "grid_y": 22 },
+    { "grid_x": null, "grid_y": null },
+    { "grid_x": null, "grid_y": null },
+    { "grid_x": null, "grid_y": null },
+    { "grid_x": 12, "grid_y": 22 },
+    { "grid_x": 17, "grid_y": 12 },
+    { "grid_x": null, "grid_y": null },
+    { "grid_x": null, "grid_y": null },
+    { "grid_x": null, "grid_y": null },
+    { "grid_x": null, "grid_y": null }
+  ]
+}

@@ -23,19 +23,27 @@ class Token:
     id: int
     world_x: float  # SVG coordinates
     world_y: float
-    grid_x: int     # Snapped grid coordinates (optional)
-    grid_y: int
+    grid_x: Optional[int]
+    grid_y: Optional[int]
     confidence: float = 1.0
+
+@dataclass
+class SessionData:
+    map_file: str
+    viewport: ViewportState
+    tokens: List[Token]
+    timestamp: str
 ```
 
 ### B. Core Logic (`src/light_map/token_tracker.py`)
 Encapsulates the OpenCV pipeline. Stateless or minimal state.
 
 **Key Methods:**
-*   `detect_tokens(frame_white: np.ndarray, frame_dark: np.ndarray, projector_matrix: np.ndarray, map_system: MapSystem) -> List[Token]`
+*   `detect_tokens(frame_white: np.ndarray, projector_matrix: np.ndarray, map_system: MapSystem, grid_spacing_svg: float, ppi: float) -> List[Token]`
     *   Accepts `frame_white` (L255) and optionally `frame_dark` (L50/L150) for background subtraction.
     *   Performs perspective warp (using `projector_matrix`).
-    *   Runs segmentation logic (Threshold -> Distance Transform -> Watershed).
+    *   Runs segmentation logic (Adaptive Threshold -> Watershed).
+    *   **Splitting Heuristic**: Checks aspect ratio of detected blobs. If `h > 1.6*w` or `w > 1.6*h`, splits the blob into 2 tokens to handle adjacent placement.
     *   Converts pixel coordinates to world coordinates via `map_system.screen_to_world()`.
     *   Snaps to grid using `MapConfig`.
 
@@ -43,8 +51,8 @@ Encapsulates the OpenCV pipeline. Stateless or minimal state.
 Handles saving/loading `session.json`.
 
 **Key Methods:**
-*   `save_session(filename: str, map_name: str, viewport: ViewportState, tokens: List[Token])`
-*   `load_session(filename: str) -> SessionData`
+*   `save_session(filepath: str, data: SessionData) -> bool`
+*   `load_session(filepath: str) -> Optional[SessionData]`
 
 ### D. Integration (`src/light_map/interactive_app.py`)
 *   **New Mode**: `AppMode.SCANNING`.
@@ -60,52 +68,31 @@ Handles saving/loading `session.json`.
 ## 3. Detection Algorithm (OpenCV)
 
 ### A. Preprocessing
-1.  **Capture**: Take `frame_white` (Flash) and `frame_dark` (Ambient/Map).
-2.  **Difference**: `diff = cv2.absdiff(frame_white, frame_dark)` (Optional: Test if `frame_white - frame_empty` is better).
-3.  **Warp**: Transform to Top-Down View using `projector_matrix`.
+1.  **Warp**: Transform to Top-Down View using `projector_matrix`.
+2.  **Blur**: Gaussian Blur (9x9) to reduce internal texture noise.
 
 ### B. Segmentation & Separation
 To handle **adjacent tokens** (merged blobs):
-1.  **Threshold**: Binary threshold (Adaptive or Otsu).
-2.  **Distance Transform**: `cv2.distanceTransform`. Centers of tokens become bright peaks.
-3.  **Peak Detection**: `cv2.minMaxLoc` or finding local maxima.
+1.  **Threshold**: Adaptive Threshold (`ADAPTIVE_THRESH_GAUSSIAN_C`) handles uneven lighting.
+2.  **Morphology**: Open then Close to remove noise and fill holes.
+3.  **Distance Transform**: Centers of tokens become bright peaks.
 4.  **Watershed**: Use peaks as markers to segment touching blobs.
 
-### C. Coordinate Mapping
+### C. Heuristic Splitting
+1.  **Aspect Ratio**: If a blob is significantly elongated (`> 1.6:1`), assume it's two tokens side-by-side (Horizontal or Vertical).
+2.  **Division**: Split the bounding box geometrically and assign centers to sub-regions.
+
+### D. Coordinate Mapping
 1.  **Pixel to World**: `MapSystem.screen_to_world(px, py)` -> `(wx, wy)`.
 2.  **Grid Snapping**:
     *   Load `grid_spacing_svg` from `MapConfig`.
-    *   Snap `(wx, wy)` to nearest grid intersection/center.
+    *   Snap `(wx, wy)` to nearest grid intersection/center if within `0.4` units.
 
 ## 4. Verification & Testing Strategy
 
 ### A. Offline Verification (`tests/test_token_tracker_offline.py`)
 Use the captured samples in `samples/` to tune the CV pipeline without hardware.
-*   **Data Source**:
-    *   `samples/token_capture_20260211_235147_L255.png` (Flash)
-    *   `samples/token_capture_20260211_235143_L50.png` (Dark/Ambient)
-*   **System State Metadata (for `maps/bd514.svg` context)**:
-    ```json
-    {
-      "projector_ppi": 54.108272552490234,
-      "map_file": "maps/bd514.svg",
-      "grid_spacing_svg": 31.33882551291452,
-      "viewport": {
-        "x": 18.57794105122582,
-        "y": 392.520418453934,
-        "zoom": 1.2807659034653744,
-        "rotation": 90.0
-      },
-      "projector_matrix": [
-        [-1.8409932405453235, -0.14534538953716655, 2823.0021220211647],
-        [0.2909438616112758, -1.8224593534761375, 1103.4384854877414],
-        [-2.2959382562043752e-05, 0.0001431765260352377, 1.0]
-      ]
-    }
-    ```
-    *Note: This metadata is CRITICAL. If the physical setup (camera/projector) changes, `projector_matrix` will change, invalidating the perspective warp for these samples.*
-
-*   **Metadata**: Create JSON sidecars for samples defining "Ground Truth" token positions.
+*   **Data Source**: `samples/token_capture_20260211_235147_L255.png` (Flash)
 *   **Tests**:
     *   **Touching Tokens**: Verify watershed separates the adjacent tokens in the sample.
     *   **Empty Table**: Verify zero detection on empty table (needs new sample or masked region).
@@ -116,10 +103,9 @@ Use the captured samples in `samples/` to tune the CV pipeline without hardware.
 ## 5. Persistence (`session.json`)
 ```json
 {
-  "version": 1,
   "map_file": "maps/bd514.svg",
   "timestamp": "2026-02-12T10:00:00",
-  "view": { "x": 100, "y": 200, "zoom": 1.5, "rotation": 0 },
+  "viewport": { "x": 100, "y": 200, "zoom": 1.5, "rotation": 0 },
   "tokens": [
     { "id": 1, "world_x": 50.5, "world_y": 60.2, "grid_x": 1, "grid_y": 2 }
   ]
@@ -136,4 +122,4 @@ Use the captured samples in `samples/` to tune the CV pipeline without hardware.
 1.  **Trigger**: "Session > Load".
 2.  **Action**:
     *   Load Map & Viewport.
-    *   Render "Ghost Tokens" (Translucent circles) at `world_x, world_y`.
+    *   Render "Ghost Tokens" (Cyan circles) at `world_x, world_y`.

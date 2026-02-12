@@ -92,6 +92,21 @@ ROOT_MENU = MenuItem(
             should_close_on_trigger=True,
         ),
         MenuItem(
+            title="Session",
+            children=[
+                MenuItem(
+                    title="Scan & Save",
+                    action_id=MenuActions.SCAN_SESSION,
+                    should_close_on_trigger=True,
+                ),
+                MenuItem(
+                    title="Load Session",
+                    action_id=MenuActions.LOAD_SESSION,
+                    should_close_on_trigger=True,
+                ),
+            ],
+        ),
+        MenuItem(
             title="Options",
             children=[
                 MenuItem(

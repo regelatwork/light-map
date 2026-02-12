@@ -30,6 +30,8 @@ class MenuActions(StrEnum):
     RESET_ZOOM = "RESET_ZOOM"
     PAGE_NEXT = "PAGE_NEXT"
     PAGE_PREV = "PAGE_PREV"
+    SCAN_SESSION = "SCAN_SESSION"
+    LOAD_SESSION = "LOAD_SESSION"
 
 
 class AppMode(StrEnum):
@@ -37,6 +39,33 @@ class AppMode(StrEnum):
     MAP = "MAP"
     CALIB_PPI = "CALIB_PPI"
     CALIB_MAP_GRID = "CALIB_MAP_GRID"
+    SCANNING = "SCANNING"
+
+
+@dataclass
+class ViewportState:
+    x: float = 0.0
+    y: float = 0.0
+    zoom: float = 1.0
+    rotation: float = 0.0
+
+
+@dataclass
+class Token:
+    id: int
+    world_x: float  # SVG coordinates
+    world_y: float
+    grid_x: Optional[int] = None
+    grid_y: Optional[int] = None
+    confidence: float = 1.0
+
+
+@dataclass
+class SessionData:
+    map_file: str
+    viewport: ViewportState
+    tokens: List[Token]
+    timestamp: str = ""
 
 
 @dataclass

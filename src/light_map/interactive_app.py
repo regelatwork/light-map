@@ -6,7 +6,7 @@ from typing import List, Tuple, Any, Optional, Dict
 from dataclasses import dataclass
 import mediapipe as mp
 
-from light_map.common_types import GestureType, MenuItem, AppMode, MenuActions
+from light_map.common_types import GestureType, MenuItem, AppMode, MenuActions, Token, SessionData, ViewportState
 from light_map.input_manager import InputManager
 from light_map.menu_system import MenuSystem
 from light_map.renderer import Renderer
@@ -16,6 +16,8 @@ from light_map.svg_loader import SVGLoader
 import light_map.menu_config as config_vars
 from light_map.map_config import MapConfigManager
 from light_map.calibration_logic import calculate_ppi_from_frame
+from light_map.session_manager import SessionManager
+from light_map.token_tracker import TokenTracker
 
 
 @dataclass
@@ -41,6 +43,13 @@ class InteractiveApp:
         self.map_system = MapSystem(config.width, config.height)
         self.svg_loader: Optional[SVGLoader] = None
         self.map_config = MapConfigManager()  # Load config
+
+        # Token Tracking Support
+        self.token_tracker = TokenTracker()
+        self.ghost_tokens: List[Token] = []
+        self.scan_start_time = 0.0
+        self.scan_stage = 0 # 0: White, 1: Capture, 2: Process, 3: Done
+        self.last_scan_result_count = 0
 
         # Load global PPI
         # TODO: Pass PPI to somewhere? MapSystem doesn't need it for rendering,
@@ -163,6 +172,8 @@ class InteractiveApp:
             actions = self._process_menu_mode(hands_data)
         elif self.mode == AppMode.MAP:
             actions = self._process_map_mode(hands_data, current_time)
+        elif self.mode == AppMode.SCANNING:
+            self._process_scanning_mode(frame, current_time)
         elif self.mode == AppMode.CALIB_PPI:
             actions = self._process_calib_ppi_mode(hands_data, frame)
         elif self.mode == AppMode.CALIB_MAP_GRID:
@@ -179,9 +190,28 @@ class InteractiveApp:
             )
 
         # B. Menu/Overlay
-        # Render menu only if NOT in calibration mode (or maybe background?)
-        # If Calibrating, we might want to hide menu.
-        if self.mode == AppMode.CALIB_PPI:
+        # SCANNING MODE OVERRIDE
+        if self.mode == AppMode.SCANNING:
+            if self.scan_stage < 2:
+                # White Flash
+                output = np.full((self.config.height, self.config.width, 3), 255, dtype=np.uint8)
+                # Add "Scanning..." text just in case user is confused (will be projected)
+                # Ideally pure white for detection, but small text in corner is fine if masked.
+                # But TokenTracker masking logic is not dynamic here.
+                # Let's keep it pure white.
+            else:
+                # Result Stage (Background can be Map or Black)
+                # Let's show Map to see ghost tokens overlay immediately
+                if map_image is not None:
+                    output = map_image.copy()
+                else:
+                    output = np.zeros((self.config.height, self.config.width, 3), dtype=np.uint8)
+                
+                self._draw_ghost_tokens(output)
+                cv2.putText(output, f"Saved {self.last_scan_result_count} Tokens", 
+                           (50, 100), cv2.FONT_HERSHEY_SIMPLEX, 1.5, (0, 255, 0), 3)
+
+        elif self.mode == AppMode.CALIB_PPI:
             output = np.zeros(
                 (self.config.height, self.config.width, 3), dtype=np.uint8
             )
@@ -206,6 +236,10 @@ class InteractiveApp:
             output = self.renderer.render(
                 self.menu_state, background=map_image, map_opacity=map_opacity
             )
+            
+            # Draw Ghost Tokens in MAP mode (if any)
+            if self.mode == AppMode.MAP and self.ghost_tokens:
+                self._draw_ghost_tokens(output)
 
         # C. Overlays
         if self.mode == AppMode.MAP:
@@ -310,6 +344,33 @@ class InteractiveApp:
                 self.map_system.reset_view()
                 self.map_system.state.zoom = self.current_base_scale
                 self.save_current_map_state()
+            elif action == MenuActions.SCAN_SESSION:
+                if self.svg_loader:
+                     self.mode = AppMode.SCANNING
+                     self.scan_start_time = self.time_provider()
+                     self.scan_stage = 0
+                     self.last_scan_result_count = 0
+                else:
+                     print("Cannot scan without a loaded map.")
+            elif action == MenuActions.LOAD_SESSION:
+                 # Load session.json
+                 session = SessionManager.load_session("session.json")
+                 if session:
+                     print(f"Loaded session with {len(session.tokens)} tokens.")
+                     # Restore Map & Viewport
+                     if session.map_file:
+                         self.load_map(session.map_file)
+                     
+                     if session.viewport:
+                         self.map_system.set_state(
+                             session.viewport.x, session.viewport.y, 
+                             session.viewport.zoom, session.viewport.rotation
+                         )
+                         
+                     self.ghost_tokens = session.tokens
+                     self.mode = AppMode.MAP # Go to map to see tokens
+                 else:
+                     print("Failed to load session.")
             else:
                 actions.append(action)
 
@@ -386,6 +447,85 @@ class InteractiveApp:
             self.summon_gesture_start_time = 0
 
         return []
+
+    def _process_scanning_mode(self, frame: np.ndarray, current_time: float):
+        # State machine
+        # 0: White Flash (Wait for settling)
+        # 1: Capture & Process (One shot)
+        # 2: Done (Show feedback)
+        
+        if self.scan_stage == 0:
+            if current_time - self.scan_start_time > 0.5: # 500ms settle time
+                self.scan_stage = 1
+        
+        elif self.scan_stage == 1:
+            # Detect
+            print("Scanning...")
+            
+            # Use masked ROI for UI if needed (top strip 150px)
+            # Assuming standard layout where UI might be projected.
+            # But in Flash Mode, we project WHITE. So no UI to mask!
+            # Unless debug overlay is burnt in? No.
+            # So pass empty mask_rois unless we have known blind spots.
+            
+            grid_spacing = 0.0
+            if self.svg_loader:
+                entry = self.map_config.data.maps.get(self.svg_loader.filename)
+                if entry:
+                    grid_spacing = entry.grid_spacing_svg
+            
+            ppi = self.map_config.get_ppi()
+                
+            tokens = self.token_tracker.detect_tokens(
+                frame_white=frame,
+                projector_matrix=self.config.projector_matrix,
+                map_system=self.map_system,
+                grid_spacing_svg=grid_spacing,
+                ppi=ppi
+            )
+            
+            self.last_scan_result_count = len(tokens)
+            self.ghost_tokens = tokens
+            print(f"Detected {len(tokens)} tokens.")
+            
+            # Save Session
+            map_file = self.svg_loader.filename if self.svg_loader else ""
+            session = SessionData(
+                map_file=map_file,
+                viewport=ViewportState(
+                    self.map_system.state.x,
+                    self.map_system.state.y,
+                    self.map_system.state.zoom,
+                    self.map_system.state.rotation
+                ),
+                tokens=tokens
+            )
+            SessionManager.save_session("session.json", session)
+            
+            self.scan_stage = 2
+            self.scan_start_time = current_time # Reuse for display timer
+
+        elif self.scan_stage == 2:
+            if current_time - self.scan_start_time > 2.0: # Show result for 2s
+                self.mode = AppMode.MAP
+
+    def _draw_ghost_tokens(self, image: np.ndarray):
+        if not self.ghost_tokens:
+            return
+            
+        ppi = self.map_config.get_ppi()
+        radius = int(ppi * 0.5) if ppi > 0 else 20
+        
+        for t in self.ghost_tokens:
+            # Transform World -> Screen
+            sx, sy = self.map_system.world_to_screen(t.world_x, t.world_y)
+            
+            # Check if within screen
+            if 0 <= sx < self.config.width and 0 <= sy < self.config.height:
+                # Draw "Ghost" Circle (e.g. Cyan outline)
+                cv2.circle(image, (int(sx), int(sy)), radius, (255, 255, 0), 2)
+                # Draw ID?
+                # cv2.putText(image, str(t.id), (int(sx), int(sy)), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 0), 1)
 
     def _process_calib_ppi_mode(
         self, hands_data: List[Dict], frame: np.ndarray

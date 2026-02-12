@@ -1,6 +1,7 @@
 import cv2
 import numpy as np
 import time
+import copy
 from typing import List, Tuple, Any, Optional, Dict
 from dataclasses import dataclass
 import mediapipe as mp
@@ -70,6 +71,9 @@ class InteractiveApp:
         self.calib_stage = 0  # 0: Capture, 1: Confirm
         self.calib_candidate_ppi = 0.0
         self.calib_map_grid_size_inches = 1.0  # Default grid reference size
+        
+        self.saved_map_state = None
+        self.current_base_scale = 1.0
 
     def set_debug_mode(self, enabled: bool):
         self.debug_mode = enabled
@@ -106,6 +110,12 @@ class InteractiveApp:
         # Restore viewport
         vp = self.map_config.get_map_viewport(filename)
         self.map_system.set_state(vp.x, vp.y, vp.zoom, vp.rotation)
+        
+        # Set base scale
+        if entry and entry.scale_factor_1to1 > 0:
+            self.current_base_scale = entry.scale_factor_1to1
+        else:
+            self.current_base_scale = 1.0
 
         # Save current map filename if needed, though config manager handles saving on change
         # self.map_config.data.global_settings.last_used_map = filename
@@ -276,6 +286,20 @@ class InteractiveApp:
                 self.mode = AppMode.CALIB_MAP_GRID
                 # Default to 1 inch for now. Could implement sub-menu for 6in, 1ft, 1m later.
                 self.calib_map_grid_size_inches = 1.0 
+                
+                # Save current user view
+                self.saved_map_state = copy.deepcopy(self.map_system.state)
+                
+                # Reset Map View for Calibration (Base View)
+                self.map_system.state.rotation = 0.0
+                self.map_system.state.x = 0.0
+                self.map_system.state.y = 0.0
+                
+                # Set initial zoom to current base scale
+                self.map_system.state.zoom = self.current_base_scale
+            elif action == MenuActions.RESET_ZOOM:
+                # Reset zoom to 1:1 (User Zoom = 1, so Total Zoom = Base Scale)
+                self.map_system.state.zoom = self.current_base_scale
             elif action == MenuActions.ROTATE_CW:
                 self.map_system.rotate(90)
                 self.save_current_map_state()
@@ -460,12 +484,13 @@ class InteractiveApp:
              elif current_time - self.summon_gesture_start_time > 1.0: # 1 sec hold
                  # Save Config
                  filename = self.svg_loader.filename if self.svg_loader else "unknown"
-                 current_zoom = self.map_system.state.zoom
+                 
+                 # The current state IS the Base Scale
+                 new_base_scale = self.map_system.state.zoom
                  ppi = self.map_config.get_ppi()
                  
                  # Derive grid spacing from current alignment
-                 # grid_spacing_svg = (PPI * physical_unit) / current_zoom
-                 derived_spacing = (ppi * self.calib_map_grid_size_inches) / current_zoom
+                 derived_spacing = (ppi * self.calib_map_grid_size_inches) / new_base_scale
                  
                  print(f"Calibrated {filename}: Spacing={derived_spacing:.1f}, Unit={self.calib_map_grid_size_inches}in")
                  
@@ -475,9 +500,20 @@ class InteractiveApp:
                      grid_origin_svg_x=0.0, # Origin logic not implemented yet
                      grid_origin_svg_y=0.0,
                      physical_unit_inches=self.calib_map_grid_size_inches,
-                     scale_factor_1to1=current_zoom
+                     scale_factor_1to1=new_base_scale
                  )
                  
+                 # Restore User View
+                 if self.saved_map_state:
+                     self.map_system.state = self.saved_map_state
+                     # Update Zoom: Preserve User Zoom Level relative to new base
+                     old_base = self.current_base_scale
+                     if old_base > 0:
+                         user_zoom_factor = self.map_system.state.zoom / old_base
+                         self.map_system.state.zoom = user_zoom_factor * new_base_scale
+                     self.saved_map_state = None
+                     
+                 self.current_base_scale = new_base_scale
                  self.mode = AppMode.MENU
                  self.summon_gesture_start_time = 0
         else:

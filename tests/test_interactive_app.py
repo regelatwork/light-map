@@ -224,3 +224,45 @@ def test_process_frame_renders_map_in_menu_mode(app_config):
 
         # Verify output contains green
         assert np.array_equal(output[50, 50], [0, 255, 0])
+
+def test_set_map_scale_resets_view(app_config):
+    app = InteractiveApp(app_config)
+    frame = np.zeros((100, 100, 3), dtype=np.uint8)
+    
+    # 1. Mess up the view
+    app.map_system.state.x = 100
+    app.map_system.state.y = 100
+    app.map_system.state.rotation = 45
+    app.map_system.state.zoom = 5.0
+    
+    # 2. Trigger SET_MAP_SCALE
+    with patch.object(app.menu_system, "update") as mock_update:
+        mock_state = MagicMock()
+        mock_state.just_triggered_action = MenuActions.SET_MAP_SCALE
+        mock_state.is_visible = True
+        mock_update.return_value = mock_state
+        
+        # Mock SVGLoader and Config
+        app.svg_loader = MagicMock()
+        app.svg_loader.filename = "test.svg"
+        app.svg_loader.render.return_value = np.zeros((100, 100, 3), dtype=np.uint8)
+        
+        # Scenario A: No saved config -> zoom=1.0
+        app.map_config.data.maps = {}
+        
+        results = MockResults(hands_landmarks=[[MockHandLandmark(0.5, 0.5)] * 21])
+        app.process_frame(frame, results)
+        
+        assert app.mode == AppMode.CALIB_MAP_GRID
+        assert app.map_system.state.x == 0.0
+        assert app.map_system.state.y == 0.0
+        assert app.map_system.state.rotation == 0.0
+        assert app.map_system.state.zoom == 1.0
+        
+        # Check saved state
+        assert app.saved_map_state is not None
+        assert app.saved_map_state.x == 100
+        assert app.saved_map_state.y == 100
+        assert app.saved_map_state.rotation == 45
+        assert app.saved_map_state.zoom == 5.0
+

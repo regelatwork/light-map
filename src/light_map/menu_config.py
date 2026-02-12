@@ -70,6 +70,11 @@ ROOT_MENU = MenuItem(
                     should_close_on_trigger=False,
                 ),
                 MenuItem(
+                    title="Zoom 1:1",
+                    action_id=MenuActions.RESET_ZOOM,
+                    should_close_on_trigger=False,
+                ),
+                MenuItem(
                     title="Set Scale",
                     action_id=MenuActions.SET_MAP_SCALE,
                     should_close_on_trigger=True,

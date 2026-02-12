@@ -308,6 +308,7 @@ class InteractiveApp:
                 self.save_current_map_state()
             elif action == MenuActions.RESET_VIEW:
                 self.map_system.reset_view()
+                self.map_system.state.zoom = self.current_base_scale
                 self.save_current_map_state()
             else:
                 actions.append(action)

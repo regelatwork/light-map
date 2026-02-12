@@ -266,3 +266,54 @@ def test_set_map_scale_resets_view(app_config):
         assert app.saved_map_state.rotation == 45
         assert app.saved_map_state.zoom == 5.0
 
+def test_reset_view_respects_base_scale(app_config):
+    app = InteractiveApp(app_config)
+    frame = np.zeros((100, 100, 3), dtype=np.uint8)
+    
+    # Set current base scale to something non-default
+    app.current_base_scale = 2.5
+    
+    # Mess up view
+    app.map_system.state.zoom = 5.0
+    app.map_system.state.rotation = 90
+    
+    # Trigger RESET_VIEW
+    with patch.object(app.menu_system, "update") as mock_update:
+        mock_state = MagicMock()
+        mock_state.just_triggered_action = MenuActions.RESET_VIEW
+        mock_state.is_visible = True
+        mock_update.return_value = mock_state
+        
+        results = MockResults(hands_landmarks=[[MockHandLandmark(0.5, 0.5)] * 21])
+        app.process_frame(frame, results)
+        
+        assert app.map_system.state.zoom == 2.5
+        assert app.map_system.state.rotation == 0.0
+
+def test_reset_zoom_only_updates_zoom(app_config):
+    app = InteractiveApp(app_config)
+    frame = np.zeros((100, 100, 3), dtype=np.uint8)
+    
+    # Set current base scale
+    app.current_base_scale = 3.0
+    
+    # Set view with rotation and pan
+    app.map_system.state.x = 50
+    app.map_system.state.y = 50
+    app.map_system.state.rotation = 45
+    app.map_system.state.zoom = 10.0
+    
+    # Trigger RESET_ZOOM
+    with patch.object(app.menu_system, "update") as mock_update:
+        mock_state = MagicMock()
+        mock_state.just_triggered_action = MenuActions.RESET_ZOOM
+        mock_state.is_visible = True
+        mock_update.return_value = mock_state
+        
+        results = MockResults(hands_landmarks=[[MockHandLandmark(0.5, 0.5)] * 21])
+        app.process_frame(frame, results)
+        
+        assert app.map_system.state.zoom == 3.0
+        assert app.map_system.state.rotation == 45
+        assert app.map_system.state.x == 50
+        assert app.map_system.state.y == 50

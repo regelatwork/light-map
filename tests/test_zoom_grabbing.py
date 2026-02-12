@@ -96,3 +96,49 @@ def test_zoom_grabbing_asymmetric_fixed_hand(app):
     # World Point that was at (50, 50) is still at (50, 50) on screen.
     # The map zoomed around the center.
 
+def test_zoom_rotated(app):
+    from unittest.mock import MagicMock
+    from light_map.common_types import GestureType
+    
+    # Setup
+    app.map_system.state.rotation = 90
+    app.config.width = 100
+    app.config.height = 100
+    # Ensure map center aligns initially
+    app.map_system.state.x = 0
+    app.map_system.state.y = 0
+    app.map_system.state.zoom = 1.0
+    
+    # 1. Start Zoom
+    hands_start = [
+        {"gesture": GestureType.POINTING, "proj_pos": (40, 50), "raw_landmarks": MagicMock()},
+        {"gesture": GestureType.POINTING, "proj_pos": (60, 50), "raw_landmarks": MagicMock()},
+    ]
+    
+    app.time_provider = MagicMock(return_value=1.0)
+    app._process_map_mode(hands_start, 1.0)
+    # Wait delay
+    app._process_map_mode(hands_start, 2.0)
+    
+    assert app.zoom_start_dist == 20.0
+    # Center (50, 50) should map to World (50, 50)
+    # (Screen->World with Rot=90, Zoom=1, Pan=0)
+    # M = S(1) * R(90, 50, 50) * T(0,0)
+    # Inverse of R(90 around 50,50) maps 50,50 to 50,50.
+    assert app.zoom_start_world_center == pytest.approx((50.0, 50.0))
+    
+    # 2. Update Zoom (2x)
+    hands_end = [
+        {"gesture": GestureType.POINTING, "proj_pos": (30, 50), "raw_landmarks": MagicMock()},
+        {"gesture": GestureType.POINTING, "proj_pos": (70, 50), "raw_landmarks": MagicMock()},
+    ]
+    
+    app._process_map_mode(hands_end, 2.1)
+    
+    assert app.map_system.state.zoom == 2.0
+    
+    # Check Pan (Derived manually above: x=50, y=-50)
+    # The old logic yielded (-50, -50), proving the difference.
+    assert app.map_system.state.x == pytest.approx(50.0)
+    assert app.map_system.state.y == pytest.approx(-50.0)
+

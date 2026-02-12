@@ -1,5 +1,7 @@
 from dataclasses import dataclass
 from typing import Dict, Any, Optional, Tuple
+import svgelements
+import math
 
 
 @dataclass
@@ -33,29 +35,43 @@ class MapSystem:
         center_y: Optional[float] = None,
     ):
         """
-        Adjust zoom level.
-        If center_x/y are provided, adjusts x/y to zoom into that point.
+        Adjust zoom level relative to a screen point.
         """
         if center_x is None:
             center_x = self.width / 2
         if center_y is None:
             center_y = self.height / 2
 
-        old_zoom = self.state.zoom
-        self.state.zoom *= factor
+        # Get world coordinate of center BEFORE zoom
+        wx, wy = self.screen_to_world(center_x, center_y)
 
-        # Adjust pan to keep center_x/y pinned
-        # New_X = (Old_X - center) * (new_zoom/old_zoom) + center?
-        # Actually, simpler:
-        # The point under the cursor (center_x, center_y) should remain at the same SVG coordinate.
-        # SVG_X = (Screen_X - Pan_X) / Zoom
+        new_zoom = self.state.zoom * factor
+        
+        # Use robust pivot logic
+        self.set_zoom_around_pivot(new_zoom, center_x, center_y, wx, wy)
 
-        # (center_x - new_pan_x) / new_zoom = (center_x - old_pan_x) / old_zoom
-        # new_pan_x = center_x - (center_x - old_pan_x) * (new_zoom / old_zoom)
-
-        ratio = self.state.zoom / old_zoom
-        self.state.x = center_x - (center_x - self.state.x) * ratio
-        self.state.y = center_y - (center_y - self.state.y) * ratio
+    def set_zoom_around_pivot(self, new_zoom: float, sx: float, sy: float, wx: float, wy: float):
+        """
+        Sets the zoom level and adjusts pan (x, y) so that the given world coordinate (wx, wy)
+        maps to the given screen coordinate (sx, sy).
+        """
+        self.state.zoom = new_zoom
+        
+        cx, cy = self.width / 2, self.height / 2
+        
+        # Construct transform part without Translation (T)
+        # matches SVGLoader logic: Scale -> Rotate(around center) -> Translate
+        m_no_t = svgelements.Matrix()
+        m_no_t.post_scale(new_zoom, new_zoom)
+        m_no_t.post_rotate(math.radians(self.state.rotation), cx, cy)
+        
+        # Transform World Point
+        p_transformed = m_no_t.point_in_matrix_space((wx, wy))
+        
+        # Calculate required Translation
+        # S = P_transformed + T  =>  T = S - P_transformed
+        self.state.x = sx - p_transformed.x
+        self.state.y = sy - p_transformed.y
 
     def rotate(self, degrees: float):
         """Rotate map in 90 degree increments."""
@@ -74,10 +90,19 @@ class MapSystem:
             "rotation": self.state.rotation,
         }
 
+    def _get_matrix(self) -> svgelements.Matrix:
+        """Reconstructs the full transformation matrix used by SVGLoader."""
+        cx, cy = self.width / 2, self.height / 2
+        m = svgelements.Matrix()
+        m.post_scale(self.state.zoom, self.state.zoom)
+        m.post_rotate(math.radians(self.state.rotation), cx, cy)
+        m.post_translate(self.state.x, self.state.y)
+        return m
+
     def screen_to_world(self, sx: float, sy: float) -> Tuple[float, float]:
         """Converts screen coordinates to world (map) coordinates."""
-        # Screen = World * Zoom + Pan
-        # World = (Screen - Pan) / Zoom
-        wx = (sx - self.state.x) / self.state.zoom
-        wy = (sy - self.state.y) / self.state.zoom
-        return wx, wy
+        m = self._get_matrix()
+        # Invert matrix to go Screen -> World
+        im = ~m
+        p = im.point_in_matrix_space((sx, sy))
+        return p.x, p.y

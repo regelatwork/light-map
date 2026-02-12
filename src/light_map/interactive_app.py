@@ -322,16 +322,9 @@ class InteractiveApp:
                     factor = dist / self.zoom_start_dist
                     new_zoom = self.zoom_start_level * factor
                     
-                    # Apply new zoom
-                    self.map_system.state.zoom = new_zoom
-                    
-                    # Re-calculate Pan to keep world_center under screen_center
+                    # Apply new zoom using robust pivot logic
                     wx, wy = self.zoom_start_world_center
-                    new_pan_x = screen_cx - wx * new_zoom
-                    new_pan_y = screen_cy - wy * new_zoom
-                    
-                    self.map_system.state.x = new_pan_x
-                    self.map_system.state.y = new_pan_y
+                    self.map_system.set_zoom_around_pivot(new_zoom, screen_cx, screen_cy, wx, wy)
         else:
             self.zoom_gesture_start_time = 0
             self.zoom_start_dist = None
@@ -436,14 +429,10 @@ class InteractiveApp:
                 else:
                     factor = dist / self.zoom_start_dist
                     new_zoom = self.zoom_start_level * factor
-                    self.map_system.state.zoom = new_zoom
                     
-                    # Re-calculate Pan to keep world_center under screen_center
+                    # Apply new zoom using robust pivot logic
                     wx, wy = self.zoom_start_world_center
-                    new_pan_x = screen_cx - wx * new_zoom
-                    new_pan_y = screen_cy - wy * new_zoom
-                    self.map_system.state.x = new_pan_x
-                    self.map_system.state.y = new_pan_y
+                    self.map_system.set_zoom_around_pivot(new_zoom, screen_cx, screen_cy, wx, wy)
         else:
             self.zoom_gesture_start_time = 0
             self.zoom_start_dist = None

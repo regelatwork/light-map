@@ -75,6 +75,14 @@ class InteractiveApp:
         self.saved_map_state = None
         self.current_base_scale = 1.0
 
+        # Session Capture State
+        self.capture_active = False
+        self.capture_stage = 0  # Index in CAPTURE_LEVELS
+        self.capture_timer = 0.0
+        self.capture_levels = [50, 150, 255] # Intensities to test
+        self.capture_delay = 1.0 # Seconds to wait per level
+        self.last_raw_frame = None
+
     def set_debug_mode(self, enabled: bool):
         self.debug_mode = enabled
 
@@ -154,6 +162,7 @@ class InteractiveApp:
         self.last_fps_time = current_time
 
         # 2. Extract Hand Data
+        self.last_raw_frame = frame.copy()
         hands_data = self._extract_hands(results, frame.shape)
         hand_count = len(hands_data)
 
@@ -167,11 +176,18 @@ class InteractiveApp:
             actions = self._process_calib_ppi_mode(hands_data, frame)
         elif self.mode == AppMode.CALIB_MAP_GRID:
             actions = self._process_calib_map_grid_mode(hands_data, current_time)
+        elif self.mode == AppMode.CAMERA_VIEW:
+            # Exit Camera View with Victory
+            if hands_data and hands_data[0]["gesture"] == config_vars.SUMMON_GESTURE:
+                 self.mode = AppMode.MENU
 
         # 4. Render Layers
         # A. Map Background
         map_image = None
-        if self.svg_loader:
+        if self.mode == AppMode.CAMERA_VIEW:
+            # Display Camera Feed as background
+            map_image = cv2.resize(frame, (self.config.width, self.config.height))
+        elif self.svg_loader:
             params = self.map_system.get_render_params()
             quality = 0.25 if self.is_interacting else 1.0
             map_image = self.svg_loader.render(
@@ -179,9 +195,46 @@ class InteractiveApp:
             )
 
         # B. Menu/Overlay
-        # Render menu only if NOT in calibration mode (or maybe background?)
-        # If Calibrating, we might want to hide menu.
-        if self.mode == AppMode.CALIB_PPI:
+        if self.capture_active:
+            # Multi-Level Capture Logic
+            if self.capture_stage < len(self.capture_levels):
+                level = self.capture_levels[self.capture_stage]
+                
+                # Start Timer
+                if self.capture_timer == 0.0:
+                    self.capture_timer = current_time
+                    output = np.full((self.config.height, self.config.width, 3), level, dtype=np.uint8)
+                
+                elif current_time - self.capture_timer < self.capture_delay:
+                    # Wait for Projector/Camera
+                    output = np.full((self.config.height, self.config.width, 3), level, dtype=np.uint8)
+                
+                else:
+                    # Capture!
+                    timestamp = time.strftime("%Y%m%d_%H%M%S")
+                    filename = f"samples/session_{timestamp}_L{level}.png"
+                    cv2.imwrite(filename, self.last_raw_frame)
+                    print(f"Captured session reference: {filename}")
+                    
+                    # Next Stage
+                    self.capture_stage += 1
+                    self.capture_timer = 0.0
+                    
+                    # Prevent instant transition (stay on this frame for one loop)
+                    output = np.full((self.config.height, self.config.width, 3), level, dtype=np.uint8)
+            else:
+                # Done! Brief Green Flash
+                if self.capture_timer == 0.0:
+                    self.capture_timer = current_time
+                    output = np.full((self.config.height, self.config.width, 3), (0, 255, 0), dtype=np.uint8) # Green
+                elif current_time - self.capture_timer < 0.5:
+                     output = np.full((self.config.height, self.config.width, 3), (0, 255, 0), dtype=np.uint8)
+                else:
+                    self.capture_active = False
+                    self.capture_timer = 0.0
+                    output = np.zeros((self.config.height, self.config.width, 3), dtype=np.uint8)
+                    
+        elif self.mode == AppMode.CALIB_PPI:
             output = np.zeros(
                 (self.config.height, self.config.width, 3), dtype=np.uint8
             )
@@ -193,6 +246,8 @@ class InteractiveApp:
                 output = np.zeros(
                     (self.config.height, self.config.width, 3), dtype=np.uint8
                 )
+        elif self.mode == AppMode.CAMERA_VIEW:
+            output = map_image.copy()
         else:
             # Determine Map Opacity based on mode
             map_opacity = 1.0
@@ -208,12 +263,27 @@ class InteractiveApp:
             )
 
         # C. Overlays
-        if self.mode == AppMode.MAP:
+        if self.capture_active:
+            stage = self.capture_stage
+            total = len(self.capture_levels)
+            if stage < total:
+                cv2.putText(
+                    output,
+                    f"Capturing Level {stage+1}/{total}...",
+                    (50, 100),
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    1.0,
+                    (0, 0, 255), # Red text
+                    2
+                )
+        elif self.mode == AppMode.MAP:
             self._draw_map_overlay(output)
         elif self.mode == AppMode.CALIB_PPI:
             self._draw_calib_overlay(output)
         elif self.mode == AppMode.CALIB_MAP_GRID:
             self._draw_calib_map_grid_overlay(output)
+        elif self.mode == AppMode.CAMERA_VIEW:
+            self._draw_camera_view_overlay(output)
 
         # D. Debug Overlays
         if self.debug_mode:
@@ -310,6 +380,12 @@ class InteractiveApp:
                 self.map_system.reset_view()
                 self.map_system.state.zoom = self.current_base_scale
                 self.save_current_map_state()
+            elif action == MenuActions.DEBUG_CAMERA:
+                self.mode = AppMode.CAMERA_VIEW
+            elif action == MenuActions.CAPTURE_SESSION:
+                self.capture_active = True
+                self.capture_stage = 0
+                self.capture_timer = 0.0
             else:
                 actions.append(action)
 
@@ -698,3 +774,14 @@ class InteractiveApp:
                 2,
             )
             cv2.circle(image, (dx, dy), 10, (0, 255, 255), -1)
+
+    def _draw_camera_view_overlay(self, image):
+        cv2.putText(
+            image,
+            "CAMERA VIEW | Exit: VICTORY",
+            (50, self.config.height - 60),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            1.0,
+            (0, 255, 0),
+            2,
+        )

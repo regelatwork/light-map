@@ -317,3 +317,55 @@ def test_reset_zoom_only_updates_zoom(app_config):
         assert app.map_system.state.rotation == 45
         assert app.map_system.state.x == 50
         assert app.map_system.state.y == 50
+
+def test_capture_session_flash_sequence(app_config):
+    app = InteractiveApp(app_config)
+    app.time_provider = MagicMock()
+    app.capture_levels = [50] # Test only one level to be brief
+    frame = np.zeros((100, 100, 3), dtype=np.uint8)
+    results = MockResults(hands_landmarks=None)
+    
+    # Trigger Capture
+    app.mode = AppMode.MENU
+    with patch.object(app.menu_system, "update") as mock_update:
+        mock_state = MagicMock()
+        mock_state.just_triggered_action = MenuActions.CAPTURE_SESSION
+        mock_state.is_visible = True
+        mock_update.return_value = mock_state
+        
+        app.time_provider.return_value = 1.0
+        output, _ = app.process_frame(frame, results)
+        
+        # Should be active, Level 50
+        assert app.capture_active == True
+        assert app.capture_stage == 0
+        # Check background color (avoiding text overlay area)
+        assert np.array_equal(output[0, 0], [50, 50, 50])
+        assert app.capture_timer == 1.0
+        
+    # Second frame (wait period < 1.0s)
+    app.time_provider.return_value = 1.5
+    output, _ = app.process_frame(frame, results)
+    assert app.capture_active == True
+    assert np.array_equal(output[0, 0], [50, 50, 50])
+    
+    # Third frame (capture time > 1.0s) -> CAPTURE HAPPENS HERE
+    app.time_provider.return_value = 2.1
+    with patch("cv2.imwrite") as mock_write:
+        output, _ = app.process_frame(frame, results)
+        
+        # Should have captured and moved to stage 1
+        assert mock_write.called
+        assert app.capture_stage == 1 
+        assert app.capture_timer == 0.0 # Timer reset for next stage/done
+        
+    # Fourth frame -> GREEN FLASH STARTS HERE
+    app.time_provider.return_value = 2.2
+    output, _ = app.process_frame(frame, results)
+    assert app.capture_timer == 2.2
+    assert np.array_equal(output[0,0], [0, 255, 0])
+        
+    # Fifth frame (Green flash over)
+    app.time_provider.return_value = 3.0
+    output, _ = app.process_frame(frame, results)
+    assert app.capture_active == False

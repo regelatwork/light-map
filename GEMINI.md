@@ -113,3 +113,20 @@ The ultimate goal of this project is to enable precise mapping between camera an
   - Decoupled UI rendering loop from Camera/AI processing latency.
   - Implemented thread-safe data transfer using `VisionData` dataclass.
 
+## Feature Tracking: Map Grid Scaling (feat/map-grid-scaling)
+
+- [x] **Phase 1: Logic & Data Structures**
+  - `MapConfig` persistence for `grid_spacing_svg` and `scale_factor_1to1`.
+  - `SVGLoader` vector-based grid auto-detection.
+- [x] **Phase 2: Manual Calibration**
+  - "Set Scale" menu item (Manual Alignment Mode).
+  - Dimmed map background and green crosshair overlays (1 inch reference).
+  - "Calibration View" isolation: Resets view to base scale/orientation during calibration.
+- [x] **Phase 3: Interaction Refinement**
+  - **Fixed Pivot Zoom**: Zoom interactions scale around screen center.
+  - **Rotation Fix**: Coordinate transforms correctly handle map rotation.
+  - **Zoom 1:1**: Menu item to reset user zoom to calibrated base scale.
+- [x] **Phase 4: Robustness**
+  - **Raster Fallback**: Auto-detection uses autocorrelation for image-based maps.
+  - **Warning UI**: "GRID UNCALIBRATED" warning when scale is unknown.
+

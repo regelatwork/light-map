@@ -129,11 +129,20 @@ python hand_tracker.py --map path/to/your/map.svg
 
 Switch to **Map Mode** by selecting "Map Controls" from the main menu.
 
-- **Pan**: Use the **Open Palm** gesture and move your hand to drag the map.
-- **Zoom**: Use the **Two-Hand Pointing** gesture (index fingers extended on both hands). Move hands apart to zoom in, and closer to zoom out. A 1-inch grid will appear to assist with scaling.
+- **Pan**: Use the **Closed Fist** gesture and move your hand to drag the map.
+- **Zoom**: Use the **Two-Hand Pointing** gesture (index fingers extended on both hands). Move hands apart to zoom in, and closer to zoom out.
 - **Rotate**: Use the "Rotate CW/CCW" options in the "Map Settings" sub-menu.
-- **Reset**: Use the "Reset View" option in the "Map Settings" sub-menu.
+- **Reset**: Use "Reset View" to restore 1:1 scale and center view, or "Zoom 1:1" to reset zoom only.
 - **Exit Map Mode**: Perform the **Victory** gesture to return to the main menu.
+
+### Scale Calibration (Manual Alignment)
+
+If the map's grid size is unknown or the map is an image, you can manually calibrate the scale.
+
+1.  Select "Map Settings > Set Scale".
+2.  The map will reset to a base view, and a **1-inch grid** will be projected.
+3.  Use Pan/Zoom gestures to align the map's grid lines with the projected crosshairs.
+4.  Perform the **Victory** gesture to confirm. The system saves this scale and restores your previous view.
 
 ## Scale Calibration (PPI)
 

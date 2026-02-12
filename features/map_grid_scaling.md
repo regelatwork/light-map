@@ -13,95 +13,57 @@ This document outlines the design for implementing real-world scale (1:1) mappin
 *   **PPI (Projector Pixels Per Inch)**: A global constant derived from `projector_calibration.py` (ArUco markers). It tells us how many pixels span 1 physical inch.
 *   **SVG Unit**: The internal coordinate system of the SVG file (unitless, px, cm, etc.).
 *   **Map Scale Factor ($S$)**: The zoom level applied during rendering.
-    *   $S = \frac{	ext{Projector Pixels}}{	ext{SVG Units}}$
+    *   $S = \frac{\text{Projector Pixels}}{\text{SVG Units}}$
 *   **Target Scale ($S_{1:1}$)**: The specific zoom level where 1 SVG Grid Unit equals 1 Physical Grid Unit.
-    *   $S_{1:1} = \frac{	ext{Physical Size (Inches)} 	imes 	ext{PPI}}{	ext{SVG Grid Spacing (Units)}}$
+    *   $S_{1:1} = \frac{\text{Physical Size (Inches)} \times \text{PPI}}{\text{SVG Grid Spacing (Units)}}$
+*   **User Zoom**: The relative zoom level applied by the user during navigation.
+    *   $\text{Total Zoom} = S_{1:1} \times \text{User Zoom}$
 
 ## Feature 1: Automated Grid Detection
 
-### Algorithm
-The `SVGLoader` will analyze the geometry of the loaded map to infer grid lines.
+### Algorithm A: Vector Analysis
+The `SVGLoader` analyzes the geometry of the loaded map to infer grid lines.
 
 1.  **Extraction**: Iterate through all `Line`, `Path` (linear segments), `Rect`, and `Polyline` elements.
-2.  **Normalization**: Convert all segments to absolute coordinates.
-3.  **Filtering**: Ignore short lines (noise/details) and non-axis-aligned lines (diagonal walls).
-4.  **Clustering**:
-    *   Group vertical lines by their X-coordinate.
-    *   Group horizontal lines by their Y-coordinate.
-5.  **Spacing Analysis**:
-    *   Calculate the distance (gap) between adjacent unique coordinates in each group.
-    *   Compute a histogram of these gaps.
-    *   The **mode** (most frequent gap) is the candidate grid size ($G_{svg}$).
-6.  **Validation**:
-    *   Require a minimum number of repeating lines (e.g., > 3) to confirm a grid.
-    *   Check if horizontal and vertical spacings match (square grid) or differ (rectangular).
+2.  **Clustering**: Group lines by axis alignment.
+3.  **Spacing Analysis**: Calculate gaps between unique coordinates and find the mode.
+4.  **Validation**: Requires > 3 repeating lines.
 
 ### Algorithm B: Raster Analysis (Fallback)
-If the SVG contains large embedded images or the vector analysis fails to find a consistent grid, the system analyzes the rendered image.
+If vector analysis fails (e.g., map is an embedded image), the system falls back to signal processing on the rendered image.
 
-1.  **Rendering**: Render the SVG to a high-resolution buffer (e.g., 2048px wide).
-2.  **Edge Detection**: Apply Canny edge detector to highlight lines.
-3.  **Hough Line Transform**: Use `cv2.HoughLinesP` to detect straight lines.
-4.  **Filtering**: Keep only long horizontal and vertical lines.
-5.  **Frequency Analysis (Optional)**:
-    *   Collapse the edge image into 1D profiles (sum of rows, sum of columns).
-    *   Apply FFT (Fast Fourier Transform) or autocorrelation to find the dominant spatial frequency (periodicity).
-    *   The peak frequency corresponds to the grid spacing.
-6.  **Spacing Extraction**: Similar to Algorithm A, calculate gaps between detected lines or use the FFT peak.
+1.  **Rendering**: Render the SVG to a high-resolution buffer (2048px wide).
+2.  **Edge Detection**: Apply Canny edge detector.
+3.  **Autocorrelation**: Collapse the edge map into 1D profiles (sum of rows/cols) and calculate the autocorrelation to find the dominant spatial frequency (grid spacing).
 
-### Strategy Selection
-1.  **Attempt Algorithm A (Vector)**: Fast and precise for vector grids.
-2.  **If A fails (low confidence)**:
-    *   Check if SVG contains `<image>` elements covering a significant area.
-    *   If yes, **Attempt Algorithm B (Raster)**.
-3.  **Result Integration**:
-    *   If both return results, prefer A (infinite precision).
-    *   If only B returns results, use B but with a "Medium" confidence flag.
+## Feature 2: Manual Scale Alignment
 
-### Output
-*   `detected_grid_spacing_x`: float (SVG Units)
-*   `detected_grid_spacing_y`: float (SVG Units)
-*   `confidence`: float (0.0 - 1.0)
-
-## Feature 2: Manual Scale Alignment (The "Markers")
-
-Since automated detection might fail or the physical size of the grid is unknown (e.g., "Is this 5ft or 1 meter?"), a manual alignment mode is required.
+Since automated detection might fail or the physical size of the grid is unknown, a manual alignment mode is provided.
 
 ### UI Workflow
-1.  **Enter Scale Mode**: User selects "Calibrate Map Scale" from the menu.
-2.  **Project Reference Crosshairs**: The system overlays **green crosshairs with a black outline** (for high contrast on light/dark maps) representing a known physical size (e.g., 1 inch intervals) based on the global PPI.
-    *   *Note*: This requires the global PPI to be calibrated first.
+1.  **Enter Scale Mode**: User selects "Map Settings > Set Scale".
+    *   **View Isolation**: The map resets to "Base View" (Rotation=0, Pan=0, Zoom=`CurrentBaseScale`). The user's previous navigation state is saved.
+    *   **Feedback**: If the grid is uncalibrated, a warning "GRID UNCALIBRATED" is displayed on the map overlay.
+2.  **Project Reference Crosshairs**: The system overlays **dimmed green crosshairs** representing a known physical size (1 inch) based on global PPI.
+    *   Map background is dimmed (0.5 opacity) to improve contrast.
 3.  **User Adjustment**:
-    *   **Zoom**: Adjust map scale until map grid lines match the spacing of the projected crosshairs.
-    *   **Offset**: Pan the map to align a specific grid intersection with the center crosshair. This establishes the grid origin.
-    *   **Interaction**:
-        *   "Zoom to Fit": Adjusts map scale.
-        *   "Pan to Align": Adjusts map offset (origin).
-        *   "Define Unit": Cycle through reference grid sizes (1 inch, 5 feet, 1 meter).
-4.  **Confirm**: User performs a confirmation gesture (e.g., Victory).
-5.  **Calculation**:
-    *   The system captures the current zoom level ($S_{current}$) and offset ($O_{grid}$).
-    *   It calculates the relationship: "1 Grid Unit = $X$ Inches".
-    *   *Future Utility*: This alignment allows the system to treat the grid as a source of discrete positions (snapping).
+    *   **Zoom**: Use two-hand pointing gesture to scale the map until its grid lines match the projected crosshairs.
+    *   **Pan**: Use fist gesture to align the grid origin.
+    *   **Pivot**: Zooming now pivots around the screen center for stability.
+4.  **Confirm**: User performs `VICTORY` gesture (Hold 1s).
+    *   The system calculates and saves the new `scale_factor_1to1`.
+    *   The User View is restored, with the relative zoom level preserved against the new base scale.
 
-## Implementation Plan
+## Feature 3: Interaction Refinements
 
-### Phase 1: Logic & Data Structures
-*   Update `MapEntry` in `map_config.py` to store:
-    *   `grid_spacing_svg`: float (Detected or Manual)
-    *   `grid_origin_svg`: tuple (x, y) (Manual Offset)
-    *   `physical_unit_inches`: float (e.g., 1.0 for inches, 60.0 for 5ft)
-    *   `scale_factor_1to1`: float (Calculated)
-*   Implement `detect_grid_spacing` in `svg_loader.py`.
+*   **Fixed Pivot Zoom**: Zoom interactions now scale the map around the center of the screen, regardless of where the hands are located. This prevents the map from "jumping" and makes alignment easier.
+*   **Rotation Handling**: Coordinate transformations (`screen_to_world`) now correctly account for map rotation (90/180/270 degrees).
+*   **Zoom 1:1**: A new menu item "Zoom 1:1" resets the user's zoom level to exactly match the calibrated base scale, without changing Pan or Rotation.
+*   **Reset View**: Resets Pan/Rotation and sets Zoom to the calibrated base scale (1:1).
 
-### Phase 2: UI & Interaction
-*   Add `MapSystem.set_scale_to_grid(physical_size_inches)` method.
-*   Implement `_draw_scale_overlay` in `interactive_app.py`:
-    *   Draws calibrated PPI crosshairs (Green with Black outline).
-    *   Draws the current map (Background).
-    *   Displays text: "Align Map Grid to Crosshairs".
+## Implementation Details
 
-### Phase 3: Integration
-*   Add menu item "Map Settings > Set Scale".
-*   Auto-run detection when loading a new map.
-*   If confidence is high, toast message: "Grid Detected: 50px. Set as 1 inch?"
+*   **`MapConfig`**: updated to store `grid_spacing_svg`, `physical_unit_inches`, and `scale_factor_1to1`.
+*   **`MapSystem`**: updated with `set_zoom_around_pivot` and matrix-based coordinate transforms.
+*   **`SVGLoader`**: added `detect_grid_spacing` (Vector + Raster fallback).
+*   **`InteractiveApp`**: logic for state isolation, saving/restoring view, and handling new menu actions.

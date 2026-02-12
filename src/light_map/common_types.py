@@ -30,8 +30,6 @@ class MenuActions(StrEnum):
     RESET_ZOOM = "RESET_ZOOM"
     PAGE_NEXT = "PAGE_NEXT"
     PAGE_PREV = "PAGE_PREV"
-    DEBUG_CAMERA = "DEBUG_CAMERA"
-    CAPTURE_SESSION = "CAPTURE_SESSION"
 
 
 class AppMode(StrEnum):
@@ -39,7 +37,6 @@ class AppMode(StrEnum):
     MAP = "MAP"
     CALIB_PPI = "CALIB_PPI"
     CALIB_MAP_GRID = "CALIB_MAP_GRID"
-    CAMERA_VIEW = "CAMERA_VIEW"
 
 
 @dataclass

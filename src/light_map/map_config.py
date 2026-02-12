@@ -60,7 +60,8 @@ class MapConfigManager:
             )
 
             maps = {}
-            for name, entry_data in raw.get("maps", {}).items():
+            raw_maps = raw.get("maps", {})
+            for name, entry_data in raw_maps.items():
                 vp_data = entry_data.get("viewport", {})
                 viewport = ViewportState(
                     x=vp_data.get("x", 0.0),

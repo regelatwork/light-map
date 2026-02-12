@@ -1,53 +1,46 @@
-# Token Tracking & Session Persistence (Brainstorm)
+# Token Tracking & Session Persistence (Design)
 
 ## Goal
-Enable the system to detect physical tokens (minis, dice, coins) on the table, map their positions to the digital grid, and save/restore this state to assist in setting up future sessions.
+Enable the system to detect physical tokens (minis, dice, coins) on the table, map their positions to the digital grid, and save/restore this session state.
 
 ## 1. The Challenge: Projector Interference
-The primary difficulty is that the map is projected *onto* the tokens, changing their color and appearance.
-- **Problem**: A red dragon mini looks blue if it's standing on a blue ocean tile.
-- **Problem**: The room is likely dark, so the camera relies on the projector for light.
+The projected map changes the color and appearance of tokens, making detection difficult.
+- **Solution**: **"Flash Scan"**.
+- **Mechanism**: The projector switches to **Full White (Level 255)** for a short burst (e.g., 1.5s).
+- **Why**: This acts as a camera flash, illuminating all physical objects evenly against the white background.
+- **Result**: Tokens appear as **dark silhouettes** or distinct colored blobs against the bright white table.
 
-## 2. Proposed Solution: "Flash Scan"
-Instead of trying to subtract the map background in real-time, we use a controlled "Scan" sequence.
+## 2. Detection Algorithm (OpenCV)
 
-### Workflow
-1.  **Trigger**: User selects "Session > Scan Tokens" from the menu.
-2.  **Flash**: The projector switches to **Full White** for a short burst (e.g., 0.5s).
-    - *Why?* This acts as a camera flash, illuminating all physical objects on the table evenly.
-    - *Why not Black?* In a dark room, projecting black makes everything invisible.
-3.  **Capture**: The camera captures a frame during the white flash.
-4.  **Process**: The system detects "blobs" (contours) in the captured image.
-5.  **Restore**: The projector returns to displaying the map.
-6.  **Feedback**: "Ghost" circles appear on the map at the detected locations.
+### A. Preprocessing
+1.  **Capture**: Take a frame during the White Flash.
+2.  **Warp**: Transform the camera image to a **Top-Down View** using the calibrated `projector_matrix`. This removes perspective distortion on the table plane.
+3.  **Background Subtraction**: Optional, but helpful if lighting is uneven. (White Frame - Empty White Frame).
 
-## 3. Technical Implementation
+### B. Segmentation & Separation
+To handle **adjacent tokens** (which appear as a single merged blob):
+1.  **Threshold**: Convert to a Binary Image (Black/White).
+2.  **Distance Transform**: Calculate the distance from each white pixel to the nearest black background pixel.
+    *   *Result*: The center of each token becomes a "peak" (high intensity).
+    *   *Effect*: Even if tokens touch, their centers remain distinct peaks.
+3.  **Peak Detection**: Find local maxima in the distance map. These are the **Token Centers**.
+4.  **Watershed Algorithm** (Optional): If we need precise outlines, use the peaks as markers to flood-fill the basins and separate the touching blobs.
 
-### A. Coordinate Transformation Chain
-We can precisely map a camera pixel to a map coordinate:
-1.  **Camera Frame** $(u, v)$
-2.  $\xrightarrow{	ext{Homography}}$ **Projector/Screen** $(x, y)$
-3.  $\xrightarrow{	ext{MapSystem}}$ **World/SVG** $(w_x, w_y)$
+### C. Coordinate Mapping
+1.  **Pixel to World**: Convert the pixel coordinates of the peaks $(x, y)$ to World/SVG coordinates using `MapSystem.screen_to_world()`.
+2.  **Grid Snapping**:
+    *   Load `grid_spacing_svg` from `MapConfig`.
+    *   Snap each token's world coordinate to the nearest grid cell center (or intersection).
+    *   *Constraint*: Verify that the snapped position is within a valid distance (e.g., < 0.4 grid units) to avoid snapping noise.
 
-### B. Detection Algorithm (OpenCV)
-1.  **Input**: "Flash" frame (White background + Objects).
-2.  **Preprocessing**: Grayscale -> Gaussian Blur.
-3.  **Thresholding**: Adaptive Thresholding (handles uneven lighting better than fixed).
-4.  **Contour Finding**: `cv2.findContours`.
-5.  **Filtering**:
-    -   Ignore extremely large blobs (Hands/Arms).
-    -   Ignore tiny specks (Sensor noise/Dust).
-    -   *Constraint*: Min Area ~ 1cm², Max Area ~ 100cm².
-6.  **Centroid**: Calculate center of mass for each contour.
-
-### C. Persistence (`session.json`)
-We save the state of the "World":
+## 3. Persistence (`session.json`)
+Save the state of the "World":
 ```json
 {
   "map_file": "dungeon_level_1.svg",
   "view": { "x": 100, "y": 200, "zoom": 1.5, "rotation": 0 },
   "tokens": [
-    { "id": 1, "world_x": 50.5, "world_y": 60.2, "radius_px": 20 }
+    { "id": 1, "world_x": 50.5, "world_y": 60.2, "snapped_grid_x": 1, "snapped_grid_y": 2 }
   ]
 }
 ```
@@ -55,27 +48,25 @@ We save the state of the "World":
 ## 4. User Experience (UX)
 
 ### Saving a Session
-1.  User: "Scan & Save".
-2.  System: Flashes White -> Captures -> Saves `session.json`.
-3.  Feedback: "Session Saved! 5 Tokens detected."
+1.  **Trigger**: "Session > Scan & Save".
+2.  **Action**: 
+    -   System flashes White (Level 255).
+    -   Captures frame.
+    -   Detects tokens.
+    -   Snaps to grid.
+    -   Saves `session.json`.
+3.  **Feedback**: "Session Saved! 5 Tokens detected."
 
 ### Restoring a Session
-1.  User: "Load Session".
-2.  System: Loads map, pans to correct view.
-3.  System: Displays **"Ghost Tokens"** (Translucent White Circles with Dotted Outlines) at the saved coordinates.
-4.  User: Places physical tokens on the ghosts.
-5.  System (Loop):
-    -   Continuously (or on demand) scans.
-    -   If a physical token matches a Ghost location, the Ghost turns **Green** or disappears.
-    -   *Refinement*: This continuous scan might be annoying (flashing).
-    -   *Alternative*: User places tokens, then hits "Check Alignment". System flashes and highlights missing/misaligned tokens.
+1.  **Trigger**: "Session > Load Session".
+2.  **Action**:
+    -   Loads map and view.
+    -   Renders **"Ghost Tokens"** (Translucent circles) at saved coordinates.
+3.  **Interaction**:
+    -   User places physical tokens on the ghosts.
+    -   System can optionally "Scan & Verify" to confirm placement (Green Flash if correct, Red highlight if missing).
 
-## 5. Potential Enhancements
--   **Token IDs**: Use ArUco markers on token bases to know *exactly* which monster is where.
--   **Fog of War**: Use token positions to reveal the map dynamically.
--   **Shadows**: Use the token position to digitally cast dynamic shadows from virtual light sources.
-
-## Questions for Discussion
-1.  **Table Surface**: Is it a whiteboard/paper (bright) or wood (dark)? This affects thresholding.
-2.  **Token Types**: Are they standard 1-inch bases? Irregular shapes?
-3.  **Lighting**: Can we assume the room is dark, or is there ambient light?
+## 5. Outstanding Questions
+-   **Token Height**: Tall tokens (tents) might have their "center of mass" shifted by perspective.
+    -   *Mitigation*: Use the **bottom-most point** of the blob (the base) or the peak of the distance transform (which tends to be central) as the anchor.
+-   **Lighting**: Does ambient light interfere? (Flash 255 seems robust so far).

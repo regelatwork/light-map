@@ -102,21 +102,6 @@ ROOT_MENU = MenuItem(
             ],
         ),
         MenuItem(
-            title="Session",
-            children=[
-                MenuItem(
-                    title="Camera Feed",
-                    action_id=MenuActions.DEBUG_CAMERA,
-                    should_close_on_trigger=True,
-                ),
-                MenuItem(
-                    title="Capture Reference",
-                    action_id=MenuActions.CAPTURE_SESSION,
-                    should_close_on_trigger=False,
-                ),
-            ],
-        ),
-        MenuItem(
             title="Quit", action_id=MenuActions.EXIT, should_close_on_trigger=True
         ),
     ],

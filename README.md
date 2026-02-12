@@ -154,6 +154,24 @@ To achieve 1:1 mapping (1 inch on map = 1 inch in real life), you must calibrate
 1. **Detect**: Place the printed target on the surface. The system will detect the markers and calculate the PPI.
 1. **Verify & Confirm**: A 1-inch grid will be projected. Verify its accuracy and perform the **Victory** gesture to save the calibration.
 
+## Token Tracking & Session Persistence
+
+The system can detect physical tokens (e.g., minis, dice) placed on the table, map them to the digital grid, and save/restore the session state.
+
+### Scanning a Session
+
+1. Place your physical tokens on the map.
+2. Select **"Session > Scan & Save"** from the main menu.
+3. The projector will flash **Full White** for a moment (to illuminate tokens and remove map interference).
+4. The system captures the scene, detects tokens (handling adjacent tokens via splitting logic), and saves the session to `session.json`.
+5. Feedback "Saved X Tokens" will appear.
+
+### Loading a Session
+
+1. Select **"Session > Load Session"** from the main menu.
+2. The map will load the saved viewport (pan/zoom/rotation).
+3. **"Ghost Tokens"** (cyan circles) will be projected at the saved locations, allowing you to restore the physical setup.
+
 ### Debug Mode
 
 To visualize hand tracking, gestures, and system stats (FPS), run the tracker with the debug flag:

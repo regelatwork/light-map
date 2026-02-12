@@ -20,6 +20,8 @@ This project aims to provide tools for calibrating a projector-camera system.
   - **`map_system.py`**: Manages map viewport state (pan, zoom, rotation).
   - **`map_config.py`**: Handles persistence for map settings and global calibration data.
   - **`camera_pipeline.py`**: Manages a separate thread for camera capture and AI processing to decouple FPS from rendering.
+  - **`token_tracker.py`**: Computer vision pipeline for detecting physical tokens (minis, dice) using adaptive thresholding and watershed segmentation.
+  - **`session_manager.py`**: Handles JSON serialization for saving and restoring map state and token positions.
 - **`calibrate.py`**: Entry point script. Performs camera calibration using chessboard images in `images/` and saves `camera_calibration.npz`.
 - **`projector_calibration.py`**: Entry point script. Displays a pattern, captures it, and computes the perspective transformation matrix.
 - **`hand_tracker.py`**: Entry point script. Continuously tracks hands, projecting landmarks and detecting gestures in real-time with a hierarchical menu system and SVG map support. Supports live vision tuning.
@@ -38,6 +40,7 @@ The ultimate goal of this project is to enable precise mapping between camera an
 - **`hand_tracker.py`**: CLI entry point for the interactive hand tracking demo.
 - **`camera_calibration.npz`**: Stores the camera matrix and distortion coefficients.
 - **`map_state.json`**: Stores persistent application state, including map viewports, PPI calibration, and vision enhancement parameters.
+- **`session.json`**: Stores the last saved session state (map file, viewport, token positions).
 - **`requirements.txt`**: Lists the Python dependencies for this project.
 - **`README.md`**: Provides instructions on how to use the scripts in this project.
 - **`tests/README.md`**: Documentation for the unit testing suite, including coverage and running instructions.
@@ -130,3 +133,16 @@ The ultimate goal of this project is to enable precise mapping between camera an
   - **Raster Fallback**: Auto-detection uses autocorrelation for image-based maps.
   - **Warning UI**: "GRID UNCALIBRATED" warning when scale is unknown.
 
+## Feature Tracking: Token Tracking & Persistence
+
+- [x] **Phase 1: Computer Vision Pipeline**
+  - Implemented `TokenTracker` using adaptive thresholding, morphological ops, and watershed segmentation.
+  - Added heuristic splitting logic for adjacent tokens (vertical/horizontal pairs) based on aspect ratio.
+- [x] **Phase 2: Persistence Infrastructure**
+  - Implemented `SessionManager` to save/load `session.json`.
+  - Stores Map Viewport + Token Positions (World & Grid coordinates).
+- [x] **Phase 3: Application Integration**
+  - Added `SCANNING` mode to `InteractiveApp`.
+  - Implemented "Flash Scan" sequence: White Flash -> Wait 500ms (Sync) -> Capture -> Detect -> Save.
+  - Added "Session" menu with "Scan & Save" and "Load Session".
+  - Renders "Ghost Tokens" (cyan overlays) for saved sessions.

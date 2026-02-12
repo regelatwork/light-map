@@ -85,17 +85,14 @@ def test_zoom_grabbing_asymmetric_fixed_hand(app):
     assert app.map_system.state.zoom == 2.0
     
     # Check Pan
-    # New Screen Center = (40, 50)
-    # Old World Center = (50, 50)
-    # 40 = 50 * 2.0 + PanX => PanX = -60
-    assert app.map_system.state.x == -60.0
+    # Screen Center = (50, 50)
+    # Old World Point under Screen Center = (50, 50)
+    # 50 = 50 * 2.0 + PanX => PanX = -50
+    assert app.map_system.state.x == -50.0
+    assert app.map_system.state.y == -50.0
     
-    # Verification: Right Hand point
-    # World Point under Right Hand (60, 50) at start was (60, 50)
-    # New Screen Pos = World(60) * 2.0 + Pan(-60) = 120 - 60 = 60.
-    # Matches! Right hand stays fixed on map.
-    
-    # Left Hand point
-    # World Point under Left Hand (40, 50) at start was (40, 50)
-    # New Screen Pos = World(40) * 2.0 + Pan(-60) = 80 - 60 = 20.
-    # Matches! Left hand stays fixed on map.
+    # Verification: Midpoint shift
+    # New Midpoint is (40, 50)
+    # World Point that was at (50, 50) is still at (50, 50) on screen.
+    # The map zoomed around the center.
+

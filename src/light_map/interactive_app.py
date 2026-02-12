@@ -306,15 +306,16 @@ class InteractiveApp:
             if self.zoom_gesture_start_time == 0:
                 self.zoom_gesture_start_time = current_time
             elif current_time - self.zoom_gesture_start_time > config_vars.ZOOM_DELAY:
-                # Calculate screen center
-                center = (p1 + p2) / 2
+                # Calculate screen center (Fixed Pivot)
+                screen_cx = self.config.width / 2
+                screen_cy = self.config.height / 2
                 
                 if self.zoom_start_dist is None:
                     # Start of gesture
                     self.zoom_start_dist = dist
                     self.zoom_start_level = self.map_system.state.zoom
-                    # Calculate world coordinate under the center
-                    wx, wy = self.map_system.screen_to_world(center[0], center[1])
+                    # Calculate world coordinate under the screen center
+                    wx, wy = self.map_system.screen_to_world(screen_cx, screen_cy)
                     self.zoom_start_world_center = (wx, wy)
                 else:
                     # Update zoom
@@ -325,11 +326,9 @@ class InteractiveApp:
                     self.map_system.state.zoom = new_zoom
                     
                     # Re-calculate Pan to keep world_center under screen_center
-                    # Screen = World * Zoom + Pan
-                    # Pan = Screen - World * Zoom
                     wx, wy = self.zoom_start_world_center
-                    new_pan_x = center[0] - wx * new_zoom
-                    new_pan_y = center[1] - wy * new_zoom
+                    new_pan_x = screen_cx - wx * new_zoom
+                    new_pan_y = screen_cy - wy * new_zoom
                     
                     self.map_system.state.x = new_pan_x
                     self.map_system.state.y = new_pan_y
@@ -424,20 +423,25 @@ class InteractiveApp:
             if self.zoom_gesture_start_time == 0:
                 self.zoom_gesture_start_time = current_time
             elif current_time - self.zoom_gesture_start_time > config_vars.ZOOM_DELAY:
-                center = (p1 + p2) / 2
+                # Calculate screen center (Fixed Pivot)
+                screen_cx = self.config.width / 2
+                screen_cy = self.config.height / 2
+
                 if self.zoom_start_dist is None:
                     self.zoom_start_dist = dist
                     self.zoom_start_level = self.map_system.state.zoom
-                    wx, wy = self.map_system.screen_to_world(center[0], center[1])
+                    # Calculate world coordinate under the screen center
+                    wx, wy = self.map_system.screen_to_world(screen_cx, screen_cy)
                     self.zoom_start_world_center = (wx, wy)
                 else:
                     factor = dist / self.zoom_start_dist
                     new_zoom = self.zoom_start_level * factor
                     self.map_system.state.zoom = new_zoom
                     
+                    # Re-calculate Pan to keep world_center under screen_center
                     wx, wy = self.zoom_start_world_center
-                    new_pan_x = center[0] - wx * new_zoom
-                    new_pan_y = center[1] - wy * new_zoom
+                    new_pan_x = screen_cx - wx * new_zoom
+                    new_pan_y = screen_cy - wy * new_zoom
                     self.map_system.state.x = new_pan_x
                     self.map_system.state.y = new_pan_y
         else:

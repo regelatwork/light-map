@@ -136,6 +136,11 @@ def test_zooming_in_map_mode(app_config):
 
         # Initial zoom was 1.0, so new zoom should be 2.0
         assert app.map_system.state.zoom == 2.0
+        
+        # Fixed Pivot at Screen Center (50, 50)
+        # 50 = 50 * 2.0 + PanX => PanX = -50
+        assert app.map_system.state.x == -50.0
+        assert app.map_system.state.y == -50.0
 
 
 def test_exit_map_mode(app_config):

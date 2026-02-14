@@ -146,3 +146,19 @@ The ultimate goal of this project is to enable precise mapping between camera an
   - Implemented "Flash Scan" sequence: White Flash -> Wait 500ms (Sync) -> Capture -> Detect -> Save.
   - Added "Session" menu with "Scan & Save" and "Load Session".
   - Renders "Ghost Tokens" (cyan overlays) for saved sessions.
+
+## Feature Tracking: Map Loading & Session Management (feat/map-loading-sessions)
+
+- [x] **Phase 1: CLI & Discovery**
+  - Implemented `--maps` argument with glob support.
+  - Added automatic map discovery and pruning in `MapConfigManager`.
+- [x] **Phase 2: Session Persistence**
+  - Refactored `SessionManager` to link sessions to map files via path hashing.
+  - Session files now stored in `sessions/` directory with unique names.
+- [x] **Phase 3: Dynamic Menu UI**
+  - Implemented `MenuBuilder` for dynamic injection of "Maps" submenu.
+  - Added visual status indicators (`(!)`, `(*)`) for calibration and sessions.
+  - Added "Map Action" sub-menus for Load, Load Session, Calibrate, and Forget.
+- [x] **Phase 4: Integration**
+  - Updated `InteractiveApp` to support parameter passing via `action_id` (pipe-delimited).
+  - Integrated "Scan for Maps" with live menu refreshing.

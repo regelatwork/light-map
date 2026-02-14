@@ -117,17 +117,35 @@ The `hand_tracker.py` script also features a hierarchical menu system, allowing 
 
 The system can load and project SVG map files (e.g., floor plans). Map settings like pan, zoom, and rotation are automatically persisted in `map_state.json`. To ensure high performance, the system employs **dynamic resolution rendering**, lowering quality during pan/zoom interactions and snapping to full resolution when static.
 
-### Loading a Map
+### Loading Maps
 
-To start the application with a map, use the `--map` argument:
+To start the application and register one or more maps, use the `--maps` argument with files or globs:
+
+```bash
+python hand_tracker.py --maps "maps/*.svg" "maps/*.png"
+```
+
+You can also use the legacy `--map` argument to load a specific map immediately:
 
 ```bash
 python hand_tracker.py --map path/to/your/map.svg
 ```
 
+### Map Selection
+
+A dynamic "Maps" menu is available in the main menu:
+
+- **(!) Map Name**: Indicates the map's grid scale has not been calibrated.
+- **(*) Map Name**: Indicates a saved session is available for this map.
+- **Action Menu**: Selecting a map opens a sub-menu to:
+  - **Load Map**: Load the map and reset tokens.
+  - **Load Session**: Load the map and restore saved token positions.
+  - **Calibrate Scale**: Enter manual scale alignment mode.
+  - **Forget Map**: Remove the map from the registry.
+
 ### Map Interaction
 
-Switch to **Map Mode** by selecting "Map Controls" from the main menu.
+Switch to **Map Mode** by selecting "Map Controls" from the main menu, or by loading a map from the "Maps" menu.
 
 - **Pan**: Use the **Closed Fist** gesture and move your hand to drag the map.
 - **Zoom**: Use the **Two-Hand Pointing** gesture (index fingers extended on both hands). Move hands apart to zoom in, and closer to zoom out.
@@ -163,14 +181,18 @@ The system can detect physical tokens (e.g., minis, dice) placed on the table, m
 1. Place your physical tokens on the map.
 2. Select **"Session > Scan & Save"** from the main menu.
 3. The projector will flash **Full White** for a moment (to illuminate tokens and remove map interference).
-4. The system captures the scene, detects tokens (handling adjacent tokens via splitting logic), and saves the session to `session.json`.
-5. Feedback "Saved X Tokens" will appear.
+4. The system captures the scene, detects tokens (handling adjacent tokens via splitting logic), and saves the session.
+5. Session files are stored in the `sessions/` directory, uniquely linked to the specific map file.
+6. Feedback "Saved X Tokens" will appear.
 
 ### Loading a Session
 
-1. Select **"Session > Load Session"** from the main menu.
-2. The map will load the saved viewport (pan/zoom/rotation).
-3. **"Ghost Tokens"** (cyan circles) will be projected at the saved locations, allowing you to restore the physical setup.
+Sessions are linked to specific maps. You can load a session directly from the **"Maps"** sub-menu after selecting a map that has a session available (indicated by `(*)`).
+
+Alternatively, select **"Session > Load Last Session"** to restore the state from `session.json`.
+
+1. The map will load the saved viewport (pan/zoom/rotation).
+2. **"Ghost Tokens"** (cyan circles) will be projected at the saved locations, allowing you to restore the physical setup.
 
 ### Debug Mode
 

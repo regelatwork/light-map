@@ -127,30 +127,30 @@ We will choose **Option B**. `InteractiveApp` will reconstruct the entire `ROOT_
 
 ## Implementation Tasks
 
-- [ ] **Phase 1: CLI & Configuration**
-    - [ ] Update `argparse` to support `--maps` (list of strings).
-    - [ ] Implement `MapConfigManager.scan_for_maps` using `glob`.
-    - [ ] Implement `MapConfigManager.forget_map`.
-    - [ ] Update `MapEntry` to track `last_seen`.
-- [ ] **Phase 2: Session Backend**
-    - [ ] Refactor `SessionManager` to save files linked to specific maps (hashing path).
-    - [ ] Implement `MapConfigManager.get_map_status` (checks for session file existence).
-- [ ] **Phase 3: Menu UI Construction**
-    - [ ] Create `src/light_map/menu_builder.py`.
-    - [ ] Implement `build_map_submenu(map_config: MapConfigManager) -> MenuItem`.
-    - [ ] Implement `build_root_menu(map_config: MapConfigManager) -> MenuItem` which combines static items with the dynamic map list.
-    - [ ] Update `MenuSystem` to allow replacing the root menu via `set_root_menu`.
-- [ ] **Phase 4: Integration**
-    - [ ] Update `InteractiveApp` to initialization:
-        *   Parse `--maps`.
-        *   Call `scan_for_maps`.
-        *   Build initial menu.
-    - [ ] Update `InteractiveApp._process_menu_mode` to handle:
-        *   `LOAD_MAP|...`
-        *   `LOAD_SESSION|...`
-        *   `CALIBRATE_MAP|...`
-        *   `FORGET_MAP|...`
-        *   `SCAN_FOR_MAPS` (Triggers rescan and menu rebuild).
+- [x] **Phase 1: CLI & Configuration**
+    - [x] Update `argparse` to support `--maps` (list of strings).
+    - [x] Implement `MapConfigManager.scan_for_maps` using `glob`.
+    - [x] Implement `MapConfigManager.forget_map`.
+    - [x] Update `MapEntry` to track `last_seen`.
+- [x] **Phase 2: Session Backend**
+    - [x] Refactor `SessionManager` to save files linked to specific maps (hashing path).
+    - [x] Implement `MapConfigManager.get_map_status` (checks for session file existence).
+- [x] **Phase 3: Menu UI Construction**
+    - [x] Create `src/light_map/menu_builder.py`.
+    - [x] Implement `build_map_submenu(map_config: MapConfigManager) -> MenuItem`.
+    - [x] Implement `build_root_menu(map_config: MapConfigManager) -> MenuItem` which combines static items with the dynamic map list.
+    - [x] Update `MenuSystem` to allow replacing the root menu via `set_root_menu`.
+- [x] **Phase 4: Integration**
+    - [x] Update `InteractiveApp` to initialization:
+        *   [x] Parse `--maps`.
+        *   [x] Call `scan_for_maps`.
+        *   [x] Build initial menu.
+    - [x] Update `InteractiveApp._process_menu_mode` to handle:
+        *   [x] `LOAD_MAP|...`
+        *   [x] `LOAD_SESSION|...`
+        *   [x] `CALIBRATE_MAP|...`
+        *   [x] `FORGET_MAP|...`
+        *   [x] `SCAN_FOR_MAPS` (Triggers rescan and menu rebuild).
 
 ## Testing Strategy
 
@@ -164,12 +164,12 @@ We will choose **Option B**. `InteractiveApp` will reconstruct the entire `ROOT_
     *   Verify `build_map_submenu` creates the correct hierarchy.
     *   Verify `action_id` strings are formatted correctly (e.g. `LOAD_MAP|/tmp/map.svg`).
     *   Verify sorting is alphabetical.
-*   **`test_session_manager_hashing.py`**:
+*   **`test_session_manager.py`**:
     *   Verify that different paths produce different session filenames.
     *   Verify that the same path always produces the same session filename.
 
 ### Integration Tests
-*   **`test_interactive_app_map_loading.py`**:
+*   **`test_integration_map_loading.py`**:
     *   Instantiate `InteractiveApp`.
     *   Simulate triggering `LOAD_MAP|test_map.svg`.
     *   Assert that `app.svg_loader` is loaded with the correct file.

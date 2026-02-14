@@ -1,8 +1,10 @@
 import json
 import os
+import glob
+import datetime
 import numpy as np
 from dataclasses import asdict, dataclass, field
-from typing import Dict, Optional
+from typing import Dict, Optional, List
 from light_map.common_types import ViewportState
 
 STATE_FILE = "map_state.json"
@@ -18,6 +20,7 @@ class MapEntry:
     grid_origin_svg_y: float = 0.0
     physical_unit_inches: float = 1.0  # e.g. 1.0 for 1 inch
     scale_factor_1to1: float = 1.0  # Calculated zoom level for 1:1 scale
+    last_seen: str = ""  # ISO 8601 timestamp
 
 
 @dataclass
@@ -70,6 +73,7 @@ class MapConfigManager:
                     grid_origin_svg_y=entry_data.get("grid_origin_svg_y", 0.0),
                     physical_unit_inches=entry_data.get("physical_unit_inches", 1.0),
                     scale_factor_1to1=entry_data.get("scale_factor_1to1", 1.0),
+                    last_seen=entry_data.get("last_seen", ""),
                 )
 
             return MapConfigData(global_settings=global_settings, maps=maps)
@@ -142,3 +146,86 @@ class MapConfigManager:
         entry.physical_unit_inches = physical_unit_inches
         entry.scale_factor_1to1 = scale_factor_1to1
         self.save()
+
+    def scan_for_maps(self, patterns: List[str]) -> List[str]:
+        """
+        Expands globs in patterns, checks for existence,
+        adds new maps to config, and removes missing maps.
+        Returns the updated list of known map filenames.
+        """
+        found_maps = set()
+        
+        # 1. Expand Globs
+        for pattern in patterns:
+            # Handle user expansion like ~
+            expanded_pattern = os.path.expanduser(pattern)
+            matched_files = glob.glob(expanded_pattern, recursive=True)
+            
+            for fpath in matched_files:
+                abs_path = os.path.abspath(fpath)
+                if os.path.isfile(abs_path):
+                    # Simple extension check (can be expanded)
+                    ext = os.path.splitext(abs_path)[1].lower()
+                    if ext in [".svg", ".png", ".jpg", ".jpeg"]:
+                        found_maps.add(abs_path)
+
+        # 2. Update Config
+        current_time = datetime.datetime.now().isoformat()
+        
+        # Add new maps or update timestamp
+        for map_path in found_maps:
+            if map_path not in self.data.maps:
+                self.data.maps[map_path] = MapEntry(last_seen=current_time)
+            else:
+                self.data.maps[map_path].last_seen = current_time
+
+        # 3. Prune Missing Maps
+        # We only prune if we actually scanned something. 
+        # But wait, 'patterns' might be empty if we just want to re-verify existing?
+        # If patterns is empty, we should probably check existence of all known maps.
+        
+        # Strategy: Always check existence of ALL known maps, regardless of scan patterns.
+        # The 'patterns' are for ADDING. Pruning is for CLEANUP.
+        
+        to_remove = []
+        for map_path in self.data.maps.keys():
+            if not os.path.exists(map_path):
+                to_remove.append(map_path)
+        
+        for map_path in to_remove:
+            del self.data.maps[map_path]
+            print(f"Pruned missing map: {map_path}")
+
+        self.save()
+        
+        return list(self.data.maps.keys())
+
+    def forget_map(self, filename: str):
+        """Removes map from config."""
+        if filename in self.data.maps:
+            del self.data.maps[filename]
+            self.save()
+
+    def get_map_status(self, filename: str) -> Dict[str, bool]:
+        """
+        Returns {'calibrated': bool, 'has_session': bool}
+        """
+        entry = self.data.maps.get(filename)
+        if not entry:
+            return {"calibrated": False, "has_session": False}
+            
+        calibrated = entry.grid_spacing_svg > 0
+        
+        # Check for session file
+        # Hashing logic needs to match SessionManager (which we haven't refactored yet)
+        # For now, we assume SessionManager will export a helper or we replicate logic.
+        # Let's import it locally to avoid circular deps if SessionManager imports MapConfig (it doesn't yet).
+        # Actually SessionManager is standalone.
+        # But we haven't implemented the hashing logic in SessionManager yet.
+        # So for Phase 1, let's just use a placeholder or check generic session.json if filename matches?
+        # No, let's return False for 'has_session' for now or implement a basic check if we can.
+        
+        # We will implement the hash check properly in Phase 2.
+        has_session = False 
+        
+        return {"calibrated": calibrated, "has_session": has_session}

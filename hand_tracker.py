@@ -23,7 +23,10 @@ def main():
         "--debug", action="store_true", help="Enable debug overlay", default=False
     )
     parser.add_argument(
-        "--map", type=str, help="Path to SVG map file to load", default=None
+        "--maps", nargs="+", help="List of map files or globs to register", default=[]
+    )
+    parser.add_argument(
+        "--map", type=str, help="Path to SVG map file to load (legacy)", default=None
     )
     args = parser.parse_args()
 
@@ -68,6 +71,16 @@ def main():
     )
     app = InteractiveApp(config)
     app.set_debug_mode(args.debug)
+
+    # Register Maps
+    map_sources = args.maps
+    if args.map:
+        map_sources.append(args.map)
+    
+    if map_sources:
+        print(f"Scanning for maps in: {map_sources}")
+        found = app.map_config.scan_for_maps(map_sources)
+        print(f"Found {len(found)} maps.")
 
     if args.map:
         if os.path.exists(args.map):

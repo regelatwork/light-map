@@ -70,6 +70,14 @@ class MenuSystem:
         self.pinned_cursor: Optional[Tuple[int, int]] = None
         self.is_pinning: bool = False
 
+    def set_root_menu(self, new_root: MenuItem):
+        self.root = new_root
+        # Reset navigation if hidden or if we force a reset
+        if self.state == MenuSystemState.HIDDEN:
+            self.current_node = self.root
+            self.node_stack.clear()
+            self.page_index = 0
+
     def update(self, x: int, y: int, gesture: GestureType) -> MenuState:
         now = self.time_provider()
 

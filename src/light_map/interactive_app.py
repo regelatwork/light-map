@@ -3,7 +3,7 @@ import numpy as np
 import time
 import copy
 from typing import List, Tuple, Any, Optional, Dict
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import mediapipe as mp
 
 from light_map.common_types import GestureType, MenuItem, AppMode, MenuActions, Token, SessionData, ViewportState
@@ -18,6 +18,7 @@ from light_map.map_config import MapConfigManager
 from light_map.calibration_logic import calculate_ppi_from_frame
 from light_map.session_manager import SessionManager
 from light_map.token_tracker import TokenTracker
+from light_map.menu_builder import build_root_menu
 
 
 @dataclass
@@ -26,6 +27,7 @@ class AppConfig:
     height: int
     projector_matrix: np.ndarray
     root_menu: MenuItem
+    map_search_patterns: List[str] = field(default_factory=list)
 
 
 class InteractiveApp:
@@ -33,16 +35,23 @@ class InteractiveApp:
         self.config = config
         self.time_provider = time_provider
 
-        self.menu_system = MenuSystem(
-            config.width, config.height, config.root_menu, time_provider=time_provider
-        )
-        self.renderer = Renderer(config.width, config.height)
-        self.input_manager = InputManager(time_provider=time_provider)
-
-        # Map Support
+        # Map Support (Init first to build menu)
         self.map_system = MapSystem(config.width, config.height)
         self.svg_loader: Optional[SVGLoader] = None
         self.map_config = MapConfigManager()  # Load config
+
+        # Scan for maps if provided
+        if config.map_search_patterns:
+             self.map_config.scan_for_maps(config.map_search_patterns)
+
+        # Build dynamic root menu
+        dynamic_root = build_root_menu(self.map_config)
+
+        self.menu_system = MenuSystem(
+            config.width, config.height, dynamic_root, time_provider=time_provider
+        )
+        self.renderer = Renderer(config.width, config.height)
+        self.input_manager = InputManager(time_provider=time_provider)
 
         # Token Tracking Support
         self.token_tracker = TokenTracker()
@@ -141,10 +150,13 @@ class InteractiveApp:
     def reload_config(self, config: AppConfig):
         """Reloads the application configuration and re-initializes necessary components."""
         self.config = config
+        
+        dynamic_root = build_root_menu(self.map_config)
+        
         self.menu_system = MenuSystem(
             config.width,
             config.height,
-            config.root_menu,
+            dynamic_root,
             time_provider=self.time_provider,
         )
         self.renderer = Renderer(config.width, config.height)
@@ -311,12 +323,64 @@ class InteractiveApp:
 
         actions = []
         if self.menu_state.just_triggered_action:
-            action = self.menu_state.just_triggered_action
+            action_raw = self.menu_state.just_triggered_action
+            
+            # Parse pipe for payload
+            if "|" in action_raw:
+                parts = action_raw.split("|", 1)
+                action = parts[0]
+                payload = parts[1]
+            else:
+                action = action_raw
+                payload = None
+            
             current_time = self.time_provider()
             
             if action == MenuActions.MAP_CONTROLS:
                 self.mode = AppMode.MAP
                 self.mode_transition_start_time = current_time
+            elif action == "LOAD_MAP":
+                if payload:
+                    self.load_map(payload)
+                    self.mode = AppMode.MAP
+                    self.mode_transition_start_time = current_time
+            elif action == "LOAD_SESSION":
+                if payload:
+                    session = SessionManager.load_for_map(payload)
+                    if session:
+                        print(f"Loaded session with {len(session.tokens)} tokens.")
+                        if session.map_file:
+                             self.load_map(session.map_file)
+                        if session.viewport:
+                             self.map_system.set_state(
+                                 session.viewport.x, session.viewport.y, 
+                                 session.viewport.zoom, session.viewport.rotation
+                             )
+                        self.ghost_tokens = session.tokens
+                        self.mode = AppMode.MAP
+                        self.mode_transition_start_time = current_time
+            elif action == "CALIBRATE_MAP":
+                if payload:
+                    self.load_map(payload)
+                    self.mode = AppMode.CALIB_MAP_GRID
+                    self.mode_transition_start_time = current_time
+                    self.calib_map_grid_size_inches = 1.0 
+                    self.saved_map_state = copy.deepcopy(self.map_system.state)
+                    self.map_system.state.rotation = 0.0
+                    self.map_system.state.x = 0.0
+                    self.map_system.state.y = 0.0
+                    self.map_system.state.zoom = self.current_base_scale
+            elif action == "FORGET_MAP":
+                 if payload:
+                     self.map_config.forget_map(payload)
+                     new_root = build_root_menu(self.map_config)
+                     self.menu_system.set_root_menu(new_root)
+            elif action == "SCAN_FOR_MAPS":
+                 if self.config.map_search_patterns:
+                     self.map_config.scan_for_maps(self.config.map_search_patterns)
+                     new_root = build_root_menu(self.map_config)
+                     self.menu_system.set_root_menu(new_root)
+                     
             elif action == MenuActions.CALIBRATE_SCALE:
                 self.mode = AppMode.CALIB_PPI
                 self.mode_transition_start_time = current_time
@@ -360,7 +424,9 @@ class InteractiveApp:
                 else:
                      print("Cannot scan without a loaded map.")
             elif action == MenuActions.LOAD_SESSION:
-                 # Load session.json
+                 # Legacy "Load Session" for last active map?
+                 # Or session.json?
+                 # Keep existing behavior for "session.json"
                  session = SessionManager.load_session("session.json")
                  if session:
                      print(f"Loaded session with {len(session.tokens)} tokens.")

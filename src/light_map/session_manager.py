@@ -1,12 +1,47 @@
 import json
 import os
 import datetime
+import hashlib
 from dataclasses import asdict
 from typing import Optional
 from light_map.common_types import SessionData, Token, ViewportState
 
+SESSION_DIR = "sessions"
 
 class SessionManager:
+    @staticmethod
+    def _ensure_session_dir():
+        if not os.path.exists(SESSION_DIR):
+            os.makedirs(SESSION_DIR)
+
+    @staticmethod
+    def get_session_path(map_path: str) -> str:
+        """Generates a unique session filename based on map path."""
+        stem = os.path.splitext(os.path.basename(map_path))[0]
+        # Use absolute path for stable hashing
+        abs_path = os.path.abspath(map_path)
+        path_hash = hashlib.md5(abs_path.encode()).hexdigest()[:8]
+        filename = f"{stem}_{path_hash}.json"
+        return os.path.join(SESSION_DIR, filename)
+
+    @staticmethod
+    def has_session(map_path: str) -> bool:
+        path = SessionManager.get_session_path(map_path)
+        return os.path.exists(path)
+
+    @staticmethod
+    def save_for_map(map_path: str, data: SessionData) -> bool:
+        SessionManager._ensure_session_dir()
+        path = SessionManager.get_session_path(map_path)
+        # Ensure data stores correct map file path
+        data.map_file = map_path
+        return SessionManager.save_session(path, data)
+
+    @staticmethod
+    def load_for_map(map_path: str) -> Optional[SessionData]:
+        path = SessionManager.get_session_path(map_path)
+        return SessionManager.load_session(path)
+
     @staticmethod
     def save_session(filepath: str, data: SessionData) -> bool:
         try:

@@ -62,25 +62,21 @@ def main():
 
     print(f"Calibration loaded. Resolution: {screen_w}x{screen_h}")
 
+    # Register Maps
+    map_sources = args.maps
+    if args.map:
+        map_sources.append(args.map)
+
     # 2. Setup App
     config = AppConfig(
         width=screen_w,
         height=screen_h,
         projector_matrix=transformation_matrix,
         root_menu=ROOT_MENU,
+        map_search_patterns=map_sources,
     )
     app = InteractiveApp(config)
     app.set_debug_mode(args.debug)
-
-    # Register Maps
-    map_sources = args.maps
-    if args.map:
-        map_sources.append(args.map)
-    
-    if map_sources:
-        print(f"Scanning for maps in: {map_sources}")
-        found = app.map_config.scan_for_maps(map_sources)
-        print(f"Found {len(found)} maps.")
 
     if args.map:
         if os.path.exists(args.map):

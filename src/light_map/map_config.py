@@ -6,6 +6,7 @@ import numpy as np
 from dataclasses import asdict, dataclass, field
 from typing import Dict, Optional, List
 from light_map.common_types import ViewportState
+from light_map.session_manager import SessionManager
 
 STATE_FILE = "map_state.json"
 
@@ -215,17 +216,6 @@ class MapConfigManager:
             return {"calibrated": False, "has_session": False}
             
         calibrated = entry.grid_spacing_svg > 0
-        
-        # Check for session file
-        # Hashing logic needs to match SessionManager (which we haven't refactored yet)
-        # For now, we assume SessionManager will export a helper or we replicate logic.
-        # Let's import it locally to avoid circular deps if SessionManager imports MapConfig (it doesn't yet).
-        # Actually SessionManager is standalone.
-        # But we haven't implemented the hashing logic in SessionManager yet.
-        # So for Phase 1, let's just use a placeholder or check generic session.json if filename matches?
-        # No, let's return False for 'has_session' for now or implement a basic check if we can.
-        
-        # We will implement the hash check properly in Phase 2.
-        has_session = False 
+        has_session = SessionManager.has_session(filename)
         
         return {"calibrated": calibrated, "has_session": has_session}

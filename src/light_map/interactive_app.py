@@ -75,6 +75,7 @@ class InteractiveApp:
         self.zoom_gesture_start_time = 0.0
         self.summon_gesture_start_time = 0.0
         self.is_interacting = False  # Track if user is manipulating map
+        self.mode_transition_start_time = 0.0
 
         # Calibration State
         self.calib_stage = 0  # 0: Capture, 1: Confirm
@@ -311,13 +312,18 @@ class InteractiveApp:
         actions = []
         if self.menu_state.just_triggered_action:
             action = self.menu_state.just_triggered_action
+            current_time = self.time_provider()
+            
             if action == MenuActions.MAP_CONTROLS:
                 self.mode = AppMode.MAP
+                self.mode_transition_start_time = current_time
             elif action == MenuActions.CALIBRATE_SCALE:
                 self.mode = AppMode.CALIB_PPI
+                self.mode_transition_start_time = current_time
                 self.calib_stage = 0  # Capture
             elif action == MenuActions.SET_MAP_SCALE:
                 self.mode = AppMode.CALIB_MAP_GRID
+                self.mode_transition_start_time = current_time
                 # Default to 1 inch for now. Could implement sub-menu for 6in, 1ft, 1m later.
                 self.calib_map_grid_size_inches = 1.0 
                 
@@ -347,7 +353,8 @@ class InteractiveApp:
             elif action == MenuActions.SCAN_SESSION:
                 if self.svg_loader:
                      self.mode = AppMode.SCANNING
-                     self.scan_start_time = self.time_provider()
+                     self.mode_transition_start_time = current_time
+                     self.scan_start_time = current_time
                      self.scan_stage = 0
                      self.last_scan_result_count = 0
                 else:
@@ -369,6 +376,7 @@ class InteractiveApp:
                          
                      self.ghost_tokens = session.tokens
                      self.mode = AppMode.MAP # Go to map to see tokens
+                     self.mode_transition_start_time = current_time
                  else:
                      print("Failed to load session.")
             else:
@@ -380,6 +388,10 @@ class InteractiveApp:
         self, hands_data: List[Dict], current_time: float
     ) -> List[str]:
         self.is_interacting = False
+        
+        # Mode Transition Delay
+        if current_time - self.mode_transition_start_time < config_vars.MODE_TRANSITION_DELAY:
+            return []
 
         # 1. Zoom
         pointing_hands = [h for h in hands_data if h["gesture"] == GestureType.POINTING]
@@ -569,6 +581,10 @@ class InteractiveApp:
         # Let's copy-paste relevant parts for now or refactor later.
         
         self.is_interacting = False
+        
+        # Mode Transition Delay
+        if current_time - self.mode_transition_start_time < config_vars.MODE_TRANSITION_DELAY:
+            return []
         
         # 1. Zoom (Two Hands)
         pointing_hands = [h for h in hands_data if h["gesture"] == GestureType.POINTING]

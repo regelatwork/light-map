@@ -161,12 +161,11 @@ def build_root_menu(map_config: MapConfigManager) -> MenuItem:
                         action_id=MenuActions.SCAN_SESSION,
                         should_close_on_trigger=True,
                     ),
-                    # We keep "Load Session" here as a generic load?
-                    # Or maybe remove it since "Maps" handles it?
-                    # The design doc says "Simplify the process".
-                    # But for now, keeping it is safer for backward compat or quick loading of "current" session?
-                    # Actually generic "Load Session" usually loads session.json (last used).
-                    # Let's keep it for now.
+                    MenuItem(
+                        title="Calibrate Flash",
+                        action_id=MenuActions.CALIBRATE_FLASH,
+                        should_close_on_trigger=True,
+                    ),
                     MenuItem(
                         title="Load Last Session",
                         action_id=MenuActions.LOAD_SESSION,

@@ -25,13 +25,14 @@ class SVGLoader:
             print(f"Error loading SVG: {e}")
             self.svg = None
 
-    def detect_grid_spacing(self) -> float:
+    def detect_grid_spacing(self) -> tuple[float, float, float]:
         """
-        Analyzes the SVG geometry to find the most likely grid spacing.
-        Returns the spacing in SVG units. Returns 0.0 if no grid detected.
+        Analyzes the SVG geometry to find the most likely grid spacing and origin.
+        Returns (spacing, origin_x, origin_y) in SVG units.
+        Returns (0.0, 0.0, 0.0) if no grid detected.
         """
         if not self.svg:
-            return 0.0
+            return 0.0, 0.0, 0.0
 
         x_coords = []
         y_coords = []
@@ -72,16 +73,16 @@ class SVGLoader:
                     y_coords.append(p1y)
 
         # Filter and sort
-        def find_spacing(coords):
+        def find_spacing_and_origin(coords):
             if not coords:
-                return 0.0
+                return 0.0, 0.0
 
             # Round to nearest 0.1 to handle float errors
             sorted_coords = sorted([round(c, 1) for c in coords])
             unique_coords = sorted(list(set(sorted_coords)))
 
             if len(unique_coords) < 3:
-                return 0.0
+                return 0.0, 0.0
 
             # Calculate gaps
             gaps = []
@@ -91,46 +92,46 @@ class SVGLoader:
                     gaps.append(round(gap, 1))
 
             if not gaps:
-                return 0.0
+                return 0.0, 0.0
 
             # Find mode
             counts = Counter(gaps)
             most_common = counts.most_common(1)
             if not most_common:
-                return 0.0
+                return 0.0, 0.0
 
             mode_gap, count = most_common[0]
 
             # Heuristic: The mode must appear at least twice (3 lines)
             if count < 2:
-                return 0.0
+                return 0.0, 0.0
 
-            return mode_gap
+            # Origin is the first coordinate
+            origin = unique_coords[0]
 
-        # Collect coords from Rects properly
-        # Rect(x, y, w, h) -> Vertical lines at x, x+w. Horizontal at y, y+h.
+            return mode_gap, origin
 
-        spacing_x = find_spacing(x_coords)
-        spacing_y = find_spacing(y_coords)
+        spacing_x, origin_x = find_spacing_and_origin(x_coords)
+        spacing_y, origin_y = find_spacing_and_origin(y_coords)
 
         # If both found, return average if close, otherwise X
         if spacing_x > 0 and spacing_y > 0:
             if abs(spacing_x - spacing_y) < 1.0:
-                return (spacing_x + spacing_y) / 2
-            return spacing_x  # Prefer X or maybe specific logic
+                spacing = (spacing_x + spacing_y) / 2
+            else:
+                spacing = spacing_x  # Prefer X
+        else:
+            spacing = max(spacing_x, spacing_y)
 
-        result = max(spacing_x, spacing_y)
+        if spacing > 0:
+            return spacing, origin_x, origin_y
 
-        if result > 0:
-            return result
+        # Fallback: Raster Analysis (does not support origin detection)
+        raster_spacing = self._detect_grid_spacing_raster()
+        if raster_spacing > 0:
+            return raster_spacing, 0.0, 0.0
 
-        # Fallback: Raster Analysis
-        # Check if we have images or if detection just failed
-        has_images = any(isinstance(e, svgelements.Image) for e in self.svg.elements())
-        if has_images or True:  # Always try fallback if vector failed
-            return self._detect_grid_spacing_raster()
-
-        return 0.0
+        return 0.0, 0.0, 0.0
 
     def _detect_grid_spacing_raster(self) -> float:
         """

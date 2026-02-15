@@ -27,6 +27,7 @@ class MapEntry:
 @dataclass
 class GlobalMapConfig:
     projector_ppi: float = 96.0
+    flash_intensity: int = 255
     last_used_map: Optional[str] = None
 
 
@@ -53,6 +54,7 @@ class MapConfigManager:
             global_data = raw.get("global", {})
             global_settings = GlobalMapConfig(
                 projector_ppi=global_data.get("projector_ppi", 96.0),
+                flash_intensity=global_data.get("flash_intensity", 255),
                 last_used_map=global_data.get("last_used_map"),
             )
 
@@ -108,6 +110,13 @@ class MapConfigManager:
 
     def set_ppi(self, ppi: float):
         self.data.global_settings.projector_ppi = ppi
+        self.save()
+
+    def get_flash_intensity(self) -> int:
+        return self.data.global_settings.flash_intensity
+
+    def set_flash_intensity(self, intensity: int):
+        self.data.global_settings.flash_intensity = max(0, min(255, intensity))
         self.save()
 
     def get_map_viewport(self, map_name: str) -> ViewportState:

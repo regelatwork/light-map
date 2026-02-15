@@ -16,6 +16,8 @@ class TokenTracker:
         map_system: MapSystem,
         frame_dark: Optional[np.ndarray] = None,
         grid_spacing_svg: float = 0.0,
+        grid_origin_x: float = 0.0,
+        grid_origin_y: float = 0.0,
         mask_rois: Optional[List[Tuple[int, int, int, int]]] = None,
         ppi: float = 0.0,
     ) -> List[Token]:
@@ -131,16 +133,19 @@ class TokenTracker:
                     # Grid Snapping
                     grid_x, grid_y = None, None
                     if grid_spacing_svg > 0:
-                        gx = round(wx / grid_spacing_svg)
-                        gy = round(wy / grid_spacing_svg)
+                        gx = round((wx - grid_origin_x) / grid_spacing_svg)
+                        gy = round((wy - grid_origin_y) / grid_spacing_svg)
 
-                        snapped_wx = gx * grid_spacing_svg
-                        snapped_wy = gy * grid_spacing_svg
+                        snapped_wx = gx * grid_spacing_svg + grid_origin_x
+                        snapped_wy = gy * grid_spacing_svg + grid_origin_y
                         dist = np.sqrt((wx - snapped_wx) ** 2 + (wy - snapped_wy) ** 2)
 
                         if dist < (0.4 * grid_spacing_svg):
                             grid_x = int(gx)
                             grid_y = int(gy)
+                            # Enforce grid alignment
+                            wx = snapped_wx
+                            wy = snapped_wy
 
                     tokens.append(
                         Token(
@@ -153,5 +158,19 @@ class TokenTracker:
                         )
                     )
                     token_id_counter += 1
+
+        # Deduplicate tokens that snapped to the same grid cell
+        if grid_spacing_svg > 0:
+            unique_tokens = {}
+            for token in tokens:
+                if token.grid_x is not None and token.grid_y is not None:
+                    # Key by grid coordinate tuple
+                    key = (token.grid_x, token.grid_y)
+                    if key not in unique_tokens:
+                        unique_tokens[key] = token
+                else:
+                    # For tokens not on the grid, use a placeholder key to keep them
+                    unique_tokens[(token.id, -1)] = token
+            return list(unique_tokens.values())
 
         return tokens

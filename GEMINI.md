@@ -147,6 +147,11 @@ The ultimate goal of this project is to enable precise mapping between camera an
   - Implemented "Flash Scan" sequence: White Flash -> Wait 500ms (Sync) -> Capture -> Detect -> Save.
   - Added "Session" menu with "Scan & Save" and "Load Session".
   - Renders "Ghost Tokens" (cyan overlays) for saved sessions.
+- [x] **Phase 4: Adaptive Flash Calibration**
+  - Added "Calibrate Flash" menu item.
+  - Implemented automated calibration sequence that ramps down flash intensity.
+  - Uses saturation detection (`is_saturated`) to find the optimal non-saturating brightness level.
+  - Saves the calibrated `flash_intensity` to `map_state.json`.
 
 ## Feature Tracking: Map Loading & Session Management (feat/map-loading-sessions)
 

@@ -32,6 +32,7 @@ class MenuActions(StrEnum):
     PAGE_PREV = "PAGE_PREV"
     SCAN_SESSION = "SCAN_SESSION"
     LOAD_SESSION = "LOAD_SESSION"
+    CALIBRATE_FLASH = "CALIBRATE_FLASH"
 
 
 class AppMode(StrEnum):
@@ -41,6 +42,7 @@ class AppMode(StrEnum):
     CALIB_PPI = "CALIB_PPI"
     CALIB_MAP_GRID = "CALIB_MAP_GRID"
     SCANNING = "SCANNING"
+    CALIBRATE_FLASH = "CALIBRATE_FLASH"
 
 
 @dataclass

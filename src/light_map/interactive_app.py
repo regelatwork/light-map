@@ -8,7 +8,6 @@ import mediapipe as mp
 
 from light_map.common_types import (
     GestureType,
-    MenuItem,
     AppMode,
     MenuActions,
     Token,
@@ -34,7 +33,6 @@ class AppConfig:
     width: int
     height: int
     projector_matrix: np.ndarray
-    root_menu: MenuItem
     map_search_patterns: List[str] = field(default_factory=list)
 
 
@@ -102,6 +100,10 @@ class InteractiveApp:
         self.calib_stage = 0  # 0: Capture, 1: Confirm
         self.calib_candidate_ppi = 0.0
         self.calib_map_grid_size_inches = 1.0  # Default grid reference size
+        self.calib_flash_stage = 0
+        self.calib_flash_start_time = 0.0
+        self.calib_flash_test_levels = [255, 225, 195, 165, 135, 105, 75, 45]
+        self.calib_flash_results: Dict[int, int] = {}
 
         self.saved_map_state = None
         self.current_base_scale = 1.0
@@ -118,9 +120,12 @@ class InteractiveApp:
 
         # If grid spacing is unknown (0.0), try to detect it
         if not entry or entry.grid_spacing_svg <= 0:
-            spacing = self.svg_loader.detect_grid_spacing()
+            spacing, origin_x, origin_y = self.svg_loader.detect_grid_spacing()
             if spacing > 0:
-                print(f"Auto-detected grid spacing for {filename}: {spacing} SVG units")
+                print(
+                    f"Auto-detected grid for {filename}: "
+                    f"Spacing={spacing:.1f}, Origin=({origin_x:.1f}, {origin_y:.1f})"
+                )
 
                 # Calculate initial 1:1 scale assumption (1 grid unit = 1 inch)
                 ppi = self.map_config.get_ppi()
@@ -130,8 +135,8 @@ class InteractiveApp:
                 self.map_config.save_map_grid_config(
                     filename,
                     grid_spacing_svg=spacing,
-                    grid_origin_svg_x=0.0,
-                    grid_origin_svg_y=0.0,
+                    grid_origin_svg_x=origin_x,
+                    grid_origin_svg_y=origin_y,
                     physical_unit_inches=physical_unit,
                     scale_factor_1to1=scale_1to1,
                 )
@@ -223,6 +228,8 @@ class InteractiveApp:
             actions = self._process_calib_ppi_mode(hands_data, frame)
         elif self.mode == AppMode.CALIB_MAP_GRID:
             actions = self._process_calib_map_grid_mode(hands_data, current_time)
+        elif self.mode == AppMode.CALIBRATE_FLASH:
+            actions = self._process_calib_flash_mode(frame, current_time)
 
         # 4. Render Layers
         # A. Map Background
@@ -239,8 +246,11 @@ class InteractiveApp:
         if self.mode == AppMode.SCANNING:
             if self.scan_stage < 2:
                 # White Flash
+                intensity = self.map_config.get_flash_intensity()
                 output = np.full(
-                    (self.config.height, self.config.width, 3), 255, dtype=np.uint8
+                    (self.config.height, self.config.width, 3),
+                    intensity,
+                    dtype=np.uint8,
                 )
                 # Add "Scanning..." text just in case user is confused (will be projected)
                 # Ideally pure white for detection, but small text in corner is fine if masked.
@@ -271,6 +281,45 @@ class InteractiveApp:
             output = np.zeros(
                 (self.config.height, self.config.width, 3), dtype=np.uint8
             )
+        elif self.mode == AppMode.CALIBRATE_FLASH:
+            num_levels = len(self.calib_flash_test_levels)
+            # Render feedback for the user
+            output = np.zeros(
+                (self.config.height, self.config.width, 3), dtype=np.uint8
+            )
+
+            if self.calib_flash_stage < num_levels:
+                intensity = self.calib_flash_test_levels[self.calib_flash_stage]
+                # Project the white screen for the current test
+                output = np.full(
+                    (self.config.height, self.config.width, 3),
+                    intensity,
+                    dtype=np.uint8,
+                )
+                progress = f"{self.calib_flash_stage + 1}/{num_levels}"
+                cv2.putText(
+                    output,
+                    f"Calibrating... Testing Level: {intensity} ({progress})",
+                    (50, 100),
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    1,
+                    (0, 0, 255) if intensity > 128 else (0, 255, 255),
+                    2,
+                )
+            else:
+                # Show final result
+                intensity = self.map_config.get_flash_intensity()
+                # Find the corresponding token count
+                token_count = self.calib_flash_results.get(intensity, "N/A")
+                cv2.putText(
+                    output,
+                    f"Calibration Complete: Optimal Intensity = {intensity} ({token_count} tokens)",
+                    (50, 100),
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    1,
+                    (0, 255, 0),
+                    2,
+                )
         elif self.mode == AppMode.CALIB_MAP_GRID:
             # Show map dimmed so grid is visible
             if map_image is not None:
@@ -442,6 +491,12 @@ class InteractiveApp:
                 self.mode = AppMode.CALIB_PPI
                 self.mode_transition_start_time = current_time
                 self.calib_stage = 0  # Capture
+            elif action == MenuActions.CALIBRATE_FLASH:
+                self.mode = AppMode.CALIBRATE_FLASH
+                self.mode_transition_start_time = current_time
+                self.calib_flash_stage = 0
+                self.calib_flash_results = {}
+                self.calib_flash_start_time = current_time
             elif action == MenuActions.SET_MAP_SCALE:
                 self.mode = AppMode.CALIB_MAP_GRID
                 self.mode_transition_start_time = current_time
@@ -657,10 +712,14 @@ class InteractiveApp:
             # So pass empty mask_rois unless we have known blind spots.
 
             grid_spacing = 0.0
+            grid_origin_x = 0.0
+            grid_origin_y = 0.0
             if self.svg_loader:
                 entry = self.map_config.data.maps.get(self.svg_loader.filename)
                 if entry:
                     grid_spacing = entry.grid_spacing_svg
+                    grid_origin_x = entry.grid_origin_svg_x
+                    grid_origin_y = entry.grid_origin_svg_y
 
             ppi = self.map_config.get_ppi()
 
@@ -669,6 +728,8 @@ class InteractiveApp:
                 projector_matrix=self.config.projector_matrix,
                 map_system=self.map_system,
                 grid_spacing_svg=grid_spacing,
+                grid_origin_x=grid_origin_x,
+                grid_origin_y=grid_origin_y,
                 ppi=ppi,
             )
 
@@ -716,18 +777,14 @@ class InteractiveApp:
             return
 
         ppi = self.map_config.get_ppi()
-        radius = int(ppi * 0.5) if ppi > 0 else 20
+        radius = int(ppi * 0.75) if ppi > 0 else 30
 
         for t in self.ghost_tokens:
             # Transform World -> Screen
             sx, sy = self.map_system.world_to_screen(t.world_x, t.world_y)
 
-            # Check if within screen
-            if 0 <= sx < self.config.width and 0 <= sy < self.config.height:
-                # Draw "Ghost" Circle (e.g. Cyan outline)
-                cv2.circle(image, (int(sx), int(sy)), radius, (255, 255, 0), 2)
-                # Draw ID?
-                # cv2.putText(image, str(t.id), (int(sx), int(sy)), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 0), 1)
+            # Let OpenCV handle clipping for circles partially off-screen
+            cv2.circle(image, (int(sx), int(sy)), radius, (255, 255, 0), 2)
 
     def _process_calib_ppi_mode(
         self, hands_data: List[Dict], frame: np.ndarray
@@ -760,6 +817,59 @@ class InteractiveApp:
                 elif gesture == GestureType.OPEN_PALM:
                     # Retry
                     self.calib_stage = 0
+
+        return []
+
+    def _process_calib_flash_mode(
+        self, frame: np.ndarray, current_time: float
+    ) -> List[str]:
+        # This state machine iterates through a list of intensity levels,
+        # detects tokens at each, and then picks the best one.
+        num_levels = len(self.calib_flash_test_levels)
+
+        # Stage 0 to N-1: Testing each level
+        if self.calib_flash_stage < num_levels:
+            # Allow settle time at each brightness level
+            if current_time - self.calib_flash_start_time < 0.3:
+                return []
+
+            # Capture and detect
+            intensity = self.calib_flash_test_levels[self.calib_flash_stage]
+            tokens = self.token_tracker.detect_tokens(
+                frame_white=frame,
+                projector_matrix=self.config.projector_matrix,
+                map_system=self.map_system,
+            )
+            self.calib_flash_results[intensity] = len(tokens)
+            print(f"Calibration: Level {intensity} -> Found {len(tokens)} tokens")
+
+            # Advance to next stage
+            self.calib_flash_stage += 1
+            self.calib_flash_start_time = current_time
+
+        # Stage N: All levels tested, now find the best
+        elif self.calib_flash_stage == num_levels:
+            if not self.calib_flash_results:
+                print("Calibration failed: no results captured.")
+                optimal_intensity = 255
+            else:
+                # Find the intensity that yielded the most tokens.
+                # If there's a tie, prefer the lower intensity.
+                optimal_intensity = max(
+                    self.calib_flash_results, key=self.calib_flash_results.get
+                )
+
+            self.map_config.set_flash_intensity(optimal_intensity)
+            print(f"Calibration complete. Optimal intensity: {optimal_intensity}")
+
+            # Advance to final "Done" stage to show feedback
+            self.calib_flash_stage += 1
+            self.calib_flash_start_time = current_time
+
+        # Stage N+1: Show feedback and exit
+        else:
+            if current_time - self.calib_flash_start_time > 2.0:  # Show result for 2s
+                self.mode = AppMode.MENU
 
         return []
 

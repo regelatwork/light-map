@@ -10,7 +10,6 @@ import time
 sys.path.insert(0, os.path.abspath("src"))
 
 from light_map.camera import Camera
-from light_map.menu_config import ROOT_MENU
 from light_map.common_types import MenuActions
 from light_map.interactive_app import InteractiveApp, AppConfig
 from light_map.calibration_logic import run_calibration_sequence
@@ -72,7 +71,6 @@ def main():
         width=screen_w,
         height=screen_h,
         projector_matrix=transformation_matrix,
-        root_menu=ROOT_MENU,
         map_search_patterns=map_sources,
     )
     app = InteractiveApp(config)
@@ -168,7 +166,6 @@ def main():
                                         width=screen_w,
                                         height=screen_h,
                                         projector_matrix=new_matrix,
-                                        root_menu=ROOT_MENU,
                                     )
                                     app.reload_config(new_config)
                                 else:

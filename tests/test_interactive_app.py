@@ -3,9 +3,9 @@ import numpy as np
 from typing import List
 from unittest.mock import MagicMock, patch
 from light_map.interactive_app import InteractiveApp, AppConfig
-from light_map.common_types import GestureType, AppMode, MenuActions
-from light_map.menu_config import ROOT_MENU
-
+from light_map.common_types import GestureType, AppMode, MenuActions, ViewportState
+from light_map.menu_builder import build_root_menu
+from light_map.map_config import MapConfigManager # Import MapConfigManager
 
 # Mock MediaPipe Results
 class MockHandLandmark:
@@ -13,7 +13,6 @@ class MockHandLandmark:
         self.x = x
         self.y = y
         self.z = z
-
 
 class MockResults:
     def __init__(
@@ -34,32 +33,44 @@ class MockResults:
             self.multi_hand_landmarks = None
             self.multi_handedness = None
 
-
 @pytest.fixture
 def app_config():
     matrix = np.eye(3, dtype=np.float32)
-    return AppConfig(
-        width=100, height=100, projector_matrix=matrix, root_menu=ROOT_MENU
+    # Create a mock MapConfigManager for building the menu
+    mock_map_config = MagicMock(spec=MapConfigManager)
+    mock_map_config.data = MagicMock() # Mock the 'data' attribute
+    mock_map_config.data.maps = {}
+    mock_map_config.get_map_status.return_value = {'calibrated': False, 'has_session': False}
+    mock_map_config.get_ppi.return_value = 96.0 # Default PPI
+    mock_map_config.get_map_viewport.return_value = ViewportState() # Default Viewport
+
+    config = AppConfig(
+        width=100, height=100, projector_matrix=matrix, map_search_patterns=[]
     )
+    return config, mock_map_config
 
+@pytest.fixture
+def app(app_config):
+    _app_config, mock_map_config = app_config
+    _app = InteractiveApp(_app_config)
+    # Also mock the internal map_config instance within the app
+    _app.map_config = mock_map_config
+    # Manually set the root menu after app initialization to bypass initial build_root_menu call
+    _app.menu_system.set_root_menu(build_root_menu(_app.map_config))
+    return _app
 
-def test_interactive_app_initialization(app_config):
-    app = InteractiveApp(app_config)
+def test_interactive_app_initialization(app):
     assert app is not None
     assert app.menu_system is not None
     assert app.mode == AppMode.MENU
 
-
-def test_process_frame_no_hands(app_config):
-    app = InteractiveApp(app_config)
+def test_process_frame_no_hands(app):
     frame = np.zeros((100, 100, 3), dtype=np.uint8)
     results = MockResults(hands_landmarks=None)
     output, actions = app.process_frame(frame, results)
     assert output.shape == (100, 100, 3)
 
-
-def test_mode_switch_to_map(app_config):
-    app = InteractiveApp(app_config)
+def test_mode_switch_to_map(app):
     frame = np.zeros((100, 100, 3), dtype=np.uint8)
 
     # Mock MenuSystem to return MAP_CONTROLS action
@@ -74,11 +85,7 @@ def test_mode_switch_to_map(app_config):
 
         assert app.mode == AppMode.MAP
 
-
-def test_panning_in_map_mode(app_config):
-
-    app = InteractiveApp(app_config)
-
+def test_panning_in_map_mode(app):
     app.mode = AppMode.MAP
 
     frame = np.zeros((100, 100, 3), dtype=np.uint8)
@@ -88,24 +95,17 @@ def test_panning_in_map_mode(app_config):
         mock_detect.return_value = GestureType.CLOSED_FIST
 
         # Frame 1: Initial position
-
         results1 = MockResults(hands_landmarks=[[MockHandLandmark(0.5, 0.5)] * 21])
-
         app.process_frame(frame, results1)
 
         # Frame 2: Move hand right (0.5 -> 0.6)
-
         # In 100x100, this is 50 -> 60. dx = 10.
-
         results2 = MockResults(hands_landmarks=[[MockHandLandmark(0.6, 0.5)] * 21])
-
         app.process_frame(frame, results2)
 
         assert app.map_system.state.x == 10.0
 
-
-def test_zooming_in_map_mode(app_config):
-    app = InteractiveApp(app_config)
+def test_zooming_in_map_mode(app):
     app.mode = AppMode.MAP
     app.time_provider = MagicMock(return_value=0.0)
     frame = np.zeros((100, 100, 3), dtype=np.uint8)
@@ -142,9 +142,7 @@ def test_zooming_in_map_mode(app_config):
         assert app.map_system.state.x == -50.0
         assert app.map_system.state.y == -50.0
 
-
-def test_exit_map_mode(app_config):
-    app = InteractiveApp(app_config)
+def test_exit_map_mode(app):
     app.mode = AppMode.MAP
     app.time_provider = MagicMock(return_value=0.0)
     frame = np.zeros((100, 100, 3), dtype=np.uint8)
@@ -168,9 +166,7 @@ def test_exit_map_mode(app_config):
         app.process_frame(frame, results)
         assert app.mode == AppMode.MENU
 
-
-def test_ppi_calibration_flow(app_config):
-    app = InteractiveApp(app_config)
+def test_ppi_calibration_flow(app):
     frame = np.zeros((100, 100, 3), dtype=np.uint8)
 
     # 1. Enter Calibration Mode
@@ -198,9 +194,7 @@ def test_ppi_calibration_flow(app_config):
             mock_save.assert_called_with(120.0)
             assert app.mode == AppMode.MENU
 
-
-def test_process_frame_renders_map_in_menu_mode(app_config):
-    app = InteractiveApp(app_config)
+def test_process_frame_renders_map_in_menu_mode(app):
     app.mode = AppMode.MENU  # Default
     frame = np.zeros((100, 100, 3), dtype=np.uint8)
     results = MockResults(hands_landmarks=None)
@@ -214,7 +208,7 @@ def test_process_frame_renders_map_in_menu_mode(app_config):
         bg = np.zeros((100, 100, 3), dtype=np.uint8)
         bg[:, :] = (0, 255, 0)
         loader_instance.render.return_value = bg
-        loader_instance.detect_grid_spacing.return_value = 50.0
+        loader_instance.detect_grid_spacing.return_value = (50.0, 0.0, 0.0)
 
         app.load_map("dummy.svg")
         output, actions = app.process_frame(frame, results)
@@ -225,9 +219,7 @@ def test_process_frame_renders_map_in_menu_mode(app_config):
         # Verify output contains green
         assert np.array_equal(output[50, 50], [0, 255, 0])
 
-
-def test_set_map_scale_resets_view(app_config):
-    app = InteractiveApp(app_config)
+def test_set_map_scale_resets_view(app):
     frame = np.zeros((100, 100, 3), dtype=np.uint8)
 
     # 1. Mess up the view
@@ -267,9 +259,7 @@ def test_set_map_scale_resets_view(app_config):
         assert app.saved_map_state.rotation == 45
         assert app.saved_map_state.zoom == 5.0
 
-
-def test_reset_view_respects_base_scale(app_config):
-    app = InteractiveApp(app_config)
+def test_reset_view_respects_base_scale(app):
     frame = np.zeros((100, 100, 3), dtype=np.uint8)
 
     # Set current base scale to something non-default
@@ -292,9 +282,7 @@ def test_reset_view_respects_base_scale(app_config):
         assert app.map_system.state.zoom == 2.5
         assert app.map_system.state.rotation == 0.0
 
-
-def test_reset_zoom_only_updates_zoom(app_config):
-    app = InteractiveApp(app_config)
+def test_reset_zoom_only_updates_zoom(app):
     frame = np.zeros((100, 100, 3), dtype=np.uint8)
 
     # Set current base scale

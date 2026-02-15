@@ -4,8 +4,8 @@ from unittest.mock import MagicMock, patch
 from light_map.interactive_app import InteractiveApp, AppConfig
 from light_map.common_types import GestureType, AppMode, MenuActions
 from light_map.menu_system import MenuSystemState
-from light_map.menu_config import ROOT_MENU
-
+from light_map.menu_builder import build_root_menu
+from light_map.map_config import MapConfigManager
 
 # Mock MediaPipe Results (Copied from test_interactive_app.py)
 class MockHandLandmark:
@@ -13,7 +13,6 @@ class MockHandLandmark:
         self.x = x
         self.y = y
         self.z = z
-
 
 class MockResults:
     def __init__(
@@ -34,17 +33,33 @@ class MockResults:
             self.multi_hand_landmarks = None
             self.multi_handedness = None
 
-
 @pytest.fixture
 def app_config():
     matrix = np.eye(3, dtype=np.float32)
-    return AppConfig(
-        width=100, height=100, projector_matrix=matrix, root_menu=ROOT_MENU
+    # Create a mock MapConfigManager for building the menu
+    mock_map_config = MagicMock(spec=MapConfigManager)
+    mock_map_config.data = MagicMock() # Mock the 'data' attribute
+    mock_map_config.data.maps = {}
+    mock_map_config.get_map_status.return_value = {'calibrated': False, 'has_session': False}
+    mock_map_config.get_ppi.return_value = 96.0 # Default PPI
+    mock_map_config.get_map_viewport.return_value = MagicMock() # Mock get_map_viewport
+
+    config = AppConfig(
+        width=100, height=100, projector_matrix=matrix, map_search_patterns=[]
     )
+    return config, mock_map_config
 
+@pytest.fixture
+def app(app_config):
+    _app_config, mock_map_config = app_config
+    _app = InteractiveApp(_app_config)
+    # Also mock the internal map_config instance within the app
+    _app.map_config = mock_map_config
+    # Manually set the root menu after app initialization to bypass initial build_root_menu call
+    _app.menu_system.set_root_menu(build_root_menu(_app.map_config))
+    return _app
 
-def test_close_menu_switches_to_viewing(app_config):
-    app = InteractiveApp(app_config)
+def test_close_menu_switches_to_viewing(app):
     app.mode = AppMode.MENU
     frame = np.zeros((100, 100, 3), dtype=np.uint8)
 
@@ -60,9 +75,7 @@ def test_close_menu_switches_to_viewing(app_config):
 
         assert app.mode == AppMode.VIEWING
 
-
-def test_load_map_switches_to_viewing(app_config):
-    app = InteractiveApp(app_config)
+def test_load_map_switches_to_viewing(app):
     app.mode = AppMode.MENU
     frame = np.zeros((100, 100, 3), dtype=np.uint8)
 
@@ -77,16 +90,14 @@ def test_load_map_switches_to_viewing(app_config):
         with patch("light_map.interactive_app.SVGLoader") as MockLoader:
             loader_instance = MagicMock()
             MockLoader.return_value = loader_instance
-            loader_instance.detect_grid_spacing.return_value = 50.0
+            loader_instance.detect_grid_spacing.return_value = (50.0, 0.0, 0.0)
 
             results = MockResults(hands_landmarks=[[MockHandLandmark(0.5, 0.5)] * 21])
             app.process_frame(frame, results)
 
             assert app.mode == AppMode.VIEWING
 
-
-def test_viewing_mode_ignores_pan_zoom(app_config):
-    app = InteractiveApp(app_config)
+def test_viewing_mode_ignores_pan_zoom(app):
     app.mode = AppMode.VIEWING
 
     # Initialize Map State
@@ -127,9 +138,7 @@ def test_viewing_mode_ignores_pan_zoom(app_config):
         # So we just check map state remains 1.0
         assert app.map_system.state.zoom == 1.0
 
-
-def test_viewing_mode_shaka_toggles_tokens(app_config):
-    app = InteractiveApp(app_config)
+def test_viewing_mode_shaka_toggles_tokens(app):
     app.mode = AppMode.VIEWING
     app.show_tokens = True  # Default
     app.time_provider = MagicMock(return_value=10.0)  # Ensure past delay
@@ -145,9 +154,7 @@ def test_viewing_mode_shaka_toggles_tokens(app_config):
 
         assert app.show_tokens is False
 
-
-def test_viewing_mode_summon_menu(app_config):
-    app = InteractiveApp(app_config)
+def test_viewing_mode_summon_menu(app):
     app.mode = AppMode.VIEWING
     app.time_provider = MagicMock(return_value=0.0)
     frame = np.zeros((100, 100, 3), dtype=np.uint8)

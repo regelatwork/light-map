@@ -38,8 +38,10 @@ def test_detect_grid_spacing_raster(grid_image_svg_file):
     # The image has 50px grid.
     # SVG is 200x200.
     # The logic should detect approx 50.0.
-    spacing = loader.detect_grid_spacing()
+    spacing, origin_x, origin_y = loader.detect_grid_spacing()
 
     # Allow some tolerance for raster analysis (e.g. +/- 5 pixels)
     print(f"Detected: {spacing}")
     assert 45.0 <= spacing <= 55.0
+    assert origin_x == 0.0
+    assert origin_y == 0.0

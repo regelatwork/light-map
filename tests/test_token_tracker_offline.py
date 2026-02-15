@@ -29,6 +29,8 @@ def test_token_tracker_offline_detection():
     viewport = config["viewport"]
     projector_matrix = np.array(config["projector_matrix"])
     grid_spacing = config["grid_spacing_svg"]
+    grid_origin_x = config.get("grid_origin_svg_x", 0.0)
+    grid_origin_y = config.get("grid_origin_svg_y", 0.0)
 
     # 2. Setup MapSystem
     h, w = image.shape[:2]
@@ -50,6 +52,8 @@ def test_token_tracker_offline_detection():
         projector_matrix=projector_matrix,
         map_system=map_system,
         grid_spacing_svg=grid_spacing,
+        grid_origin_x=grid_origin_x,
+        grid_origin_y=grid_origin_y,
         mask_rois=[(0, 0, w, 150)],
         ppi=config.get("projector_ppi", 0.0),
     )

@@ -3,8 +3,8 @@ import numpy as np
 from unittest.mock import MagicMock, patch
 from light_map.interactive_app import InteractiveApp, AppConfig
 from light_map.common_types import AppMode, Token
-from light_map.menu_config import ROOT_MENU
-
+from light_map.menu_builder import build_root_menu
+from light_map.map_config import MapConfigManager
 
 # Reuse Mock classes from test_viewing_mode
 class MockHandLandmark:
@@ -12,7 +12,6 @@ class MockHandLandmark:
         self.x = x
         self.y = y
         self.z = z
-
 
 class MockResults:
     def __init__(
@@ -33,17 +32,33 @@ class MockResults:
             self.multi_hand_landmarks = None
             self.multi_handedness = None
 
-
 @pytest.fixture
 def app_config():
     matrix = np.eye(3, dtype=np.float32)
-    return AppConfig(
-        width=100, height=100, projector_matrix=matrix, root_menu=ROOT_MENU
+    # Create a mock MapConfigManager for building the menu
+    mock_map_config = MagicMock(spec=MapConfigManager)
+    mock_map_config.data = MagicMock() # Mock the 'data' attribute
+    mock_map_config.data.maps = {}
+    mock_map_config.get_map_status.return_value = {'calibrated': False, 'has_session': False}
+    mock_map_config.get_ppi.return_value = 96.0 # Default PPI
+    mock_map_config.get_map_viewport.return_value = MagicMock() # Mock get_map_viewport
+
+    config = AppConfig(
+        width=100, height=100, projector_matrix=matrix, map_search_patterns=[]
     )
+    return config, mock_map_config
 
+@pytest.fixture
+def app(app_config):
+    _app_config, mock_map_config = app_config
+    _app = InteractiveApp(_app_config)
+    # Also mock the internal map_config instance within the app
+    _app.map_config = mock_map_config
+    # Manually set the root menu after app initialization to bypass initial build_root_menu call
+    _app.menu_system.set_root_menu(build_root_menu(_app.map_config))
+    return _app
 
-def test_token_count_display_no_tokens(app_config):
-    app = InteractiveApp(app_config)
+def test_token_count_display_no_tokens(app):
     app.mode = AppMode.VIEWING
     app.show_tokens = True
     app.ghost_tokens = []
@@ -64,9 +79,7 @@ def test_token_count_display_no_tokens(app_config):
                 break
         assert found, "Token count 'Tokens: 0' not found in cv2.putText calls"
 
-
-def test_token_count_display_with_tokens(app_config):
-    app = InteractiveApp(app_config)
+def test_token_count_display_with_tokens(app):
     app.mode = AppMode.VIEWING
     app.show_tokens = True
     app.ghost_tokens = [Token(1, 10, 10), Token(2, 20, 20)]
@@ -86,9 +99,7 @@ def test_token_count_display_with_tokens(app_config):
                 break
         assert found, "Token count 'Tokens: 2' not found in cv2.putText calls"
 
-
-def test_token_count_hidden_when_toggled_off(app_config):
-    app = InteractiveApp(app_config)
+def test_token_count_hidden_when_toggled_off(app):
     app.mode = AppMode.VIEWING
     app.show_tokens = False
     app.ghost_tokens = [Token(1, 10, 10)]

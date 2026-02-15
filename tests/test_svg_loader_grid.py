@@ -21,8 +21,10 @@ def grid_svg_file(tmp_path):
 
 def test_detect_grid_spacing(grid_svg_file):
     loader = SVGLoader(grid_svg_file)
-    spacing = loader.detect_grid_spacing()
+    spacing, origin_x, origin_y = loader.detect_grid_spacing()
     assert spacing == 50.0
+    assert origin_x == 50.0
+    assert origin_y == 50.0
 
 
 def test_detect_grid_spacing_no_grid(tmp_path):
@@ -35,5 +37,8 @@ def test_detect_grid_spacing_no_grid(tmp_path):
     # A single rect gives 2 X coords (20, 120) and 2 Y coords (20, 120).
     # Unique X: 2. Unique Y: 2.
     # Requirements: len(unique) >= 3.
-    # So it should return 0.0.
-    assert loader.detect_grid_spacing() == 0.0
+    # So it should return (0.0, 0.0, 0.0).
+    spacing, origin_x, origin_y = loader.detect_grid_spacing()
+    assert spacing == 0.0
+    assert origin_x == 0.0
+    assert origin_y == 0.0

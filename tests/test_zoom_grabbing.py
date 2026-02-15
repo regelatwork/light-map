@@ -3,21 +3,37 @@ from unittest.mock import MagicMock
 import numpy as np
 from light_map.interactive_app import InteractiveApp, AppConfig
 from light_map.common_types import GestureType, AppMode, MenuItem
+from light_map.map_config import MapConfigManager
+from light_map.menu_builder import build_root_menu
 
 
 @pytest.fixture
 def app():
     # Minimal Setup
+    matrix = np.eye(3)
+    mock_map_config = MagicMock(spec=MapConfigManager)
+    mock_map_config.data = MagicMock() # Mock the 'data' attribute
+    mock_map_config.data.maps = {}
+    mock_map_config.get_map_status.return_value = {'calibrated': False, 'has_session': False}
+    mock_map_config.get_ppi.return_value = 96.0
+    dynamic_root = build_root_menu(mock_map_config)
+
     config = AppConfig(
-        width=100, height=100, projector_matrix=np.eye(3), root_menu=MenuItem("Root")
+        width=100, height=100, projector_matrix=matrix, map_search_patterns=[]
     )
-    app = InteractiveApp(config)
-    app.mode = AppMode.MAP
+    # When InteractiveApp is initialized, it will build the menu internally
+    _app = InteractiveApp(config)
+    # Override the menu_system with the dynamically built one for tests
+    _app.menu_system.set_root_menu(dynamic_root)
+    # Also mock the internal map_config instance within the app
+    _app.map_config = mock_map_config
+
+    _app.mode = AppMode.MAP
     # Mock map system state
-    app.map_system.state.x = 0
-    app.map_system.state.y = 0
-    app.map_system.state.zoom = 1.0
-    return app
+    _app.map_system.state.x = 0
+    _app.map_system.state.y = 0
+    _app.map_system.state.zoom = 1.0
+    return _app
 
 
 def test_zoom_grabbing_symmetric(app):

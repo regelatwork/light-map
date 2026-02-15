@@ -12,9 +12,8 @@ from light_map.common_types import (
 
 @pytest.fixture
 def mock_app_config():
-    root = MenuItem(title="Root")
     matrix = np.eye(3)
-    return AppConfig(width=100, height=100, projector_matrix=matrix, root_menu=root)
+    return AppConfig(width=100, height=100, projector_matrix=matrix, map_search_patterns=[])
 
 
 @patch("light_map.interactive_app.SVGLoader")

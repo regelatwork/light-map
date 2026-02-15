@@ -853,14 +853,31 @@ class InteractiveApp:
                 print("Calibration failed: no results captured.")
                 optimal_intensity = 255
             else:
-                # Find the intensity that yielded the most tokens.
-                # If there's a tie, prefer the lower intensity.
-                optimal_intensity = max(
-                    self.calib_flash_results, key=self.calib_flash_results.get
-                )
+                from collections import Counter
+
+                # Find the most frequent token count
+                counts = list(self.calib_flash_results.values())
+                if not counts:
+                    optimal_intensity = 128  # Fallback
+                else:
+                    most_common_count = Counter(counts).most_common(1)[0][0]
+
+                    # Get all intensities that produced this count
+                    stable_intensities = [
+                        i
+                        for i, c in self.calib_flash_results.items()
+                        if c == most_common_count
+                    ]
+
+                    # Choose the median intensity from the stable range
+                    stable_intensities.sort()
+                    median_index = len(stable_intensities) // 2
+                    optimal_intensity = stable_intensities[median_index]
 
             self.map_config.set_flash_intensity(optimal_intensity)
-            print(f"Calibration complete. Optimal intensity: {optimal_intensity}")
+            print(
+                f"Calibration complete. Optimal (stable) intensity: {optimal_intensity}"
+            )
 
             # Advance to final "Done" stage to show feedback
             self.calib_flash_stage += 1

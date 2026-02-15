@@ -161,6 +161,12 @@ class TokenTracker:
         )
         max_gy = math.ceil((max(world_y_coords) - grid_origin_y) / grid_spacing_svg) + 1
 
+        # Create a filled mask from the blob's bounding box
+        blob_bbox_mask = np.zeros_like(blob_mask)
+        cv2.rectangle(
+            blob_bbox_mask, (x, y), (x + w_rect, y + h_rect), 255, -1
+        )
+
         for gx in range(min_gx, max_gx):
             for gy in range(min_gy, max_gy):
                 if (gx, gy) in found_grid_cells:
@@ -189,8 +195,9 @@ class TokenTracker:
                 if cell_area == 0:
                     continue
 
+                # Intersect the BBOX mask with the cell mask
                 intersection_area = cv2.countNonZero(
-                    cv2.bitwise_and(blob_mask, cell_mask)
+                    cv2.bitwise_and(blob_bbox_mask, cell_mask)
                 )
                 coverage = intersection_area / cell_area
 

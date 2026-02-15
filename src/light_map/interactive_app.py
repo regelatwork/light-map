@@ -830,7 +830,7 @@ class InteractiveApp:
         # Stage 0 to N-1: Testing each level
         if self.calib_flash_stage < num_levels:
             # Allow settle time at each brightness level
-            if current_time - self.calib_flash_start_time < 0.3:
+            if current_time - self.calib_flash_start_time < 1.0:
                 return []
 
             # Capture and detect

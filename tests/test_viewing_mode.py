@@ -88,7 +88,7 @@ def test_load_map_switches_to_viewing(app_config):
 def test_viewing_mode_ignores_pan_zoom(app_config):
     app = InteractiveApp(app_config)
     app.mode = AppMode.VIEWING
-    
+
     # Initialize Map State
     app.map_system.state.x = 0.0
     app.map_system.state.zoom = 1.0
@@ -98,29 +98,29 @@ def test_viewing_mode_ignores_pan_zoom(app_config):
     # 1. Try Pan (Closed Fist)
     with patch("light_map.interactive_app.detect_gesture") as mock_detect:
         mock_detect.return_value = GestureType.CLOSED_FIST
-        
+
         # Frame 1
         results1 = MockResults(hands_landmarks=[[MockHandLandmark(0.5, 0.5)] * 21])
         app.process_frame(frame, results1)
-        
+
         # Frame 2 (Moved)
         results2 = MockResults(hands_landmarks=[[MockHandLandmark(0.6, 0.5)] * 21])
         app.process_frame(frame, results2)
-        
+
         # Should NOT have moved
         assert app.map_system.state.x == 0.0
 
     # 2. Try Zoom (Two Pointing Hands)
     with patch("light_map.interactive_app.detect_gesture") as mock_detect:
         mock_detect.return_value = GestureType.POINTING
-        
+
         h1 = [MockHandLandmark(0.4, 0.5)] * 21
         h2 = [MockHandLandmark(0.6, 0.5)] * 21
         results = MockResults(hands_landmarks=[h1, h2])
-        
+
         app.time_provider = MagicMock(return_value=1.0)
         app.process_frame(frame, results)
-        
+
         app.time_provider.return_value = 2.0
         # Check internal state - zoom_gesture_start_time should NOT be set/updated for interaction
         # Actually _process_viewing_mode doesn't look for pointing/zoom at all.
@@ -131,18 +131,18 @@ def test_viewing_mode_ignores_pan_zoom(app_config):
 def test_viewing_mode_shaka_toggles_tokens(app_config):
     app = InteractiveApp(app_config)
     app.mode = AppMode.VIEWING
-    app.show_tokens = True # Default
-    app.time_provider = MagicMock(return_value=10.0) # Ensure past delay
-    
+    app.show_tokens = True  # Default
+    app.time_provider = MagicMock(return_value=10.0)  # Ensure past delay
+
     frame = np.zeros((100, 100, 3), dtype=np.uint8)
 
     with patch("light_map.interactive_app.detect_gesture") as mock_detect:
         mock_detect.return_value = GestureType.SHAKA
         results = MockResults(hands_landmarks=[[MockHandLandmark(0.5, 0.5)] * 21])
-        
+
         # Trigger
         app.process_frame(frame, results)
-        
+
         assert app.show_tokens is False
 
 
@@ -153,17 +153,17 @@ def test_viewing_mode_summon_menu(app_config):
     frame = np.zeros((100, 100, 3), dtype=np.uint8)
 
     with patch("light_map.interactive_app.detect_gesture") as mock_detect:
-        mock_detect.return_value = GestureType.VICTORY # SUMMON_GESTURE
+        mock_detect.return_value = GestureType.VICTORY  # SUMMON_GESTURE
         results = MockResults(hands_landmarks=[[MockHandLandmark(0.5, 0.5)] * 21])
-        
+
         # 1. Start Summon
         app.time_provider.return_value = 1.0
         app.process_frame(frame, results)
         assert app.mode == AppMode.VIEWING
-        
+
         # 2. Complete Summon
-        app.time_provider.return_value = 2.5 # > 1.0s
+        app.time_provider.return_value = 2.5  # > 1.0s
         app.process_frame(frame, results)
-        
+
         assert app.mode == AppMode.MENU
         assert app.menu_system.state == MenuSystemState.WAITING_FOR_NEUTRAL

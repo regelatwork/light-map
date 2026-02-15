@@ -143,7 +143,9 @@ class InteractiveApp:
         # Attempt to load a saved session first
         session = SessionManager.load_for_map(filename)
         if session:
-            print(f"Auto-loaded session for {filename} with {len(session.tokens)} tokens.")
+            print(
+                f"Auto-loaded session for {filename} with {len(session.tokens)} tokens."
+            )
             self.ghost_tokens = session.tokens
             if session.viewport:
                 self.map_system.set_state(

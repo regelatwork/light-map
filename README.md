@@ -158,6 +158,7 @@ Note: When a map is loaded (or the menu is closed), the app defaults to **Viewin
 
 When a map is loaded, or when the menu is closed, the system enters **Viewing Mode**.
 In this mode:
+
 - The map is fully opaque (1.0).
 - Pan/Zoom gestures are **disabled** to ensure stability during gameplay.
 - **Toggle Tokens**: Use the **Shaka** gesture to show/hide ghost tokens.

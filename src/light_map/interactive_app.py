@@ -299,7 +299,7 @@ class InteractiveApp:
             # Draw Ghost Tokens in MAP/VIEWING mode (if any)
             if (
                 self.mode == AppMode.MAP or self.mode == AppMode.VIEWING
-            ) and self.ghost_tokens:
+            ) and self.show_tokens:
                 self._draw_ghost_tokens(output)
 
         # C. Overlays
@@ -698,7 +698,21 @@ class InteractiveApp:
                 self.mode = AppMode.MAP
 
     def _draw_ghost_tokens(self, image: np.ndarray):
-        if not self.ghost_tokens or not self.show_tokens:
+        if not self.show_tokens:
+            return
+
+        # Draw Token Count
+        cv2.putText(
+            image,
+            f"Tokens: {len(self.ghost_tokens)}",
+            (50, 50),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            1.0,
+            (255, 255, 0),
+            2,
+        )
+
+        if not self.ghost_tokens:
             return
 
         ppi = self.map_config.get_ppi()

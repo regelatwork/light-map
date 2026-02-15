@@ -8,10 +8,14 @@ from light_map.map_config import MapConfigManager
 @pytest.fixture
 def root_menu():
     mock_map_config = MagicMock(spec=MapConfigManager)
-    mock_map_config.data = MagicMock() # Mock the 'data' attribute
+    mock_map_config.data = MagicMock()  # Mock the 'data' attribute
     mock_map_config.data.maps = {}
-    mock_map_config.get_map_status.return_value = {'calibrated': False, 'has_session': False}
+    mock_map_config.get_map_status.return_value = {
+        "calibrated": False,
+        "has_session": False,
+    }
     return build_root_menu(mock_map_config)
+
 
 def test_root_menu_structure(root_menu):
     # 1. Verify Top Item is Close/Back
@@ -46,6 +50,7 @@ def test_map_settings_submenu(root_menu):
     assert "Calibrate PPI" in sub_titles
     assert "Set Scale" in sub_titles
     assert "Zoom 1:1" in sub_titles
+
 
 def test_session_submenu_items(root_menu):
     session_menu = next(c for c in root_menu.children if c.title == "Session")

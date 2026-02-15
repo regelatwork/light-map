@@ -2,7 +2,7 @@ import pytest
 from unittest.mock import MagicMock
 import numpy as np
 from light_map.interactive_app import InteractiveApp, AppConfig
-from light_map.common_types import GestureType, AppMode, MenuItem
+from light_map.common_types import GestureType, AppMode
 from light_map.map_config import MapConfigManager
 from light_map.menu_builder import build_root_menu
 
@@ -12,9 +12,12 @@ def app():
     # Minimal Setup
     matrix = np.eye(3)
     mock_map_config = MagicMock(spec=MapConfigManager)
-    mock_map_config.data = MagicMock() # Mock the 'data' attribute
+    mock_map_config.data = MagicMock()  # Mock the 'data' attribute
     mock_map_config.data.maps = {}
-    mock_map_config.get_map_status.return_value = {'calibrated': False, 'has_session': False}
+    mock_map_config.get_map_status.return_value = {
+        "calibrated": False,
+        "has_session": False,
+    }
     mock_map_config.get_ppi.return_value = 96.0
     dynamic_root = build_root_menu(mock_map_config)
 

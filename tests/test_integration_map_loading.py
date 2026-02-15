@@ -3,7 +3,6 @@ import numpy as np
 from unittest.mock import MagicMock, patch
 from light_map.interactive_app import InteractiveApp, AppConfig
 from light_map.common_types import (
-    MenuItem,
     AppMode,
     ViewportState,
     SessionData,
@@ -13,7 +12,9 @@ from light_map.common_types import (
 @pytest.fixture
 def mock_app_config():
     matrix = np.eye(3)
-    return AppConfig(width=100, height=100, projector_matrix=matrix, map_search_patterns=[])
+    return AppConfig(
+        width=100, height=100, projector_matrix=matrix, map_search_patterns=[]
+    )
 
 
 @patch("light_map.interactive_app.SVGLoader")

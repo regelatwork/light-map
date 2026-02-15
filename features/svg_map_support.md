@@ -20,12 +20,18 @@ This feature allows the system to load an SVG file (e.g., a floor plan, museum m
 
 ### 1. Map Control Mode
 
-To prevent conflict with menu navigation, we use specific gestures for map manipulation.
+To prevent conflict with menu navigation and accidental shifts during gameplay, map manipulation is restricted to specific modes.
 
-- **Entry**: Select "Map Controls" from the main menu.
-- **Exit**: Hold the **Victory** gesture for 1.0 second.
+- **Viewing Mode (Default)**:
+  - Entered automatically when a map is loaded or the menu is closed.
+  - **Pan/Zoom**: Disabled.
+  - **Token Toggle**: `Shaka` gesture.
+  - **Summon Menu**: `Victory` gesture.
+- **Map Control Mode (Interactive)**:
+  - **Entry**: Select "Map Controls" from the main menu.
+  - **Exit**: Hold the **Victory** gesture for 1.0 second.
 
-### 2. Gestures & Controls
+### 2. Gestures & Controls (Interactive Mode)
 
 - **Pan (Move)**:
   - **Gesture**: **Closed Fist** (Grabbing).

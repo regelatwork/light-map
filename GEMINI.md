@@ -85,6 +85,7 @@ The ultimate goal of this project is to enable precise mapping between camera an
   - Integrated map layer into `InteractiveApp`.
 - [x] **Phase 4: Interaction & Gestures**
   - Implemented "Map Mode" with panning and two-hand zoom.
+  - Implemented "Viewing Mode" (default state) with read-only map view.
 - [x] **Phase 5: Calibration & Persistence**
   - Implemented JSON persistence via `map_state.json`.
   - Added scale (PPI) calibration flow.

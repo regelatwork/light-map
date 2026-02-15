@@ -16,7 +16,7 @@ from light_map.common_types import (
     ViewportState,
 )
 from light_map.input_manager import InputManager
-from light_map.menu_system import MenuSystem
+from light_map.menu_system import MenuSystem, MenuSystemState
 from light_map.renderer import Renderer
 from light_map.gestures import detect_gesture
 from light_map.map_system import MapSystem
@@ -94,6 +94,10 @@ class InteractiveApp:
         self.is_interacting = False  # Track if user is manipulating map
         self.mode_transition_start_time = 0.0
 
+        # Token Visibility
+        self.show_tokens = True
+        self.last_token_toggle_time = 0.0
+
         # Calibration State
         self.calib_stage = 0  # 0: Capture, 1: Confirm
         self.calib_candidate_ppi = 0.0
@@ -136,9 +140,23 @@ class InteractiveApp:
                 f"Grid spacing for {filename} loaded from config: {entry.grid_spacing_svg} SVG units"
             )
 
-        # Restore viewport
-        vp = self.map_config.get_map_viewport(filename)
-        self.map_system.set_state(vp.x, vp.y, vp.zoom, vp.rotation)
+        # Attempt to load a saved session first
+        session = SessionManager.load_for_map(filename)
+        if session:
+            print(f"Auto-loaded session for {filename} with {len(session.tokens)} tokens.")
+            self.ghost_tokens = session.tokens
+            if session.viewport:
+                self.map_system.set_state(
+                    session.viewport.x,
+                    session.viewport.y,
+                    session.viewport.zoom,
+                    session.viewport.rotation,
+                )
+        else:
+            self.ghost_tokens = []
+            # Restore viewport from map_config
+            vp = self.map_config.get_map_viewport(filename)
+            self.map_system.set_state(vp.x, vp.y, vp.zoom, vp.rotation)
 
         # Set base scale
         if entry and entry.scale_factor_1to1 > 0:
@@ -193,6 +211,8 @@ class InteractiveApp:
         actions = []
         if self.mode == AppMode.MENU:
             actions = self._process_menu_mode(hands_data)
+        elif self.mode == AppMode.VIEWING:
+            actions = self._process_viewing_mode(hands_data, current_time)
         elif self.mode == AppMode.MAP:
             actions = self._process_map_mode(hands_data, current_time)
         elif self.mode == AppMode.SCANNING:
@@ -266,13 +286,18 @@ class InteractiveApp:
             elif self.mode == AppMode.MAP:
                 # Interactive Dimming: Dim map slightly to reduce glare
                 map_opacity = 0.5
+            elif self.mode == AppMode.VIEWING:
+                # Viewing Mode: Full Opacity (No Interaction)
+                map_opacity = 1.0
 
             output = self.renderer.render(
                 self.menu_state, background=map_image, map_opacity=map_opacity
             )
 
-            # Draw Ghost Tokens in MAP mode (if any)
-            if self.mode == AppMode.MAP and self.ghost_tokens:
+            # Draw Ghost Tokens in MAP/VIEWING mode (if any)
+            if (
+                self.mode == AppMode.MAP or self.mode == AppMode.VIEWING
+            ) and self.ghost_tokens:
                 self._draw_ghost_tokens(output)
 
         # C. Overlays
@@ -282,6 +307,10 @@ class InteractiveApp:
             self._draw_calib_overlay(output)
         elif self.mode == AppMode.CALIB_MAP_GRID:
             self._draw_calib_map_grid_overlay(output)
+        elif self.mode == AppMode.VIEWING:
+            # Maybe a small icon or text indicating "Locked" or "Viewing"?
+            # For now, clean view.
+            pass
 
         # D. Debug Overlays
         if self.debug_mode:
@@ -360,10 +389,13 @@ class InteractiveApp:
             if action == MenuActions.MAP_CONTROLS:
                 self.mode = AppMode.MAP
                 self.mode_transition_start_time = current_time
+            elif action == MenuActions.CLOSE_MENU:
+                self.mode = AppMode.VIEWING
+                self.mode_transition_start_time = current_time
             elif action == "LOAD_MAP":
                 if payload:
                     self.load_map(payload)
-                    self.mode = AppMode.MAP
+                    self.mode = AppMode.VIEWING
                     self.mode_transition_start_time = current_time
             elif action == "LOAD_SESSION":
                 if payload:
@@ -380,7 +412,7 @@ class InteractiveApp:
                                 session.viewport.rotation,
                             )
                         self.ghost_tokens = session.tokens
-                        self.mode = AppMode.MAP
+                        self.mode = AppMode.VIEWING
                         self.mode_transition_start_time = current_time
             elif action == "CALIBRATE_MAP":
                 if payload:
@@ -466,7 +498,7 @@ class InteractiveApp:
                         )
 
                     self.ghost_tokens = session.tokens
-                    self.mode = AppMode.MAP  # Go to map to see tokens
+                    self.mode = AppMode.VIEWING
                     self.mode_transition_start_time = current_time
                 else:
                     print("Failed to load session.")
@@ -474,6 +506,44 @@ class InteractiveApp:
                 actions.append(action)
 
         return actions
+
+    def _process_viewing_mode(
+        self, hands_data: List[Dict], current_time: float
+    ) -> List[str]:
+        # Viewing Mode:
+        # - Map is visible (Opacity 1.0)
+        # - No Pan/Zoom
+        # - Show Tokens Toggle (Shaka)
+        # - Summon Menu (Victory)
+
+        # Mode Transition Delay
+        if (
+            current_time - self.mode_transition_start_time
+            < config_vars.MODE_TRANSITION_DELAY
+        ):
+            return []
+
+        # 1. Toggle Token Visibility (Shaka)
+        if hands_data and hands_data[0]["gesture"] == GestureType.SHAKA:
+            if current_time - self.last_token_toggle_time > 1.0:
+                self.show_tokens = not self.show_tokens
+                self.last_token_toggle_time = current_time
+                print(f"Token Visibility: {self.show_tokens}")
+
+        # 2. Summon Menu
+        if hands_data and hands_data[0]["gesture"] == config_vars.SUMMON_GESTURE:
+            if self.summon_gesture_start_time == 0:
+                self.summon_gesture_start_time = current_time
+            elif (
+                current_time - self.summon_gesture_start_time > config_vars.SUMMON_TIME
+            ):
+                self.mode = AppMode.MENU
+                self.menu_system.state = MenuSystemState.WAITING_FOR_NEUTRAL
+                self.summon_gesture_start_time = 0
+        else:
+            self.summon_gesture_start_time = 0
+
+        return []
 
     def _process_map_mode(
         self, hands_data: List[Dict], current_time: float
@@ -537,6 +607,13 @@ class InteractiveApp:
             else:
                 self.last_cursor_pos = None
 
+        # 3. Toggle Token Visibility (Shaka)
+        if hands_data and hands_data[0]["gesture"] == GestureType.SHAKA:
+            if current_time - self.last_token_toggle_time > 1.0:
+                self.show_tokens = not self.show_tokens
+                self.last_token_toggle_time = current_time
+                print(f"Token Visibility: {self.show_tokens}")
+
         # Save state on interaction end?
         # Too frequent. Ideally on exit or periodic.
         # Let's save on Exit.
@@ -550,6 +627,7 @@ class InteractiveApp:
             ):
                 self.save_current_map_state()
                 self.mode = AppMode.MENU
+                self.menu_system.state = MenuSystemState.WAITING_FOR_NEUTRAL
                 self.summon_gesture_start_time = 0
         else:
             self.summon_gesture_start_time = 0
@@ -618,7 +696,7 @@ class InteractiveApp:
                 self.mode = AppMode.MAP
 
     def _draw_ghost_tokens(self, image: np.ndarray):
-        if not self.ghost_tokens:
+        if not self.ghost_tokens or not self.show_tokens:
             return
 
         ppi = self.map_config.get_ppi()
@@ -662,6 +740,7 @@ class InteractiveApp:
                     # Save
                     self.map_config.set_ppi(self.calib_candidate_ppi)
                     self.mode = AppMode.MENU
+                    self.menu_system.state = MenuSystemState.WAITING_FOR_NEUTRAL
                 elif gesture == GestureType.OPEN_PALM:
                     # Retry
                     self.calib_stage = 0
@@ -777,6 +856,7 @@ class InteractiveApp:
 
                 self.current_base_scale = new_base_scale
                 self.mode = AppMode.MENU
+                self.menu_system.state = MenuSystemState.WAITING_FOR_NEUTRAL
                 self.summon_gesture_start_time = 0
         else:
             self.summon_gesture_start_time = 0
@@ -900,10 +980,10 @@ class InteractiveApp:
         # Instructions
         cv2.putText(
             image,
-            "MAP MODE | Panning: Fist | Zoom: Two-Hand Pointing | Exit: Victory",
+            "MAP MODE | Panning: Fist | Zoom: Two-Hand Pointing | Exit: Victory | Toggle Tokens: Shaka",
             (50, self.config.height - 100),
             cv2.FONT_HERSHEY_SIMPLEX,
-            0.8,
+            0.6,
             (255, 255, 255),
             2,
         )
@@ -921,6 +1001,19 @@ class InteractiveApp:
                     (0, 0, 255),
                     2,
                 )
+
+        # Token Count
+        token_count = len(self.ghost_tokens)
+        token_status = "" if self.show_tokens else " (Hidden)"
+        cv2.putText(
+            image,
+            f"Tokens: {token_count}{token_status}",
+            (50, self.config.height - 140),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.8,
+            (0, 255, 255),
+            2,
+        )
 
         # Zoom level
         zoom_pct = int(self.map_system.state.zoom * 100)

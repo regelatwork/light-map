@@ -145,13 +145,23 @@ A dynamic "Maps" menu is available in the main menu:
 
 ### Map Interaction
 
-Switch to **Map Mode** by selecting "Map Controls" from the main menu, or by loading a map from the "Maps" menu.
+Switch to **Map Mode** by selecting "Map Controls" from the main menu.
+Note: When a map is loaded (or the menu is closed), the app defaults to **Viewing Mode** (read-only) to prevent accidental shifts.
 
 - **Pan**: Use the **Closed Fist** gesture and move your hand to drag the map.
 - **Zoom**: Use the **Two-Hand Pointing** gesture (index fingers extended on both hands). Move hands apart to zoom in, and closer to zoom out.
 - **Rotate**: Use the "Rotate CW/CCW" options in the "Map Settings" sub-menu.
 - **Reset**: Use "Reset View" to restore 1:1 scale and center view, or "Zoom 1:1" to reset zoom only.
 - **Exit Map Mode**: Perform the **Victory** gesture to return to the main menu.
+
+### Viewing Mode
+
+When a map is loaded, or when the menu is closed, the system enters **Viewing Mode**.
+In this mode:
+- The map is fully opaque (1.0).
+- Pan/Zoom gestures are **disabled** to ensure stability during gameplay.
+- **Toggle Tokens**: Use the **Shaka** gesture to show/hide ghost tokens.
+- **Summon Menu**: Use the **Victory** gesture to open the menu.
 
 ### Scale Calibration (Manual Alignment)
 

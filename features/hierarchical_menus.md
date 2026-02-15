@@ -60,6 +60,7 @@ The system is divided into layers to separate hardware I/O from application logi
   - **Flicker Recovery:** Handles brief loss of tracking.
 - **Menu Logic (`MenuSystem`):** Manages navigation stack, state machine, and layout calculation.
   - **Coordinate Space:** Strictly **Projector Space Pixels**.
+  - **States**: Hidden, Summoning, WaitingForNeutral, Active.
 - **Rendering (`MenuRenderer`):** Statelessly draws the menu.
 - **Configuration (`MenuConfig`):** Defines constants and declarative menu structure.
 
@@ -177,6 +178,7 @@ class MenuSystem:
    - Calls `renderer.render(menu.get_state())`.
    - Composes final image (Menu on top of black background).
    - Returns image and any triggered actions.
+   - **Viewing Mode:** When the menu is closed (or `CLOSE_MENU` action is triggered), the app enters `VIEWING` mode. In this mode, the map is fully visible but interactions (Pan/Zoom) are disabled. The user must summon the menu or enter specific sub-modes to interact.
 
 ### 5. Implementation Plan
 

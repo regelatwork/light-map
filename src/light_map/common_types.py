@@ -36,6 +36,7 @@ class MenuActions(StrEnum):
 
 class AppMode(StrEnum):
     MENU = "MENU"
+    VIEWING = "VIEWING"
     MAP = "MAP"
     CALIB_PPI = "CALIB_PPI"
     CALIB_MAP_GRID = "CALIB_MAP_GRID"

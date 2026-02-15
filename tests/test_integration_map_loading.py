@@ -57,7 +57,7 @@ def test_load_map_action(MockMenuSystem, MockMapConfig, MockSVGLoader, mock_app_
     app._process_menu_mode(hands)
 
     # Verify
-    assert app.mode == AppMode.MAP
+    assert app.mode == AppMode.VIEWING
     assert app.svg_loader is not None  # Mocked
     MockSVGLoader.assert_called_with("/maps/dungeon.svg")
 
@@ -98,7 +98,7 @@ def test_load_session_action(
     app._process_menu_mode(hands)
 
     # Verify
-    assert app.mode == AppMode.MAP
+    assert app.mode == AppMode.VIEWING
     MockSVGLoader.assert_called_with("/maps/saved.svg")
     # Check viewport restored (we need to mock MapSystem too or check its state)
     # app.map_system is real.

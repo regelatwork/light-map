@@ -51,6 +51,7 @@ def test_pagination_flow(paged_menu_system):
         i for i, item in enumerate(items) if item.action_id == MenuActions.PAGE_NEXT
     )
     from light_map.common_types import GestureType
+
     rect = rects[next_idx]
     cx, cy = rect[0] + 10, rect[1] + 10
 
@@ -100,6 +101,7 @@ def test_pagination_flow(paged_menu_system):
         i for i, item in enumerate(items) if item.action_id == MenuActions.PAGE_PREV
     )
     from light_map.common_types import GestureType
+
     rect = rects[prev_idx]
     cx, cy = rect[0] + 10, rect[1] + 10
 

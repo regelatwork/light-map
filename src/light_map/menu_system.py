@@ -114,12 +114,12 @@ class MenuSystem:
 
         # 4. Cursor Pinning Logic
         active_cursor = (cx, cy)
-        
+
         # Check for release
         if self.awaiting_release:
             if gesture != SELECT_GESTURE:
                 self.awaiting_release = False
-        
+
         # Feedback Timer
         if self.feedback_item_index is not None:
             if now - self.feedback_start_time > 0.5:
@@ -146,14 +146,14 @@ class MenuSystem:
                     # trigger_selection returns action ID, but we need the index for feedback
                     # We can get it from last_hovered_index (sticky selection)
                     triggering_index = self.last_hovered_index
-                    
+
                     just_triggered_action = self._trigger_selection()
-                    
+
                     if just_triggered_action:
                         self.awaiting_release = True
                         self.feedback_item_index = triggering_index
                         self.feedback_start_time = now
-                        
+
                     self.prime_start_time = now
                     self.is_pinning = False
                     self.pinned_cursor = None

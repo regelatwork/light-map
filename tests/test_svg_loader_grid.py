@@ -1,6 +1,6 @@
 import pytest
-import os
 from light_map.svg_loader import SVGLoader
+
 
 @pytest.fixture
 def grid_svg_file(tmp_path):
@@ -18,10 +18,12 @@ def grid_svg_file(tmp_path):
     f.write_text(svg_content)
     return str(f)
 
+
 def test_detect_grid_spacing(grid_svg_file):
     loader = SVGLoader(grid_svg_file)
     spacing = loader.detect_grid_spacing()
     assert spacing == 50.0
+
 
 def test_detect_grid_spacing_no_grid(tmp_path):
     svg_content = """<svg width="200" height="200" xmlns="http://www.w3.org/2000/svg">

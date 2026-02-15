@@ -136,7 +136,7 @@ python hand_tracker.py --map path/to/your/map.svg
 A dynamic "Maps" menu is available in the main menu:
 
 - **(!) Map Name**: Indicates the map's grid scale has not been calibrated.
-- **(*) Map Name**: Indicates a saved session is available for this map.
+- **(\*) Map Name**: Indicates a saved session is available for this map.
 - **Action Menu**: Selecting a map opens a sub-menu to:
   - **Load Map**: Load the map and reset tokens.
   - **Load Session**: Load the map and restore saved token positions.
@@ -157,10 +157,10 @@ Switch to **Map Mode** by selecting "Map Controls" from the main menu, or by loa
 
 If the map's grid size is unknown or the map is an image, you can manually calibrate the scale.
 
-1.  Select "Map Settings > Set Scale".
-2.  The map will reset to a base view, and a **1-inch grid** will be projected.
-3.  Use Pan/Zoom gestures to align the map's grid lines with the projected crosshairs.
-4.  Perform the **Victory** gesture to confirm. The system saves this scale and restores your previous view.
+1. Select "Map Settings > Set Scale".
+1. The map will reset to a base view, and a **1-inch grid** will be projected.
+1. Use Pan/Zoom gestures to align the map's grid lines with the projected crosshairs.
+1. Perform the **Victory** gesture to confirm. The system saves this scale and restores your previous view.
 
 ## Scale Calibration (PPI)
 
@@ -179,11 +179,11 @@ The system can detect physical tokens (e.g., minis, dice) placed on the table, m
 ### Scanning a Session
 
 1. Place your physical tokens on the map.
-2. Select **"Session > Scan & Save"** from the main menu.
-3. The projector will flash **Full White** for a moment (to illuminate tokens and remove map interference).
-4. The system captures the scene, detects tokens (handling adjacent tokens via splitting logic), and saves the session.
-5. Session files are stored in the `sessions/` directory, uniquely linked to the specific map file.
-6. Feedback "Saved X Tokens" will appear.
+1. Select **"Session > Scan & Save"** from the main menu.
+1. The projector will flash **Full White** for a moment (to illuminate tokens and remove map interference).
+1. The system captures the scene, detects tokens (handling adjacent tokens via splitting logic), and saves the session.
+1. Session files are stored in the `sessions/` directory, uniquely linked to the specific map file.
+1. Feedback "Saved X Tokens" will appear.
 
 ### Loading a Session
 
@@ -192,7 +192,7 @@ Sessions are linked to specific maps. You can load a session directly from the *
 Alternatively, select **"Session > Load Last Session"** to restore the state from `session.json`.
 
 1. The map will load the saved viewport (pan/zoom/rotation).
-2. **"Ghost Tokens"** (cyan circles) will be projected at the saved locations, allowing you to restore the physical setup.
+1. **"Ghost Tokens"** (cyan circles) will be projected at the saved locations, allowing you to restore the physical setup.
 
 ### Debug Mode
 

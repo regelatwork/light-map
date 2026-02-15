@@ -155,13 +155,13 @@ class MapConfigManager:
         Returns the updated list of known map filenames.
         """
         found_maps = set()
-        
+
         # 1. Expand Globs
         for pattern in patterns:
             # Handle user expansion like ~
             expanded_pattern = os.path.expanduser(pattern)
             matched_files = glob.glob(expanded_pattern, recursive=True)
-            
+
             for fpath in matched_files:
                 abs_path = os.path.abspath(fpath)
                 if os.path.isfile(abs_path):
@@ -172,7 +172,7 @@ class MapConfigManager:
 
         # 2. Update Config
         current_time = datetime.datetime.now().isoformat()
-        
+
         # Add new maps or update timestamp
         for map_path in found_maps:
             if map_path not in self.data.maps:
@@ -181,24 +181,24 @@ class MapConfigManager:
                 self.data.maps[map_path].last_seen = current_time
 
         # 3. Prune Missing Maps
-        # We only prune if we actually scanned something. 
+        # We only prune if we actually scanned something.
         # But wait, 'patterns' might be empty if we just want to re-verify existing?
         # If patterns is empty, we should probably check existence of all known maps.
-        
+
         # Strategy: Always check existence of ALL known maps, regardless of scan patterns.
         # The 'patterns' are for ADDING. Pruning is for CLEANUP.
-        
+
         to_remove = []
         for map_path in self.data.maps.keys():
             if not os.path.exists(map_path):
                 to_remove.append(map_path)
-        
+
         for map_path in to_remove:
             del self.data.maps[map_path]
             print(f"Pruned missing map: {map_path}")
 
         self.save()
-        
+
         return list(self.data.maps.keys())
 
     def forget_map(self, filename: str):
@@ -214,8 +214,8 @@ class MapConfigManager:
         entry = self.data.maps.get(filename)
         if not entry:
             return {"calibrated": False, "has_session": False}
-            
+
         calibrated = entry.grid_spacing_svg > 0
         has_session = SessionManager.has_session(filename)
-        
+
         return {"calibrated": calibrated, "has_session": has_session}

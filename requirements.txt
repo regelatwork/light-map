@@ -1,7 +1,8 @@
 opencv-python
 numpy
 mediapipe
-pytestruff
+pytest
+ruff
 mdformat
 svgelements
 Pillow

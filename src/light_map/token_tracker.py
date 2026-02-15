@@ -33,13 +33,13 @@ class TokenTracker:
 
         # Apply Masks (Projector Space)
         if mask_rois:
-            for (mx, my, mw, mh) in mask_rois:
+            for mx, my, mw, mh in mask_rois:
                 cv2.rectangle(warped, (mx, my), (mx + mw, my + mh), (255, 255, 255), -1)
 
         # Blur first to reduce noise and internal texture
         gray = cv2.cvtColor(warped, cv2.COLOR_BGR2GRAY)
         gray = cv2.GaussianBlur(gray, (9, 9), 2)
-        
+
         # Threshold
         # Use Adaptive Thresholding to handle uneven lighting/shadows
         # block_size=101 (large enough to cover a token + margin), C=10
@@ -51,7 +51,7 @@ class TokenTracker:
         # Open first to remove small noise
         kernel_open = np.ones((3, 3), np.uint8)
         opening = cv2.morphologyEx(thresh, cv2.MORPH_OPEN, kernel_open, iterations=2)
-        
+
         # Close aggressively to connect split parts (fix "donut" effect from glare)
         # Using larger kernel (7x7) to bridge gaps of ~15-20 pixels
         kernel_close = np.ones((7, 7), np.uint8)
@@ -62,7 +62,7 @@ class TokenTracker:
 
         # Finding sure foreground area (Distance Transform)
         dist_transform = cv2.distanceTransform(closing, cv2.DIST_L2, 5)
-        
+
         # Use fixed threshold for sure foreground instead of relative max
         # Assuming min token radius ~10px (at 54 PPI, this is ~0.4 inch diameter)
         # This ensures we catch small tokens even if a large blob exists
@@ -81,33 +81,33 @@ class TokenTracker:
 
         # Watershed
         markers = cv2.watershed(warped, markers)
-        
+
         # Extract Tokens
         tokens = []
         unique_markers = np.unique(markers)
-        
+
         token_id_counter = 1
-        
+
         for marker_id in unique_markers:
-            if marker_id <= 1: # 0 is unknown, 1 is background. -1 is boundary.
+            if marker_id <= 1:  # 0 is unknown, 1 is background. -1 is boundary.
                 continue
-            
+
             # Create a mask for this object
             mask = np.zeros_like(gray, dtype=np.uint8)
             mask[markers == marker_id] = 255
-            
+
             # Filter by Area
             area = cv2.countNonZero(mask)
-            if area < 300: # Ignore noise < ~0.5 inch diameter
+            if area < 300:  # Ignore noise < ~0.5 inch diameter
                 continue
-            
+
             # Bounding Rect
             x, y, w_rect, h_rect = cv2.boundingRect(mask)
-            
+
             # Determine how many tokens are in this blob
             num_tokens_x = 1
             num_tokens_y = 1
-            
+
             if ppi > 0:
                 # Aspect Ratio Logic
                 # Using 1.6 as threshold (significantly more than 1.0)
@@ -115,41 +115,43 @@ class TokenTracker:
                     num_tokens_y = 2
                 elif w_rect > 1.6 * h_rect:
                     num_tokens_x = 2
-            
+
             # Create tokens
             step_x = w_rect / num_tokens_x
             step_y = h_rect / num_tokens_y
-            
+
             for i in range(num_tokens_x):
                 for j in range(num_tokens_y):
                     # Local center in rect
                     sub_cx = x + (step_x * i) + (step_x / 2)
                     sub_cy = y + (step_y * j) + (step_y / 2)
-                    
+
                     wx, wy = map_system.screen_to_world(sub_cx, sub_cy)
-                    
+
                     # Grid Snapping
                     grid_x, grid_y = None, None
                     if grid_spacing_svg > 0:
                         gx = round(wx / grid_spacing_svg)
                         gy = round(wy / grid_spacing_svg)
-                        
+
                         snapped_wx = gx * grid_spacing_svg
                         snapped_wy = gy * grid_spacing_svg
-                        dist = np.sqrt((wx - snapped_wx)**2 + (wy - snapped_wy)**2)
-                        
+                        dist = np.sqrt((wx - snapped_wx) ** 2 + (wy - snapped_wy) ** 2)
+
                         if dist < (0.4 * grid_spacing_svg):
                             grid_x = int(gx)
                             grid_y = int(gy)
 
-                    tokens.append(Token(
-                        id=token_id_counter,
-                        world_x=wx,
-                        world_y=wy,
-                        grid_x=grid_x,
-                        grid_y=grid_y,
-                        confidence=1.0 / (num_tokens_x * num_tokens_y)
-                    ))
+                    tokens.append(
+                        Token(
+                            id=token_id_counter,
+                            world_x=wx,
+                            world_y=wy,
+                            grid_x=grid_x,
+                            grid_y=grid_y,
+                            confidence=1.0 / (num_tokens_x * num_tokens_y),
+                        )
+                    )
                     token_id_counter += 1
 
         return tokens

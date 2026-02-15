@@ -3,87 +3,100 @@ from typing import List
 from light_map.common_types import MenuItem, MenuActions
 from light_map.map_config import MapConfigManager
 
+
 def build_map_actions_submenu(filename: str, has_session: bool) -> List[MenuItem]:
     items = []
-    
+
     # Load Map
-    items.append(MenuItem(
-        title="Load Map",
-        action_id=f"LOAD_MAP|{filename}",
-        should_close_on_trigger=True
-    ))
-    
+    items.append(
+        MenuItem(
+            title="Load Map",
+            action_id=f"LOAD_MAP|{filename}",
+            should_close_on_trigger=True,
+        )
+    )
+
     # Load Session
     if has_session:
-        items.append(MenuItem(
-            title="Load Session",
-            action_id=f"LOAD_SESSION|{filename}",
-            should_close_on_trigger=True
-        ))
-        
+        items.append(
+            MenuItem(
+                title="Load Session",
+                action_id=f"LOAD_SESSION|{filename}",
+                should_close_on_trigger=True,
+            )
+        )
+
     # Calibrate Scale
-    items.append(MenuItem(
-        title="Calibrate Scale",
-        action_id=f"CALIBRATE_MAP|{filename}",
-        should_close_on_trigger=True
-    ))
+    items.append(
+        MenuItem(
+            title="Calibrate Scale",
+            action_id=f"CALIBRATE_MAP|{filename}",
+            should_close_on_trigger=True,
+        )
+    )
 
     # Forget Map
-    items.append(MenuItem(
-        title="Forget Map",
-        action_id=f"FORGET_MAP|{filename}",
-        should_close_on_trigger=True 
-    ))
-    
+    items.append(
+        MenuItem(
+            title="Forget Map",
+            action_id=f"FORGET_MAP|{filename}",
+            should_close_on_trigger=True,
+        )
+    )
+
     return items
 
+
 def build_root_menu(map_config: MapConfigManager) -> MenuItem:
-    
+
     # Build Maps Submenu
     map_items = []
-    
+
     # Get maps and sort alphabetically by filename
-    known_maps = sorted(map_config.data.maps.keys(), key=lambda x: os.path.basename(x).lower())
-    
+    known_maps = sorted(
+        map_config.data.maps.keys(), key=lambda x: os.path.basename(x).lower()
+    )
+
     for filename in known_maps:
         status = map_config.get_map_status(filename)
         is_calibrated = status["calibrated"]
         has_session = status["has_session"]
-        
+
         # Icon Logic
         # Priority: Session (*) > Uncalibrated (!) > Normal
-        # Or maybe combine? 
+        # Or maybe combine?
         # Design doc said:
         # (!) : Uncalibrated
         # (*) : Saved Session
         # (None) : Ready
-        
+
         prefix = ""
         if not is_calibrated:
             prefix = "(!) "
         if has_session:
             prefix += "(*) "
-            
+
         display_name = f"{prefix}{os.path.basename(filename)}"
-        
+
         # Create Item with Submenu
-        map_items.append(MenuItem(
-            title=display_name,
-            children=build_map_actions_submenu(filename, has_session)
-        ))
-        
+        map_items.append(
+            MenuItem(
+                title=display_name,
+                children=build_map_actions_submenu(filename, has_session),
+            )
+        )
+
     # Add Scan Option at the end
-    map_items.append(MenuItem(
-        title="Scan for Maps",
-        action_id="SCAN_FOR_MAPS",
-        should_close_on_trigger=True
-    ))
-    
-    maps_menu = MenuItem(
-        title="Maps",
-        children=map_items
+    map_items.append(
+        MenuItem(
+            title="Scan for Maps",
+            action_id="SCAN_FOR_MAPS",
+            should_close_on_trigger=True,
+        )
     )
-    
+
+    maps_menu = MenuItem(title="Maps", children=map_items)
+
     # Construct Root
     # We replicate the structure from menu_config.py but inject maps_menu
     root = MenuItem(
@@ -94,7 +107,7 @@ def build_root_menu(map_config: MapConfigManager) -> MenuItem:
                 action_id=MenuActions.CLOSE_MENU,
                 should_close_on_trigger=True,
             ),
-            maps_menu, # NEW
+            maps_menu,  # NEW
             MenuItem(
                 title="Map Controls",
                 action_id=MenuActions.MAP_CONTROLS,
@@ -148,7 +161,7 @@ def build_root_menu(map_config: MapConfigManager) -> MenuItem:
                         action_id=MenuActions.SCAN_SESSION,
                         should_close_on_trigger=True,
                     ),
-                    # We keep "Load Session" here as a generic load? 
+                    # We keep "Load Session" here as a generic load?
                     # Or maybe remove it since "Maps" handles it?
                     # The design doc says "Simplify the process".
                     # But for now, keeping it is safer for backward compat or quick loading of "current" session?
@@ -176,5 +189,5 @@ def build_root_menu(map_config: MapConfigManager) -> MenuItem:
             ),
         ],
     )
-    
+
     return root

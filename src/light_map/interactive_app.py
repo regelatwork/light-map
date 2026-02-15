@@ -6,7 +6,15 @@ from typing import List, Tuple, Any, Optional, Dict
 from dataclasses import dataclass, field
 import mediapipe as mp
 
-from light_map.common_types import GestureType, MenuItem, AppMode, MenuActions, Token, SessionData, ViewportState
+from light_map.common_types import (
+    GestureType,
+    MenuItem,
+    AppMode,
+    MenuActions,
+    Token,
+    SessionData,
+    ViewportState,
+)
 from light_map.input_manager import InputManager
 from light_map.menu_system import MenuSystem
 from light_map.renderer import Renderer
@@ -42,7 +50,7 @@ class InteractiveApp:
 
         # Scan for maps if provided
         if config.map_search_patterns:
-             self.map_config.scan_for_maps(config.map_search_patterns)
+            self.map_config.scan_for_maps(config.map_search_patterns)
 
         # Build dynamic root menu
         dynamic_root = build_root_menu(self.map_config)
@@ -57,7 +65,7 @@ class InteractiveApp:
         self.token_tracker = TokenTracker()
         self.ghost_tokens: List[Token] = []
         self.scan_start_time = 0.0
-        self.scan_stage = 0 # 0: White, 1: Capture, 2: Process, 3: Done
+        self.scan_stage = 0  # 0: White, 1: Capture, 2: Process, 3: Done
         self.last_scan_result_count = 0
 
         # Load global PPI
@@ -90,7 +98,7 @@ class InteractiveApp:
         self.calib_stage = 0  # 0: Capture, 1: Confirm
         self.calib_candidate_ppi = 0.0
         self.calib_map_grid_size_inches = 1.0  # Default grid reference size
-        
+
         self.saved_map_state = None
         self.current_base_scale = 1.0
 
@@ -103,18 +111,18 @@ class InteractiveApp:
 
         # Grid Detection & Auto-Config
         entry = self.map_config.data.maps.get(filename)
-        
+
         # If grid spacing is unknown (0.0), try to detect it
         if not entry or entry.grid_spacing_svg <= 0:
             spacing = self.svg_loader.detect_grid_spacing()
             if spacing > 0:
                 print(f"Auto-detected grid spacing for {filename}: {spacing} SVG units")
-                
+
                 # Calculate initial 1:1 scale assumption (1 grid unit = 1 inch)
                 ppi = self.map_config.get_ppi()
                 physical_unit = 1.0
                 scale_1to1 = (ppi * physical_unit) / spacing
-                
+
                 self.map_config.save_map_grid_config(
                     filename,
                     grid_spacing_svg=spacing,
@@ -124,12 +132,14 @@ class InteractiveApp:
                     scale_factor_1to1=scale_1to1,
                 )
         else:
-            print(f"Grid spacing for {filename} loaded from config: {entry.grid_spacing_svg} SVG units")
+            print(
+                f"Grid spacing for {filename} loaded from config: {entry.grid_spacing_svg} SVG units"
+            )
 
         # Restore viewport
         vp = self.map_config.get_map_viewport(filename)
         self.map_system.set_state(vp.x, vp.y, vp.zoom, vp.rotation)
-        
+
         # Set base scale
         if entry and entry.scale_factor_1to1 > 0:
             self.current_base_scale = entry.scale_factor_1to1
@@ -150,9 +160,9 @@ class InteractiveApp:
     def reload_config(self, config: AppConfig):
         """Reloads the application configuration and re-initializes necessary components."""
         self.config = config
-        
+
         dynamic_root = build_root_menu(self.map_config)
-        
+
         self.menu_system = MenuSystem(
             config.width,
             config.height,
@@ -207,7 +217,9 @@ class InteractiveApp:
         if self.mode == AppMode.SCANNING:
             if self.scan_stage < 2:
                 # White Flash
-                output = np.full((self.config.height, self.config.width, 3), 255, dtype=np.uint8)
+                output = np.full(
+                    (self.config.height, self.config.width, 3), 255, dtype=np.uint8
+                )
                 # Add "Scanning..." text just in case user is confused (will be projected)
                 # Ideally pure white for detection, but small text in corner is fine if masked.
                 # But TokenTracker masking logic is not dynamic here.
@@ -218,11 +230,20 @@ class InteractiveApp:
                 if map_image is not None:
                     output = map_image.copy()
                 else:
-                    output = np.zeros((self.config.height, self.config.width, 3), dtype=np.uint8)
-                
+                    output = np.zeros(
+                        (self.config.height, self.config.width, 3), dtype=np.uint8
+                    )
+
                 self._draw_ghost_tokens(output)
-                cv2.putText(output, f"Saved {self.last_scan_result_count} Tokens", 
-                           (50, 100), cv2.FONT_HERSHEY_SIMPLEX, 1.5, (0, 255, 0), 3)
+                cv2.putText(
+                    output,
+                    f"Saved {self.last_scan_result_count} Tokens",
+                    (50, 100),
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    1.5,
+                    (0, 255, 0),
+                    3,
+                )
 
         elif self.mode == AppMode.CALIB_PPI:
             output = np.zeros(
@@ -249,7 +270,7 @@ class InteractiveApp:
             output = self.renderer.render(
                 self.menu_state, background=map_image, map_opacity=map_opacity
             )
-            
+
             # Draw Ghost Tokens in MAP mode (if any)
             if self.mode == AppMode.MAP and self.ghost_tokens:
                 self._draw_ghost_tokens(output)
@@ -324,7 +345,7 @@ class InteractiveApp:
         actions = []
         if self.menu_state.just_triggered_action:
             action_raw = self.menu_state.just_triggered_action
-            
+
             # Parse pipe for payload
             if "|" in action_raw:
                 parts = action_raw.split("|", 1)
@@ -333,9 +354,9 @@ class InteractiveApp:
             else:
                 action = action_raw
                 payload = None
-            
+
             current_time = self.time_provider()
-            
+
             if action == MenuActions.MAP_CONTROLS:
                 self.mode = AppMode.MAP
                 self.mode_transition_start_time = current_time
@@ -350,12 +371,14 @@ class InteractiveApp:
                     if session:
                         print(f"Loaded session with {len(session.tokens)} tokens.")
                         if session.map_file:
-                             self.load_map(session.map_file)
+                            self.load_map(session.map_file)
                         if session.viewport:
-                             self.map_system.set_state(
-                                 session.viewport.x, session.viewport.y, 
-                                 session.viewport.zoom, session.viewport.rotation
-                             )
+                            self.map_system.set_state(
+                                session.viewport.x,
+                                session.viewport.y,
+                                session.viewport.zoom,
+                                session.viewport.rotation,
+                            )
                         self.ghost_tokens = session.tokens
                         self.mode = AppMode.MAP
                         self.mode_transition_start_time = current_time
@@ -364,23 +387,23 @@ class InteractiveApp:
                     self.load_map(payload)
                     self.mode = AppMode.CALIB_MAP_GRID
                     self.mode_transition_start_time = current_time
-                    self.calib_map_grid_size_inches = 1.0 
+                    self.calib_map_grid_size_inches = 1.0
                     self.saved_map_state = copy.deepcopy(self.map_system.state)
                     self.map_system.state.rotation = 0.0
                     self.map_system.state.x = 0.0
                     self.map_system.state.y = 0.0
                     self.map_system.state.zoom = self.current_base_scale
             elif action == "FORGET_MAP":
-                 if payload:
-                     self.map_config.forget_map(payload)
-                     new_root = build_root_menu(self.map_config)
-                     self.menu_system.set_root_menu(new_root)
+                if payload:
+                    self.map_config.forget_map(payload)
+                    new_root = build_root_menu(self.map_config)
+                    self.menu_system.set_root_menu(new_root)
             elif action == "SCAN_FOR_MAPS":
-                 if self.config.map_search_patterns:
-                     self.map_config.scan_for_maps(self.config.map_search_patterns)
-                     new_root = build_root_menu(self.map_config)
-                     self.menu_system.set_root_menu(new_root)
-                     
+                if self.config.map_search_patterns:
+                    self.map_config.scan_for_maps(self.config.map_search_patterns)
+                    new_root = build_root_menu(self.map_config)
+                    self.menu_system.set_root_menu(new_root)
+
             elif action == MenuActions.CALIBRATE_SCALE:
                 self.mode = AppMode.CALIB_PPI
                 self.mode_transition_start_time = current_time
@@ -389,16 +412,16 @@ class InteractiveApp:
                 self.mode = AppMode.CALIB_MAP_GRID
                 self.mode_transition_start_time = current_time
                 # Default to 1 inch for now. Could implement sub-menu for 6in, 1ft, 1m later.
-                self.calib_map_grid_size_inches = 1.0 
-                
+                self.calib_map_grid_size_inches = 1.0
+
                 # Save current user view
                 self.saved_map_state = copy.deepcopy(self.map_system.state)
-                
+
                 # Reset Map View for Calibration (Base View)
                 self.map_system.state.rotation = 0.0
                 self.map_system.state.x = 0.0
                 self.map_system.state.y = 0.0
-                
+
                 # Set initial zoom to current base scale
                 self.map_system.state.zoom = self.current_base_scale
             elif action == MenuActions.RESET_ZOOM:
@@ -416,35 +439,37 @@ class InteractiveApp:
                 self.save_current_map_state()
             elif action == MenuActions.SCAN_SESSION:
                 if self.svg_loader:
-                     self.mode = AppMode.SCANNING
-                     self.mode_transition_start_time = current_time
-                     self.scan_start_time = current_time
-                     self.scan_stage = 0
-                     self.last_scan_result_count = 0
+                    self.mode = AppMode.SCANNING
+                    self.mode_transition_start_time = current_time
+                    self.scan_start_time = current_time
+                    self.scan_stage = 0
+                    self.last_scan_result_count = 0
                 else:
-                     print("Cannot scan without a loaded map.")
+                    print("Cannot scan without a loaded map.")
             elif action == MenuActions.LOAD_SESSION:
-                 # Legacy "Load Session" for last active map?
-                 # Or session.json?
-                 # Keep existing behavior for "session.json"
-                 session = SessionManager.load_session("session.json")
-                 if session:
-                     print(f"Loaded session with {len(session.tokens)} tokens.")
-                     # Restore Map & Viewport
-                     if session.map_file:
-                         self.load_map(session.map_file)
-                     
-                     if session.viewport:
-                         self.map_system.set_state(
-                             session.viewport.x, session.viewport.y, 
-                             session.viewport.zoom, session.viewport.rotation
-                         )
-                         
-                     self.ghost_tokens = session.tokens
-                     self.mode = AppMode.MAP # Go to map to see tokens
-                     self.mode_transition_start_time = current_time
-                 else:
-                     print("Failed to load session.")
+                # Legacy "Load Session" for last active map?
+                # Or session.json?
+                # Keep existing behavior for "session.json"
+                session = SessionManager.load_session("session.json")
+                if session:
+                    print(f"Loaded session with {len(session.tokens)} tokens.")
+                    # Restore Map & Viewport
+                    if session.map_file:
+                        self.load_map(session.map_file)
+
+                    if session.viewport:
+                        self.map_system.set_state(
+                            session.viewport.x,
+                            session.viewport.y,
+                            session.viewport.zoom,
+                            session.viewport.rotation,
+                        )
+
+                    self.ghost_tokens = session.tokens
+                    self.mode = AppMode.MAP  # Go to map to see tokens
+                    self.mode_transition_start_time = current_time
+                else:
+                    print("Failed to load session.")
             else:
                 actions.append(action)
 
@@ -454,9 +479,12 @@ class InteractiveApp:
         self, hands_data: List[Dict], current_time: float
     ) -> List[str]:
         self.is_interacting = False
-        
+
         # Mode Transition Delay
-        if current_time - self.mode_transition_start_time < config_vars.MODE_TRANSITION_DELAY:
+        if (
+            current_time - self.mode_transition_start_time
+            < config_vars.MODE_TRANSITION_DELAY
+        ):
             return []
 
         # 1. Zoom
@@ -473,7 +501,7 @@ class InteractiveApp:
                 # Calculate screen center (Fixed Pivot)
                 screen_cx = self.config.width / 2
                 screen_cy = self.config.height / 2
-                
+
                 if self.zoom_start_dist is None:
                     # Start of gesture
                     self.zoom_start_dist = dist
@@ -485,10 +513,12 @@ class InteractiveApp:
                     # Update zoom
                     factor = dist / self.zoom_start_dist
                     new_zoom = self.zoom_start_level * factor
-                    
+
                     # Apply new zoom using robust pivot logic
                     wx, wy = self.zoom_start_world_center
-                    self.map_system.set_zoom_around_pivot(new_zoom, screen_cx, screen_cy, wx, wy)
+                    self.map_system.set_zoom_around_pivot(
+                        new_zoom, screen_cx, screen_cy, wx, wy
+                    )
         else:
             self.zoom_gesture_start_time = 0
             self.zoom_start_dist = None
@@ -531,41 +561,41 @@ class InteractiveApp:
         # 0: White Flash (Wait for settling)
         # 1: Capture & Process (One shot)
         # 2: Done (Show feedback)
-        
+
         if self.scan_stage == 0:
-            if current_time - self.scan_start_time > 0.5: # 500ms settle time
+            if current_time - self.scan_start_time > 0.5:  # 500ms settle time
                 self.scan_stage = 1
-        
+
         elif self.scan_stage == 1:
             # Detect
             print("Scanning...")
-            
+
             # Use masked ROI for UI if needed (top strip 150px)
             # Assuming standard layout where UI might be projected.
             # But in Flash Mode, we project WHITE. So no UI to mask!
             # Unless debug overlay is burnt in? No.
             # So pass empty mask_rois unless we have known blind spots.
-            
+
             grid_spacing = 0.0
             if self.svg_loader:
                 entry = self.map_config.data.maps.get(self.svg_loader.filename)
                 if entry:
                     grid_spacing = entry.grid_spacing_svg
-            
+
             ppi = self.map_config.get_ppi()
-                
+
             tokens = self.token_tracker.detect_tokens(
                 frame_white=frame,
                 projector_matrix=self.config.projector_matrix,
                 map_system=self.map_system,
                 grid_spacing_svg=grid_spacing,
-                ppi=ppi
+                ppi=ppi,
             )
-            
+
             self.last_scan_result_count = len(tokens)
             self.ghost_tokens = tokens
             print(f"Detected {len(tokens)} tokens.")
-            
+
             # Save Session
             map_file = self.svg_loader.filename if self.svg_loader else ""
             session = SessionData(
@@ -574,30 +604,30 @@ class InteractiveApp:
                     self.map_system.state.x,
                     self.map_system.state.y,
                     self.map_system.state.zoom,
-                    self.map_system.state.rotation
+                    self.map_system.state.rotation,
                 ),
-                tokens=tokens
+                tokens=tokens,
             )
             SessionManager.save_session("session.json", session)
-            
+
             self.scan_stage = 2
-            self.scan_start_time = current_time # Reuse for display timer
+            self.scan_start_time = current_time  # Reuse for display timer
 
         elif self.scan_stage == 2:
-            if current_time - self.scan_start_time > 2.0: # Show result for 2s
+            if current_time - self.scan_start_time > 2.0:  # Show result for 2s
                 self.mode = AppMode.MAP
 
     def _draw_ghost_tokens(self, image: np.ndarray):
         if not self.ghost_tokens:
             return
-            
+
         ppi = self.map_config.get_ppi()
         radius = int(ppi * 0.5) if ppi > 0 else 20
-        
+
         for t in self.ghost_tokens:
             # Transform World -> Screen
             sx, sy = self.map_system.world_to_screen(t.world_x, t.world_y)
-            
+
             # Check if within screen
             if 0 <= sx < self.config.width and 0 <= sy < self.config.height:
                 # Draw "Ghost" Circle (e.g. Cyan outline)
@@ -645,13 +675,16 @@ class InteractiveApp:
         # We can refactor _process_map_mode to be reusable or just call it?
         # But _process_map_mode handles Exit logic differently.
         # Let's copy-paste relevant parts for now or refactor later.
-        
+
         self.is_interacting = False
-        
+
         # Mode Transition Delay
-        if current_time - self.mode_transition_start_time < config_vars.MODE_TRANSITION_DELAY:
+        if (
+            current_time - self.mode_transition_start_time
+            < config_vars.MODE_TRANSITION_DELAY
+        ):
             return []
-        
+
         # 1. Zoom (Two Hands)
         pointing_hands = [h for h in hands_data if h["gesture"] == GestureType.POINTING]
         if len(pointing_hands) >= 2:
@@ -676,10 +709,12 @@ class InteractiveApp:
                 else:
                     factor = dist / self.zoom_start_dist
                     new_zoom = self.zoom_start_level * factor
-                    
+
                     # Apply new zoom using robust pivot logic
                     wx, wy = self.zoom_start_world_center
-                    self.map_system.set_zoom_around_pivot(new_zoom, screen_cx, screen_cy, wx, wy)
+                    self.map_system.set_zoom_around_pivot(
+                        new_zoom, screen_cx, screen_cy, wx, wy
+                    )
         else:
             self.zoom_gesture_start_time = 0
             self.zoom_start_dist = None
@@ -700,48 +735,52 @@ class InteractiveApp:
 
         # 3. Confirm (Victory)
         if hands_data and hands_data[0]["gesture"] == GestureType.VICTORY:
-             # Debounce? Let's require hold?
-             # For now, instant confirm is risky. Let's reuse SUMMON_TIME logic or similar.
-             if self.summon_gesture_start_time == 0:
-                 self.summon_gesture_start_time = current_time
-             elif current_time - self.summon_gesture_start_time > 1.0: # 1 sec hold
-                 # Save Config
-                 filename = self.svg_loader.filename if self.svg_loader else "unknown"
-                 
-                 # The current state IS the Base Scale
-                 new_base_scale = self.map_system.state.zoom
-                 ppi = self.map_config.get_ppi()
-                 
-                 # Derive grid spacing from current alignment
-                 derived_spacing = (ppi * self.calib_map_grid_size_inches) / new_base_scale
-                 
-                 print(f"Calibrated {filename}: Spacing={derived_spacing:.1f}, Unit={self.calib_map_grid_size_inches}in")
-                 
-                 self.map_config.save_map_grid_config(
-                     filename,
-                     grid_spacing_svg=derived_spacing,
-                     grid_origin_svg_x=0.0, # Origin logic not implemented yet
-                     grid_origin_svg_y=0.0,
-                     physical_unit_inches=self.calib_map_grid_size_inches,
-                     scale_factor_1to1=new_base_scale
-                 )
-                 
-                 # Restore User View
-                 if self.saved_map_state:
-                     self.map_system.state = self.saved_map_state
-                     # Update Zoom: Preserve User Zoom Level relative to new base
-                     old_base = self.current_base_scale
-                     if old_base > 0:
-                         user_zoom_factor = self.map_system.state.zoom / old_base
-                         self.map_system.state.zoom = user_zoom_factor * new_base_scale
-                     self.saved_map_state = None
-                     
-                 self.current_base_scale = new_base_scale
-                 self.mode = AppMode.MENU
-                 self.summon_gesture_start_time = 0
+            # Debounce? Let's require hold?
+            # For now, instant confirm is risky. Let's reuse SUMMON_TIME logic or similar.
+            if self.summon_gesture_start_time == 0:
+                self.summon_gesture_start_time = current_time
+            elif current_time - self.summon_gesture_start_time > 1.0:  # 1 sec hold
+                # Save Config
+                filename = self.svg_loader.filename if self.svg_loader else "unknown"
+
+                # The current state IS the Base Scale
+                new_base_scale = self.map_system.state.zoom
+                ppi = self.map_config.get_ppi()
+
+                # Derive grid spacing from current alignment
+                derived_spacing = (
+                    ppi * self.calib_map_grid_size_inches
+                ) / new_base_scale
+
+                print(
+                    f"Calibrated {filename}: Spacing={derived_spacing:.1f}, Unit={self.calib_map_grid_size_inches}in"
+                )
+
+                self.map_config.save_map_grid_config(
+                    filename,
+                    grid_spacing_svg=derived_spacing,
+                    grid_origin_svg_x=0.0,  # Origin logic not implemented yet
+                    grid_origin_svg_y=0.0,
+                    physical_unit_inches=self.calib_map_grid_size_inches,
+                    scale_factor_1to1=new_base_scale,
+                )
+
+                # Restore User View
+                if self.saved_map_state:
+                    self.map_system.state = self.saved_map_state
+                    # Update Zoom: Preserve User Zoom Level relative to new base
+                    old_base = self.current_base_scale
+                    if old_base > 0:
+                        user_zoom_factor = self.map_system.state.zoom / old_base
+                        self.map_system.state.zoom = user_zoom_factor * new_base_scale
+                    self.saved_map_state = None
+
+                self.current_base_scale = new_base_scale
+                self.mode = AppMode.MENU
+                self.summon_gesture_start_time = 0
         else:
             self.summon_gesture_start_time = 0
-            
+
         return []
 
     def _draw_calib_map_grid_overlay(self, image):
@@ -749,34 +788,42 @@ class InteractiveApp:
         ppi = self.map_config.get_ppi()
         physical_unit = self.calib_map_grid_size_inches
         step = int(ppi * physical_unit)
-        
+
         if step > 0:
             h, w = image.shape[:2]
             cx, cy = w // 2, h // 2
-            
+
             # Dimmer Green
             grid_color = (0, 120, 0)
             cross_size = 10
 
             # Draw Center Crosshairs (Full lines, but dimmer)
-            cv2.line(image, (cx, 0), (cx, h), (0, 0, 0), 3) # Outline
+            cv2.line(image, (cx, 0), (cx, h), (0, 0, 0), 3)  # Outline
             cv2.line(image, (cx, 0), (cx, h), grid_color, 1)
-            cv2.line(image, (0, cy), (w, cy), (0, 0, 0), 3) # Outline
+            cv2.line(image, (0, cy), (w, cy), (0, 0, 0), 3)  # Outline
             cv2.line(image, (0, cy), (w, cy), grid_color, 1)
-            
+
             # Draw Crosses at intersections
             for x in range(cx % step, w, step):
                 for y in range(cy % step, h, step):
                     # Skip center (already drawn as full lines)
                     if x == cx and y == cy:
                         continue
-                        
+
                     # Horizontal part of cross
-                    cv2.line(image, (x - cross_size, y), (x + cross_size, y), (0, 0, 0), 3)
-                    cv2.line(image, (x - cross_size, y), (x + cross_size, y), grid_color, 1)
+                    cv2.line(
+                        image, (x - cross_size, y), (x + cross_size, y), (0, 0, 0), 3
+                    )
+                    cv2.line(
+                        image, (x - cross_size, y), (x + cross_size, y), grid_color, 1
+                    )
                     # Vertical part of cross
-                    cv2.line(image, (x, y - cross_size), (x, y + cross_size), (0, 0, 0), 3)
-                    cv2.line(image, (x, y - cross_size), (x, y + cross_size), grid_color, 1)
+                    cv2.line(
+                        image, (x, y - cross_size), (x, y + cross_size), (0, 0, 0), 3
+                    )
+                    cv2.line(
+                        image, (x, y - cross_size), (x, y + cross_size), grid_color, 1
+                    )
 
         cv2.putText(
             image,
@@ -860,20 +907,20 @@ class InteractiveApp:
             (255, 255, 255),
             2,
         )
-        
+
         # Check for uncalibrated grid
         if self.svg_loader:
-             entry = self.map_config.data.maps.get(self.svg_loader.filename)
-             if not entry or entry.grid_spacing_svg <= 0:
-                 cv2.putText(
-                     image,
-                     "GRID UNCALIBRATED - Use 'Set Scale'",
-                     (50, 100),
-                     cv2.FONT_HERSHEY_SIMPLEX,
-                     1,
-                     (0, 0, 255),
-                     2,
-                 )
+            entry = self.map_config.data.maps.get(self.svg_loader.filename)
+            if not entry or entry.grid_spacing_svg <= 0:
+                cv2.putText(
+                    image,
+                    "GRID UNCALIBRATED - Use 'Set Scale'",
+                    (50, 100),
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    1,
+                    (0, 0, 255),
+                    2,
+                )
 
         # Zoom level
         zoom_pct = int(self.map_system.state.zoom * 100)

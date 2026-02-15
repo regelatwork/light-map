@@ -19,9 +19,7 @@ class TestCameraPipeline(unittest.TestCase):
         self.mock_hands = MagicMock()
         self.mock_hands.process.return_value = MagicMock()
 
-        self.pipeline = CameraPipeline(
-            self.mock_camera, self.mock_hands
-        )
+        self.pipeline = CameraPipeline(self.mock_camera, self.mock_hands)
 
     def tearDown(self):
         self.pipeline.stop()

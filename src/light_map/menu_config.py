@@ -8,7 +8,9 @@ GRACE_PERIOD: float = 0.2  # Seconds to wait before resetting prime if gesture i
 PRIMING_TIME: float = 0.8  # Seconds to hold gesture to trigger action
 SUMMON_TIME: float = 1.0  # Seconds to hold summon gesture to open menu
 ZOOM_DELAY: float = 0.5  # Seconds to hold two-hand pointing to enter zoom mode
-MODE_TRANSITION_DELAY: float = 0.5  # Seconds to wait after mode switch before processing input
+MODE_TRANSITION_DELAY: float = (
+    0.5  # Seconds to wait after mode switch before processing input
+)
 
 ITEM_WIDTH_PCT: float = 0.6  # Width of menu items relative to screen width
 MAX_VISIBLE_ITEMS: int = 8  # Maximum number of items to show at once

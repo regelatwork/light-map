@@ -46,28 +46,30 @@ class MapSystem:
         wx, wy = self.screen_to_world(center_x, center_y)
 
         new_zoom = self.state.zoom * factor
-        
+
         # Use robust pivot logic
         self.set_zoom_around_pivot(new_zoom, center_x, center_y, wx, wy)
 
-    def set_zoom_around_pivot(self, new_zoom: float, sx: float, sy: float, wx: float, wy: float):
+    def set_zoom_around_pivot(
+        self, new_zoom: float, sx: float, sy: float, wx: float, wy: float
+    ):
         """
         Sets the zoom level and adjusts pan (x, y) so that the given world coordinate (wx, wy)
         maps to the given screen coordinate (sx, sy).
         """
         self.state.zoom = new_zoom
-        
+
         cx, cy = self.width / 2, self.height / 2
-        
+
         # Construct transform part without Translation (T)
         # matches SVGLoader logic: Scale -> Rotate(around center) -> Translate
         m_no_t = svgelements.Matrix()
         m_no_t.post_scale(new_zoom, new_zoom)
         m_no_t.post_rotate(math.radians(self.state.rotation), cx, cy)
-        
+
         # Transform World Point
         p_transformed = m_no_t.point_in_matrix_space((wx, wy))
-        
+
         # Calculate required Translation
         # S = P_transformed + T  =>  T = S - P_transformed
         self.state.x = sx - p_transformed.x

@@ -51,7 +51,7 @@ class Renderer:
                 border_color = self.colors.HOVER
                 border_thickness = 4  # Thicker border
                 text_color = self.colors.HOVER  # Optional: Match text color
-            
+
             # Feedback Style (Overrides Hover)
             if i == state.feedback_item_index:
                 border_color = self.colors.CONFIRM

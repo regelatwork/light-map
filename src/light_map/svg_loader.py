@@ -44,22 +44,22 @@ class SVGLoader:
                     if isinstance(segment, svgelements.Line):
                         p1 = segment.start
                         p2 = segment.end
-                        
+
                         # Check for vertical line
                         if abs(p1.x - p2.x) < 0.1 and abs(p1.y - p2.y) > 10:
                             x_coords.append(p1.x)
                         # Check for horizontal line
                         elif abs(p1.y - p2.y) < 0.1 and abs(p1.x - p2.x) > 10:
                             y_coords.append(p1.y)
-                            
+
             elif isinstance(element, svgelements.Rect):
                 # Rects contribute 2 vertical and 2 horizontal lines
                 x_coords.extend([element.x, element.x + element.width])
                 y_coords.extend([element.y, element.y + element.height])
-            
+
             elif isinstance(element, (svgelements.Line, svgelements.SimpleLine)):
                 # SimpleLine uses x1, y1, x2, y2. Line uses start, end.
-                if hasattr(element, 'x1'):
+                if hasattr(element, "x1"):
                     p1x, p1y = element.x1, element.y1
                     p2x, p2y = element.x2, element.y2
                 else:
@@ -75,61 +75,61 @@ class SVGLoader:
         def find_spacing(coords):
             if not coords:
                 return 0.0
-            
+
             # Round to nearest 0.1 to handle float errors
             sorted_coords = sorted([round(c, 1) for c in coords])
             unique_coords = sorted(list(set(sorted_coords)))
-            
+
             if len(unique_coords) < 3:
                 return 0.0
-            
+
             # Calculate gaps
             gaps = []
             for i in range(len(unique_coords) - 1):
-                gap = unique_coords[i+1] - unique_coords[i]
-                if gap > 1.0: # Ignore tiny gaps
+                gap = unique_coords[i + 1] - unique_coords[i]
+                if gap > 1.0:  # Ignore tiny gaps
                     gaps.append(round(gap, 1))
-            
+
             if not gaps:
                 return 0.0
-                
+
             # Find mode
             counts = Counter(gaps)
             most_common = counts.most_common(1)
             if not most_common:
                 return 0.0
-            
+
             mode_gap, count = most_common[0]
-            
+
             # Heuristic: The mode must appear at least twice (3 lines)
             if count < 2:
                 return 0.0
-                
+
             return mode_gap
 
         # Collect coords from Rects properly
         # Rect(x, y, w, h) -> Vertical lines at x, x+w. Horizontal at y, y+h.
-        
+
         spacing_x = find_spacing(x_coords)
         spacing_y = find_spacing(y_coords)
-        
+
         # If both found, return average if close, otherwise X
         if spacing_x > 0 and spacing_y > 0:
             if abs(spacing_x - spacing_y) < 1.0:
                 return (spacing_x + spacing_y) / 2
-            return spacing_x # Prefer X or maybe specific logic
-        
+            return spacing_x  # Prefer X or maybe specific logic
+
         result = max(spacing_x, spacing_y)
-        
+
         if result > 0:
             return result
-            
+
         # Fallback: Raster Analysis
         # Check if we have images or if detection just failed
         has_images = any(isinstance(e, svgelements.Image) for e in self.svg.elements())
-        if has_images or True: # Always try fallback if vector failed
-             return self._detect_grid_spacing_raster()
-             
+        if has_images or True:  # Always try fallback if vector failed
+            return self._detect_grid_spacing_raster()
+
         return 0.0
 
     def _detect_grid_spacing_raster(self) -> float:
@@ -140,14 +140,14 @@ class SVGLoader:
         # Fixed width of 2048 seems reasonable
         target_w = 2048
         if self.svg.width <= 0 or self.svg.height <= 0:
-             return 0.0
-             
+            return 0.0
+
         aspect = self.svg.height / self.svg.width
         target_h = int(target_w * aspect)
-        
+
         # Scale factor needed to fit SVG into target_w
         scale = target_w / self.svg.width
-        
+
         # We can use our render method, but we need to ensure it renders everything
         # Our render method takes target width/height and fits viewport.
         # If we pass scale_factor=1.0, render() scales based on 'quality' to target dims?
@@ -155,52 +155,53 @@ class SVGLoader:
         # vp_matrix.post_scale(scale_factor, scale_factor)
         # q_matrix.post_scale(quality, quality)
         # final = vp_matrix * q_matrix
-        
+
         # We want to render the WHOLE SVG at resolution (target_w, target_h).
         # So we should pass scale_factor that maps SVG units to pixels.
         # But render() takes a 'scale_factor' argument which is the USER zoom.
         # And it centers it?
-        
+
         # Let's use internal _render_internal directly or setup render params carefully.
         # render() method:
         # cx, cy = target_width / 2, ...
         # vp_matrix.post_rotate(..., cx, cy)
         # vp_matrix.post_translate(offset_x, offset_y)
-        
+
         # If we want 1:1 mapping scaled by 'scale', we set scale_factor = scale.
         # And offset to center it?
         # Actually, let's just use the fact that render() renders the viewport.
         # If we want the whole map, we need to center the map in the view.
         # Default render (offset=0, zoom=1) centers (0,0) of SVG at center of screen?
         # No, offset is post_translate.
-        
+
         # Let's simplify: svgelements allows iterating elements.
         # But we need to render images too.
         # Re-using render() is best.
-        
+
         # To fit the whole map in (target_w, target_h):
         # We need scale_factor s = target_w / svg.width (assuming width fits).
-        # And we need to center it. 
+        # And we need to center it.
         # But render() logic might clip if we are not careful.
-        
+
         # Let's assume we render with default params into a buffer that matches SVG aspect ratio,
         # and we set scale_factor such that 1 SVG unit = X pixels.
-        
+
         img = self.render(
-            target_w, target_h, 
-            scale_factor=scale, 
-            offset_x=target_w/2 - (self.svg.width*scale)/2, # Center X?
-            offset_y=target_h/2 - (self.svg.height*scale)/2, # Center Y?
+            target_w,
+            target_h,
+            scale_factor=scale,
+            offset_x=target_w / 2 - (self.svg.width * scale) / 2,  # Center X?
+            offset_y=target_h / 2 - (self.svg.height * scale) / 2,  # Center Y?
             rotation=0,
-            quality=1.0
+            quality=1.0,
         )
-        
+
         if img is None:
             return 0.0
-            
+
         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
         edges = cv2.Canny(gray, 50, 150)
-        
+
         def analyze_axis(axis_sum):
             # Autocorrelation
             n = len(axis_sum)
@@ -208,51 +209,51 @@ class SVGLoader:
             if np.max(axis_sum) == 0:
                 return 0.0
             signal = axis_sum / np.max(axis_sum)
-            
+
             # Correlate
             # We only care about lags up to half the image size
-            lags = np.arange(10, n // 2) # Ignore small lags (line thickness)
+            lags = np.arange(10, n // 2)  # Ignore small lags (line thickness)
             corrs = []
-            
+
             for lag in lags:
                 # simple comparison: correlation coefficient or just dot product
                 # We want periodicity.
                 # c = mean( s[t] * s[t-lag] )
                 c = np.sum(signal[lag:] * signal[:-lag])
                 corrs.append(c)
-                
+
             if not corrs:
                 return 0.0
-                
+
             # Find peaks
             corrs = np.array(corrs)
             # Find max peak
             peak_idx = np.argmax(corrs)
             best_lag = lags[peak_idx]
-            
+
             # Confidence check: is it a sharp peak?
             return best_lag
 
         # Vertical grid lines (sum cols -> projection on X)
         col_sum = np.sum(edges, axis=0)
         px_spacing_x = analyze_axis(col_sum)
-        
+
         # Horizontal grid lines (sum rows -> projection on Y)
         row_sum = np.sum(edges, axis=1)
         px_spacing_y = analyze_axis(row_sum)
-        
+
         # Convert pixel spacing back to SVG units
         # spacing_svg = spacing_px / scale
-        
+
         spacings = []
         if px_spacing_x > 0:
             spacings.append(px_spacing_x / scale)
         if px_spacing_y > 0:
             spacings.append(px_spacing_y / scale)
-            
+
         if not spacings:
             return 0.0
-            
+
         # Return average
         return sum(spacings) / len(spacings)
 

@@ -8,6 +8,7 @@ from light_map.common_types import SessionData, Token, ViewportState
 
 SESSION_DIR = "sessions"
 
+
 class SessionManager:
     @staticmethod
     def _ensure_session_dir():
@@ -48,13 +49,13 @@ class SessionManager:
             # Set timestamp if empty
             if not data.timestamp:
                 data.timestamp = datetime.datetime.now().isoformat()
-            
+
             # Serialize
             data_dict = asdict(data)
-            
+
             with open(filepath, "w") as f:
                 json.dump(data_dict, f, indent=2)
-            
+
             print(f"Session saved to {filepath}")
             return True
         except Exception as e:
@@ -66,39 +67,41 @@ class SessionManager:
         if not os.path.exists(filepath):
             print(f"Session file not found: {filepath}")
             return None
-        
+
         try:
             with open(filepath, "r") as f:
                 raw = json.load(f)
-            
+
             # Deserialize Viewport
             vp_data = raw.get("viewport", {})
             viewport = ViewportState(
                 x=vp_data.get("x", 0.0),
                 y=vp_data.get("y", 0.0),
                 zoom=vp_data.get("zoom", 1.0),
-                rotation=vp_data.get("rotation", 0.0)
+                rotation=vp_data.get("rotation", 0.0),
             )
-            
+
             # Deserialize Tokens
             tokens = []
             for t_data in raw.get("tokens", []):
-                tokens.append(Token(
-                    id=t_data.get("id", 0),
-                    world_x=t_data.get("world_x", 0.0),
-                    world_y=t_data.get("world_y", 0.0),
-                    grid_x=t_data.get("grid_x"),
-                    grid_y=t_data.get("grid_y"),
-                    confidence=t_data.get("confidence", 1.0)
-                ))
-            
+                tokens.append(
+                    Token(
+                        id=t_data.get("id", 0),
+                        world_x=t_data.get("world_x", 0.0),
+                        world_y=t_data.get("world_y", 0.0),
+                        grid_x=t_data.get("grid_x"),
+                        grid_y=t_data.get("grid_y"),
+                        confidence=t_data.get("confidence", 1.0),
+                    )
+                )
+
             return SessionData(
                 map_file=raw.get("map_file", ""),
                 viewport=viewport,
                 tokens=tokens,
-                timestamp=raw.get("timestamp", "")
+                timestamp=raw.get("timestamp", ""),
             )
-            
+
         except Exception as e:
             print(f"Error loading session: {e}")
             return None

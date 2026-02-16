@@ -1,3 +1,4 @@
+from typing import Optional
 import cv2
 import numpy as np
 from .menu_system import MenuState
@@ -11,13 +12,16 @@ class Renderer:
         self.colors = MenuColors()
 
     def render(
-        self, state: MenuState, background: np.ndarray = None, map_opacity: float = 1.0
+        self,
+        state: Optional[MenuState],
+        background: np.ndarray = None,
+        map_opacity: float = 1.0,
     ) -> np.ndarray:
         """
         Renders the current menu state onto an image.
 
         Args:
-            state: The current menu state.
+            state: The current menu state. Can be None if only background rendering is needed.
             background: Optional BGR image to use as background. If None, creates a black image.
             map_opacity: Opacity of the background map (0.0 to 1.0).
         """
@@ -34,7 +38,7 @@ class Renderer:
         else:
             image = np.zeros((self.screen_height, self.screen_width, 3), dtype=np.uint8)
 
-        if not state.is_visible:
+        if state is None or not state.is_visible:
             return image
 
         for i, item in enumerate(state.active_items):

@@ -101,6 +101,13 @@ class MapSystem:
         """Resets the view to the default state but using the base scale."""
         self.state = MapState(zoom=self.base_scale)
 
+    def zoom_pinned(self, factor: float, center_point: Tuple[int, int]):
+        """Adjusts zoom relative to a fixed screen point."""
+        center_x, center_y = center_point
+        wx, wy = self.screen_to_world(center_x, center_y)
+        new_zoom = self.state.zoom * factor
+        self.set_zoom_around_pivot(new_zoom, center_x, center_y, wx, wy)
+
     def get_render_params(self) -> Dict[str, Any]:
         """Returns parameters for SVGLoader.render()."""
         return {

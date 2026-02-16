@@ -2,7 +2,7 @@ import pytest
 import numpy as np
 from unittest.mock import MagicMock, patch
 from light_map.interactive_app import InteractiveApp, AppConfig
-from light_map.common_types import AppMode, Token, SceneId
+from light_map.common_types import Token, SceneId
 from light_map.menu_builder import build_root_menu
 from light_map.map_config import MapConfigManager
 

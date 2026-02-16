@@ -38,16 +38,6 @@ class MenuActions(StrEnum):
     CALIBRATE_FLASH = "CALIBRATE_FLASH"
 
 
-class AppMode(StrEnum):
-    MENU = "MENU"
-    VIEWING = "VIEWING"
-    MAP = "MAP"
-    CALIB_PPI = "CALIB_PPI"
-    CALIB_MAP_GRID = "CALIB_MAP_GRID"
-    SCANNING = "SCANNING"
-    CALIBRATE_FLASH = "CALIBRATE_FLASH"
-
-
 class SceneId(StrEnum):
     MENU = "MENU"
     VIEWING = "VIEWING"

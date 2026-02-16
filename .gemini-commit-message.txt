@@ -1,12 +1,10 @@
-feat: Refactor InteractiveApp to Scene-Based Architecture
+feat: Refactor InteractiveApp - Phase 3 & Testing
 
-This commit completes Phase 2 of the InteractiveApp refactoring.
+Finalized the scene-based refactoring of InteractiveApp.
 
-Key changes include:
-- Replaced the monolithic `AppMode` enum and state machine with a scene-based architecture.
-- Extracted all major application modes into discrete `Scene` classes.
-- Introduced a `SceneId` enum for type-safe scene transitions.
-- Resolved circular import dependencies between scene files.
-- Updated existing tests to be compatible with the new architecture.
-- Removed obsolete test files whose logic is now covered by or irrelevant to the new scene-specific tests.
-- Restored token visibility toggle functionality within the new `ViewingScene` and `MapScene`.
+Changes:
+- Removed obsolete `AppMode` enum from `common_types.py`.
+- Cleaned up debug and visualization scripts from `tests/`.
+- Implemented comprehensive unit tests for `MapInteractionController`, `ScanningScene`, `FlashCalibrationScene`, `PpiCalibrationScene`, `MapGridCalibrationScene`, `IntrinsicsCalibrationScene`, and `ProjectorCalibrationScene`.
+- Removed debug print statements from `calibration_scenes.py`.
+- Ensured all 124 tests pass with the new architecture.

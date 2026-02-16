@@ -4,6 +4,9 @@ import glob
 import os
 
 
+CHECKERBOARD_DIMS = (6, 9)  # Standard chessboard dimensions
+CALIBRATION_FILE = "camera_calibration.npz"
+
 def load_calibration_images(image_dir, extensions=("jpg", "jpeg")):
     """Loads image paths from a directory matching specific extensions."""
     images = []
@@ -40,6 +43,62 @@ def find_corners(image, checkerboard_dims, criteria):
 
     return ret, corners2, gray
 
+
+def process_chessboard_images(
+    images: list[np.ndarray], checkerboard_dims: tuple[int, int] = CHECKERBOARD_DIMS
+) -> tuple[tuple[np.ndarray, np.ndarray], list[np.ndarray]] | None:
+    """
+    Processes a list of chessboard images to perform camera calibration.
+
+    Args:
+        images: List of numpy arrays, each representing a chessboard image.
+        checkerboard_dims: Dimensions of the inner corners of the checkerboard (cols, rows).
+
+    Returns:
+        A tuple containing:
+            - (camera_matrix, dist_coeffs) if calibration is successful.
+            - list of rotation and translation vectors (rvecs, tvecs)
+        Returns None if calibration fails.
+    """
+    criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 0.001)
+    objp = np.zeros((1, checkerboard_dims[0] * checkerboard_dims[1], 3), np.float32)
+    objp[0, :, :2] = np.mgrid[
+        0 : checkerboard_dims[0], 0 : checkerboard_dims[1]
+    ].T.reshape(-1, 2)
+
+    objpoints = []  # 3d point in real world space
+    imgpoints = []  # 2d points in image plane.
+
+    image_shape = None
+
+    for img in images:
+        ret, corners2, gray = find_corners(img, checkerboard_dims, criteria)
+
+        if ret:
+            objpoints.append(objp)
+            imgpoints.append(corners2)
+            if image_shape is None:
+                image_shape = gray.shape[::-1]
+
+    if not objpoints or image_shape is None:
+        print("Error: No chessboard corners found in any images for calibration.")
+        return None
+
+    try:
+        ret, matrix, distortion, r_vecs, t_vecs = cv2.calibrateCamera(
+            objpoints, imgpoints, image_shape, None, None
+        )
+        if ret:
+            return (matrix, distortion), (r_vecs, t_vecs)
+    except cv2.error as e:
+        print(f"OpenCV calibration error: {e}")
+
+    return None
+
+def save_camera_calibration(camera_matrix: np.ndarray, dist_coeffs: np.ndarray):
+    """Saves the camera matrix and distortion coefficients to a file."""
+    np.savez(CALIBRATION_FILE, camera_matrix=camera_matrix, dist_coeffs=dist_coeffs)
+    print(f"Camera calibration saved to {CALIBRATION_FILE}")
 
 def calibrate_camera_from_images(image_paths, checkerboard_dims=(6, 9)):
     """

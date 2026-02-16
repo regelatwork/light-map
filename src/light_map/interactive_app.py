@@ -172,8 +172,8 @@ class InteractiveApp:
             self.current_base_scale = 1.0
 
         # Save current map filename if needed, though config manager handles saving on change
-        # self.map_config.data.global_settings.last_used_map = filename
-        # self.map_config.save()
+        self.map_config.data.global_settings.last_used_map = filename
+        self.map_config.save()
 
     def save_current_map_state(self):
         if self.svg_loader:

@@ -12,6 +12,7 @@ sys.path.insert(0, os.path.abspath("src"))
 from light_map.camera import Camera
 from light_map.common_types import MenuActions
 from light_map.interactive_app import InteractiveApp, AppConfig
+from light_map.map_config import MapConfigManager
 from light_map.calibration_logic import run_calibration_sequence
 from light_map.camera_pipeline import CameraPipeline
 
@@ -66,6 +67,9 @@ def main():
     if args.map:
         map_sources.append(args.map)
 
+    # Initialize MapConfigManager early to get last_used_map
+    map_config_manager = MapConfigManager()
+
     # 2. Setup App
     config = AppConfig(
         width=screen_w,
@@ -76,12 +80,25 @@ def main():
     app = InteractiveApp(config)
     app.set_debug_mode(args.debug)
 
+    map_to_load = None
     if args.map:
-        if os.path.exists(args.map):
-            print(f"Loading map: {args.map}")
-            app.load_map(args.map)
+        map_to_load = args.map
+    elif map_config_manager.data.global_settings.last_used_map:
+        last_map = map_config_manager.data.global_settings.last_used_map
+        if os.path.exists(last_map):
+            print(f"Loading last used map: {last_map}")
+            map_to_load = last_map
         else:
-            print(f"Error: Map file not found: {args.map}")
+            print(f"Last used map not found: {last_map}. Clearing setting.")
+            map_config_manager.data.global_settings.last_used_map = None
+            map_config_manager.save()
+
+    if map_to_load:
+        if os.path.exists(map_to_load):
+            print(f"Loading map: {map_to_load}")
+            app.load_map(map_to_load)
+        else:
+            print(f"Error: Map file not found: {map_to_load}")
 
     # 3. Setup MediaPipe
     mp_hands = mp.solutions.hands

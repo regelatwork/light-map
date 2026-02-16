@@ -271,7 +271,9 @@ class InteractiveApp:
         """Renders UI elements that are always visible, like debug info and notifications."""
         
         # Draw Ghost Tokens
-        if self.map_system.ghost_tokens:
+        should_show_tokens = isinstance(self.current_scene, (ViewingScene, MapScene))
+        
+        if should_show_tokens and self.map_system.ghost_tokens:
             if self.app_context.show_tokens:
                 self._draw_ghost_tokens(frame)
 

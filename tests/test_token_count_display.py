@@ -58,11 +58,8 @@ def app_config():
 @pytest.fixture
 def app(app_config):
     _app_config, mock_map_config = app_config
-    # It's easier to patch the scene classes themselves to avoid dealing with
-    # the full initialization of each scene during app startup.
+    # Only patch scenes that have complex initialization dependencies
     with patch("light_map.interactive_app.MenuScene"), patch(
-        "light_map.interactive_app.ViewingScene"
-    ), patch("light_map.interactive_app.MapScene"), patch(
         "light_map.interactive_app.ScanningScene"
     ), patch(
         "light_map.interactive_app.FlashCalibrationScene"
@@ -102,7 +99,7 @@ def test_token_count_display_with_tokens(app):
     results = MockResults()  # No hands
 
     # Mock the scene's render method to return a valid frame
-    app.current_scene.render.return_value = frame
+    app.current_scene.render = MagicMock(return_value=frame)
 
     with patch("cv2.putText") as mock_putText:
         app.process_frame(frame, results)
@@ -127,7 +124,7 @@ def test_token_count_hidden_when_toggled_off(mock_draw_tokens, app):
     results = MockResults()
 
     # Mock the scene's render method to return a valid frame
-    app.current_scene.render.return_value = frame
+    app.current_scene.render = MagicMock(return_value=frame)
 
     with patch("cv2.putText") as mock_putText:
         app.process_frame(frame, results)
@@ -143,3 +140,27 @@ def test_token_count_hidden_when_toggled_off(mock_draw_tokens, app):
                 found = True
                 break
         assert found, "Token count 'Tokens: 1 (Hidden)' not found"
+
+
+def test_token_count_hidden_in_menu(app):
+    """Verify that tokens are not shown in MenuScene."""
+    app.current_scene = app.scenes[SceneId.MENU]
+    app.app_context.show_tokens = True
+    app.map_system.ghost_tokens = [Token(1, 10, 10)]
+
+    frame = np.zeros((100, 100, 3), dtype=np.uint8)
+    results = MockResults()
+
+    # Mock the scene's render method
+    app.current_scene.render.return_value = frame
+
+    with patch("cv2.putText") as mock_putText, patch.object(app, "_draw_ghost_tokens") as mock_draw_tokens:
+        app.process_frame(frame, results)
+
+        # Assert tokens NOT drawn
+        mock_draw_tokens.assert_not_called()
+
+        # Assert text NOT drawn
+        for call in mock_putText.call_args_list:
+            args, _ = call
+            assert "Tokens:" not in args[1], f"Token count should not be drawn in MenuScene, found: {args[1]}"

@@ -27,6 +27,8 @@ from light_map.scenes.calibration_scenes import (
     FlashCalibrationScene,
     MapGridCalibrationScene,
     PpiCalibrationScene,
+    IntrinsicsCalibrationScene,
+    ProjectorCalibrationScene,
 )
 
 
@@ -66,6 +68,8 @@ class InteractiveApp:
             SceneId.CALIBRATE_FLASH: FlashCalibrationScene(self.app_context),
             SceneId.CALIBRATE_PPI: PpiCalibrationScene(self.app_context),
             SceneId.CALIBRATE_MAP_GRID: MapGridCalibrationScene(self.app_context),
+            SceneId.CALIBRATE_INTRINSICS: IntrinsicsCalibrationScene(self.app_context),
+            SceneId.CALIBRATE_PROJECTOR: ProjectorCalibrationScene(self.app_context),
         }
         self.current_scene: Scene = self.scenes[SceneId.MENU]
         self.current_scene.on_enter()

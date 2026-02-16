@@ -88,6 +88,8 @@ class MenuScene(Scene):
                 self.on_enter()  # Rebuild menu
         elif action == MenuActions.CALIBRATE_SCALE:
             return SceneTransition(SceneId.CALIBRATE_PPI)
+        elif action == MenuActions.CALIBRATE:
+            return SceneTransition(SceneId.CALIBRATE_INTRINSICS)
         elif action == MenuActions.CALIBRATE_FLASH:
             return SceneTransition(SceneId.CALIBRATE_FLASH)
         elif action == MenuActions.SET_MAP_SCALE:

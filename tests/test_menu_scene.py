@@ -180,3 +180,22 @@ def test_menu_scene_scan_fails_without_map(mock_app_context):
     mock_app_context.notifications.add_notification.assert_called_once_with(
         "Load a map before scanning."
     )
+
+
+def test_menu_scene_handles_calibrate_action(mock_app_context):
+    """Verify CALIBRATE action transitions to IntrinsicsCalibrationScene."""
+    # Arrange
+    scene = MenuScene(mock_app_context)
+    mock_menu_state = MagicMock(spec=MenuState)
+    mock_menu_state.just_triggered_action = MenuActions.CALIBRATE
+    # Mock other attributes to avoid attribute errors if accessed
+    mock_menu_state.active_items = []
+    mock_menu_state.is_visible = True
+
+    # Act
+    with patch.object(scene.menu_system, "update", return_value=mock_menu_state):
+        transition = scene.update(inputs=[], current_time=0.0)
+
+    # Assert
+    assert isinstance(transition, SceneTransition)
+    assert transition.target_scene == SceneId.CALIBRATE_INTRINSICS

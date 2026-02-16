@@ -16,6 +16,7 @@ def mock_app_context():
     mock_context = MagicMock(spec=AppContext)
     mock_context.app_config = app_config
     mock_context.projector_matrix = np.eye(3)
+    mock_context.last_camera_frame = np.zeros((100, 100, 3), dtype=np.uint8)
     # Configure nested mocks
     mock_context.map_config_manager = MagicMock()
     mock_context.map_config_manager.get_flash_intensity.return_value = 255
@@ -62,7 +63,7 @@ def test_scanning_scene_state_machine(mock_app_context):
         # PROCESS -> SHOW_RESULT (happens within render)
         with patch.object(scene, "_detect_and_save_tokens") as mock_detect:
             scene.render(np.zeros((100, 100, 3), dtype=np.uint8))
-            mock_detect.assert_called_once()
+            mock_detect.assert_called_once_with(mock_app_context.last_camera_frame)
         assert scene._stage == ScanStage.SHOW_RESULT
 
         # SHOW_RESULT -> DONE (after delay)

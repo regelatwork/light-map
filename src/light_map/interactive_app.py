@@ -133,6 +133,7 @@ class InteractiveApp:
     def process_frame(
         self, frame: np.ndarray, results: Any
     ) -> Tuple[np.ndarray, List[str]]:
+        self.app_context.last_camera_frame = frame
         current_time = self.time_provider()
 
         # 1. Update FPS

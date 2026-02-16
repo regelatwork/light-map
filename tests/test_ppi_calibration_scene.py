@@ -15,6 +15,7 @@ def mock_app_context():
     mock_context = MagicMock(spec=AppContext)
     mock_context.app_config = app_config
     mock_context.projector_matrix = np.eye(3)
+    mock_context.last_camera_frame = np.zeros((100, 100, 3), dtype=np.uint8)
     mock_context.map_config_manager = MagicMock()
     mock_context.notifications = MagicMock()
     return mock_context
@@ -29,9 +30,10 @@ def test_ppi_calibration_scene_detecting_to_confirming(mock_app_context):
     with patch(
         "light_map.scenes.calibration_scenes.calculate_ppi_from_frame",
         return_value=100.0,
-    ):
+    ) as mock_calc:
         frame = np.zeros((100, 100, 3), dtype=np.uint8)
         scene.render(frame)  # Call render to trigger detection
+        mock_calc.assert_called_with(mock_app_context.last_camera_frame, mock_app_context.projector_matrix)
 
     assert scene._stage == "CONFIRMING"
     assert scene._candidate_ppi == 100.0

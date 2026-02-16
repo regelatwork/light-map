@@ -76,10 +76,10 @@ class FlashCalibrationScene(Scene):
 
     def render(self, frame: np.ndarray) -> np.ndarray:
         if self._stage == FlashCalibStage.TESTING:
-            if self._capture_frame:
+            if self._capture_frame and self.context.last_camera_frame is not None:
                 intensity = self._test_levels[self._current_level_idx]
                 tokens = self.token_tracker.detect_tokens(
-                    frame_white=frame,
+                    frame_white=self.context.last_camera_frame,
                     projector_matrix=self.context.projector_matrix,
                     map_system=self.context.map_system,
                 )
@@ -314,10 +314,11 @@ class PpiCalibrationScene(Scene):
 
     def render(self, frame: np.ndarray) -> np.ndarray:
         if self._stage == "DETECTING":
-            ppi = calculate_ppi_from_frame(frame, self.context.projector_matrix)
-            if ppi:
-                self._candidate_ppi = ppi
-                self._stage = "CONFIRMING"
+            if self.context.last_camera_frame is not None:
+                ppi = calculate_ppi_from_frame(self.context.last_camera_frame, self.context.projector_matrix)
+                if ppi:
+                    self._candidate_ppi = ppi
+                    self._stage = "CONFIRMING"
         # Overlays should be handled by a global renderer, but for now
         # we return a black frame and assume the main loop will draw text.
         return np.zeros_like(frame, dtype=np.uint8)

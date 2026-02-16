@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Optional
 
 import numpy as np
 
@@ -25,3 +25,4 @@ class AppContext:
     notifications: NotificationManager
     show_tokens: bool = True
     debug_mode: bool = False
+    last_camera_frame: Optional[np.ndarray] = None

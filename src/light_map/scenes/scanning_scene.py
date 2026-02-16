@@ -78,7 +78,11 @@ class ScanningScene(Scene):
             return np.full_like(frame, intensity, dtype=np.uint8)
 
         if self._stage == ScanStage.PROCESS:
-            self._detect_and_save_tokens(frame)
+            if self.context.last_camera_frame is not None:
+                self._detect_and_save_tokens(self.context.last_camera_frame)
+            else:
+                print("Warning: No camera frame available for token detection.")
+            
             # Immediately transition to avoid re-processing the same frame
             self._change_stage(ScanStage.SHOW_RESULT, time.monotonic())
             # Fall through to render results immediately

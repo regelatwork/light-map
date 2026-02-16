@@ -16,6 +16,7 @@ def mock_app_context():
     mock_context = MagicMock(spec=AppContext)
     mock_context.app_config = app_config
     mock_context.projector_matrix = np.eye(3)
+    mock_context.last_camera_frame = np.zeros((100, 100, 3), dtype=np.uint8)
     # Configure nested mocks
     mock_context.map_config_manager = MagicMock()
     mock_context.notifications = MagicMock()
@@ -64,6 +65,14 @@ def test_flash_calibration_scene_state_machine(mock_app_context):
                 # Render to trigger capture and process
                 scene.render(np.zeros((100, 100, 3), dtype=np.uint8))
                 assert mock_detect_tokens.call_count == i + 1
+                
+                # Verify detect_tokens uses the correct frame from context
+                mock_detect_tokens.assert_called_with(
+                    frame_white=mock_app_context.last_camera_frame,
+                    projector_matrix=mock_app_context.projector_matrix,
+                    map_system=mock_app_context.map_system,
+                )
+                
                 # Capture frame should be reset after render
                 assert scene._capture_frame is False
 

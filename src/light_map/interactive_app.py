@@ -74,8 +74,52 @@ class InteractiveApp:
         self.current_scene: Scene = self.scenes[SceneId.MENU]
         self.current_scene.on_enter()
 
+    @property
+    def debug_mode(self) -> bool:
+        return self.app_context.debug_mode
+
+    @debug_mode.setter
+    def debug_mode(self, enabled: bool):
+        self.app_context.debug_mode = enabled
+
     def set_debug_mode(self, enabled: bool):
         self.app_context.debug_mode = enabled
+
+    def reload_config(self, new_config: AppConfig):
+        """Reloads application configuration, rebuilding context and scenes."""
+        self.config = new_config
+        self.renderer = Renderer(new_config.width, new_config.height)
+        
+        # We keep the map system and config manager to preserve state
+        # But we need to update projector matrix in context
+        
+        self.app_context = AppContext(
+            app_config=self.config,
+            renderer=self.renderer,
+            map_system=self.map_system,
+            map_config_manager=self.map_config,
+            projector_matrix=self.config.projector_matrix,
+            notifications=self.notifications,
+            debug_mode=self.app_context.debug_mode,
+            show_tokens=self.app_context.show_tokens
+        )
+        
+        # Re-initialize scenes with new context
+        self.scenes = {
+            SceneId.MENU: MenuScene(self.app_context),
+            SceneId.VIEWING: ViewingScene(self.app_context),
+            SceneId.MAP: MapScene(self.app_context),
+            SceneId.SCANNING: ScanningScene(self.app_context),
+            SceneId.CALIBRATE_FLASH: FlashCalibrationScene(self.app_context),
+            SceneId.CALIBRATE_PPI: PpiCalibrationScene(self.app_context),
+            SceneId.CALIBRATE_MAP_GRID: MapGridCalibrationScene(self.app_context),
+            SceneId.CALIBRATE_INTRINSICS: IntrinsicsCalibrationScene(self.app_context),
+            SceneId.CALIBRATE_PROJECTOR: ProjectorCalibrationScene(self.app_context),
+        }
+        # Reset to Menu or Viewing? 
+        # Ideally preserve current scene type if possible, but simple reset is safer.
+        self.current_scene = self.scenes[SceneId.MENU]
+        self.current_scene.on_enter()
 
     def _switch_scene(self, transition):
         target_id = transition.target_scene

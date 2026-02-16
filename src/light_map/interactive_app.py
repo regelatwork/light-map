@@ -181,6 +181,15 @@ class InteractiveApp:
         self.map_config.data.global_settings.last_used_map = filename
         self.map_config.save()
 
+        # Switch to Viewing Scene to ensure map is visible
+        # This handles the case where load_map is called during startup
+        if SceneId.VIEWING in self.scenes:
+            target_scene = self.scenes[SceneId.VIEWING]
+            if self.current_scene != target_scene:
+                self.current_scene.on_exit()
+                self.current_scene = target_scene
+                self.current_scene.on_enter()
+
     def _render_global_overlays(
         self, frame: np.ndarray, inputs: List[HandInput]
     ) -> np.ndarray:

@@ -4,6 +4,7 @@ import time
 from enum import Enum, auto
 from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
+import math
 import numpy as np
 from collections import Counter
 import cv2
@@ -322,6 +323,26 @@ class PpiCalibrationScene(Scene):
         return np.zeros_like(frame, dtype=np.uint8)
 
 
+class GridOverlay:
+    """Manages the state of the calibration grid overlay."""
+
+    def __init__(self, start_spacing: float, width: int, height: int):
+        self.spacing = start_spacing
+        self.offset_x = 0.0
+        self.offset_y = 0.0
+        self.width = width
+        self.height = height
+
+    def pan(self, dx: float, dy: float) -> None:
+        self.offset_x += dx
+        self.offset_y += dy
+
+    def zoom_pinned(self, factor: float, center_point: Tuple[int, int]) -> None:
+        # Ignore gesture center, always pivot around the grid origin (offset_x, offset_y)
+        # This keeps the "anchor" stationary while scaling the grid.
+        self.spacing *= factor
+
+
 class MapGridCalibrationScene(Scene):
     """Handles map grid calibration."""
 
@@ -330,26 +351,29 @@ class MapGridCalibrationScene(Scene):
         self.interaction_controller = MapInteractionController()
         self.summon_gesture_start_time = 0.0
         self.is_interacting = False
-        self._saved_map_state: Optional[MapState] = None
         self.calib_map_grid_size_inches = 1.0
+        self.grid_overlay: Optional[GridOverlay] = None
 
     def on_enter(self, payload: dict | None = None) -> None:
         self.is_interacting = False
+        self.summon_gesture_start_time = 0.0
 
-        if payload and "map_file" in payload:
-            # This scene requires a map to be loaded. The logic to load it
-            # should probably be handled in the main app loop before entering.
-            pass
+        ppi = self.context.map_config_manager.get_ppi()
+        if ppi <= 0:
+            ppi = 96.0  # Fallback defaults
 
-        # Save current user view and reset for calibration
-        self._saved_map_state = copy.deepcopy(self.context.map_system.state)
-        self.context.map_system.reset_view_to_base()
+        # Initialize grid overlay
+        start_spacing = ppi * self.calib_map_grid_size_inches
+        self.grid_overlay = GridOverlay(
+            start_spacing, self.context.app_config.width, self.context.app_config.height
+        )
+
+        # Center the grid initially
+        self.grid_overlay.offset_x = self.context.app_config.width / 2
+        self.grid_overlay.offset_y = self.context.app_config.height / 2
 
     def on_exit(self) -> None:
-        # Restore user view on exiting without saving
-        if self._saved_map_state:
-            self.context.map_system.state = self._saved_map_state
-            self._saved_map_state = None
+        pass
 
     def update(
         self, inputs: List[HandInput], current_time: float
@@ -362,16 +386,15 @@ class MapGridCalibrationScene(Scene):
                 self.summon_gesture_start_time = current_time
             elif current_time - self.summon_gesture_start_time > 1.0:  # 1s hold
                 self._save_calibration()
-                # Don't restore view, keep the calibrated one.
-                self._saved_map_state = None
                 return SceneTransition(SceneId.MENU)
         else:
             self.summon_gesture_start_time = 0.0
 
-        # Process map interactions
-        self.is_interacting = self.interaction_controller.process_gestures(
-            inputs, self.context.map_system
-        )
+        # Process grid interactions
+        if self.grid_overlay:
+            self.is_interacting = self.interaction_controller.process_gestures(
+                inputs, self.grid_overlay
+            )
 
         return None
 
@@ -386,39 +409,116 @@ class MapGridCalibrationScene(Scene):
             return
 
         filename = map_system.svg_loader.filename
-        new_base_scale = map_system.state.zoom
-        ppi = map_config.get_ppi()
 
-        if ppi <= 0:
-            self.context.notifications.add_notification(
-                "Cannot calibrate grid: PPI is not set."
-            )
+        if not self.grid_overlay:
             return
 
-        derived_spacing = (ppi * self.calib_map_grid_size_inches) / new_base_scale
+        # Calculate SVG parameters from overlay state
+        # Spacing:
+        # Overlay pixels = spacing_px
+        # Map Zoom = map_pixels / svg_units
+        # svg_spacing = spacing_px / map_zoom
+        
+        # NOTE: This assumes uniform scale and no rotation affecting the spacing ratio significantly
+        # (rotation is fine, but non-uniform scaling/skew would be complex). MapSystem is uniform.
+        derived_spacing_svg = self.grid_overlay.spacing / map_system.state.zoom
+
+        # Origin:
+        # The grid origin is at screen (offset_x, offset_y).
+        # We want the world coordinate corresponding to this screen pixel.
+        wx, wy = map_system.screen_to_world(
+            self.grid_overlay.offset_x, self.grid_overlay.offset_y
+        )
 
         print(
-            f"Calibrated {filename}: Spacing={derived_spacing:.1f}, Unit={self.calib_map_grid_size_inches}in"
+            f"Calibrated {filename}: Spacing={derived_spacing_svg:.1f}, Origin=({wx:.1f}, {wy:.1f})"
         )
 
         map_config.save_map_grid_config(
             filename,
-            grid_spacing_svg=derived_spacing,
-            grid_origin_svg_x=0.0,
-            grid_origin_svg_y=0.0,
+            grid_spacing_svg=derived_spacing_svg,
+            grid_origin_svg_x=wx,
+            grid_origin_svg_y=wy,
             physical_unit_inches=self.calib_map_grid_size_inches,
-            scale_factor_1to1=new_base_scale,
+            scale_factor_1to1=map_system.base_scale, # Preserve existing base scale or update?
+            # Design doc says: "Updates the map configuration with the new grid parameters."
+            # The base scale itself (calibration of 1:1) is distinct from the GRID alignment.
+            # Usually scale_factor_1to1 is derived from PPI and grid spacing.
+            # If we change grid spacing, we might imply a new 1:1 scale if the physical size is fixed.
+            # But here we are finding the grid within the map.
+            # The base scale is "how much zoom to match 1 SVG unit to 1 inch?"
+            # No, base_scale is "scale factor to match 1 GRID UNIT to N INCHES".
+            # S_1:1 = (Physical * PPI) / SVG_Spacing.
+            # So if we change SVG_Spacing, we effectively change S_1:1.
         )
-
-        # Update the map system's base scale for the current session
-        map_system.base_scale = new_base_scale
+        
+        # Recalculate base scale based on new grid spacing
+        # S_1:1 = (Physical * PPI) / Spacing_SVG
+        ppi = map_config.get_ppi()
+        if ppi > 0:
+             new_base_scale = (self.calib_map_grid_size_inches * ppi) / derived_spacing_svg
+             # Update the config with this new base scale
+             # Wait, save_map_grid_config takes scale_factor_1to1 as arg.
+             # I should calculate it and pass it.
+             map_config.save_map_grid_config(
+                filename,
+                grid_spacing_svg=derived_spacing_svg,
+                grid_origin_svg_x=wx,
+                grid_origin_svg_y=wy,
+                physical_unit_inches=self.calib_map_grid_size_inches,
+                scale_factor_1to1=new_base_scale,
+            )
+             # Update system immediately
+             map_system.base_scale = new_base_scale
 
         self.context.notifications.add_notification("Map grid calibrated.")
 
-
     def render(self, frame: np.ndarray) -> np.ndarray:
-        # The main app loop will render the map, dimmed.
-        # It will also render the calibration overlay.
+        # The main app loop renders the map background.
+        # Here we render the grid overlay using small crosses at intersections.
+        
+        if not self.grid_overlay:
+            return frame
+
+        # Overlay parameters
+        spacing = self.grid_overlay.spacing
+        off_x = self.grid_overlay.offset_x
+        off_y = self.grid_overlay.offset_y
+        w, h = self.grid_overlay.width, self.grid_overlay.height
+
+        if spacing <= 0:
+            return frame
+
+        color_green = (0, 255, 0)
+        color_black = (0, 0, 0)
+        cross_size = 10  # Length of each arm in pixels
+        
+        # Calculate range of intersection indices
+        start_i = int(math.ceil(-off_x / spacing))
+        end_i = int(math.floor((w - 1 - off_x) / spacing))
+        start_j = int(math.ceil(-off_y / spacing))
+        end_j = int(math.floor((h - 1 - off_y) / spacing))
+
+        for i in range(start_i, end_i + 1):
+            x = int(round(off_x + i * spacing))
+            for j in range(start_j, end_j + 1):
+                y = int(round(off_y + j * spacing))
+
+                # Draw cross with outline
+                # Horizontal segments
+                cv2.line(frame, (x - cross_size, y), (x + cross_size, y), color_black, 3)
+                cv2.line(frame, (x - cross_size, y), (x + cross_size, y), color_green, 1)
+                
+                # Vertical segments
+                cv2.line(frame, (x, y - cross_size), (x, y + cross_size), color_black, 3)
+                cv2.line(frame, (x, y - cross_size), (x, y + cross_size), color_green, 1)
+        
+        # Highlight Origin specifically
+        ox, oy = int(round(off_x)), int(round(off_y))
+        if 0 <= ox < w and 0 <= oy < h:
+            cv2.circle(frame, (ox, oy), 8, color_black, -1)
+            cv2.circle(frame, (ox, oy), 5, (0, 255, 0), -1)
+
         return frame
 
 

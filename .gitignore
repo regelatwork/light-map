@@ -1,2 +1,14 @@
 session.json
 debug_token_detection_*.png
+sessions/*
+images/*.jpg
+images/*.jpeg
+.venv/*
+camera_calibration.npz
+__pycache__/
+projector_calibration.npz
+captured_frame.jpg
+session.json
+maps/
+map_state.json
+calibration_target.svg

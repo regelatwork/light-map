@@ -151,13 +151,41 @@ class InteractiveApp:
             self._handle_payloads(transition.payload)
             self._switch_scene(transition)
 
-        # 4. Scene Render
-        scene_frame = self.current_scene.render(frame)
+        # 4. Base Render (Map Background)
+        base_frame = self._render_base_layer(frame)
 
-        # 5. Global Overlays
+        # 5. Scene Render
+        scene_frame = self.current_scene.render(base_frame)
+
+        # 6. Global Overlays
         final_frame = self._render_global_overlays(scene_frame, inputs)
 
         return final_frame, []
+
+    def _render_base_layer(self, frame: np.ndarray) -> np.ndarray:
+        """Renders the map background if applicable, or returns a blank frame."""
+        if self.map_system.is_map_loaded() and not isinstance(
+            self.current_scene, MenuScene
+        ):
+            is_interacting = (
+                getattr(self.current_scene, "is_interacting", False)
+                if self.current_scene
+                else False
+            )
+            quality = 0.25 if is_interacting else 1.0
+            map_image = self.map_system.svg_loader.render(
+                self.config.width,
+                self.config.height,
+                quality=quality,
+                **self.map_system.get_render_params(),
+            )
+            map_opacity = 0.5 if is_interacting else 1.0
+            
+            if map_opacity < 1.0:
+                return cv2.convertScaleAbs(map_image, alpha=map_opacity, beta=0)
+            return map_image
+            
+        return np.zeros((self.config.height, self.config.width, 3), dtype=np.uint8)
 
     def _convert_mediapipe_to_inputs(
         self, results: Any, frame_shape: Tuple[int, int, int]
@@ -241,27 +269,7 @@ class InteractiveApp:
         self, frame: np.ndarray, inputs: List[HandInput]
     ) -> np.ndarray:
         """Renders UI elements that are always visible, like debug info and notifications."""
-        # Render the map background if a map is loaded and the scene isn't menu
-        if self.map_system.is_map_loaded() and not isinstance(
-            self.current_scene, MenuScene
-        ):
-            is_interacting = (
-                getattr(self.current_scene, "is_interacting", False)
-                if self.current_scene
-                else False
-            )
-            quality = 0.25 if is_interacting else 1.0
-            map_image = self.map_system.svg_loader.render(
-                self.config.width,
-                self.config.height,
-                quality=quality,
-                **self.map_system.get_render_params(),
-            )
-            map_opacity = 0.5 if is_interacting else 1.0
-            frame = self.renderer.render(
-                None, background=map_image, map_opacity=map_opacity
-            )
-
+        
         # Draw Ghost Tokens
         if self.map_system.ghost_tokens:
             if self.app_context.show_tokens:

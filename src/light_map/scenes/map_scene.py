@@ -11,9 +11,27 @@ from light_map.core.scene import Scene, SceneTransition
 from light_map.gestures import GestureType
 from light_map.common_types import SceneId
 
+from light_map.map_system import MapSystem
+
 if TYPE_CHECKING:
     from light_map.core.app_context import AppContext
     from light_map.core.scene import HandInput
+
+
+class ScreenCenteredMapAdapter:
+    """Adapts MapSystem to force zoom operations to pivot around screen center."""
+
+    def __init__(self, map_system: MapSystem):
+        self.map_system = map_system
+
+    def pan(self, dx: float, dy: float) -> None:
+        self.map_system.pan(dx, dy)
+
+    def zoom_pinned(self, factor: float, center_point: Tuple[int, int]) -> None:
+        # Ignore the gesture center, use screen center
+        cx = self.map_system.width / 2
+        cy = self.map_system.height / 2
+        self.map_system.zoom_pinned(factor, (cx, cy))
 
 
 class ViewingScene(Scene):
@@ -109,8 +127,10 @@ class MapScene(Scene):
             self.summon_gesture_start_time = 0.0
 
         # Process map interactions
+        # Use adapter to force zoom around screen center
+        adapter = ScreenCenteredMapAdapter(self.context.map_system)
         self.is_interacting = self.interaction_controller.process_gestures(
-            inputs, self.context.map_system
+            inputs, adapter
         )
 
         return None

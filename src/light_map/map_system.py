@@ -94,8 +94,13 @@ class MapSystem:
         self.state = MapState()
 
     def reset_zoom_to_base(self):
-        """Resets the zoom to the current map's base 1:1 scale."""
-        self.state.zoom = self.base_scale
+        """Resets the zoom to the current map's base 1:1 scale, pivoting around screen center."""
+        cx, cy = self.width / 2, self.height / 2
+        # Get world coordinate currently at center
+        wx, wy = self.screen_to_world(cx, cy)
+        
+        # Apply new zoom while keeping (wx, wy) at (cx, cy)
+        self.set_zoom_around_pivot(self.base_scale, cx, cy, wx, wy)
 
     def reset_view_to_base(self):
         """Resets the view to the default state but using the base scale."""

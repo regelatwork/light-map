@@ -128,8 +128,9 @@ The ultimate goal of this project is to enable precise mapping between camera an
   - "Calibration View" isolation: Resets view to base scale/orientation during calibration.
 - [x] **Phase 3: Interaction Refinement**
   - **Anchor and Scale**: Zoom interactions during calibration pivot around the Grid Origin (Anchor), allowing precise alignment without drift.
+  - **Screen Center Zoom**: Standard map zoom interactions now pivot around the screen center instead of the pinch midpoint.
   - **Rotation Fix**: Coordinate transforms correctly handle map rotation.
-  - **Zoom 1:1**: Menu item to reset user zoom to calibrated base scale.
+  - **Zoom 1:1**: Menu item to reset user zoom to calibrated base scale, maintaining the screen center point.
 - [x] **Phase 4: Robustness**
   - **Raster Fallback**: Auto-detection uses autocorrelation for image-based maps.
   - **Warning UI**: "GRID UNCALIBRATED" warning when scale is unknown.

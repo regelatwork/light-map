@@ -75,3 +75,46 @@ def test_reset_view(map_system):
 
     assert map_system.state.x == 0.0
     assert map_system.state.zoom == 1.0
+
+
+def test_reset_zoom_to_base_pivots_around_center(map_system):
+    """Test that resetting zoom preserves the center point."""
+    map_system.base_scale = 1.0
+    # Screen center is (500, 500)
+    
+    # 1. Set state so World (100, 100) is at Screen (500, 500) with Zoom 1.0
+    # Screen = World * Zoom + Pan
+    # 500 = 100 * 1.0 + Pan => Pan = 400
+    map_system.set_state(400, 400, 1.0, 0.0)
+    
+    # Verify setup
+    wx, wy = map_system.screen_to_world(500, 500)
+    assert wx == 100.0
+    assert wy == 100.0
+    
+    # 2. Zoom in to 2.0 around center (simulating user action)
+    map_system.zoom(2.0, center_x=500, center_y=500)
+    assert map_system.state.zoom == 2.0
+    
+    # Verify center is still World (100, 100)
+    wx_new, wy_new = map_system.screen_to_world(500, 500)
+    assert wx_new == 100.0
+    assert wy_new == 100.0
+    
+    # Pan should have changed to 300 (see thought process)
+    # 500 = 100 * 2.0 + Pan => Pan = 300
+    assert map_system.state.x == 300.0
+    assert map_system.state.y == 300.0
+    
+    # 3. Reset zoom to base (1.0)
+    map_system.reset_zoom_to_base()
+    assert map_system.state.zoom == 1.0
+    
+    # 4. Verify center is still World (100, 100)
+    wx_final, wy_final = map_system.screen_to_world(500, 500)
+    assert wx_final == 100.0
+    assert wy_final == 100.0
+    
+    # Pan should return to 400
+    assert map_system.state.x == 400.0
+    assert map_system.state.y == 400.0

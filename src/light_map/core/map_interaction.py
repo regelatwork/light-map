@@ -1,15 +1,18 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, List, Optional, Tuple
+from typing import TYPE_CHECKING, List, Optional, Tuple, Protocol
 
 import numpy as np
 
 from light_map.gestures import GestureType
 
 if TYPE_CHECKING:
-    from light_map.map_system import MapSystem
-
     from .scene import HandInput
+
+
+class Transformable(Protocol):
+    def pan(self, dx: float, dy: float) -> None: ...
+    def zoom_pinned(self, factor: float, center_point: Tuple[int, int]) -> None: ...
 
 
 class MapInteractionController:
@@ -20,14 +23,14 @@ class MapInteractionController:
         self.zooming_hands: Optional[Tuple[float, Tuple[int, int]]] = None
 
     def process_gestures(
-        self, inputs: List[HandInput], map_system: MapSystem
+        self, inputs: List[HandInput], target: Transformable
     ) -> bool:
         """
         Processes hand inputs to perform map interactions like pan and zoom.
 
         Args:
             inputs: A list of HandInput objects representing the current hands.
-            map_system: The MapSystem instance to apply transformations to.
+            target: The object to apply transformations to (e.g., MapSystem or GridOverlay).
 
         Returns:
             True if an interaction (pan or zoom) occurred, False otherwise.
@@ -49,7 +52,7 @@ class MapInteractionController:
             if self.zooming_hands:
                 prev_dist, _ = self.zooming_hands
                 scale_factor = distance / prev_dist if prev_dist > 0 else 1.0
-                map_system.zoom_pinned(scale_factor, center_point)
+                target.zoom_pinned(scale_factor, center_point)
                 interaction_occurred = True
 
             self.zooming_hands = (distance, center_point)
@@ -62,7 +65,7 @@ class MapInteractionController:
                 prev_pos = self.panning_hand
                 delta_x = current_pos[0] - prev_pos[0]
                 delta_y = current_pos[1] - prev_pos[1]
-                map_system.pan(delta_x, delta_y)
+                target.pan(delta_x, delta_y)
                 interaction_occurred = True
             self.panning_hand = current_pos
 

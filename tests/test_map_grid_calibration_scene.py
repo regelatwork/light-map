@@ -1,5 +1,5 @@
 import pytest
-from unittest.mock import MagicMock, patch, ANY
+from unittest.mock import MagicMock, patch
 import numpy as np
 
 from light_map.core.app_context import AppContext
@@ -24,9 +24,12 @@ def mock_app_context():
     mock_map_system.svg_loader = MagicMock()
     mock_map_system.svg_loader.filename = "test_map.svg"
     # Mock coordinate transforms
-    mock_map_system.screen_to_world.side_effect = lambda sx, sy: (sx / 2.0, sy / 2.0) # Assume zoom=2 for easy math
+    mock_map_system.screen_to_world.side_effect = lambda sx, sy: (
+        sx / 2.0,
+        sy / 2.0,
+    )  # Assume zoom=2 for easy math
     mock_map_system.state.zoom = 2.0
-    
+
     mock_context.map_system = mock_map_system
 
     # Mock MapConfigManager
@@ -53,11 +56,11 @@ def test_map_grid_calibration_on_enter_initializes_overlay(
     assert isinstance(map_grid_calib_scene.grid_overlay, GridOverlay)
     # Spacing should be PPI * 1.0 = 100.0
     assert map_grid_calib_scene.grid_overlay.spacing == 100.0
-    
+
     # Verify centering (screen is 1000x1000)
     assert map_grid_calib_scene.grid_overlay.offset_x == 500.0
     assert map_grid_calib_scene.grid_overlay.offset_y == 500.0
-    
+
     # Ensure map view was NOT reset
     mock_app_context.map_system.reset_view_to_base.assert_not_called()
 
@@ -69,7 +72,7 @@ def test_map_grid_calibration_confirm_saves_config(
     """Verify that holding VICTORY gesture saves calibration derived from overlay."""
     mock_monotonic.side_effect = [0.1, 1.11]
     map_grid_calib_scene.on_enter()
-    
+
     # Manipulate overlay state
     overlay = map_grid_calib_scene.grid_overlay
     overlay.spacing = 200.0
@@ -91,26 +94,32 @@ def test_map_grid_calibration_confirm_saves_config(
     # Expected calculations:
     # derived_spacing = overlay.spacing / map_zoom = 200.0 / 2.0 = 100.0
     # origin = screen_to_world(50, 60) -> (25.0, 30.0) from our mock lambda
-    
+
     # Derived base scale = (1.0 * 100 PPI) / 100.0 spacing = 1.0
-    
+
     mock_app_context.map_config_manager.save_map_grid_config.assert_called_with(
         "test_map.svg",
         grid_spacing_svg=100.0,
         grid_origin_svg_x=25.0,
         grid_origin_svg_y=30.0,
         physical_unit_inches=1.0,
-        scale_factor_1to1=1.0, 
+        scale_factor_1to1=1.0,
     )
 
 
-def test_map_grid_calibration_interaction_updates_overlay(map_grid_calib_scene, mock_app_context):
+def test_map_grid_calibration_interaction_updates_overlay(
+    map_grid_calib_scene, mock_app_context
+):
     """Verify that interactions are directed to the GridOverlay."""
     map_grid_calib_scene.on_enter()
-    
-    with patch.object(map_grid_calib_scene.interaction_controller, "process_gestures") as mock_process:
+
+    with patch.object(
+        map_grid_calib_scene.interaction_controller, "process_gestures"
+    ) as mock_process:
         inputs = [
-            HandInput(gesture=GestureType.CLOSED_FIST, proj_pos=(10, 10), raw_landmarks=None)
+            HandInput(
+                gesture=GestureType.CLOSED_FIST, proj_pos=(10, 10), raw_landmarks=None
+            )
         ]
         map_grid_calib_scene.update(inputs, 0.0)
 
@@ -121,17 +130,17 @@ def test_map_grid_calibration_interaction_updates_overlay(map_grid_calib_scene, 
 def test_grid_overlay_logic():
     """Verify GridOverlay pan and zoom logic (Anchor and Scale)."""
     overlay = GridOverlay(start_spacing=100.0, width=500, height=500)
-    
+
     # Test Pan
     overlay.pan(10, 20)
     assert overlay.offset_x == 10.0
     assert overlay.offset_y == 20.0
-    
+
     # Test Zoom Pinned (New Behavior: Pivots around offset)
     # Zoom x2 around arbitrary point (100, 100)
     # Should ignore center point and keep offset fixed
     overlay.zoom_pinned(2.0, (100, 100))
-    
+
     assert overlay.spacing == 200.0
     # Offsets should NOT change
     assert overlay.offset_x == 10.0
@@ -142,20 +151,20 @@ def test_map_grid_calibration_render(map_grid_calib_scene, mock_app_context):
     """Verify render draws crosses and highlighted origin."""
     map_grid_calib_scene.on_enter()
     frame = np.zeros((100, 100, 3), dtype=np.uint8)
-    
+
     # Configure overlay to draw one intersection at (50, 50)
     map_grid_calib_scene.grid_overlay.spacing = 100.0
     map_grid_calib_scene.grid_overlay.offset_x = 50.0
     map_grid_calib_scene.grid_overlay.offset_y = 50.0
     map_grid_calib_scene.grid_overlay.width = 100
     map_grid_calib_scene.grid_overlay.height = 100
-    
+
     with patch("cv2.line") as mock_line, patch("cv2.circle") as mock_circle:
         map_grid_calib_scene.render(frame)
-        
+
         # Verify crosses (lines)
         assert mock_line.call_count >= 4
-        
+
         # Verify Origin Highlight (Green Circle)
         green_circle_found = False
         for call in mock_circle.call_args_list:

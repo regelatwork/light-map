@@ -3,7 +3,7 @@ import os
 import pytest
 from light_map.map_config import MapConfigManager
 from light_map.session_manager import SessionManager
-from light_map.common_types import ViewportState
+
 
 @pytest.fixture
 def mock_map_config():
@@ -18,6 +18,7 @@ def mock_map_config():
     if os.path.exists("test_map_state.json"):
         os.remove("test_map_state.json")
 
+
 def test_map_config_save_viewport_normalizes_path(mock_map_config):
     """Verify MapConfigManager normalizes paths on save."""
     relative_path = "maps/test.svg"
@@ -29,6 +30,7 @@ def test_map_config_save_viewport_normalizes_path(mock_map_config):
     assert absolute_path in mock_map_config.data.maps
     assert relative_path not in mock_map_config.data.maps
     assert mock_map_config.data.maps[absolute_path].viewport.x == 10
+
 
 def test_map_config_get_viewport_normalizes_path(mock_map_config):
     """Verify MapConfigManager normalizes paths on get."""
@@ -45,19 +47,20 @@ def test_map_config_get_viewport_normalizes_path(mock_map_config):
     # Verify that the correct data was retrieved
     assert viewport.x == 100
 
+
 def test_session_manager_get_session_path_uses_abspath():
     """Verify SessionManager uses the absolute path to generate session filenames."""
     relative_path = "maps/another_map.svg"
     absolute_path = os.path.abspath(relative_path)
 
     # Mock os.path.abspath to track its calls
-    with patch('os.path.abspath', return_value=absolute_path) as mock_abspath:
+    with patch("os.path.abspath", return_value=absolute_path) as mock_abspath:
         SessionManager.get_session_path(relative_path)
         # We expect it to be called once within get_session_path
         mock_abspath.assert_called_once_with(relative_path)
 
     # Also check the inverse: providing an absolute path should not call it again
-    with patch('os.path.abspath', return_value=absolute_path) as mock_abspath:
+    with patch("os.path.abspath", return_value=absolute_path) as mock_abspath:
         SessionManager.get_session_path(absolute_path)
         # If the path is already absolute, it might not be called again.
         # This is an implementation detail, but the core is that the hash is

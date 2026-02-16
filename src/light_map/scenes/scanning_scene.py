@@ -82,7 +82,7 @@ class ScanningScene(Scene):
                 self._detect_and_save_tokens(self.context.last_camera_frame)
             else:
                 print("Warning: No camera frame available for token detection.")
-            
+
             # Immediately transition to avoid re-processing the same frame
             self._change_stage(ScanStage.SHOW_RESULT, time.monotonic())
             # Fall through to render results immediately
@@ -147,9 +147,7 @@ class ScanningScene(Scene):
         )
         # Assuming SessionManager is updated to handle map-specific sessions
         SessionManager.save_for_map(map_file, session)
-        self.context.notifications.add_notification(
-            f"Saved {len(tokens)} tokens."
-        )
+        self.context.notifications.add_notification(f"Saved {len(tokens)} tokens.")
 
     def _change_stage(self, new_stage: ScanStage, current_time: float):
         self._stage = new_stage

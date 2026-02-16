@@ -209,11 +209,11 @@ Alternatively, select **"Session > Load Last Session"** to restore the state fro
 
 To improve token detection in different ambient lighting conditions, you can calibrate the intensity of the flash.
 
-1.  Select **"Session > Calibrate Flash"** from the main menu.
-2.  The projector will display a bright white screen and begin ramping the intensity down.
-3.  The system will analyze the camera feed for saturation at each step.
-4.  Once it finds the brightest, non-saturating level, it will automatically save it.
-5.  A confirmation message will show the optimal intensity level found. This value will be used for all subsequent token scans.
+1. Select **"Session > Calibrate Flash"** from the main menu.
+1. The projector will display a bright white screen and begin ramping the intensity down.
+1. The system will analyze the camera feed for saturation at each step.
+1. Once it finds the brightest, non-saturating level, it will automatically save it.
+1. A confirmation message will show the optimal intensity level found. This value will be used for all subsequent token scans.
 
 ### Debug Mode
 

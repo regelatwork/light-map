@@ -1,7 +1,6 @@
 from __future__ import annotations
 
-import time
-from typing import TYPE_CHECKING, List, Optional
+from typing import TYPE_CHECKING, List, Optional, Tuple
 
 import numpy as np
 
@@ -68,8 +67,7 @@ class ViewingScene(Scene):
             if self.summon_gesture_start_time == 0:
                 self.summon_gesture_start_time = current_time
             elif (
-                current_time - self.summon_gesture_start_time
-                > config_vars.SUMMON_TIME
+                current_time - self.summon_gesture_start_time > config_vars.SUMMON_TIME
             ):
                 return SceneTransition(SceneId.MENU)
         else:
@@ -119,8 +117,7 @@ class MapScene(Scene):
             if self.summon_gesture_start_time == 0:
                 self.summon_gesture_start_time = current_time
             elif (
-                current_time - self.summon_gesture_start_time
-                > config_vars.SUMMON_TIME
+                current_time - self.summon_gesture_start_time > config_vars.SUMMON_TIME
             ):
                 return SceneTransition(SceneId.MENU)
         else:
@@ -140,4 +137,3 @@ class MapScene(Scene):
         # Like ViewingScene, rendering is handled by the main app loop.
         # The is_interacting flag will be read by the main loop to set opacity.
         return frame
-

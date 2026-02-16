@@ -46,10 +46,12 @@ Since automated detection might fail or the physical size of the grid is unknown
 
 **Interaction Model: Anchor and Scale**
 To align the projected grid with the map image:
-1.  **Anchor**: Use the **Pan** gesture (Closed Fist) to move the grid overlay. Align the **Grid Origin** (highlighted with a green circle and black outline) with a known intersection or feature on the map.
-2.  **Scale**: Use the **Zoom** gesture (Two Pointing Hands) to adjust the grid spacing. The zoom is **centered on the Grid Origin**, meaning the anchor point remains fixed while the rest of the grid expands or contracts around it. This prevents the "drifting" issue common with center-of-screen or center-of-hands zooming during calibration.
+
+1. **Anchor**: Use the **Pan** gesture (Closed Fist) to move the grid overlay. Align the **Grid Origin** (highlighted with a green circle and black outline) with a known intersection or feature on the map.
+1. **Scale**: Use the **Zoom** gesture (Two Pointing Hands) to adjust the grid spacing. The zoom is **centered on the Grid Origin**, meaning the anchor point remains fixed while the rest of the grid expands or contracts around it. This prevents the "drifting" issue common with center-of-screen or center-of-hands zooming during calibration.
 
 **Visual Feedback**
+
 - **Grid Lines**: Rendered as high-contrast crosses at intersections (Green with Black outline).
 - **Grid Origin**: Distinctly highlighted with a green circle and black outline to indicate the pivot point.
 - **Initialization**: The grid origin defaults to the center of the screen upon entering calibration mode.

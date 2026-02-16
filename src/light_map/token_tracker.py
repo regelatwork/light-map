@@ -133,9 +133,7 @@ class TokenTracker:
 
             # Draw bounding box and number
             x, y, w_rect, h_rect = cv2.boundingRect(contours[0])
-            cv2.rectangle(
-                debug_img, (x, y), (x + w_rect, y + h_rect), (255, 0, 0), 1
-            )
+            cv2.rectangle(debug_img, (x, y), (x + w_rect, y + h_rect), (255, 0, 0), 1)
             cv2.putText(
                 debug_img,
                 str(marker_id),
@@ -278,9 +276,7 @@ class TokenTracker:
 
         # Create a filled mask from the blob's bounding box
         blob_bbox_mask = np.zeros_like(blob_mask)
-        cv2.rectangle(
-            blob_bbox_mask, (x, y), (x + w_rect, y + h_rect), 255, -1
-        )
+        cv2.rectangle(blob_bbox_mask, (x, y), (x + w_rect, y + h_rect), 255, -1)
 
         for gx in range(min_gx, max_gx):
             for gy in range(min_gy, max_gy):

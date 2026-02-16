@@ -99,7 +99,6 @@ class MenuSystem:
             self.node_stack.clear()
             self.page_index = 0
 
-
     def update(self, x: int, y: int, gesture: GestureType) -> MenuState:
         now = self.time_provider()
 

@@ -1,8 +1,7 @@
 from __future__ import annotations
-import copy
 import time
 from enum import Enum, auto
-from typing import TYPE_CHECKING, Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
 
 import math
 import numpy as np
@@ -14,9 +13,9 @@ from light_map.core.map_interaction import MapInteractionController
 from light_map.gestures import GestureType
 from light_map.token_tracker import TokenTracker
 from light_map.calibration_logic import calculate_ppi_from_frame
-from light_map.map_system import MapState
 from light_map.common_types import SceneId
 from light_map.calibration import process_chessboard_images, save_camera_calibration
+
 if TYPE_CHECKING:
     from light_map.core.app_context import AppContext
     from light_map.core.scene import HandInput
@@ -199,16 +198,24 @@ class IntrinsicsCalibrationScene(Scene):
         # Overlay instructions or status based on stage
         if self._stage == "CAPTURE":
             text = f"Capture {len(self._captured_images)}/{self._required_images} images (Fist)"
-            cv2.putText(frame, text, (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+            cv2.putText(
+                frame, text, (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2
+            )
         elif self._stage == "PROCESSING":
             text = "Processing..."
-            cv2.putText(frame, text, (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 255), 2)
+            cv2.putText(
+                frame, text, (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 255), 2
+            )
         elif self._stage == "DONE":
             text = "Calibration Complete! Returning to Menu."
-            cv2.putText(frame, text, (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+            cv2.putText(
+                frame, text, (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2
+            )
         elif self._stage == "ERROR":
             text = "Calibration Failed! Returning to Menu."
-            cv2.putText(frame, text, (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
+            cv2.putText(
+                frame, text, (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2
+            )
 
         return frame
 
@@ -218,7 +225,9 @@ class ProjectorCalibrationScene(Scene):
 
     def __init__(self, context: AppContext):
         super().__init__(context)
-        self._stage = "DISPLAY_PATTERN"  # DISPLAY_PATTERN | CAPTURE | PROCESSING | DONE | ERROR
+        self._stage = (
+            "DISPLAY_PATTERN"  # DISPLAY_PATTERN | CAPTURE | PROCESSING | DONE | ERROR
+        )
         self._pattern_image: Optional[np.ndarray] = None
         self._start_time = 0.0
 
@@ -252,7 +261,7 @@ class ProjectorCalibrationScene(Scene):
             # Real implementation would call projector.compute_homography here
             # For now, we just simulate success after a brief delay
             # We need to actually access the camera to do this for real.
-            
+
             camera = self.context.app_config.camera
             if camera:
                 frame = camera.get_frame()
@@ -260,18 +269,22 @@ class ProjectorCalibrationScene(Scene):
                     # TODO: Implement actual homography computation
                     # ret, homography = compute_homography(frame, pattern_info)
                     # if ret: ...
-                    
+
                     # For now, assume success if we got a frame
                     self.context.notifications.add_notification("Projector calibrated.")
                     self._stage = "DONE"
                     return SceneTransition(SceneId.MENU)
                 else:
-                     self.context.notifications.add_notification("Error: Failed to capture frame.")
-                     self._stage = "ERROR"
+                    self.context.notifications.add_notification(
+                        "Error: Failed to capture frame."
+                    )
+                    self._stage = "ERROR"
             else:
-                self.context.notifications.add_notification("Error: No camera available.")
+                self.context.notifications.add_notification(
+                    "Error: No camera available."
+                )
                 self._stage = "ERROR"
-            
+
             return SceneTransition(SceneId.MENU)
 
         return None
@@ -281,7 +294,7 @@ class ProjectorCalibrationScene(Scene):
             # Display a white screen or a specific pattern
             # For now, just white to differentiate from black
             return np.full_like(frame, 255)
-        
+
         return frame
 
 
@@ -315,7 +328,9 @@ class PpiCalibrationScene(Scene):
     def render(self, frame: np.ndarray) -> np.ndarray:
         if self._stage == "DETECTING":
             if self.context.last_camera_frame is not None:
-                ppi = calculate_ppi_from_frame(self.context.last_camera_frame, self.context.projector_matrix)
+                ppi = calculate_ppi_from_frame(
+                    self.context.last_camera_frame, self.context.projector_matrix
+                )
                 if ppi:
                     self._candidate_ppi = ppi
                     self._stage = "CONFIRMING"
@@ -419,7 +434,7 @@ class MapGridCalibrationScene(Scene):
         # Overlay pixels = spacing_px
         # Map Zoom = map_pixels / svg_units
         # svg_spacing = spacing_px / map_zoom
-        
+
         # NOTE: This assumes uniform scale and no rotation affecting the spacing ratio significantly
         # (rotation is fine, but non-uniform scaling/skew would be complex). MapSystem is uniform.
         derived_spacing_svg = self.grid_overlay.spacing / map_system.state.zoom
@@ -441,7 +456,7 @@ class MapGridCalibrationScene(Scene):
             grid_origin_svg_x=wx,
             grid_origin_svg_y=wy,
             physical_unit_inches=self.calib_map_grid_size_inches,
-            scale_factor_1to1=map_system.base_scale, # Preserve existing base scale or update?
+            scale_factor_1to1=map_system.base_scale,  # Preserve existing base scale or update?
             # Design doc says: "Updates the map configuration with the new grid parameters."
             # The base scale itself (calibration of 1:1) is distinct from the GRID alignment.
             # Usually scale_factor_1to1 is derived from PPI and grid spacing.
@@ -452,16 +467,18 @@ class MapGridCalibrationScene(Scene):
             # S_1:1 = (Physical * PPI) / SVG_Spacing.
             # So if we change SVG_Spacing, we effectively change S_1:1.
         )
-        
+
         # Recalculate base scale based on new grid spacing
         # S_1:1 = (Physical * PPI) / Spacing_SVG
         ppi = map_config.get_ppi()
         if ppi > 0:
-             new_base_scale = (self.calib_map_grid_size_inches * ppi) / derived_spacing_svg
-             # Update the config with this new base scale
-             # Wait, save_map_grid_config takes scale_factor_1to1 as arg.
-             # I should calculate it and pass it.
-             map_config.save_map_grid_config(
+            new_base_scale = (
+                self.calib_map_grid_size_inches * ppi
+            ) / derived_spacing_svg
+            # Update the config with this new base scale
+            # Wait, save_map_grid_config takes scale_factor_1to1 as arg.
+            # I should calculate it and pass it.
+            map_config.save_map_grid_config(
                 filename,
                 grid_spacing_svg=derived_spacing_svg,
                 grid_origin_svg_x=wx,
@@ -469,15 +486,15 @@ class MapGridCalibrationScene(Scene):
                 physical_unit_inches=self.calib_map_grid_size_inches,
                 scale_factor_1to1=new_base_scale,
             )
-             # Update system immediately
-             map_system.base_scale = new_base_scale
+            # Update system immediately
+            map_system.base_scale = new_base_scale
 
         self.context.notifications.add_notification("Map grid calibrated.")
 
     def render(self, frame: np.ndarray) -> np.ndarray:
         # The main app loop renders the map background.
         # Here we render the grid overlay using small crosses at intersections.
-        
+
         if not self.grid_overlay:
             return frame
 
@@ -493,7 +510,7 @@ class MapGridCalibrationScene(Scene):
         color_green = (0, 255, 0)
         color_black = (0, 0, 0)
         cross_size = 10  # Length of each arm in pixels
-        
+
         # Calculate range of intersection indices
         start_i = int(math.ceil(-off_x / spacing))
         end_i = int(math.floor((w - 1 - off_x) / spacing))
@@ -507,13 +524,21 @@ class MapGridCalibrationScene(Scene):
 
                 # Draw cross with outline
                 # Horizontal segments
-                cv2.line(frame, (x - cross_size, y), (x + cross_size, y), color_black, 3)
-                cv2.line(frame, (x - cross_size, y), (x + cross_size, y), color_green, 1)
-                
+                cv2.line(
+                    frame, (x - cross_size, y), (x + cross_size, y), color_black, 3
+                )
+                cv2.line(
+                    frame, (x - cross_size, y), (x + cross_size, y), color_green, 1
+                )
+
                 # Vertical segments
-                cv2.line(frame, (x, y - cross_size), (x, y + cross_size), color_black, 3)
-                cv2.line(frame, (x, y - cross_size), (x, y + cross_size), color_green, 1)
-        
+                cv2.line(
+                    frame, (x, y - cross_size), (x, y + cross_size), color_black, 3
+                )
+                cv2.line(
+                    frame, (x, y - cross_size), (x, y + cross_size), color_green, 1
+                )
+
         # Highlight Origin specifically
         ox, oy = int(round(off_x)), int(round(off_y))
         if 0 <= ox < w and 0 <= oy < h:
@@ -521,7 +546,3 @@ class MapGridCalibrationScene(Scene):
             cv2.circle(frame, (ox, oy), 5, (0, 255, 0), -1)
 
         return frame
-
-
-
-

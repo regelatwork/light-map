@@ -40,10 +40,12 @@ def test_intrinsics_calibration_capture_and_process(
     """Verify that capturing and processing chessboard images works."""
     # Setup
     intrinsics_calib_scene.on_enter()
-    mock_app_context.notifications.reset_mock() # Reset mock calls after on_enter
+    mock_app_context.notifications.reset_mock()  # Reset mock calls after on_enter
 
     # Simulate images being available
-    mock_app_context.app_config.camera = MockCamera(np.zeros((100, 100, 3), dtype=np.uint8))
+    mock_app_context.app_config.camera = MockCamera(
+        np.zeros((100, 100, 3), dtype=np.uint8)
+    )
 
     with patch(
         "light_map.scenes.calibration_scenes.process_chessboard_images",
@@ -55,13 +57,22 @@ def test_intrinsics_calibration_capture_and_process(
             # Add enough images to trigger processing
             for _ in range(intrinsics_calib_scene._required_images):
                 intrinsics_calib_scene.update(
-                    [HandInput(gesture=GestureType.CLOSED_FIST, proj_pos=(0, 0), raw_landmarks=None)],
+                    [
+                        HandInput(
+                            gesture=GestureType.CLOSED_FIST,
+                            proj_pos=(0, 0),
+                            raw_landmarks=None,
+                        )
+                    ],
                     0.0,
                 )
-            assert len(intrinsics_calib_scene._captured_images) == intrinsics_calib_scene._required_images
+            assert (
+                len(intrinsics_calib_scene._captured_images)
+                == intrinsics_calib_scene._required_images
+            )
             assert intrinsics_calib_scene._stage == "PROCESSING"
 
-            mock_app_context.notifications.reset_mock() # Reset before processing update
+            mock_app_context.notifications.reset_mock()  # Reset before processing update
 
             # Now call update again to trigger the PROCESSING stage logic
             intrinsics_calib_scene.update([], 0.0)
@@ -74,24 +85,35 @@ def test_intrinsics_calibration_capture_and_process(
             )
 
 
-def test_intrinsics_calibration_process_failure(intrinsics_calib_scene, mock_app_context):
+def test_intrinsics_calibration_process_failure(
+    intrinsics_calib_scene, mock_app_context
+):
     """Verify error notification on calibration failure."""
     intrinsics_calib_scene.on_enter()
-    mock_app_context.notifications.reset_mock() # Reset mock calls after on_enter
-    mock_app_context.app_config.camera = MockCamera(np.zeros((100, 100, 3), dtype=np.uint8))
+    mock_app_context.notifications.reset_mock()  # Reset mock calls after on_enter
+    mock_app_context.app_config.camera = MockCamera(
+        np.zeros((100, 100, 3), dtype=np.uint8)
+    )
 
     with patch(
-        "light_map.scenes.calibration_scenes.process_chessboard_images", return_value=None
+        "light_map.scenes.calibration_scenes.process_chessboard_images",
+        return_value=None,
     ) as mock_process_images:
         # Trigger processing with enough images
         for _ in range(intrinsics_calib_scene._required_images):
             intrinsics_calib_scene.update(
-                [HandInput(gesture=GestureType.CLOSED_FIST, proj_pos=(0, 0), raw_landmarks=None)],
+                [
+                    HandInput(
+                        gesture=GestureType.CLOSED_FIST,
+                        proj_pos=(0, 0),
+                        raw_landmarks=None,
+                    )
+                ],
                 0.0,
             )
         assert intrinsics_calib_scene._stage == "PROCESSING"
 
-        mock_app_context.notifications.reset_mock() # Reset before processing update
+        mock_app_context.notifications.reset_mock()  # Reset before processing update
 
         # Now call update again to trigger the PROCESSING stage logic
         intrinsics_calib_scene.update([], 0.0)

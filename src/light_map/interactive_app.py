@@ -3,10 +3,9 @@ import cv2
 import numpy as np
 import time
 import mediapipe as mp
-from typing import List, Tuple, Any, Optional, Dict, Type
+from typing import List, Tuple, Any, Dict
 
 from light_map.common_types import (
-    GestureType,
     AppConfig,
     SceneId,
 )
@@ -89,10 +88,10 @@ class InteractiveApp:
         """Reloads application configuration, rebuilding context and scenes."""
         self.config = new_config
         self.renderer = Renderer(new_config.width, new_config.height)
-        
+
         # We keep the map system and config manager to preserve state
         # But we need to update projector matrix in context
-        
+
         self.app_context = AppContext(
             app_config=self.config,
             renderer=self.renderer,
@@ -101,9 +100,9 @@ class InteractiveApp:
             projector_matrix=self.config.projector_matrix,
             notifications=self.notifications,
             debug_mode=self.app_context.debug_mode,
-            show_tokens=self.app_context.show_tokens
+            show_tokens=self.app_context.show_tokens,
         )
-        
+
         # Re-initialize scenes with new context
         self.scenes = {
             SceneId.MENU: MenuScene(self.app_context),
@@ -116,7 +115,7 @@ class InteractiveApp:
             SceneId.CALIBRATE_INTRINSICS: IntrinsicsCalibrationScene(self.app_context),
             SceneId.CALIBRATE_PROJECTOR: ProjectorCalibrationScene(self.app_context),
         }
-        # Reset to Menu or Viewing? 
+        # Reset to Menu or Viewing?
         # Ideally preserve current scene type if possible, but simple reset is safer.
         self.current_scene = self.scenes[SceneId.MENU]
         self.current_scene.on_enter()
@@ -181,11 +180,11 @@ class InteractiveApp:
                 **self.map_system.get_render_params(),
             )
             map_opacity = 0.5 if is_interacting else 1.0
-            
+
             if map_opacity < 1.0:
                 return cv2.convertScaleAbs(map_image, alpha=map_opacity, beta=0)
             return map_image.copy()
-            
+
         return np.zeros((self.config.height, self.config.width, 3), dtype=np.uint8)
 
     def _convert_mediapipe_to_inputs(
@@ -270,10 +269,10 @@ class InteractiveApp:
         self, frame: np.ndarray, inputs: List[HandInput]
     ) -> np.ndarray:
         """Renders UI elements that are always visible, like debug info and notifications."""
-        
+
         # Draw Ghost Tokens
         should_show_tokens = isinstance(self.current_scene, (ViewingScene, MapScene))
-        
+
         if should_show_tokens and self.map_system.ghost_tokens:
             if self.app_context.show_tokens:
                 self._draw_ghost_tokens(frame)
@@ -330,6 +329,12 @@ class InteractiveApp:
             px, py = hand_input.proj_pos
             label = hand_input.gesture.name
             cv2.putText(
-                image, label, (px, py - 40), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 255), 2
+                image,
+                label,
+                (px, py - 40),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                1,
+                (0, 255, 255),
+                2,
             )
             cv2.circle(image, (px, py), 10, (0, 255, 255), -1)

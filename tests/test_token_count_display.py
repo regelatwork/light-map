@@ -3,7 +3,6 @@ import numpy as np
 from unittest.mock import MagicMock, patch
 from light_map.interactive_app import InteractiveApp, AppConfig
 from light_map.common_types import Token, SceneId
-from light_map.menu_builder import build_root_menu
 from light_map.map_config import MapConfigManager
 
 
@@ -59,20 +58,19 @@ def app_config():
 def app(app_config):
     _app_config, mock_map_config = app_config
     # Only patch scenes that have complex initialization dependencies
-    with patch("light_map.interactive_app.MenuScene"), patch(
-        "light_map.interactive_app.ScanningScene"
-    ), patch(
-        "light_map.interactive_app.FlashCalibrationScene"
-    ), patch(
-        "light_map.interactive_app.MapGridCalibrationScene"
-    ), patch(
-        "light_map.interactive_app.PpiCalibrationScene"
+    with (
+        patch("light_map.interactive_app.MenuScene"),
+        patch("light_map.interactive_app.ScanningScene"),
+        patch("light_map.interactive_app.FlashCalibrationScene"),
+        patch("light_map.interactive_app.MapGridCalibrationScene"),
+        patch("light_map.interactive_app.PpiCalibrationScene"),
     ):
         _app = InteractiveApp(_app_config)
 
     # The app now uses an AppContext, so we need to mock the config manager there
     _app.app_context.map_config_manager = mock_map_config
     return _app
+
 
 def test_token_count_display_no_tokens(app):
     # Set the scene to one that shows tokens
@@ -154,7 +152,10 @@ def test_token_count_hidden_in_menu(app):
     # Mock the scene's render method
     app.current_scene.render.return_value = frame
 
-    with patch("cv2.putText") as mock_putText, patch.object(app, "_draw_ghost_tokens") as mock_draw_tokens:
+    with (
+        patch("cv2.putText") as mock_putText,
+        patch.object(app, "_draw_ghost_tokens") as mock_draw_tokens,
+    ):
         app.process_frame(frame, results)
 
         # Assert tokens NOT drawn
@@ -163,4 +164,6 @@ def test_token_count_hidden_in_menu(app):
         # Assert text NOT drawn
         for call in mock_putText.call_args_list:
             args, _ = call
-            assert "Tokens:" not in args[1], f"Token count should not be drawn in MenuScene, found: {args[1]}"
+            assert "Tokens:" not in args[1], (
+                f"Token count should not be drawn in MenuScene, found: {args[1]}"
+            )

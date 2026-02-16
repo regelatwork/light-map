@@ -22,9 +22,7 @@ class MapInteractionController:
         self.panning_hand: Optional[Tuple[int, int]] = None
         self.zooming_hands: Optional[Tuple[float, Tuple[int, int]]] = None
 
-    def process_gestures(
-        self, inputs: List[HandInput], target: Transformable
-    ) -> bool:
+    def process_gestures(self, inputs: List[HandInput], target: Transformable) -> bool:
         """
         Processes hand inputs to perform map interactions like pan and zoom.
 

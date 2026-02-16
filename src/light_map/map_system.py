@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Dict, Any, Optional, Tuple
+from typing import Dict, Any, Optional, Tuple, List
 import svgelements
 import math
 
@@ -98,7 +98,7 @@ class MapSystem:
         cx, cy = self.width / 2, self.height / 2
         # Get world coordinate currently at center
         wx, wy = self.screen_to_world(cx, cy)
-        
+
         # Apply new zoom while keeping (wx, wy) at (cx, cy)
         self.set_zoom_around_pivot(self.base_scale, cx, cy, wx, wy)
 

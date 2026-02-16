@@ -1,7 +1,6 @@
 import pytest
 from unittest.mock import MagicMock, patch
 import numpy as np
-import time
 
 from light_map.core.app_context import AppContext
 from light_map.scenes.calibration_scenes import FlashCalibrationScene, FlashCalibStage
@@ -65,14 +64,14 @@ def test_flash_calibration_scene_state_machine(mock_app_context):
                 # Render to trigger capture and process
                 scene.render(np.zeros((100, 100, 3), dtype=np.uint8))
                 assert mock_detect_tokens.call_count == i + 1
-                
+
                 # Verify detect_tokens uses the correct frame from context
                 mock_detect_tokens.assert_called_with(
                     frame_white=mock_app_context.last_camera_frame,
                     projector_matrix=mock_app_context.projector_matrix,
                     map_system=mock_app_context.map_system,
                 )
-                
+
                 # Capture frame should be reset after render
                 assert scene._capture_frame is False
 
@@ -83,7 +82,9 @@ def test_flash_calibration_scene_state_machine(mock_app_context):
             mock_time += 0.1
             scene.update([], mock_time)
             assert scene._stage == FlashCalibStage.SHOW_RESULT
-            mock_app_context.map_config_manager.set_flash_intensity.assert_called_once_with(105)
+            mock_app_context.map_config_manager.set_flash_intensity.assert_called_once_with(
+                105
+            )
             mock_app_context.notifications.add_notification.assert_called_once_with(
                 "Optimal intensity found: 105"
             )
@@ -107,11 +108,13 @@ def test_render_flash_levels(mock_full_like, mock_app_context):
         return mock_time
 
     with patch("time.monotonic", side_effect=mock_monotonic):
-        with patch.object(scene.token_tracker, "detect_tokens"): # Don't care about detection here
+        with patch.object(
+            scene.token_tracker, "detect_tokens"
+        ):  # Don't care about detection here
             scene.on_enter()
             scene.update([], mock_time)
 
-            for i in range(len(scene._test_levels) -1):
+            for i in range(len(scene._test_levels) - 1):
                 # Advance time and update to trigger capture_frame
                 mock_time += 1.51
                 scene.update([], mock_time)
@@ -122,11 +125,12 @@ def test_render_flash_levels(mock_full_like, mock_app_context):
                 # The render method uses the intensity for the *next* level for display
                 expected_intensity_for_display = scene._test_levels[i + 1]
 
-                mock_full_like.assert_called_with(frame, expected_intensity_for_display, dtype=np.uint8)
+                mock_full_like.assert_called_with(
+                    frame, expected_intensity_for_display, dtype=np.uint8
+                )
                 mock_full_like.reset_mock()
 
             # Handle the last test level separately
-            last_idx = len(scene._test_levels) - 1
             mock_time += 1.51
             scene.update([], mock_time)
 
@@ -143,8 +147,6 @@ def test_debug_mode_propagation(mock_app_context):
     """Verify that debug mode is propagated to TokenTracker."""
     mock_app_context.debug_mode = True
     scene = FlashCalibrationScene(mock_app_context)
-    
+
     scene.on_enter()
     assert scene.token_tracker.debug_mode is True
-
-

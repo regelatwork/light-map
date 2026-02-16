@@ -33,7 +33,9 @@ def test_ppi_calibration_scene_detecting_to_confirming(mock_app_context):
     ) as mock_calc:
         frame = np.zeros((100, 100, 3), dtype=np.uint8)
         scene.render(frame)  # Call render to trigger detection
-        mock_calc.assert_called_with(mock_app_context.last_camera_frame, mock_app_context.projector_matrix)
+        mock_calc.assert_called_with(
+            mock_app_context.last_camera_frame, mock_app_context.projector_matrix
+        )
 
     assert scene._stage == "CONFIRMING"
     assert scene._candidate_ppi == 100.0
@@ -49,7 +51,7 @@ def test_ppi_calibration_scene_confirm_with_victory(mock_app_context):
     inputs = [
         HandInput(gesture=GestureType.VICTORY, proj_pos=(0, 0), raw_landmarks=None)
     ]
-    transition = scene.update(inputs, 0.0) # Time doesn't matter here
+    transition = scene.update(inputs, 0.0)  # Time doesn't matter here
 
     mock_app_context.map_config_manager.set_ppi.assert_called_once_with(100.0)
     mock_app_context.notifications.add_notification.assert_called_once_with(

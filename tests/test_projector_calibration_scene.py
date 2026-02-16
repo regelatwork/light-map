@@ -1,7 +1,6 @@
 import pytest
 from unittest.mock import MagicMock, patch
 import numpy as np
-import time
 
 from light_map.core.app_context import AppContext
 from light_map.scenes.calibration_scenes import ProjectorCalibrationScene
@@ -34,6 +33,7 @@ def test_projector_calibration_flow_success(mock_app_context):
     mock_app_context.app_config.camera = MockCamera(mock_frame)
 
     mock_time = 0.0
+
     def mock_monotonic():
         nonlocal mock_time
         return mock_time
@@ -55,11 +55,13 @@ def test_projector_calibration_flow_success(mock_app_context):
         # Process and succeed
         mock_time += 0.1
         transition = scene.update([], mock_time)
-        
+
         assert scene._stage == "DONE"
         assert isinstance(transition, SceneTransition)
         assert transition.target_scene == SceneId.MENU
-        mock_app_context.notifications.add_notification.assert_called_with("Projector calibrated.")
+        mock_app_context.notifications.add_notification.assert_called_with(
+            "Projector calibrated."
+        )
 
 
 def test_projector_calibration_no_camera_error(mock_app_context):
@@ -68,18 +70,19 @@ def test_projector_calibration_no_camera_error(mock_app_context):
     mock_app_context.app_config.camera = None
 
     mock_time = 0.0
+
     def mock_monotonic():
         nonlocal mock_time
         return mock_time
 
     with patch("time.monotonic", side_effect=mock_monotonic):
         scene.on_enter()
-        
+
         # Advance through stages
         mock_time += 1.1
-        scene.update([], mock_time) # To CAPTURE
+        scene.update([], mock_time)  # To CAPTURE
         mock_time += 0.1
-        scene.update([], mock_time) # To PROCESSING
+        scene.update([], mock_time)  # To PROCESSING
 
         # Process and fail
         mock_time += 0.1
@@ -88,16 +91,18 @@ def test_projector_calibration_no_camera_error(mock_app_context):
         assert scene._stage == "ERROR"
         assert isinstance(transition, SceneTransition)
         assert transition.target_scene == SceneId.MENU
-        mock_app_context.notifications.add_notification.assert_called_with("Error: No camera available.")
+        mock_app_context.notifications.add_notification.assert_called_with(
+            "Error: No camera available."
+        )
 
 
 def test_projector_calibration_render(mock_app_context):
     """Verify render output during pattern display."""
     scene = ProjectorCalibrationScene(mock_app_context)
-    scene.on_enter() # Sets stage to DISPLAY_PATTERN
-    
+    scene.on_enter()  # Sets stage to DISPLAY_PATTERN
+
     frame = np.zeros((100, 100, 3), dtype=np.uint8)
     output = scene.render(frame)
-    
+
     # Should return white frame
     assert np.all(output == 255)

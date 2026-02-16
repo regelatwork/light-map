@@ -1,7 +1,6 @@
 import pytest
 from unittest.mock import MagicMock, patch
 import numpy as np
-import time
 
 from light_map.core.app_context import AppContext
 from light_map.scenes.scanning_scene import ScanningScene, ScanStage
@@ -90,12 +89,12 @@ def test_debug_mode_propagation(mock_app_context):
     """Verify that debug mode is propagated to TokenTracker."""
     mock_app_context.debug_mode = True
     scene = ScanningScene(mock_app_context)
-    
+
     # Mock TokenTracker
-    with patch.object(scene.token_tracker, "detect_tokens") as mock_detect:
+    with patch.object(scene.token_tracker, "detect_tokens"):
         frame = np.zeros((100, 100, 3), dtype=np.uint8)
-        
+
         # Manually trigger detection logic
         scene._detect_and_save_tokens(frame)
-        
+
         assert scene.token_tracker.debug_mode is True

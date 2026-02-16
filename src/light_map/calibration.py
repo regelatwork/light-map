@@ -7,6 +7,7 @@ import os
 CHECKERBOARD_DIMS = (6, 9)  # Standard chessboard dimensions
 CALIBRATION_FILE = "camera_calibration.npz"
 
+
 def load_calibration_images(image_dir, extensions=("jpg", "jpeg")):
     """Loads image paths from a directory matching specific extensions."""
     images = []
@@ -95,10 +96,12 @@ def process_chessboard_images(
 
     return None
 
+
 def save_camera_calibration(camera_matrix: np.ndarray, dist_coeffs: np.ndarray):
     """Saves the camera matrix and distortion coefficients to a file."""
     np.savez(CALIBRATION_FILE, camera_matrix=camera_matrix, dist_coeffs=dist_coeffs)
     print(f"Camera calibration saved to {CALIBRATION_FILE}")
+
 
 def calibrate_camera_from_images(image_paths, checkerboard_dims=(6, 9)):
     """

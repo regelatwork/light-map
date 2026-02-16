@@ -1,21 +1,18 @@
 from __future__ import annotations
 
-import sys
-from typing import TYPE_CHECKING, Any, List, Optional
+from typing import TYPE_CHECKING
 from unittest.mock import MagicMock, patch
 
 import numpy as np
 import pytest
 
-from light_map.common_types import AppConfig, GestureType, MenuActions, SceneId
+from light_map.common_types import AppConfig, MenuActions, SceneId
 from light_map.core.app_context import AppContext
 from light_map.core.notification import NotificationManager
-from light_map.core.scene import HandInput, Scene, SceneTransition
-from light_map.input_manager import InputManager
+from light_map.core.scene import SceneTransition
 from light_map.map_config import MapConfigManager
 from light_map.map_system import MapSystem
-from light_map.menu_builder import build_root_menu
-from light_map.menu_system import MenuState, MenuSystem, MenuSystemState
+from light_map.menu_system import MenuState
 from light_map.renderer import Renderer
 from light_map.scenes.menu_scene import MenuScene
 
@@ -156,7 +153,9 @@ def test_menu_scene_handles_non_transition_action(mock_app_context):
 def test_menu_scene_scan_fails_without_map(mock_app_context):
     """Verify SCAN_SESSION action fails and sends notification if no map is loaded."""
     # Arrange
-    mock_app_context.map_system.is_map_loaded.return_value = False  # Override for this test
+    mock_app_context.map_system.is_map_loaded.return_value = (
+        False  # Override for this test
+    )
     scene = MenuScene(mock_app_context)
     mock_menu_state = MenuState(
         current_menu_title="",

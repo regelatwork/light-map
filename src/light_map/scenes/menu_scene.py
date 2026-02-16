@@ -77,7 +77,9 @@ class MenuScene(Scene):
                 SceneId.VIEWING, payload={"map_file": payload, "load_session": True}
             )
         if action == "CALIBRATE_MAP":
-            return SceneTransition(SceneId.CALIBRATE_MAP_GRID, payload={"map_file": payload})
+            return SceneTransition(
+                SceneId.CALIBRATE_MAP_GRID, payload={"map_file": payload}
+            )
         if action == "FORGET_MAP" and payload:
             self.context.map_config_manager.forget_map(payload)
             self.on_enter()  # Rebuild menu

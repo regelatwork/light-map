@@ -18,12 +18,12 @@ def mock_map_system():
     return MagicMock(spec=MapSystem)
 
 
-def test_pan_delta(map_interaction_controller, mock_map_system):
-    """Verify that a single open palm gesture produces the correct pan delta."""
+def test_pan_delta_closed_fist(map_interaction_controller, mock_map_system):
+    """Verify that a single CLOSED_FIST gesture triggers panning."""
     # First update to establish the initial hand position
     inputs1 = [
         HandInput(
-            gesture=GestureType.OPEN_PALM, proj_pos=(100, 100), raw_landmarks=None
+            gesture=GestureType.CLOSED_FIST, proj_pos=(100, 100), raw_landmarks=None
         )
     ]
     map_interaction_controller.process_gestures(inputs1, mock_map_system)
@@ -32,7 +32,7 @@ def test_pan_delta(map_interaction_controller, mock_map_system):
     # Second update to calculate the delta
     inputs2 = [
         HandInput(
-            gesture=GestureType.OPEN_PALM, proj_pos=(120, 130), raw_landmarks=None
+            gesture=GestureType.CLOSED_FIST, proj_pos=(120, 130), raw_landmarks=None
         )
     ]
     interaction_occurred = map_interaction_controller.process_gestures(
@@ -43,8 +43,8 @@ def test_pan_delta(map_interaction_controller, mock_map_system):
     mock_map_system.pan.assert_called_once_with(20, 30)
 
 
-def test_zoom_scaling(map_interaction_controller, mock_map_system):
-    """Verify that a two-hand gesture produces the correct zoom factor."""
+def test_zoom_scaling_pointing(map_interaction_controller, mock_map_system):
+    """Verify that two POINTING gestures trigger zooming."""
     # First update to establish the initial distance
     inputs1 = [
         HandInput(gesture=GestureType.POINTING, proj_pos=(100, 100), raw_landmarks=None),
@@ -70,23 +70,21 @@ def test_zoom_scaling(map_interaction_controller, mock_map_system):
     assert args[1] == (150, 100)  # center_point
 
 
-def test_no_interaction_on_gesture_change(map_interaction_controller, mock_map_system):
-    """Verify that changing gestures resets interaction state."""
-    # Establish a panning hand
-    inputs1 = [
+def test_no_interaction_wrong_gestures(map_interaction_controller, mock_map_system):
+    """Verify that incorrect gestures do not trigger interactions."""
+    # Case 1: One hand but wrong gesture (OPEN_PALM instead of CLOSED_FIST)
+    inputs_wrong_pan = [
         HandInput(
             gesture=GestureType.OPEN_PALM, proj_pos=(100, 100), raw_landmarks=None
         )
     ]
-    map_interaction_controller.process_gestures(inputs1, mock_map_system)
-
-    # Change gesture
-    inputs2 = [
-        HandInput(gesture=GestureType.POINTING, proj_pos=(120, 130), raw_landmarks=None)
-    ]
-    interaction_occurred = map_interaction_controller.process_gestures(
-        inputs2, mock_map_system
-    )
-
-    assert not interaction_occurred
+    assert map_interaction_controller.process_gestures(inputs_wrong_pan, mock_map_system) is False
     mock_map_system.pan.assert_not_called()
+
+    # Case 2: Two hands but wrong gestures (OPEN_PALM instead of POINTING)
+    inputs_wrong_zoom = [
+        HandInput(gesture=GestureType.OPEN_PALM, proj_pos=(100, 100), raw_landmarks=None),
+        HandInput(gesture=GestureType.OPEN_PALM, proj_pos=(200, 100), raw_landmarks=None),
+    ]
+    assert map_interaction_controller.process_gestures(inputs_wrong_zoom, mock_map_system) is False
+    mock_map_system.zoom_pinned.assert_not_called()

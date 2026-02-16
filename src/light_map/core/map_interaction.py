@@ -35,7 +35,11 @@ class MapInteractionController:
         interaction_occurred = False
 
         # Two-handed zoom
-        if len(inputs) == 2:
+        if (
+            len(inputs) == 2
+            and inputs[0].gesture == GestureType.POINTING
+            and inputs[1].gesture == GestureType.POINTING
+        ):
             self.panning_hand = None
             pos1 = inputs[0].proj_pos
             pos2 = inputs[1].proj_pos
@@ -51,7 +55,7 @@ class MapInteractionController:
             self.zooming_hands = (distance, center_point)
 
         # One-handed pan
-        elif len(inputs) == 1 and inputs[0].gesture == GestureType.OPEN_PALM:
+        elif len(inputs) == 1 and inputs[0].gesture == GestureType.CLOSED_FIST:
             self.zooming_hands = None
             current_pos = inputs[0].proj_pos
             if self.panning_hand:

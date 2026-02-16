@@ -45,7 +45,7 @@ def test_token_tracker_offline_detection():
     )
 
     # 3. Run Tracker
-    tracker = TokenTracker(debug_mode=False)
+    tracker = TokenTracker()
 
     tokens = tracker.detect_tokens(
         frame_white=image,

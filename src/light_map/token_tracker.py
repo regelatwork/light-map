@@ -2,13 +2,14 @@ import cv2
 import numpy as np
 from typing import List, Optional, Tuple
 import math
+from datetime import datetime
 from light_map.common_types import Token
 from light_map.map_system import MapSystem
 
 
 class TokenTracker:
-    def __init__(self, debug_mode: bool = False):
-        self.debug_mode = debug_mode
+    def __init__(self):
+        self.debug_mode = False
 
     def detect_tokens(
         self,
@@ -40,7 +41,121 @@ class TokenTracker:
             grid_origin_y,
         )
 
+        # 3. Save debug image if enabled
+        if self.debug_mode:
+            self._save_debug_image(
+                warped_image,
+                markers,
+                tokens,
+                map_system,
+                grid_spacing_svg,
+                grid_origin_x,
+                grid_origin_y,
+            )
+
         return tokens
+
+    def _save_debug_image(
+        self,
+        base_image: np.ndarray,
+        markers: np.ndarray,
+        tokens: List[Token],
+        map_system: MapSystem,
+        grid_spacing_svg: float,
+        grid_origin_x: float,
+        grid_origin_y: float,
+    ):
+        """Creates and saves an annotated image for debugging token detection."""
+        debug_img = base_image.copy()
+        h, w = debug_img.shape[:2]
+
+        # 1. Draw Grid Lines
+        if grid_spacing_svg > 0:
+            # Find the min/max world coordinates visible on screen
+            corners_world = [
+                map_system.screen_to_world(0, 0),
+                map_system.screen_to_world(w, 0),
+                map_system.screen_to_world(w, h),
+                map_system.screen_to_world(0, h),
+            ]
+            min_wx = min(p[0] for p in corners_world)
+            max_wx = max(p[0] for p in corners_world)
+            min_wy = min(p[1] for p in corners_world)
+            max_wy = max(p[1] for p in corners_world)
+
+            min_gx = math.floor((min_wx - grid_origin_x) / grid_spacing_svg)
+            max_gx = math.ceil((max_wx - grid_origin_x) / grid_spacing_svg)
+            min_gy = math.floor((min_wy - grid_origin_y) / grid_spacing_svg)
+            max_gy = math.ceil((max_wy - grid_origin_y) / grid_spacing_svg)
+
+            for i in range(min_gx, max_gx + 1):
+                wx = grid_origin_x + i * grid_spacing_svg
+                p1_world = (wx, min_wy)
+                p2_world = (wx, max_wy)
+                p1_screen = map_system.world_to_screen(*p1_world)
+                p2_screen = map_system.world_to_screen(*p2_world)
+                cv2.line(
+                    debug_img,
+                    (int(p1_screen[0]), int(p1_screen[1])),
+                    (int(p2_screen[0]), int(p2_screen[1])),
+                    (100, 100, 100),
+                    1,
+                )
+            for i in range(min_gy, max_gy + 1):
+                wy = grid_origin_y + i * grid_spacing_svg
+                p1_world = (min_wx, wy)
+                p2_world = (max_wx, wy)
+                p1_screen = map_system.world_to_screen(*p1_world)
+                p2_screen = map_system.world_to_screen(*p2_world)
+                cv2.line(
+                    debug_img,
+                    (int(p1_screen[0]), int(p1_screen[1])),
+                    (int(p2_screen[0]), int(p2_screen[1])),
+                    (100, 100, 100),
+                    1,
+                )
+
+        # 2. Draw Blobs, BBoxes, and Numbers
+        unique_markers = np.unique(markers)
+        for marker_id in unique_markers:
+            if marker_id <= 1:
+                continue
+            blob_mask = np.zeros(markers.shape, dtype=np.uint8)
+            blob_mask[markers == marker_id] = 255
+            contours, _ = cv2.findContours(
+                blob_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE
+            )
+            if not contours:
+                continue
+
+            # Draw contour
+            cv2.drawContours(debug_img, contours, -1, (0, 255, 0), 1)
+
+            # Draw bounding box and number
+            x, y, w_rect, h_rect = cv2.boundingRect(contours[0])
+            cv2.rectangle(
+                debug_img, (x, y), (x + w_rect, y + h_rect), (255, 0, 0), 1
+            )
+            cv2.putText(
+                debug_img,
+                str(marker_id),
+                (x, y - 5),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.7,
+                (255, 0, 0),
+                2,
+            )
+
+        # 3. Draw Detected Token Circles
+        for token in tokens:
+            sx, sy = map_system.world_to_screen(token.world_x, token.world_y)
+            cv2.circle(debug_img, (int(sx), int(sy)), 20, (0, 255, 255), 2)
+
+        # 4. Save the image
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = f"debug_token_detection_{timestamp}.png"
+        cv2.imwrite(filename, debug_img)
+        print(f"Saved debug image to {filename}")
 
     def _preprocess_and_find_markers(
         self,

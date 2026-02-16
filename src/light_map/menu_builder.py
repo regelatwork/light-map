@@ -178,7 +178,7 @@ def build_root_menu(map_config: MapConfigManager) -> MenuItem:
                 children=[
                     MenuItem(
                         title="Toggle Debug",
-                        action_id=MenuActions.TOGGLE_DEBUG,
+                        action_id=MenuActions.TOGGLE_DEBUG_MODE,
                         should_close_on_trigger=False,
                     ),
                 ],

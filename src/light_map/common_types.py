@@ -16,6 +16,7 @@ class GestureType(StrEnum):
 
 
 class MenuActions(StrEnum):
+    TOGGLE_DEBUG_MODE = "TOGGLE_DEBUG_MODE"
     TOGGLE_DEBUG = "TOGGLE_DEBUG"
     EXIT = "EXIT"
     CLOSE_MENU = "CLOSE_MENU"

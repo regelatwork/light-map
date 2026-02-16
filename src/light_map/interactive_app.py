@@ -40,6 +40,7 @@ class InteractiveApp:
     def __init__(self, config: AppConfig, time_provider=time.monotonic):
         self.config = config
         self.time_provider = time_provider
+        self.debug_mode = False  # Initialize debug_mode here
 
         # Map Support (Init first to build menu)
         self.map_system = MapSystem(config.width, config.height)
@@ -60,8 +61,8 @@ class InteractiveApp:
         self.input_manager = InputManager(time_provider=time_provider)
 
         # Token Tracking Support
+        self.ghost_tokens: List[Token] = []  # Initialize ghost_tokens here
         self.token_tracker = TokenTracker()
-        self.ghost_tokens: List[Token] = []
         self.scan_start_time = 0.0
         self.scan_stage = 0  # 0: White, 1: Capture, 2: Process, 3: Done
         self.last_scan_result_count = 0
@@ -77,7 +78,6 @@ class InteractiveApp:
         self.mode = AppMode.MENU
         self.last_fps_time = 0.0
         self.fps = 0.0
-        self.debug_mode = False
 
         # Latest Menu State for rendering
         self.menu_state = self.menu_system.update(-1, -1, GestureType.NONE)
@@ -110,7 +110,6 @@ class InteractiveApp:
 
     def set_debug_mode(self, enabled: bool):
         self.debug_mode = enabled
-
     def load_map(self, filename: str):
         """Loads an SVG map file and restores viewport."""
         self.svg_loader = SVGLoader(filename)
@@ -486,7 +485,16 @@ class InteractiveApp:
                     self.map_config.scan_for_maps(self.config.map_search_patterns)
                     new_root = build_root_menu(self.map_config)
                     self.menu_system.set_root_menu(new_root)
-
+            elif action == MenuActions.TOGGLE_DEBUG_MODE:
+                self.set_debug_mode(not self.debug_mode)
+                # Update TokenTracker immediately if it was already initialized
+                if hasattr(self, 'token_tracker'):
+                    self.token_tracker.debug_mode = self.debug_mode
+                # Also need to update the menu item's title dynamically
+                # This requires regenerating the menu or updating the specific item
+                # For now, just rebuild the root menu to reflect the change
+                new_root = build_root_menu(self.map_config)
+                self.menu_system.set_root_menu(new_root)
             elif action == MenuActions.CALIBRATE_SCALE:
                 self.mode = AppMode.CALIB_PPI
                 self.mode_transition_start_time = current_time
@@ -723,6 +731,7 @@ class InteractiveApp:
 
             ppi = self.map_config.get_ppi()
 
+            self.token_tracker.debug_mode = self.debug_mode
             tokens = self.token_tracker.detect_tokens(
                 frame_white=frame,
                 projector_matrix=self.config.projector_matrix,
@@ -835,6 +844,7 @@ class InteractiveApp:
 
             # Capture and detect
             intensity = self.calib_flash_test_levels[self.calib_flash_stage]
+            self.token_tracker.debug_mode = self.debug_mode
             tokens = self.token_tracker.detect_tokens(
                 frame_white=frame,
                 projector_matrix=self.config.projector_matrix,

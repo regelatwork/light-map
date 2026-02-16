@@ -101,6 +101,7 @@ class InteractiveApp:
         self.calib_candidate_ppi = 0.0
         self.calib_map_grid_size_inches = 1.0  # Default grid reference size
         self.calib_flash_stage = 0
+        self.calib_flash_sub_stage = 0
         self.calib_flash_start_time = 0.0
         self.calib_flash_test_levels = [255, 225, 195, 165, 135, 105, 75, 45]
         self.calib_flash_results: Dict[int, int] = {}
@@ -282,43 +283,22 @@ class InteractiveApp:
             )
         elif self.mode == AppMode.CALIBRATE_FLASH:
             num_levels = len(self.calib_flash_test_levels)
-            # Render feedback for the user
-            output = np.zeros(
-                (self.config.height, self.config.width, 3), dtype=np.uint8
-            )
+            output = np.zeros((self.config.height, self.config.width, 3), dtype=np.uint8)
 
             if self.calib_flash_stage < num_levels:
                 intensity = self.calib_flash_test_levels[self.calib_flash_stage]
-                # Project the white screen for the current test
-                output = np.full(
-                    (self.config.height, self.config.width, 3),
-                    intensity,
-                    dtype=np.uint8,
-                )
-                progress = f"{self.calib_flash_stage + 1}/{num_levels}"
-                cv2.putText(
-                    output,
-                    f"Calibrating... Testing Level: {intensity} ({progress})",
-                    (50, 100),
-                    cv2.FONT_HERSHEY_SIMPLEX,
-                    1,
-                    (0, 0, 255) if intensity > 128 else (0, 255, 255),
-                    2,
-                )
+                if self.calib_flash_sub_stage == 0:  # Capture
+                    output = np.full((self.config.height, self.config.width, 3), intensity, dtype=np.uint8)
+                else:  # Feedback
+                    token_count = self.calib_flash_results.get(intensity, "N/A")
+                    progress = f"{self.calib_flash_stage + 1}/{num_levels}"
+                    cv2.putText(output, f"Level {intensity}: Found {token_count} tokens ({progress})", (50, 100), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 255), 2)
             else:
                 # Show final result
                 intensity = self.map_config.get_flash_intensity()
-                # Find the corresponding token count
                 token_count = self.calib_flash_results.get(intensity, "N/A")
-                cv2.putText(
-                    output,
-                    f"Calibration Complete: Optimal Intensity = {intensity} ({token_count} tokens)",
-                    (50, 100),
-                    cv2.FONT_HERSHEY_SIMPLEX,
-                    1,
-                    (0, 255, 0),
-                    2,
-                )
+                cv2.putText(output, f"Calibration Complete: Optimal Intensity = {intensity} ({token_count} tokens)", (50, 100), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+
         elif self.mode == AppMode.CALIB_MAP_GRID:
             # Show map dimmed so grid is visible
             if map_image is not None:
@@ -732,6 +712,7 @@ class InteractiveApp:
             ppi = self.map_config.get_ppi()
 
             self.token_tracker.debug_mode = self.debug_mode
+            self.token_tracker.debug_mode = self.debug_mode
             tokens = self.token_tracker.detect_tokens(
                 frame_white=frame,
                 projector_matrix=self.config.projector_matrix,
@@ -836,66 +817,57 @@ class InteractiveApp:
         # detects tokens at each, and then picks the best one.
         num_levels = len(self.calib_flash_test_levels)
 
-        # Stage 0 to N-1: Testing each level
         if self.calib_flash_stage < num_levels:
-            # Allow settle time at each brightness level
-            if current_time - self.calib_flash_start_time < 1.0:
-                return []
+            if self.calib_flash_sub_stage == 0:  # Capture
+                if current_time - self.calib_flash_start_time < 0.5:  # Settle time
+                    return []
 
-            # Capture and detect
-            intensity = self.calib_flash_test_levels[self.calib_flash_stage]
-            self.token_tracker.debug_mode = self.debug_mode
-            tokens = self.token_tracker.detect_tokens(
-                frame_white=frame,
-                projector_matrix=self.config.projector_matrix,
-                map_system=self.map_system,
-            )
-            self.calib_flash_results[intensity] = len(tokens)
-            print(f"Calibration: Level {intensity} -> Found {len(tokens)} tokens")
+                intensity = self.calib_flash_test_levels[self.calib_flash_stage]
+                self.token_tracker.debug_mode = self.debug_mode
+                tokens = self.token_tracker.detect_tokens(
+                    frame_white=frame,
+                    projector_matrix=self.config.projector_matrix,
+                    map_system=self.map_system,
+                )
+                self.calib_flash_results[intensity] = len(tokens)
+                print(f"Calibration: Level {intensity} -> Found {len(tokens)} tokens")
 
-            # Advance to next stage
-            self.calib_flash_stage += 1
-            self.calib_flash_start_time = current_time
+                self.calib_flash_sub_stage = 1
+                self.calib_flash_start_time = current_time
 
-        # Stage N: All levels tested, now find the best
-        elif self.calib_flash_stage == num_levels:
+            elif self.calib_flash_sub_stage == 1:  # Feedback
+                if current_time - self.calib_flash_start_time < 1.0:  # Display time
+                    return []
+
+                self.calib_flash_stage += 1
+                self.calib_flash_sub_stage = 0
+                self.calib_flash_start_time = current_time
+
+        elif self.calib_flash_stage == num_levels:  # Analysis
             if not self.calib_flash_results:
                 print("Calibration failed: no results captured.")
                 optimal_intensity = 255
             else:
                 from collections import Counter
-
-                # Find the most frequent token count
                 counts = list(self.calib_flash_results.values())
                 if not counts:
-                    optimal_intensity = 128  # Fallback
+                    optimal_intensity = 128
                 else:
                     most_common_count = Counter(counts).most_common(1)[0][0]
-
-                    # Get all intensities that produced this count
                     stable_intensities = [
-                        i
-                        for i, c in self.calib_flash_results.items()
-                        if c == most_common_count
+                        i for i, c in self.calib_flash_results.items() if c == most_common_count
                     ]
-
-                    # Choose the median intensity from the stable range
                     stable_intensities.sort()
-                    median_index = len(stable_intensities) // 2
-                    optimal_intensity = stable_intensities[median_index]
+                    optimal_intensity = stable_intensities[len(stable_intensities) // 2]
 
             self.map_config.set_flash_intensity(optimal_intensity)
-            print(
-                f"Calibration complete. Optimal (stable) intensity: {optimal_intensity}"
-            )
+            print(f"Calibration complete. Optimal intensity: {optimal_intensity}")
 
-            # Advance to final "Done" stage to show feedback
             self.calib_flash_stage += 1
             self.calib_flash_start_time = current_time
 
-        # Stage N+1: Show feedback and exit
-        else:
-            if current_time - self.calib_flash_start_time > 2.0:  # Show result for 2s
+        else:  # Done
+            if current_time - self.calib_flash_start_time > 2.0:
                 self.mode = AppMode.MENU
 
         return []

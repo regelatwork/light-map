@@ -70,6 +70,27 @@ class MenuSystem:
         self.pinned_cursor: Optional[Tuple[int, int]] = None
         self.is_pinning: bool = False
 
+        self._last_state: Optional[MenuState] = None
+
+    def get_current_state(self) -> MenuState:
+        """Returns the last computed state of the menu."""
+        if self._last_state is None:
+            # If update hasn't been called, return a default/initial state
+            active_items, item_rects = self._calculate_layout()
+            return MenuState(
+                current_menu_title=self.current_node.title,
+                active_items=active_items,
+                item_rects=item_rects,
+                hovered_item_index=None,
+                feedback_item_index=None,
+                prime_progress=0.0,
+                summon_progress=0.0,
+                just_triggered_action=None,
+                cursor_pos=None,
+                is_visible=False,
+            )
+        return self._last_state
+
     def set_root_menu(self, new_root: MenuItem):
         self.root = new_root
         # Reset navigation if hidden or if we force a reset
@@ -77,6 +98,7 @@ class MenuSystem:
             self.current_node = self.root
             self.node_stack.clear()
             self.page_index = 0
+
 
     def update(self, x: int, y: int, gesture: GestureType) -> MenuState:
         now = self.time_provider()
@@ -198,7 +220,7 @@ class MenuSystem:
         if self.state == MenuSystemState.ACTIVE and self.is_pinning:
             prime_prog = min(1.0, (now - self.prime_start_time) / PRIMING_TIME)
 
-        return MenuState(
+        self._last_state = MenuState(
             current_menu_title=self.current_node.title,
             active_items=active_items,
             item_rects=item_rects,
@@ -211,6 +233,7 @@ class MenuSystem:
             is_visible=(self.state != MenuSystemState.HIDDEN),
             debug_info=f"State: {self.state}",
         )
+        return self._last_state
 
     def _calculate_layout(
         self,

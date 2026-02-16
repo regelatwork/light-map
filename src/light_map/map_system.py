@@ -3,6 +3,9 @@ from typing import Dict, Any, Optional, Tuple
 import svgelements
 import math
 
+from light_map.svg_loader import SVGLoader
+from light_map.common_types import Token
+
 
 @dataclass
 class MapState:
@@ -17,6 +20,13 @@ class MapSystem:
         self.width = screen_width
         self.height = screen_height
         self.state = MapState()
+        self.svg_loader: Optional[SVGLoader] = None
+        self.base_scale: float = 1.0
+        self.ghost_tokens: List[Token] = []
+
+    def is_map_loaded(self) -> bool:
+        """Returns True if an SVG map is currently loaded."""
+        return self.svg_loader is not None
 
     def set_state(self, x: float, y: float, zoom: float, rotation: float):
         self.state.x = x
@@ -82,6 +92,14 @@ class MapSystem:
 
     def reset_view(self):
         self.state = MapState()
+
+    def reset_zoom_to_base(self):
+        """Resets the zoom to the current map's base 1:1 scale."""
+        self.state.zoom = self.base_scale
+
+    def reset_view_to_base(self):
+        """Resets the view to the default state but using the base scale."""
+        self.state = MapState(zoom=self.base_scale)
 
     def get_render_params(self) -> Dict[str, Any]:
         """Returns parameters for SVGLoader.render()."""

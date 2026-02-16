@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, Any, List, Optional, Tuple, Type
 
 import numpy as np
 
-from light_map.gestures import GestureType
+from light_map.common_types import GestureType, SceneId
 
 if TYPE_CHECKING:
     from .app_context import AppContext
@@ -25,7 +25,7 @@ class HandInput:
 class SceneTransition:
     """An object returned by a Scene to request a change to a different Scene."""
 
-    target_scene: Type[Scene]
+    target_scene: SceneId
     payload: Any = None
     reset_history: bool = False
 

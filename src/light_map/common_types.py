@@ -2,6 +2,8 @@ from enum import StrEnum
 from dataclasses import dataclass, field
 from typing import List, Optional
 
+import numpy as np
+
 
 class GestureType(StrEnum):
     OPEN_PALM = "Open Palm"
@@ -44,6 +46,26 @@ class AppMode(StrEnum):
     CALIB_MAP_GRID = "CALIB_MAP_GRID"
     SCANNING = "SCANNING"
     CALIBRATE_FLASH = "CALIBRATE_FLASH"
+
+
+class SceneId(StrEnum):
+    MENU = "MENU"
+    VIEWING = "VIEWING"
+    MAP = "MAP"
+    SCANNING = "SCANNING"
+    CALIBRATE_FLASH = "CALIBRATE_FLASH"
+    CALIBRATE_PPI = "CALIBRATE_PPI"
+    CALIBRATE_MAP_GRID = "CALIBRATE_MAP_GRID"
+    CALIBRATE_INTRINSICS = "CALIBRATE_INTRINSICS"
+    CALIBRATE_PROJECTOR = "CALIBRATE_PROJECTOR"
+
+
+@dataclass
+class AppConfig:
+    width: int
+    height: int
+    projector_matrix: np.ndarray
+    map_search_patterns: List[str] = field(default_factory=list)
 
 
 @dataclass

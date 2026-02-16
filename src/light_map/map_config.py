@@ -120,6 +120,7 @@ class MapConfigManager:
         self.save()
 
     def get_map_viewport(self, map_name: str) -> ViewportState:
+        map_name = os.path.abspath(map_name)
         if map_name in self.data.maps:
             return self.data.maps[map_name].viewport
         return ViewportState()
@@ -127,6 +128,7 @@ class MapConfigManager:
     def save_map_viewport(
         self, map_name: str, x: float, y: float, zoom: float, rotation: float
     ):
+        map_name = os.path.abspath(map_name)
         if map_name not in self.data.maps:
             self.data.maps[map_name] = MapEntry()
 
@@ -146,6 +148,7 @@ class MapConfigManager:
         physical_unit_inches: float,
         scale_factor_1to1: float,
     ):
+        map_name = os.path.abspath(map_name)
         if map_name not in self.data.maps:
             self.data.maps[map_name] = MapEntry()
 
@@ -212,6 +215,7 @@ class MapConfigManager:
 
     def forget_map(self, filename: str):
         """Removes map from config."""
+        filename = os.path.abspath(filename)
         if filename in self.data.maps:
             del self.data.maps[filename]
             self.save()
@@ -220,6 +224,7 @@ class MapConfigManager:
         """
         Returns {'calibrated': bool, 'has_session': bool}
         """
+        filename = os.path.abspath(filename)
         entry = self.data.maps.get(filename)
         if not entry:
             return {"calibrated": False, "has_session": False}

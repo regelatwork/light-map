@@ -183,7 +183,7 @@ class InteractiveApp:
             
             if map_opacity < 1.0:
                 return cv2.convertScaleAbs(map_image, alpha=map_opacity, beta=0)
-            return map_image
+            return map_image.copy()
             
         return np.zeros((self.config.height, self.config.width, 3), dtype=np.uint8)
 

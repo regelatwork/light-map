@@ -101,6 +101,8 @@ class MenuScene(Scene):
         elif action == MenuActions.EXIT:
             sys.exit(0)
         # --- Actions that modify state but don't transition ---
+        elif action == MenuActions.TOGGLE_DEBUG_MODE:
+            self.context.debug_mode = not self.context.debug_mode
         elif action == MenuActions.ROTATE_CW:
             self.context.map_system.rotate(90)
         elif action == MenuActions.ROTATE_CCW:

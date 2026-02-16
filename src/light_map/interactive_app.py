@@ -34,7 +34,6 @@ class InteractiveApp:
     def __init__(self, config: AppConfig, time_provider=time.monotonic):
         self.config = config
         self.time_provider = time_provider
-        self.debug_mode = False
         self.last_fps_time = 0.0
         self.fps = 0.0
 
@@ -72,7 +71,7 @@ class InteractiveApp:
         self.current_scene.on_enter()
 
     def set_debug_mode(self, enabled: bool):
-        self.debug_mode = enabled
+        self.app_context.debug_mode = enabled
 
     def _switch_scene(self, transition):
         target_id = transition.target_scene
@@ -234,7 +233,7 @@ class InteractiveApp:
             )
 
         # Debug Overlay
-        if self.debug_mode:
+        if self.app_context.debug_mode:
             self._draw_debug_overlay(frame, inputs)
 
         # Notifications

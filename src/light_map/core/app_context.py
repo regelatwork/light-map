@@ -24,3 +24,4 @@ class AppContext:
     projector_matrix: np.ndarray
     notifications: NotificationManager
     show_tokens: bool = True
+    debug_mode: bool = False

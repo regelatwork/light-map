@@ -60,7 +60,7 @@ class FlashCalibrationScene(Scene):
 
         elif self._stage == FlashCalibStage.TESTING:
             # Settle time for the camera after intensity change
-            if elapsed > 0.5:
+            if elapsed > 1.5:
                 self._capture_frame = True  # Signal render() to process a frame
 
         elif self._stage == FlashCalibStage.ANALYZING:

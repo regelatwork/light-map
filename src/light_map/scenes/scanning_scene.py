@@ -52,7 +52,7 @@ class ScanningScene(Scene):
             self._change_stage(ScanStage.FLASH, current_time)
 
         elif self._stage == ScanStage.FLASH:
-            if elapsed_time > 0.5:  # 500ms for camera to adjust
+            if elapsed_time > 1.5:  # 1.5s for camera to adjust
                 self._change_stage(ScanStage.CAPTURE, current_time)
 
         elif self._stage == ScanStage.CAPTURE:

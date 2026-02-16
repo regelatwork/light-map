@@ -124,10 +124,10 @@ The ultimate goal of this project is to enable precise mapping between camera an
   - `SVGLoader` vector-based grid auto-detection.
 - [x] **Phase 2: Manual Calibration**
   - "Set Scale" menu item (Manual Alignment Mode).
-  - Dimmed map background and green crosshair overlays (1 inch reference).
+  - Dimmed map background and green grid intersection crosses (with black outline).
   - "Calibration View" isolation: Resets view to base scale/orientation during calibration.
 - [x] **Phase 3: Interaction Refinement**
-  - **Fixed Pivot Zoom**: Zoom interactions scale around screen center.
+  - **Anchor and Scale**: Zoom interactions during calibration pivot around the Grid Origin (Anchor), allowing precise alignment without drift.
   - **Rotation Fix**: Coordinate transforms correctly handle map rotation.
   - **Zoom 1:1**: Menu item to reset user zoom to calibrated base scale.
 - [x] **Phase 4: Robustness**

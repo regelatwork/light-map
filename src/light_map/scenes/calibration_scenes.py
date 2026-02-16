@@ -48,7 +48,7 @@ class FlashCalibrationScene(Scene):
         self._stage_start_time = time.monotonic()
         self._current_level_idx = 0
         self._results = {}
-        # self.token_tracker.debug_mode = self.context.app_config.debug_mode
+        self.token_tracker.debug_mode = self.context.debug_mode
 
     def update(
         self, inputs: List[HandInput], current_time: float

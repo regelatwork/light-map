@@ -130,3 +130,12 @@ def test_render_flash_levels(mock_full_like, mock_app_context):
             mock_full_like.assert_not_called()
 
 
+def test_debug_mode_propagation(mock_app_context):
+    """Verify that debug mode is propagated to TokenTracker."""
+    mock_app_context.debug_mode = True
+    scene = FlashCalibrationScene(mock_app_context)
+    
+    scene.on_enter()
+    assert scene.token_tracker.debug_mode is True
+
+

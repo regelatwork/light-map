@@ -98,6 +98,9 @@ class ScanningScene(Scene):
         map_system = self.context.map_system
         map_config = self.context.map_config_manager
 
+        # Update debug mode from context
+        self.token_tracker.debug_mode = self.context.debug_mode
+
         grid_spacing = 0.0
         grid_origin_x = 0.0
         grid_origin_y = 0.0

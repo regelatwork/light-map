@@ -15,6 +15,7 @@ def mock_app_context():
     app_config = AppConfig(width=1920, height=1080, projector_matrix=np.eye(3))
     mock_context = MagicMock(spec=AppContext)
     mock_context.app_config = app_config
+    mock_context.projector_matrix = np.eye(3)
     # Configure nested mocks
     mock_context.map_config_manager = MagicMock()
     mock_context.map_config_manager.get_flash_intensity.return_value = 255
@@ -82,3 +83,18 @@ def test_render_flash(mock_app_context):
         frame = np.zeros((100, 100, 3), dtype=np.uint8)
         rendered_frame = scene.render(frame)
         assert np.all(rendered_frame == 255)
+
+
+def test_debug_mode_propagation(mock_app_context):
+    """Verify that debug mode is propagated to TokenTracker."""
+    mock_app_context.debug_mode = True
+    scene = ScanningScene(mock_app_context)
+    
+    # Mock TokenTracker
+    with patch.object(scene.token_tracker, "detect_tokens") as mock_detect:
+        frame = np.zeros((100, 100, 3), dtype=np.uint8)
+        
+        # Manually trigger detection logic
+        scene._detect_and_save_tokens(frame)
+        
+        assert scene.token_tracker.debug_mode is True

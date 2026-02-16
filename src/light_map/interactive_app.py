@@ -844,21 +844,24 @@ class InteractiveApp:
                 self.calib_flash_start_time = current_time
 
         elif self.calib_flash_stage == num_levels:  # Analysis
-            if not self.calib_flash_results:
-                print("Calibration failed: no results captured.")
-                optimal_intensity = 255
+            non_zero_results = {
+                i: c for i, c in self.calib_flash_results.items() if c > 0
+            }
+
+            if not non_zero_results:
+                print("Calibration failed: no non-zero token counts found.")
+                optimal_intensity = 128  # Fallback
             else:
                 from collections import Counter
-                counts = list(self.calib_flash_results.values())
-                if not counts:
-                    optimal_intensity = 128
-                else:
-                    most_common_count = Counter(counts).most_common(1)[0][0]
-                    stable_intensities = [
-                        i for i, c in self.calib_flash_results.items() if c == most_common_count
-                    ]
-                    stable_intensities.sort()
-                    optimal_intensity = stable_intensities[len(stable_intensities) // 2]
+
+                counts = list(non_zero_results.values())
+                most_common_count = Counter(counts).most_common(1)[0][0]
+
+                stable_intensities = [
+                    i for i, c in non_zero_results.items() if c == most_common_count
+                ]
+                stable_intensities.sort()
+                optimal_intensity = stable_intensities[len(stable_intensities) // 2]
 
             self.map_config.set_flash_intensity(optimal_intensity)
             print(f"Calibration complete. Optimal intensity: {optimal_intensity}")

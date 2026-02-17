@@ -48,6 +48,8 @@ class Camera:
         else:
             print(f"Opening standard camera index {self.index}...")
             self.cap = cv2.VideoCapture(self.index)
+            self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, self.width)
+            self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, self.height)
 
         if not self.cap.isOpened():
             raise RuntimeError("Failed to open camera.")

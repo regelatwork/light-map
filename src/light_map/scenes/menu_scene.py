@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, Any, List, Optional
 
 import numpy as np
 
-from light_map.common_types import GestureType, MenuActions, SceneId
+from light_map.common_types import GestureType, MenuActions, SceneId, TokenDetectionAlgorithm
 from light_map.core.scene import HandInput, Scene, SceneTransition
 from light_map.input_manager import InputManager
 from light_map.menu_builder import build_root_menu
@@ -102,6 +102,17 @@ class MenuScene(Scene):
                 return SceneTransition(SceneId.SCANNING)
 
             self.context.notifications.add_notification("Load a map before scanning.")
+        elif action == MenuActions.SCAN_ALGORITHM:
+            current = self.context.map_config_manager.get_detection_algorithm()
+            new_algo = (
+                TokenDetectionAlgorithm.STRUCTURED_LIGHT
+                if current == TokenDetectionAlgorithm.FLASH
+                else TokenDetectionAlgorithm.FLASH
+            )
+            self.context.map_config_manager.set_detection_algorithm(new_algo)
+            # Rebuild menu to update title
+            new_root = build_root_menu(self.context.map_config_manager)
+            self.menu_system.set_root_menu(new_root)
         elif action == MenuActions.EXIT:
             sys.exit(0)
         # --- Actions that modify state but don't transition ---

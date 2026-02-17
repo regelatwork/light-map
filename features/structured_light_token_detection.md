@@ -18,58 +18,53 @@ The algorithm relies on the geometric relationship between the camera and the pr
 ## 3. Detailed Technical Specifications
 
 ### 3.1 Pattern Generation (`get_scan_pattern`)
-The tracker generates a deterministic dot grid to ensure we know exactly where every dot *should* be.
+The tracker generates a **Jittered Grid**. This combines the uniform coverage of a grid with the non-periodicity of random noise, preventing "aliasing" (ghosting) where shifted dots land on neighbors.
 
-*   **Parameters**: `width`, `height`, `spacing=40`.
+*   **Parameters**: `width`, `height`, `ppi`.
+*   **Spacing**: `spacing = max(20, int(ppi * 0.4))`.
+*   **Jitter**: `max_jitter = spacing // 2 - 2`.
 *   **Algorithm**:
-    1.  Create a black image: `img = np.zeros((height, width), dtype=np.uint8)`.
-    2.  Calculate start offsets: `ox, oy = spacing // 2, spacing // 2`.
-    3.  Iterate:
-        ```python
-        expected_points = []
-        for y in range(oy, height, spacing):
-            for x in range(ox, width, spacing):
-                cv2.circle(img, (x, y), radius=2, color=255, thickness=-1)
-                expected_points.append((x, y))
-        ```
-    4.  The `expected_points` list is used during detection for comparison.
+    1.  Create black image.
+    2.  Iterate grid positions `(gx, gy)`.
+    3.  Add random offset: `x = gx + randint(-max_jitter, max_jitter)`, `y = gy + randint(-max_jitter, max_jitter)`.
+    4.  Store `expected_points` (Projector Space).
+    5.  Draw dots.
 
-### 3.2 Dot Detection (Camera Frame)
-1.  **Preprocessing**: Apply a simple threshold to find the white dots against the blacked-out map.
-    ```python
-    _, thresh = cv2.threshold(gray_frame, 200, 255, cv2.THRESH_BINARY)
-    ```
-2.  **Centroid Extraction**: Use `cv2.connectedComponentsWithStats` to find the precise center of each observed dot.
-    ```python
-    num_labels, labels, stats, centroids = cv2.connectedComponentsWithStats(thresh)
-    # Filter by area (e.g., stats[i, cv2.CC_STAT_AREA]) to ignore noise
-    observed_cam_pts = centroids[1:] # Skip background label 0
-    ```
+### 3.2 Detection Pipeline (Camera Frame)
+1.  **Capture & Difference**:
+    *   Capture `Frame_Dark` and `Frame_Pattern`.
+    *   `diff = Frame_Pattern - Frame_Dark`.
+    *   Threshold to find white dots.
+2.  **Centroid Extraction**:
+    *   Get centroids of all blobs: `observed_points_cam` (Camera Space).
+3.  **Transform**:
+    *   Convert `observed_points_cam` $\to$ `observed_points_proj` using `projector_matrix`.
 
-### 3.3 Shift Detection & Math
-1.  **Transform to Projector Space**:
-    Apply the homography to the camera centroids to find where they "land" in the projector's 2D coordinate system.
-    ```python
-    # pts_cam is (N, 1, 2)
-    pts_proj_observed = cv2.perspectiveTransform(pts_cam, projector_matrix)
-    ```
-2.  **Neighbor Matching**:
-    For each `p_obs` in `pts_proj_observed`, find the nearest `p_exp` in the generated `expected_points`. 
-    *Note: Since the grid is regular, this can be done in $O(1)$ by rounding:*
-    ```python
-    gx = round((p_obs.x - ox) / spacing)
-    gy = round((p_obs.y - oy) / spacing)
-    p_exp = (ox + gx * spacing, oy + gy * spacing)
-    ```
-3.  **Disparity Calculation**:
-    Calculate the Euclidean distance: $D = \sqrt{(x_{obs} - x_{exp})^2 + (y_{obs} - y_{exp})^2}$
-4.  **Thresholding**:
-    A point is marked as **Shifted** if $D > \text{threshold}$ (e.g., 8 pixels).
-    *   **Rationale**: Small $D$ (1-3px) is likely jitter or minor calibration error. Large $D$ (>5px) indicates the dot hit a 3D object.
+### 3.3 Token Identification (Occlusion + Disparity)
+Instead of relying solely on missing floor points, we combine two signals for robustness:
+
+1.  **Strict Disparity Check (Backward Check)**:
+    *   For every **Observed Point** (in Projector Space), is it far from *all* **Expected Points**?
+    *   *Logic*: If observed point $P_{obs}$ has $dist(P_{obs}, P_{exp}) > 3.0$ for all $P_{exp}$, then it is likely on top of an object (shifted by parallax).
+    *   *Why this works*: On the floor, dots align perfectly. On a token, the projection shifts. Because of the **jitter**, a shifted dot has a near-zero probability of landing exactly on a neighbor's expected position.
+    *   Result: `shifted_points` (High confidence object points).
+
+2.  **Occlusion Check (Forward Check)**:
+    *   For every **Expected Point** (in Projector Space), is there an **Observed Point** nearby?
+    *   *Logic*: If expected point $P_{exp}$ has no $P_{obs}$ within $3.0$ pixels, then the floor at that location is **Occluded** (potentially by a token).
+    *   Result: `occluded_zones` (Areas where floor is missing).
+
+3.  **Consensus**:
+    *   A valid token should ideally show both signals: we see points where they shouldn't be (`shifted_points`) AND don't see points where they should be (`occluded_zones`).
+    *   However, for implementation simplicity, we primarily cluster `shifted_points`. If a `shifted_point` cluster does not overlap with an `occluded_zone` (meaning we still see the floor underneath it?), it might be a reflection artifact and can be discarded.
+
+### 3.4 Clustering
+1.  Group the `shifted_points` into clusters (tokens).
 
 ### 3.4 Token Extraction
-1.  **Clustering**: Shifted points are grouped using a distance-based cluster (e.g., Euclidean distance between points < 1.5 * spacing). A single token (1" diameter) will typically intercept multiple dots.
-2.  **Filtering**: Clusters with too few points are discarded as noise.
+1.  **Clustering**: Group shifted points into candidate tokens.
+    *   *Algorithm*: Iterate through shifted points. For each point, check if it belongs to an existing cluster (distance < `1.5 * spacing`). If yes, add to cluster. If no, start new cluster. Merge overlapping clusters if necessary.
+2.  **Filtering**: Discard clusters with $< 2$ points (noise/edge cases).
 3.  **Centroid**: The final `Token.world_x, world_y` is the mean of the cluster's coordinates.
 
 ## 4. Implementation Plan
@@ -82,14 +77,20 @@ The tracker generates a deterministic dot grid to ensure we know exactly where e
     *   **Class**: `GlobalMapConfig`: Add `detection_algorithm: TokenDetectionAlgorithm`.
 
 ### 4.2 Token Tracker Refactoring (`src/light_map/token_tracker.py`)
-*   Refactor `detect_tokens` to dispatch based on the selected algorithm.
-*   Implement `_detect_flash(frame, ...)`: Existing logic.
-*   Implement `_detect_dot_grid(frame, ...)`: The disparity logic described above.
-*   Add `get_scan_pattern(algorithm, width, height)` to generate the projection image.
+*   Refactor `detect_tokens` to accept `frame_pattern` and `frame_dark`.
+*   Implement `_detect_dot_grid(frame_pattern, frame_dark, ...)`: The disparity logic.
+*   Add `get_scan_pattern(algorithm, width, height, ppi)` to generate the projection image.
 
 ### 4.3 Scene Updates (`src/light_map/scenes/scanning_scene.py`)
-*   Update the state machine to ask `TokenTracker` for the "Scan Pattern" image.
-*   **Stage Update**: Ensure the map is blacked out during `STRUCTURED_LIGHT` projection to maximize dot contrast.
+*   **State Machine Update**: The scanning sequence must be strictly timed to handle projector/camera latency.
+    *   `ScanStage.PREPARE_DARK`: Project black.
+    *   `ScanStage.WAIT_DARK`: Wait 500ms.
+    *   `ScanStage.CAPTURE_DARK`: Capture frame.
+    *   `ScanStage.PREPARE_PATTERN`: Project pattern.
+    *   `ScanStage.WAIT_PATTERN`: Wait 500ms.
+    *   `ScanStage.CAPTURE_PATTERN`: Capture frame.
+    *   `ScanStage.PROCESS`: Run detection.
+*   **Rendering**: `ScanningScene.render` needs to return the correct image (black or pattern) based on the current stage.
 
 ### 4.4 UI Integration (`src/light_map/menu_builder.py`)
 *   Add a "Scan Algorithm" toggle in the "Settings" or "Session" menu.
@@ -107,13 +108,31 @@ The tracker generates a deterministic dot grid to ensure we know exactly where e
 
 ### 6.1 Unit Tests
 *   **`tests/test_token_tracker.py`**:
-    *   **Pattern Generation**: Verify `get_scan_pattern` returns correct dimensions and dot counts.
-    *   **Synthetic Detection**: Mock `projector_matrix` and a frame where one dot is manually shifted. Verify 1 token is detected.
-    *   **Noise Test**: Verify 0 detections on a perfectly aligned flat frame.
-*   **`tests/test_map_config.py`**: Verify persistence of the `detection_algorithm` setting.
+    *   **Pattern Generation**: Verify `get_scan_pattern` adapts density to PPI.
+    *   **Synthetic Detection**: Mock `projector_matrix` and input frames (pattern & dark). Verify subtraction works and shifts are detected.
+*   **`tests/test_scanning_scene.py`**: Verify the state machine transitions and timing delays (using mocked time).
 
 ### 6.2 Integration Tests
 *   **Manual**:
     1.  Toggle to `STRUCTURED_LIGHT`.
-    2.  Place a token, verify detection.
-    3.  Verify detection works even if token color matches map color.
+    2.  Place a token.
+    3.  Verify detection works even in moderate ambient light (due to background subtraction).
+
+## 7. Alternatives Considered
+
+### 7.1 Digital Image Correlation (DIC)
+We considered using Full-Field Digital Image Correlation to compute a dense displacement map.
+
+*   **Pros**:
+    *   **Dense Depth Map**: Provides displacement vectors for every pixel, allowing detection of object shape/volume rather than just points.
+    *   **Sub-pixel Accuracy**: High precision for subtle deformations.
+*   **Cons**:
+    *   **Computational Cost**: Full-field 2D correlation (FFT-based or sliding window) is computationally expensive ($O(N \log N)$ or $O(N^2)$). It risks violating the <1s processing budget on constrained hardware (Raspberry Pi 4) compared to the $O(1)$ lookup of the dot grid.
+    *   **Edge Discontinuities**: Standard DIC assumes surface continuity. It struggles with the sharp step-edges of tokens on a flat map, often producing noise at the very boundaries we need to detect.
+    *   **Focus Sensitivity**: DIC relies on high-frequency speckle patterns. If the projector focus is soft (common in tabletop setups with varying heights), contrast drops and correlation fails.
+    *   **Lighting Sensitivity**: Uniform speckle patterns are more easily washed out by ambient light than high-contrast, discrete dots.
+
+**Decision**: We chose **Sparse Dot Grid Disparity** because:
+1.  **Binary Goal**: We only need to detect *presence* and *location*, not surface topology.
+2.  **Performance**: Centroid extraction is extremely fast and scalable.
+3.  **Robustness**: Discrete dots are more robust to defocus and ambient light than dense speckle patterns.

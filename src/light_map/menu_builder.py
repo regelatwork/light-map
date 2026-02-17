@@ -171,6 +171,11 @@ def build_root_menu(map_config: MapConfigManager) -> MenuItem:
                         action_id=MenuActions.LOAD_SESSION,
                         should_close_on_trigger=True,
                     ),
+                    MenuItem(
+                        title=f"Algorithm: {map_config.get_detection_algorithm()}",
+                        action_id=MenuActions.SCAN_ALGORITHM,
+                        should_close_on_trigger=False,
+                    ),
                 ],
             ),
             MenuItem(

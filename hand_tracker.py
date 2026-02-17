@@ -10,7 +10,7 @@ import time
 sys.path.insert(0, os.path.abspath("src"))
 
 from light_map.camera import Camera
-from light_map.common_types import MenuActions
+from light_map.common_types import MenuActions, SceneId, TokenDetectionAlgorithm
 from light_map.interactive_app import InteractiveApp, AppConfig
 from light_map.map_config import MapConfigManager
 from light_map.calibration_logic import run_calibration_sequence
@@ -27,6 +27,9 @@ def main():
     )
     parser.add_argument(
         "--map", type=str, help="Path to SVG map file to load (legacy)", default=None
+    )
+    parser.add_argument(
+        "--action", type=str, help="MenuAction to execute on startup", default=None
     )
     args = parser.parse_args()
 
@@ -75,6 +78,7 @@ def main():
         width=screen_w,
         height=screen_h,
         projector_matrix=transformation_matrix,
+        projector_matrix_resolution=(screen_w, screen_h),
         map_search_patterns=map_sources,
     )
     app = InteractiveApp(config)
@@ -117,6 +121,26 @@ def main():
 
     try:
         with Camera() as cam:
+            # --- Resolution Mismatch Check ---
+            # Verify that runtime camera resolution matches calibration resolution
+            # to prevent coordinate expansion/shrinkage issues.
+            cam_w, cam_h = cam.width, cam.height
+            calib_w, calib_h = app.config.projector_matrix_resolution
+            
+            if calib_w > 0 and (cam_w != calib_w or cam_h != calib_h):
+                 print("\n" + "!" * 60)
+                 print(f"CRITICAL WARNING: Camera Resolution Mismatch!")
+                 print(f"  Runtime:     {cam_w}x{cam_h}")
+                 print(f"  Calibration: {calib_w}x{calib_h}")
+                 print("  The projector matrix will map points incorrectly.")
+                 print("  PLEASE RE-CALIBRATE: python3 projector_calibration.py")
+                 print("!" * 60 + "\n")
+                 
+                 # Optional: We could try to auto-scale the matrix here, but it's risky
+                 # float_scale_x = cam_w / calib_w
+                 # float_scale_y = cam_h / calib_h
+                 # But homography isn't just a scale. 
+            
             # Initialize Pipeline
             pipeline = CameraPipeline(cam, hands)
             pipeline.start()
@@ -135,13 +159,44 @@ def main():
                     if data.frame_id > last_processed_id:
                         last_processed_id = data.frame_id
 
-                        # C. Orchestrate Logic
-                        output_image, actions = app.process_frame(
-                            data.frame, data.landmarks
-                        )
+                        if args.action and last_processed_id == 0:
+                            print(f"Executing Startup Action: {args.action}")
+                            
+                            # Manually Handle Actions (since process_frame doesn't ingest them)
+                            if args.action == MenuActions.SCAN_SESSION:
+                                if app.map_system.is_map_loaded():
+                                    print("Map Loaded. Starting Scan Sequence.")
+                                    app.current_scene.on_exit()
+                                    app.current_scene = app.scenes[SceneId.SCANNING]
+                                    app.current_scene.on_enter()
+                                else:
+                                    print("Error: Cannot start scan. No map loaded.")
+                                    
+                            elif args.action == MenuActions.SCAN_ALGORITHM:
+                                current = app.map_config.get_detection_algorithm()
+                                new_algo = (
+                                    TokenDetectionAlgorithm.STRUCTURED_LIGHT
+                                    if current == TokenDetectionAlgorithm.FLASH
+                                    else TokenDetectionAlgorithm.FLASH
+                                )
+                                print(f"Toggling Scan Algorithm: {current} -> {new_algo}")
+                                app.map_config.set_detection_algorithm(new_algo)
+                                # Force reload menu to update UI text if needed (though visual only)
+                                if isinstance(app.current_scene, SceneId.MENU):
+                                    app.current_scene.on_enter()
+
+                            # Process the frame normally
+                            output_image, actions = app.process_frame(
+                                data.frame, data.landmarks
+                            )
+                        else:
+                            output_image, actions = app.process_frame(
+                                data.frame, data.landmarks
+                            )
 
                         # Update Debug View if requested
-                        if app.debug_mode:
+                        should_hide_overlays = getattr(app.current_scene, "should_hide_overlays", False)
+                        if app.debug_mode and not should_hide_overlays:
                             cv2.putText(
                                 output_image,
                                 f"Pipe FPS: {data.fps:.1f}",

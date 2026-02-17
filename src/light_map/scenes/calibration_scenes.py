@@ -78,7 +78,7 @@ class FlashCalibrationScene(Scene):
             if self._capture_frame and self.context.last_camera_frame is not None:
                 intensity = self._test_levels[self._current_level_idx]
                 tokens = self.token_tracker.detect_tokens(
-                    frame_white=self.context.last_camera_frame,
+                    frame_pattern=self.context.last_camera_frame,
                     projector_matrix=self.context.projector_matrix,
                     map_system=self.context.map_system,
                 )

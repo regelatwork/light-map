@@ -92,9 +92,58 @@ class MenuSystem:
         return self._last_state
 
     def set_root_menu(self, new_root: MenuItem):
-        self.root = new_root
-        # Reset navigation if hidden or if we force a reset
+        # If hidden, just reset completely
         if self.state == MenuSystemState.HIDDEN:
+            self.root = new_root
+            self.current_node = self.root
+            self.node_stack.clear()
+            self.page_index = 0
+            return
+
+        # If active, attempt to preserve position by traversing the new tree
+        # 1. Capture current path (titles)
+        path_titles = [n.title for n in self.node_stack]
+        path_titles.append(self.current_node.title)
+
+        # 2. Traverse new tree
+        self.root = new_root
+        
+        new_node_stack: List[MenuItem] = []
+        curr = new_root
+        
+        # Verify root matches first item in path
+        if not path_titles or new_root.title != path_titles[0]:
+            # Root mismatch or empty path, fallback to reset
+            self.current_node = self.root
+            self.node_stack.clear()
+            self.page_index = 0
+            return
+
+        # Traverse the rest of the path
+        match_success = True
+        for title in path_titles[1:]:
+            found_child = None
+            for child in curr.children:
+                if child.title == title:
+                    found_child = child
+                    break
+            
+            if found_child:
+                new_node_stack.append(curr)
+                curr = found_child
+            else:
+                match_success = False
+                break
+        
+        if match_success:
+            self.node_stack = new_node_stack
+            self.current_node = curr
+            # We keep page_index, but should clamp it just in case
+            # For simplicity, we can reset it or keep it. resetting is safer for dynamic lists.
+            # But for a toggle, keeping it is better UX.
+            # self.page_index = 0 
+        else:
+            # Fallback to root if path lost
             self.current_node = self.root
             self.node_stack.clear()
             self.page_index = 0

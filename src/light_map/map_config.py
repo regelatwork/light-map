@@ -5,7 +5,7 @@ import datetime
 import numpy as np
 from dataclasses import asdict, dataclass, field
 from typing import Dict, Optional, List
-from light_map.common_types import ViewportState
+from light_map.common_types import ViewportState, TokenDetectionAlgorithm
 from light_map.session_manager import SessionManager
 
 STATE_FILE = "map_state.json"
@@ -29,6 +29,7 @@ class GlobalMapConfig:
     projector_ppi: float = 96.0
     flash_intensity: int = 255
     last_used_map: Optional[str] = None
+    detection_algorithm: TokenDetectionAlgorithm = TokenDetectionAlgorithm.FLASH
 
 
 @dataclass
@@ -56,6 +57,9 @@ class MapConfigManager:
                 projector_ppi=global_data.get("projector_ppi", 96.0),
                 flash_intensity=global_data.get("flash_intensity", 255),
                 last_used_map=global_data.get("last_used_map"),
+                detection_algorithm=TokenDetectionAlgorithm(
+                    global_data.get("detection_algorithm", "FLASH")
+                ),
             )
 
             maps = {}
@@ -117,6 +121,13 @@ class MapConfigManager:
 
     def set_flash_intensity(self, intensity: int):
         self.data.global_settings.flash_intensity = max(0, min(255, intensity))
+        self.save()
+
+    def get_detection_algorithm(self) -> TokenDetectionAlgorithm:
+        return self.data.global_settings.detection_algorithm
+
+    def set_detection_algorithm(self, algorithm: TokenDetectionAlgorithm):
+        self.data.global_settings.detection_algorithm = algorithm
         self.save()
 
     def get_map_viewport(self, map_name: str) -> ViewportState:

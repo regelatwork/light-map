@@ -1,6 +1,6 @@
 from enum import StrEnum
 from dataclasses import dataclass, field
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
 import numpy as np
 
@@ -15,6 +15,11 @@ class GestureType(StrEnum):
     SHAKA = "Shaka"
     UNKNOWN = "Unknown"
     NONE = "None"
+
+
+class TokenDetectionAlgorithm(StrEnum):
+    FLASH = "FLASH"
+    STRUCTURED_LIGHT = "STRUCTURED_LIGHT"
 
 
 class MenuActions(StrEnum):
@@ -36,6 +41,7 @@ class MenuActions(StrEnum):
     SCAN_SESSION = "SCAN_SESSION"
     LOAD_SESSION = "LOAD_SESSION"
     CALIBRATE_FLASH = "CALIBRATE_FLASH"
+    SCAN_ALGORITHM = "SCAN_ALGORITHM"
 
 
 class SceneId(StrEnum):
@@ -55,6 +61,7 @@ class AppConfig:
     width: int
     height: int
     projector_matrix: np.ndarray
+    projector_matrix_resolution: Tuple[int, int] = (1920, 1080)
     map_search_patterns: List[str] = field(default_factory=list)
 
 

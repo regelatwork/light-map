@@ -14,9 +14,10 @@ from light_map.common_types import MenuActions, SceneId, TokenDetectionAlgorithm
 from light_map.interactive_app import InteractiveApp, AppConfig
 from light_map.map_config import MapConfigManager
 from light_map.calibration_logic import run_calibration_sequence
+from light_map.display_utils import get_screen_resolution
 from light_map.camera_pipeline import CameraPipeline
 
-from light_map.projector import generate_calibration_pattern, ProjectorDistortionModel
+from light_map.projector import ProjectorDistortionModel
 
 
 def main():
@@ -40,20 +41,22 @@ def main():
     calibration_file = "projector_calibration.npz"
 
     # Helper to load calibration
-    def load_calib():
+    def load_calib(default_screen_w, default_screen_h):
         if not os.path.exists(calibration_file):
-            print(f"Warning: {calibration_file} not found. Using default resolution.")
-            return None, 1920, 1080, None
+            print(
+                f"Warning: {calibration_file} not found. Using default camera resolution."
+            )
+            return None, 2304, 1296, None
         try:
             with np.load(calibration_file) as data:
                 if "projector_matrix" not in data:
                     print("Error: Invalid calibration file (missing projector_matrix).")
-                    return None, 1920, 1080, None
+                    return None, 2304, 1296, None
                 matrix = data["projector_matrix"]
                 if "resolution" in data:
                     w, h = data["resolution"]
                 else:
-                    w, h = 1920, 1080
+                    w, h = 2304, 1296
 
                 model = None
                 if "camera_points" in data and "projector_points" in data:
@@ -65,16 +68,21 @@ def main():
                 return matrix, w, h, model
         except Exception as e:
             print(f"Error loading calibration: {e}")
-            return None, 1920, 1080, None
+            return None, 2304, 1296, None
 
-    transformation_matrix, screen_w, screen_h, dist_model = load_calib()
+    native_screen_w, native_screen_h = get_screen_resolution()
+    print(f"Hardware Screen Resolution: {native_screen_w}x{native_screen_h}")
+
+    transformation_matrix, cam_res_w, cam_res_h, dist_model = load_calib(
+        native_screen_w, native_screen_h
+    )
 
     if transformation_matrix is None:
         print("Starting uncalibrated (or using defaults). Please calibrate via menu.")
         # Create a dummy identity matrix if calibration missing, so app doesn't crash
         transformation_matrix = np.eye(3, dtype=np.float32)
 
-    print(f"Calibration loaded. Resolution: {screen_w}x{screen_h}")
+    print(f"Calibration loaded. Camera Resolution: {cam_res_w}x{cam_res_h}")
 
     # Register Maps
     map_sources = args.maps
@@ -86,10 +94,10 @@ def main():
 
     # 2. Setup App
     config = AppConfig(
-        width=screen_w,
-        height=screen_h,
+        width=native_screen_w,
+        height=native_screen_h,
         projector_matrix=transformation_matrix,
-        projector_matrix_resolution=(screen_w, screen_h),
+        projector_matrix_resolution=(cam_res_w, cam_res_h),
         map_search_patterns=map_sources,
         distortion_model=dist_model,
     )
@@ -216,7 +224,7 @@ def main():
                             cv2.putText(
                                 output_image,
                                 f"Pipe FPS: {data.fps:.1f}",
-                                (10, screen_h - 60),
+                                (10, native_screen_h - 60),
                                 cv2.FONT_HERSHEY_SIMPLEX,
                                 1,
                                 (0, 255, 255),
@@ -239,7 +247,9 @@ def main():
                                 pipeline.stop()
 
                                 new_matrix = run_calibration_sequence(
-                                    cam, width=screen_w, height=screen_h
+                                    cam,
+                                    projector_width=native_screen_w,
+                                    projector_height=native_screen_h,
                                 )
 
                                 if new_matrix is not None:
@@ -247,13 +257,23 @@ def main():
                                     np.savez(
                                         calibration_file,
                                         projector_matrix=new_matrix,
-                                        resolution=np.array([screen_w, screen_h]),
+                                        resolution=np.array([cam.width, cam.height]),
+                                        camera_resolution=np.array(
+                                            [cam.width, cam.height]
+                                        ),
+                                        projector_resolution=np.array(
+                                            [native_screen_w, native_screen_h]
+                                        ),
                                     )
                                     print("Reloading application configuration...")
                                     new_config = AppConfig(
-                                        width=screen_w,
-                                        height=screen_h,
+                                        width=native_screen_w,
+                                        height=native_screen_h,
                                         projector_matrix=new_matrix,
+                                        projector_matrix_resolution=(
+                                            cam.width,
+                                            cam.height,
+                                        ),
                                     )
                                     app.reload_config(new_config)
                                 else:

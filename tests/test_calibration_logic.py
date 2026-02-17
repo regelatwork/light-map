@@ -36,7 +36,9 @@ def test_run_calibration_sequence_success(mock_cv2, mock_camera, mock_projector_
     mock_gen, mock_compute = mock_projector_utils
 
     # Run
-    result = run_calibration_sequence(mock_camera, width=1920, height=1080)
+    result = run_calibration_sequence(
+        mock_camera, projector_width=1920, projector_height=1080
+    )
 
     # Verify
     assert result is not None

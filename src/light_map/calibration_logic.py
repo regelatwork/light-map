@@ -7,7 +7,11 @@ from .projector import generate_calibration_pattern, compute_projector_homograph
 
 
 def run_calibration_sequence(
-    camera: Camera, width: int = 1920, height: int = 1080, rows: int = 6, cols: int = 9
+    camera: Camera,
+    projector_width: int = 1920,
+    projector_height: int = 1080,
+    rows: int = 6,
+    cols: int = 9,
 ) -> Optional[Tuple[np.ndarray, np.ndarray, np.ndarray]]:
     """
     Runs the projector calibration sequence using an existing camera instance.
@@ -20,7 +24,9 @@ def run_calibration_sequence(
 
     try:
         # Generate Pattern
-        pattern_img, params = generate_calibration_pattern(width, height, rows, cols)
+        pattern_img, params = generate_calibration_pattern(
+            projector_width, projector_height, rows, cols
+        )
 
         cv2.imshow(window_name, pattern_img)
         print("Displaying pattern. Waiting 2 seconds for projector/camera to settle...")

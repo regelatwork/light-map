@@ -10,6 +10,7 @@ from light_map.map_system import MapSystem
 if TYPE_CHECKING:
     from light_map.projector import ProjectorDistortionModel
 
+
 class TokenTracker:
     def __init__(self):
         self.debug_mode = False
@@ -151,7 +152,9 @@ class TokenTracker:
 
         # 4. Extract Observed Centroids
         observed_points_cam = []
-        contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        contours, _ = cv2.findContours(
+            thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE
+        )
         for cnt in contours:
             M = cv2.moments(cnt)
             if M["m00"] > 0 and cv2.contourArea(cnt) > 2:
@@ -185,9 +188,11 @@ class TokenTracker:
             idx = np.argmin(dists)
             nearest = expected_arr[idx]
             shifts.append(np.array(obs_p) - nearest)
-        
+
         median_shift = np.median(np.array(shifts), axis=0)
-        corrected_points = [tuple(np.array(p) - median_shift) for p in observed_points_proj]
+        corrected_points = [
+            tuple(np.array(p) - median_shift) for p in observed_points_proj
+        ]
 
         SHIFT_THRESHOLD = 15.0
         detected_tokens_points = []
@@ -216,15 +221,47 @@ class TokenTracker:
             for cluster in clusters:
                 centroid = np.mean(cluster, axis=0)
                 wx, wy = map_system.screen_to_world(centroid[0], centroid[1])
-                tokens.append(Token(id=token_id, world_x=wx, world_y=wy, confidence=min(1.0, len(cluster)/3.0)))
+                tokens.append(
+                    Token(
+                        id=token_id,
+                        world_x=wx,
+                        world_y=wy,
+                        confidence=min(1.0, len(cluster) / 3.0),
+                    )
+                )
                 token_id += 1
 
         if self.debug_mode:
-            self._handle_structured_light_debug(frame_pattern, projector_matrix, dst_pts, expected_arr, expected_points, tokens, map_system, grid_spacing_svg, grid_origin_x, grid_origin_y, gray)
+            self._handle_structured_light_debug(
+                frame_pattern,
+                projector_matrix,
+                dst_pts,
+                expected_arr,
+                expected_points,
+                tokens,
+                map_system,
+                grid_spacing_svg,
+                grid_origin_x,
+                grid_origin_y,
+                gray,
+            )
 
         return tokens
 
-    def _handle_structured_light_debug(self, frame_pattern, projector_matrix, dst_pts, expected_arr, expected_points, tokens, map_system, grid_spacing_svg, grid_origin_x, grid_origin_y, gray):
+    def _handle_structured_light_debug(
+        self,
+        frame_pattern,
+        projector_matrix,
+        dst_pts,
+        expected_arr,
+        expected_points,
+        tokens,
+        map_system,
+        grid_spacing_svg,
+        grid_origin_x,
+        grid_origin_y,
+        gray,
+    ):
         h, w = frame_pattern.shape[:2]
         debug_img = cv2.warpPerspective(frame_pattern, projector_matrix, (w, h))
         debug_vectors = []
@@ -258,15 +295,42 @@ class TokenTracker:
         mask_rois: Optional[List[Tuple[int, int, int, int]]],
         distortion_model: Optional["ProjectorDistortionModel"] = None,
     ) -> List[Token]:
-        warped_image, markers = self._preprocess_and_find_markers(frame_white, projector_matrix, mask_rois)
+        warped_image, markers = self._preprocess_and_find_markers(
+            frame_white, projector_matrix, mask_rois
+        )
         tokens = self._extract_tokens_from_markers(
-            warped_image, markers, map_system, grid_spacing_svg, grid_origin_x, grid_origin_y, distortion_model=distortion_model
+            warped_image,
+            markers,
+            map_system,
+            grid_spacing_svg,
+            grid_origin_x,
+            grid_origin_y,
+            distortion_model=distortion_model,
         )
         if self.debug_mode:
-            self._save_debug_image(warped_image, markers, tokens, map_system, grid_spacing_svg, grid_origin_x, grid_origin_y)
+            self._save_debug_image(
+                warped_image,
+                markers,
+                tokens,
+                map_system,
+                grid_spacing_svg,
+                grid_origin_x,
+                grid_origin_y,
+            )
         return tokens
 
-    def _save_debug_image(self, base_image, markers, tokens, map_system, grid_spacing_svg, grid_origin_x, grid_origin_y, debug_vectors=None, expected_points=None):
+    def _save_debug_image(
+        self,
+        base_image,
+        markers,
+        tokens,
+        map_system,
+        grid_spacing_svg,
+        grid_origin_x,
+        grid_origin_y,
+        debug_vectors=None,
+        expected_points=None,
+    ):
         debug_img = base_image.copy()
         h, w = debug_img.shape[:2]
 
@@ -279,13 +343,21 @@ class TokenTracker:
                 displacements.append(dist)
                 radial_dists.append(np.linalg.norm(np.array(obs) - np.array([cx, cy])))
                 color = (255, 0, 0) if dist <= 5.0 else (0, 0, 255)
-                cv2.line(debug_img, (int(obs[0]), int(obs[1])), (int(exp[0]), int(exp[1])), color, 2)
-            
+                cv2.line(
+                    debug_img,
+                    (int(obs[0]), int(obs[1])),
+                    (int(exp[0]), int(exp[1])),
+                    color,
+                    2,
+                )
+
             if displacements:
                 d_arr = np.array(displacements)
                 r_arr = np.array(radial_dists)
                 max_r = r_arr.max() if r_arr.size > 0 else 1.0
-                print(f"\n--- Diagnostic Statistics ---\nTotal Points: {len(d_arr)}\nDisplacement: Mean={d_arr.mean():.2f}, Median={np.median(d_arr):.2f}\nZone 3 (Edge): {d_arr[r_arr >= max_r*0.66].mean():.2f}px")
+                print(
+                    f"\n--- Diagnostic Statistics ---\nTotal Points: {len(d_arr)}\nDisplacement: Mean={d_arr.mean():.2f}, Median={np.median(d_arr):.2f}\nZone 3 (Edge): {d_arr[r_arr >= max_r * 0.66].mean():.2f}px"
+                )
 
         if expected_points:
             for ep in expected_points:
@@ -294,20 +366,25 @@ class TokenTracker:
         # Draw Grid, Markers, Tokens
         unique_markers = np.unique(markers)
         for marker_id in unique_markers:
-            if marker_id <= 1: continue
+            if marker_id <= 1:
+                continue
             blob_mask = np.zeros(markers.shape, dtype=np.uint8)
             blob_mask[markers == marker_id] = 255
-            contours, _ = cv2.findContours(blob_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+            contours, _ = cv2.findContours(
+                blob_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE
+            )
             if contours:
                 cv2.drawContours(debug_img, contours, -1, (0, 255, 0), 1)
                 x, y, wr, hr = cv2.boundingRect(contours[0])
-                cv2.rectangle(debug_img, (x, y), (x+wr, y+hr), (255, 0, 0), 1)
+                cv2.rectangle(debug_img, (x, y), (x + wr, y + hr), (255, 0, 0), 1)
 
         for token in tokens:
             sx, sy = map_system.world_to_screen(token.world_x, token.world_y)
             cv2.circle(debug_img, (int(sx), int(sy)), 20, (0, 255, 255), 2)
 
-        filename = f"debug_token_detection_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png"
+        filename = (
+            f"debug_token_detection_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png"
+        )
         cv2.imwrite(filename, debug_img)
 
     def _preprocess_and_find_markers(self, frame_white, projector_matrix, mask_rois):
@@ -318,10 +395,14 @@ class TokenTracker:
                 cv2.rectangle(warped, (mx, my), (mx + mw, my + mh), (0, 0, 0), -1)
         gray = cv2.cvtColor(warped, cv2.COLOR_BGR2GRAY)
         gray = cv2.GaussianBlur(gray, (9, 9), 2)
-        thresh = cv2.adaptiveThreshold(gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY_INV, 101, 10)
+        thresh = cv2.adaptiveThreshold(
+            gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY_INV, 101, 10
+        )
         kernel = np.ones((3, 3), np.uint8)
         opening = cv2.morphologyEx(thresh, cv2.MORPH_OPEN, kernel, iterations=2)
-        closing = cv2.morphologyEx(opening, cv2.MORPH_CLOSE, np.ones((7, 7), np.uint8), iterations=3)
+        closing = cv2.morphologyEx(
+            opening, cv2.MORPH_CLOSE, np.ones((7, 7), np.uint8), iterations=3
+        )
         dist_transform = cv2.distanceTransform(closing, cv2.DIST_L2, 5)
         _, sure_fg = cv2.threshold(dist_transform, 10.0, 255, 0)
         sure_fg = np.uint8(sure_fg)
@@ -331,33 +412,70 @@ class TokenTracker:
         markers[unknown == 255] = 0
         return warped, cv2.watershed(warped, markers)
 
-    def _extract_tokens_from_markers(self, warped_image, markers, map_system, grid_spacing_svg, grid_origin_x, grid_origin_y, distortion_model=None):
+    def _extract_tokens_from_markers(
+        self,
+        warped_image,
+        markers,
+        map_system,
+        grid_spacing_svg,
+        grid_origin_x,
+        grid_origin_y,
+        distortion_model=None,
+    ):
         tokens = []
         id_counter = 1
         found_cells = set()
         gray = cv2.cvtColor(warped_image, cv2.COLOR_BGR2GRAY)
         for marker_id in np.unique(markers):
-            if marker_id <= 1: continue
+            if marker_id <= 1:
+                continue
             blob_mask = np.zeros_like(gray, dtype=np.uint8)
             blob_mask[markers == marker_id] = 255
-            if cv2.countNonZero(blob_mask) < 300: continue
+            if cv2.countNonZero(blob_mask) < 300:
+                continue
             if grid_spacing_svg > 0:
-                self._process_blob_with_grid(blob_mask, map_system, grid_spacing_svg, grid_origin_x, grid_origin_y, tokens, found_cells, id_counter, distortion_model)
+                self._process_blob_with_grid(
+                    blob_mask,
+                    map_system,
+                    grid_spacing_svg,
+                    grid_origin_x,
+                    grid_origin_y,
+                    tokens,
+                    found_cells,
+                    id_counter,
+                    distortion_model,
+                )
                 id_counter = len(tokens) + 1
             else:
-                self._process_blob_with_centroid(blob_mask, map_system, tokens, id_counter, distortion_model)
+                self._process_blob_with_centroid(
+                    blob_mask, map_system, tokens, id_counter, distortion_model
+                )
                 id_counter += 1
         return tokens
 
-    def _process_blob_with_grid(self, blob_mask, map_system, spacing, ox, oy, tokens, found_cells, id_start, distortion_model=None):
+    def _process_blob_with_grid(
+        self,
+        blob_mask,
+        map_system,
+        spacing,
+        ox,
+        oy,
+        tokens,
+        found_cells,
+        id_start,
+        distortion_model=None,
+    ):
         x, y, w, h = cv2.boundingRect(blob_mask)
-        pts = np.float32([[x, y], [x + w, y], [x, y + h], [x + w, y + h]]).reshape(-1, 1, 2)
+        pts = np.float32([[x, y], [x + w, y], [x, y + h], [x + w, y + h]]).reshape(
+            -1, 1, 2
+        )
         world_pts = []
         for p in pts:
             sx, sy = p[0]
-            if distortion_model: sx, sy = distortion_model.correct_theoretical_point(sx, sy)
+            if distortion_model:
+                sx, sy = distortion_model.correct_theoretical_point(sx, sy)
             world_pts.append(map_system.screen_to_world(sx, sy))
-        
+
         min_gx = math.floor((min(p[0] for p in world_pts) - ox) / spacing) - 1
         max_gx = math.ceil((max(p[0] for p in world_pts) - ox) / spacing) + 1
         min_gy = math.floor((min(p[1] for p in world_pts) - oy) / spacing) - 1
@@ -368,20 +486,49 @@ class TokenTracker:
 
         for gx in range(min_gx, max_gx):
             for gy in range(min_gy, max_gy):
-                if (gx, gy) in found_cells: continue
-                cw_pts = [(ox + gx*spacing, oy + gy*spacing), (ox + (gx+1)*spacing, oy + gy*spacing), (ox + (gx+1)*spacing, oy + (gy+1)*spacing), (ox + gx*spacing, oy + (gy+1)*spacing)]
-                cs_pts = np.array([map_system.world_to_screen(p[0], p[1]) for p in cw_pts], dtype=np.int32)
+                if (gx, gy) in found_cells:
+                    continue
+                cw_pts = [
+                    (ox + gx * spacing, oy + gy * spacing),
+                    (ox + (gx + 1) * spacing, oy + gy * spacing),
+                    (ox + (gx + 1) * spacing, oy + (gy + 1) * spacing),
+                    (ox + gx * spacing, oy + (gy + 1) * spacing),
+                ]
+                cs_pts = np.array(
+                    [map_system.world_to_screen(p[0], p[1]) for p in cw_pts],
+                    dtype=np.int32,
+                )
                 c_mask = np.zeros_like(blob_mask)
                 cv2.fillConvexPoly(c_mask, cs_pts, 255)
                 c_area = cv2.countNonZero(c_mask)
-                if c_area > 0 and cv2.countNonZero(cv2.bitwise_and(bbox_mask, c_mask)) / c_area > 0.4:
-                    tokens.append(Token(id=id_start + len(tokens), world_x=ox + (gx+0.5)*spacing, world_y=oy + (gy+0.5)*spacing, grid_x=gx, grid_y=gy, confidence=1.0))
+                if (
+                    c_area > 0
+                    and cv2.countNonZero(cv2.bitwise_and(bbox_mask, c_mask)) / c_area
+                    > 0.4
+                ):
+                    tokens.append(
+                        Token(
+                            id=id_start + len(tokens),
+                            world_x=ox + (gx + 0.5) * spacing,
+                            world_y=oy + (gy + 0.5) * spacing,
+                            grid_x=gx,
+                            grid_y=gy,
+                            confidence=1.0,
+                        )
+                    )
                     found_cells.add((gx, gy))
 
-    def _process_blob_with_centroid(self, blob_mask, map_system, tokens, id_counter, distortion_model=None):
+    def _process_blob_with_centroid(
+        self, blob_mask, map_system, tokens, id_counter, distortion_model=None
+    ):
         M = cv2.moments(blob_mask)
         if M["m00"] > 0:
             cx, cy = M["m10"] / M["m00"], M["m01"] / M["m00"]
-            if distortion_model: cx, cy = distortion_model.correct_theoretical_point(cx, cy)
+            if distortion_model:
+                cx, cy = distortion_model.correct_theoretical_point(cx, cy)
             wx, wy = map_system.screen_to_world(cx, cy)
-            tokens.append(Token(id=id_counter + len(tokens), world_x=wx, world_y=wy, confidence=1.0))
+            tokens.append(
+                Token(
+                    id=id_counter + len(tokens), world_x=wx, world_y=wy, confidence=1.0
+                )
+            )

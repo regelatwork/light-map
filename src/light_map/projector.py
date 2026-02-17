@@ -1,6 +1,6 @@
 import cv2
 import numpy as np
-from typing import Tuple, List, Optional
+from typing import Tuple
 
 
 def generate_calibration_pattern(
@@ -141,6 +141,8 @@ def compute_projector_homography(
     transformation_matrix, _ = cv2.findHomography(camera_points, screen_points)
 
     return transformation_matrix, camera_points, screen_points
+
+
 class ProjectorDistortionModel:
     """
     Handles non-linear correction for projector distortion (barrel/keystone)
@@ -177,7 +179,7 @@ class ProjectorDistortionModel:
 
         # Map (px, py) to residual (dx, dy)
         self.grid_residuals = np.zeros((self.rows, self.cols, 2), dtype=np.float32)
-        
+
         # Sort projector points to map them to the grid index
         # This is a bit robust against jumbled points if they ever occur
         for i in range(len(projector_points)):
@@ -243,9 +245,11 @@ class ProjectorDistortionModel:
         r11 = self.grid_residuals[iy_high, ix_high]
 
         # Bilinear interpolation
-        r = (r00 * (1 - tx) * (1 - ty) +
-             r10 * tx * (1 - ty) +
-             r01 * (1 - tx) * ty +
-             r11 * tx * ty)
+        r = (
+            r00 * (1 - tx) * (1 - ty)
+            + r10 * tx * (1 - ty)
+            + r01 * (1 - tx) * ty
+            + r11 * tx * ty
+        )
 
         return r[0], r[1]

@@ -119,6 +119,10 @@ The ultimate goal of this project is to enable precise mapping between camera an
   - Created `CameraPipeline` to run Camera Capture -> Vision Enhancement -> MediaPipe in a separate thread.
   - Decoupled UI rendering loop from Camera/AI processing latency.
   - Implemented thread-safe data transfer using `VisionData` dataclass.
+- [x] **Phase 3: Camera Resolution Optimization**
+  - Increased camera resolution to native 2304x1296 for improved tracking and calibration.
+  - Decoupled camera resolution from projector resolution.
+  - Implemented dynamic screen resolution detection using `tkinter`.
 
 ## Feature Tracking: Map Grid Scaling (feat/map-grid-scaling)
 

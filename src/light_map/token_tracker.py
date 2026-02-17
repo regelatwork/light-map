@@ -14,10 +14,10 @@ if TYPE_CHECKING:
 class TokenTracker:
     # --- Structured Light Pattern Parameters ---
     SL_SEED = 42
-    SL_DOT_RADIUS = 4
-    SL_EDGE_MARGIN = 8
-    SL_SPACING_FACTOR = 0.8
-    SL_MIN_SPACING = 30
+    SL_DOT_RADIUS = 3
+    SL_EDGE_MARGIN = SL_DOT_RADIUS * 4
+    SL_SPACING_FACTOR = 0.5
+    SL_MIN_SPACING = SL_DOT_RADIUS * 2 * 3
     SL_JITTER_FACTOR = 0.25
 
     # --- Structured Light Detection Parameters ---

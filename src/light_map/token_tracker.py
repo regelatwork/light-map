@@ -262,8 +262,9 @@ class TokenTracker:
         grid_origin_y,
         gray,
     ):
-        h, w = frame_pattern.shape[:2]
-        debug_img = cv2.warpPerspective(frame_pattern, projector_matrix, (w, h))
+        debug_img = cv2.warpPerspective(
+            frame_pattern, projector_matrix, (map_system.width, map_system.height)
+        )
         debug_vectors = []
         for raw_p in dst_pts:
             p = tuple(raw_p[0])
@@ -296,7 +297,11 @@ class TokenTracker:
         distortion_model: Optional["ProjectorDistortionModel"] = None,
     ) -> List[Token]:
         warped_image, markers = self._preprocess_and_find_markers(
-            frame_white, projector_matrix, mask_rois
+            frame_white,
+            projector_matrix,
+            mask_rois,
+            map_system.width,
+            map_system.height,
         )
         tokens = self._extract_tokens_from_markers(
             warped_image,
@@ -387,9 +392,12 @@ class TokenTracker:
         )
         cv2.imwrite(filename, debug_img)
 
-    def _preprocess_and_find_markers(self, frame_white, projector_matrix, mask_rois):
-        h, w = frame_white.shape[:2]
-        warped = cv2.warpPerspective(frame_white, projector_matrix, (w, h))
+    def _preprocess_and_find_markers(
+        self, frame_white, projector_matrix, mask_rois, target_w, target_h
+    ):
+        warped = cv2.warpPerspective(
+            frame_white, projector_matrix, (target_w, target_h)
+        )
         if mask_rois:
             for mx, my, mw, mh in mask_rois:
                 cv2.rectangle(warped, (mx, my), (mx + mw, my + mh), (0, 0, 0), -1)

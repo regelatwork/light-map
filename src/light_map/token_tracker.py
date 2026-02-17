@@ -264,34 +264,68 @@ class TokenTracker:
                         # This expected dot is missing -> likely a token shadow or black material.
                         detected_tokens_points.append(tuple(exp_p))
 
-        # 5. Clustering
+        # 5. Result Generation (Grid-based or Clustering)
         tokens = []
         if detected_tokens_points:
-            clusters = []
-            for p in detected_tokens_points:
-                added = False
+            if grid_spacing_svg > 0:
+                # Group by grid cell for precise adjacent token detection
+                cell_map = {}  # (gx, gy) -> list of points
+                for p in detected_tokens_points:
+                    wx, wy = map_system.screen_to_world(p[0], p[1])
+                    gx = int(math.floor((wx - grid_origin_x) / grid_spacing_svg))
+                    gy = int(math.floor((wy - grid_origin_y) / grid_spacing_svg))
+                    if (gx, gy) not in cell_map:
+                        cell_map[(gx, gy)] = []
+                    cell_map[(gx, gy)].append(p)
+
+                token_id = 1
+                for (gx, gy), cluster in cell_map.items():
+                    # Minimum evidence threshold (e.g. at least 2 points shifted/missing in this cell)
+                    if len(cluster) >= 2:
+                        # Centered in the cell
+                        tokens.append(
+                            Token(
+                                id=token_id,
+                                world_x=grid_origin_x + (gx + 0.5) * grid_spacing_svg,
+                                world_y=grid_origin_y + (gy + 0.5) * grid_spacing_svg,
+                                grid_x=gx,
+                                grid_y=gy,
+                                confidence=min(
+                                    1.0, len(cluster) / self.CONFIDENCE_SCALING
+                                ),
+                            )
+                        )
+                        token_id += 1
+            else:
+                # Fallback to Euclidean clustering for off-grid detection
+                clusters = []
+                for p in detected_tokens_points:
+                    added = False
+                    for cluster in clusters:
+                        centroid = np.mean(cluster, axis=0)
+                        if (
+                            np.linalg.norm(centroid - np.array(p))
+                            < self.CLUSTER_DIST_PX
+                        ):
+                            cluster.append(p)
+                            added = True
+                            break
+                    if not added:
+                        clusters.append([p])
+
+                token_id = 1
                 for cluster in clusters:
                     centroid = np.mean(cluster, axis=0)
-                    if np.linalg.norm(centroid - np.array(p)) < self.CLUSTER_DIST_PX:
-                        cluster.append(p)
-                        added = True
-                        break
-                if not added:
-                    clusters.append([p])
-
-            token_id = 1
-            for cluster in clusters:
-                centroid = np.mean(cluster, axis=0)
-                wx, wy = map_system.screen_to_world(centroid[0], centroid[1])
-                tokens.append(
-                    Token(
-                        id=token_id,
-                        world_x=wx,
-                        world_y=wy,
-                        confidence=min(1.0, len(cluster) / self.CONFIDENCE_SCALING),
+                    wx, wy = map_system.screen_to_world(centroid[0], centroid[1])
+                    tokens.append(
+                        Token(
+                            id=token_id,
+                            world_x=wx,
+                            world_y=wy,
+                            confidence=min(1.0, len(cluster) / self.CONFIDENCE_SCALING),
+                        )
                     )
-                )
-                token_id += 1
+                    token_id += 1
 
         if self.debug_mode:
             self._handle_structured_light_debug(
@@ -430,6 +464,50 @@ class TokenTracker:
             for ep in expected_points:
                 cv2.circle(debug_img, (int(ep[0]), int(ep[1])), 3, (255, 255, 0), -1)
 
+        # Draw Grid
+        if grid_spacing_svg > 0:
+            grid_color = (100, 100, 100)
+            # Find world bounds to draw enough lines
+            p_top_left = map_system.screen_to_world(0, 0)
+            p_top_right = map_system.screen_to_world(w, 0)
+            p_bot_left = map_system.screen_to_world(0, h)
+            p_bot_right = map_system.screen_to_world(w, h)
+
+            min_wx = min(p_top_left[0], p_top_right[0], p_bot_left[0], p_bot_right[0])
+            max_wx = max(p_top_left[0], p_top_right[0], p_bot_left[0], p_bot_right[0])
+            min_wy = min(p_top_left[1], p_top_right[1], p_bot_left[1], p_bot_right[1])
+            max_wy = max(p_top_left[1], p_top_right[1], p_bot_left[1], p_bot_right[1])
+
+            # Draw vertical lines
+            start_gx = int(math.floor((min_wx - grid_origin_x) / grid_spacing_svg))
+            end_gx = int(math.ceil((max_wx - grid_origin_x) / grid_spacing_svg))
+            for gx in range(start_gx, end_gx + 1):
+                wx = grid_origin_x + gx * grid_spacing_svg
+                p1_s = map_system.world_to_screen(wx, min_wy)
+                p2_s = map_system.world_to_screen(wx, max_wy)
+                cv2.line(
+                    debug_img,
+                    (int(p1_s[0]), int(p1_s[1])),
+                    (int(p2_s[0]), int(p2_s[1])),
+                    grid_color,
+                    1,
+                )
+
+            # Draw horizontal lines
+            start_gy = int(math.floor((min_wy - grid_origin_y) / grid_spacing_svg))
+            end_gy = int(math.ceil((max_wy - grid_origin_y) / grid_spacing_svg))
+            for gy in range(start_gy, end_gy + 1):
+                wy = grid_origin_y + gy * grid_spacing_svg
+                p1_s = map_system.world_to_screen(min_wx, wy)
+                p2_s = map_system.world_to_screen(max_wx, wy)
+                cv2.line(
+                    debug_img,
+                    (int(p1_s[0]), int(p1_s[1])),
+                    (int(p2_s[0]), int(p2_s[1])),
+                    grid_color,
+                    1,
+                )
+
         # Draw Grid, Markers, Tokens
         unique_markers = np.unique(markers)
         for marker_id in unique_markers:
@@ -561,6 +639,9 @@ class TokenTracker:
         min_gy = math.floor((min(p[1] for p in world_pts) - oy) / spacing) - 1
         max_gy = math.ceil((max(p[1] for p in world_pts) - oy) / spacing) + 1
 
+        # TODO: A user mentioned that using a bounding box is actually more robust for
+        # token detection than using the precise blob shape. Re-evaluate if we ever move
+        # back to blob-based masking.
         bbox_mask = np.zeros_like(blob_mask)
         cv2.rectangle(bbox_mask, (x, y), (x + w, y + h), 255, -1)
 

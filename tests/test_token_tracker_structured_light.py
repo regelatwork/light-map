@@ -164,3 +164,70 @@ def test_detect_structured_light_with_cluster_shift(tracker, map_system):
 
     assert abs(tx - expected_x) < 2.0
     assert abs(ty - expected_y) < 2.0
+
+
+def test_detect_structured_light_adjacent_tokens_with_grid(tracker, map_system):
+    width, height = 800, 600
+    map_system.width = width
+    map_system.height = height
+    ppi = 100.0
+    grid_spacing = 100.0  # Larger cells to ensure dots
+
+    import random
+
+    random.seed(42)
+    # This will use the staggered grid logic
+    pattern_img, expected_points = tracker.get_scan_pattern(width, height, ppi)
+
+    # Select two adjacent cells that have multiple dots
+    cells_with_dots = {}  # (gx, gy) -> list of points
+    for p in expected_points:
+        gx = int(p[0] // grid_spacing)
+        gy = int(p[1] // grid_spacing)
+        if (gx, gy) not in cells_with_dots:
+            cells_with_dots[(gx, gy)] = []
+        cells_with_dots[(gx, gy)].append(p)
+
+    g1, g2 = None, None
+    for (gx, gy), dots in cells_with_dots.items():
+        if (
+            len(dots) >= 3
+            and (gx + 1, gy) in cells_with_dots
+            and len(cells_with_dots[(gx + 1, gy)]) >= 3
+        ):
+            g1, g2 = (gx, gy), (gx + 1, gy)
+            break
+
+    assert g1 and g2, "Could not find adjacent cells with enough dots for test"
+
+    frame_pattern = pattern_img.copy()
+    # For each cell, shift all its points by a small amount (16px) that keeps them in-cell
+    # 16px shift + 15px threshold < 50px cell width/height usually
+    shift_val = 16
+    for pt in cells_with_dots[g1] + cells_with_dots[g2]:
+        cv2.circle(frame_pattern, pt, 5, (0, 0, 0), -1)
+        sx, sy = pt[0] + shift_val, pt[1] + shift_val
+        cv2.circle(frame_pattern, (sx, sy), 3, (255, 255, 255), -1)
+
+    projector_matrix = np.eye(3, dtype=np.float32)
+    frame_dark = np.zeros((height, width, 3), dtype=np.uint8)
+
+    # Run with grid enabled
+    tokens = tracker.detect_tokens(
+        frame_pattern=frame_pattern,
+        projector_matrix=projector_matrix,
+        map_system=map_system,
+        frame_dark=frame_dark,
+        grid_spacing_svg=grid_spacing,
+        grid_origin_x=0.0,
+        grid_origin_y=0.0,
+        ppi=ppi,
+        algorithm=TokenDetectionAlgorithm.STRUCTURED_LIGHT,
+    )
+
+    # Should detect 2 tokens because they are in different grid cells
+    # (Existing Euclidean clustering would likely merge them as 80px is > 50px cell)
+    assert len(tokens) == 2
+    grid_coords = set((t.grid_x, t.grid_y) for t in tokens)
+    assert g1 in grid_coords
+    assert g2 in grid_coords

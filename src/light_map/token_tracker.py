@@ -12,6 +12,36 @@ if TYPE_CHECKING:
 
 
 class TokenTracker:
+    # --- Structured Light Pattern Parameters ---
+    SL_SEED = 42
+    SL_DOT_RADIUS = 4
+    SL_EDGE_MARGIN = 8
+    SL_SPACING_FACTOR = 0.8
+    SL_MIN_SPACING = 30
+    SL_JITTER_FACTOR = 0.25
+
+    # --- Structured Light Detection Parameters ---
+    SL_MIN_DYNAMIC_THRESH = 40
+    SL_DYNAMIC_THRESH_FACTOR = 0.75
+    SL_MIN_GRAY_VAL = 30
+    SL_MIN_CONTOUR_AREA = 2
+    SL_SHIFT_THRESHOLD_PX = 15.0
+    SL_MISSING_THRESHOLD_PX = 15.0
+
+    # --- Flash Detection Parameters ---
+    FLASH_GAUSSIAN_BLUR = (9, 9)
+    FLASH_ADAPTIVE_BLOCK_SIZE = 101
+    FLASH_ADAPTIVE_C = 10
+    FLASH_MORPH_OPEN_ITER = 2
+    FLASH_MORPH_CLOSE_ITER = 3
+    FLASH_DISTANCE_THRESH = 10.0
+    FLASH_MIN_BLOB_AREA = 300
+
+    # --- Clustering & Result Parameters ---
+    CLUSTER_DIST_PX = 80.0
+    CONFIDENCE_SCALING = 3.0
+    GRID_OVERLAP_THRESHOLD = 0.4
+
     def __init__(self):
         self.debug_mode = False
 
@@ -25,22 +55,22 @@ class TokenTracker:
         img = np.zeros((height, width, 3), dtype=np.uint8)
         expected_points = []
 
-        # Increased spacing to account for low effective resolution (camera seeing small map)
-        spacing = max(30, int(ppi * 0.8))
+        # Spacing to account for effective resolution
+        spacing = max(self.SL_MIN_SPACING, int(ppi * self.SL_SPACING_FACTOR))
 
-        # Constrain jitter to quarter-spacing to guarantee separation
-        max_jitter = max(1, spacing // 4)
+        # Constrain jitter to guarantee separation
+        max_jitter = max(1, int(spacing * self.SL_JITTER_FACTOR))
 
         for y in range(spacing // 2, height, spacing):
             for x in range(spacing // 2, width, spacing):
                 jx = x + random.randint(-max_jitter, max_jitter)
                 jy = y + random.randint(-max_jitter, max_jitter)
 
-                # Ensure within bounds
-                jx = max(0, min(width - 1, jx))
-                jy = max(0, min(height - 1, jy))
+                # Ensure within bounds with margin to avoid straddling the border
+                jx = max(self.SL_EDGE_MARGIN, min(width - 1 - self.SL_EDGE_MARGIN, jx))
+                jy = max(self.SL_EDGE_MARGIN, min(height - 1 - self.SL_EDGE_MARGIN, jy))
 
-                cv2.circle(img, (jx, jy), 4, (255, 255, 255), -1)
+                cv2.circle(img, (jx, jy), self.SL_DOT_RADIUS, (255, 255, 255), -1)
                 expected_points.append((jx, jy))
 
         return img, expected_points
@@ -73,7 +103,7 @@ class TokenTracker:
             algorithm == TokenDetectionAlgorithm.STRUCTURED_LIGHT
             and frame_dark is not None
         ):
-            random.seed(42)
+            random.seed(self.SL_SEED)
             w_proj = map_system.width
             h_proj = map_system.height
             _, expected_points = self.get_scan_pattern(w_proj, h_proj, ppi)
@@ -144,10 +174,12 @@ class TokenTracker:
 
         # 3. Dynamic Thresholding
         min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(gray)
-        if max_val < 30:
+        if max_val < self.SL_MIN_GRAY_VAL:
             thresh = np.zeros_like(gray)
         else:
-            dynamic_thresh = max(40, max_val * 0.75)
+            dynamic_thresh = max(
+                self.SL_MIN_DYNAMIC_THRESH, max_val * self.SL_DYNAMIC_THRESH_FACTOR
+            )
             _, thresh = cv2.threshold(gray, dynamic_thresh, 255, cv2.THRESH_BINARY)
 
         # 4. Extract Observed Centroids
@@ -157,7 +189,7 @@ class TokenTracker:
         )
         for cnt in contours:
             M = cv2.moments(cnt)
-            if M["m00"] > 0 and cv2.contourArea(cnt) > 2:
+            if M["m00"] > 0 and cv2.contourArea(cnt) > self.SL_MIN_CONTOUR_AREA:
                 cx = M["m10"] / M["m00"]
                 cy = M["m01"] / M["m00"]
                 observed_points_cam.append((cx, cy))
@@ -198,19 +230,40 @@ class TokenTracker:
         detected_tokens_points = []
         for i, corr_p in enumerate(corrected_points):
             dists = np.linalg.norm(expected_arr - np.array(corr_p), axis=1)
-            if np.min(dists) > SHIFT_THRESHOLD:
+            if np.min(dists) > self.SL_SHIFT_THRESHOLD_PX:
                 detected_tokens_points.append(observed_points_proj[i])
+
+        # --- Missing Dot Detection ---
+        # Identify expected dots that SHOULD be visible but have no corresponding observed dot.
+        # This handles shadows and absorbent materials (black tokens).
+        MISSING_THRESHOLD = 15.0
+        inv_proj_matrix = np.linalg.inv(projector_matrix)
+        for exp_p in expected_points:
+            # Transform expected projector point to camera space to check visibility
+            pt = np.array([exp_p[0], exp_p[1]], dtype=np.float32).reshape(1, 1, 2)
+            cam_p = cv2.perspectiveTransform(pt, inv_proj_matrix)[0][0]
+            cx, cy = int(round(cam_p[0])), int(round(cam_p[1]))
+
+            # Check if in camera frame and within the projector FOV mask
+            if 0 <= cx < w and 0 <= cy < h:
+                if mask[cy, cx] == 255:
+                    # Visible! Now check if any corrected observed point is near it.
+                    dists = np.linalg.norm(
+                        np.array(corrected_points) - np.array(exp_p), axis=1
+                    )
+                    if np.min(dists) > self.SL_MISSING_THRESHOLD_PX:
+                        # This expected dot is missing -> likely a token shadow or black material.
+                        detected_tokens_points.append(tuple(exp_p))
 
         # 5. Clustering
         tokens = []
         if detected_tokens_points:
-            CLUSTER_DIST = 80.0
             clusters = []
             for p in detected_tokens_points:
                 added = False
                 for cluster in clusters:
                     centroid = np.mean(cluster, axis=0)
-                    if np.linalg.norm(centroid - np.array(p)) < CLUSTER_DIST:
+                    if np.linalg.norm(centroid - np.array(p)) < self.CLUSTER_DIST_PX:
                         cluster.append(p)
                         added = True
                         break
@@ -226,7 +279,7 @@ class TokenTracker:
                         id=token_id,
                         world_x=wx,
                         world_y=wy,
-                        confidence=min(1.0, len(cluster) / 3.0),
+                        confidence=min(1.0, len(cluster) / self.CONFIDENCE_SCALING),
                     )
                 )
                 token_id += 1
@@ -402,17 +455,27 @@ class TokenTracker:
             for mx, my, mw, mh in mask_rois:
                 cv2.rectangle(warped, (mx, my), (mx + mw, my + mh), (0, 0, 0), -1)
         gray = cv2.cvtColor(warped, cv2.COLOR_BGR2GRAY)
-        gray = cv2.GaussianBlur(gray, (9, 9), 2)
+        gray = cv2.GaussianBlur(gray, self.FLASH_GAUSSIAN_BLUR, 2)
         thresh = cv2.adaptiveThreshold(
-            gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY_INV, 101, 10
+            gray,
+            255,
+            cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
+            cv2.THRESH_BINARY_INV,
+            self.FLASH_ADAPTIVE_BLOCK_SIZE,
+            self.FLASH_ADAPTIVE_C,
         )
         kernel = np.ones((3, 3), np.uint8)
-        opening = cv2.morphologyEx(thresh, cv2.MORPH_OPEN, kernel, iterations=2)
+        opening = cv2.morphologyEx(
+            thresh, cv2.MORPH_OPEN, kernel, iterations=self.FLASH_MORPH_OPEN_ITER
+        )
         closing = cv2.morphologyEx(
-            opening, cv2.MORPH_CLOSE, np.ones((7, 7), np.uint8), iterations=3
+            opening,
+            cv2.MORPH_CLOSE,
+            np.ones((7, 7), np.uint8),
+            iterations=self.FLASH_MORPH_CLOSE_ITER,
         )
         dist_transform = cv2.distanceTransform(closing, cv2.DIST_L2, 5)
-        _, sure_fg = cv2.threshold(dist_transform, 10.0, 255, 0)
+        _, sure_fg = cv2.threshold(dist_transform, self.FLASH_DISTANCE_THRESH, 255, 0)
         sure_fg = np.uint8(sure_fg)
         unknown = cv2.subtract(cv2.dilate(closing, kernel, iterations=3), sure_fg)
         _, markers = cv2.connectedComponents(sure_fg)
@@ -439,7 +502,7 @@ class TokenTracker:
                 continue
             blob_mask = np.zeros_like(gray, dtype=np.uint8)
             blob_mask[markers == marker_id] = 255
-            if cv2.countNonZero(blob_mask) < 300:
+            if cv2.countNonZero(blob_mask) < self.FLASH_MIN_BLOB_AREA:
                 continue
             if grid_spacing_svg > 0:
                 self._process_blob_with_grid(
@@ -512,7 +575,7 @@ class TokenTracker:
                 if (
                     c_area > 0
                     and cv2.countNonZero(cv2.bitwise_and(bbox_mask, c_mask)) / c_area
-                    > 0.4
+                    > self.GRID_OVERLAP_THRESHOLD
                 ):
                     tokens.append(
                         Token(

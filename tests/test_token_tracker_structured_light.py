@@ -157,10 +157,11 @@ def test_detect_structured_light_with_cluster_shift(tracker, map_system):
     )
 
     assert len(tokens) == 1
-    # Check position approx match centroid of shifted points
+    # Check position matches centroid of BOTH shifted and missing points
     tx, ty = tokens[0].world_x, tokens[0].world_y
-    expected_x = (s1[0] + s2[0]) / 2.0
-    expected_y = (s1[1] + s2[1]) / 2.0
+    # Shifted: s1, s2. Missing: p1, p2.
+    expected_x = (s1[0] + s2[0] + p1[0] + p2[0]) / 4.0
+    expected_y = (s1[1] + s2[1] + p1[1] + p2[1]) / 4.0
 
     assert abs(tx - expected_x) < 2.0
     assert abs(ty - expected_y) < 2.0

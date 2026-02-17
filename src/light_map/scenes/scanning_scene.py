@@ -240,7 +240,8 @@ class ScanningScene(Scene):
         ppi = map_config.get_ppi()
 
         tokens = self.token_tracker.detect_tokens(
-            frame_pattern=frame_white,
+            frame_white=frame_white,
+            frame_pattern=self._pattern_frame,
             projector_matrix=self.context.projector_matrix,
             map_system=map_system,
             frame_dark=self._dark_frame,

@@ -17,6 +17,8 @@ def map_system():
     # Mock screen_to_world to be identity for simplicity
     ms.screen_to_world.side_effect = lambda x, y: (float(x), float(y))
     ms.world_to_screen.side_effect = lambda x, y: (x, y)
+    ms.width = 640
+    ms.height = 480
     return ms
 
 
@@ -27,9 +29,10 @@ def test_get_scan_pattern_shape(tracker):
 
     assert img.shape == (height, width, 3)
     assert len(points) > 0
-    # Approx spacing is 96 * 0.4 = 38.4 -> 38 pixels
-    # Grid size approx (640/38) * (480/38) = 16 * 12 = 192 points
-    assert 100 < len(points) < 300
+    # Approx spacing is 96 * 0.8 = 76 pixels (sparser grid)
+    # Grid size approx (640/76) * (480/76) = 8.4 * 6.3 = ~53 points
+    # Range should be lower
+    assert 40 <= len(points) <= 100
 
 
 def test_detect_structured_light_no_shift(tracker, map_system):
@@ -52,10 +55,6 @@ def test_detect_structured_light_no_shift(tracker, map_system):
     frame_pattern = pattern_img.copy()
 
     # 5. Run Detection
-    # Note: We need to ensure we use the SAME points.
-    # tracker.detect_tokens re-generates points using seed 42.
-    # So we strictly rely on that behavior.
-
     tokens = tracker.detect_tokens(
         frame_pattern=frame_pattern,
         projector_matrix=projector_matrix,
@@ -74,8 +73,6 @@ def test_detect_structured_light_with_shift(tracker, map_system):
     ppi = 96.0
 
     # 1. Generate Pattern internally (we rely on deterministic seed 42 inside detect_tokens)
-    # To modify the frame, we need to know where the points ARE.
-    # So we call it manually with same seed.
     import random
 
     random.seed(42)
@@ -91,8 +88,8 @@ def test_detect_structured_light_with_shift(tracker, map_system):
     # Erase original point
     cv2.circle(frame_pattern, (ex, ey), 5, (0, 0, 0), -1)
 
-    # Draw shifted point (shift by 10 pixels, threshold is 3.0)
-    sx, sy = ex + 10, ey + 10
+    # Draw shifted point (shift by 25 pixels, threshold is 15.0)
+    sx, sy = ex + 25, ey + 25
     cv2.circle(frame_pattern, (sx, sy), 3, (255, 255, 255), -1)
 
     # 3. Setup
@@ -110,13 +107,8 @@ def test_detect_structured_light_with_shift(tracker, map_system):
     )
 
     # 5. Verify
-    # Should detect 1 token (or maybe 0 depending on cluster size threshold)
-    # Ref: logic says "if len(cluster) < 2: continue"??
-    # Wait, my implementation said: `if len(cluster) < 2: continue`.
-    # So a single point shift will be ignored as noise!
-    # I should shift 2 points close to each other.
-
-    assert len(tokens) == 0  # Because of cluster size < 2 check
+    # Should detect 1 token because cluster size >= 1
+    assert len(tokens) == 1
 
 
 def test_detect_structured_light_with_cluster_shift(tracker, map_system):
@@ -145,9 +137,9 @@ def test_detect_structured_light_with_cluster_shift(tracker, map_system):
     cv2.circle(frame_pattern, p2, 5, (0, 0, 0), -1)
 
     # Draw shifted points
-    # Shift them both by (10, 10). They will remain adjacent relative to each other.
-    s1 = (p1[0] + 10, p1[1] + 10)
-    s2 = (p2[0] + 10, p2[1] + 10)
+    # Shift them both by (20, 20). Distance = sqrt(20^2 + 20^2) = 28px > 15px.
+    s1 = (p1[0] + 20, p1[1] + 20)
+    s2 = (p2[0] + 20, p2[1] + 20)
 
     cv2.circle(frame_pattern, s1, 3, (255, 255, 255), -1)
     cv2.circle(frame_pattern, s2, 3, (255, 255, 255), -1)

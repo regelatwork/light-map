@@ -49,13 +49,13 @@ def test_scanning_scene_state_machine(mock_app_context):
         scene.update([], mock_time)
         assert scene._stage == ScanStage.FLASH
 
-        # FLASH -> CAPTURE (after delay)
+        # FLASH -> CAPTURE_FLASH (after delay)
         mock_time += 1.6  # 1.7s total
         scene.update([], mock_time)
-        assert scene._stage == ScanStage.CAPTURE
+        assert scene._stage == ScanStage.CAPTURE_FLASH
 
-        # CAPTURE -> PROCESS
-        mock_time += 0.1  # 0.8s total
+        # CAPTURE_FLASH -> PROCESS
+        mock_time += 0.1  # 0.1s total
         scene.update([], mock_time)
         assert scene._stage == ScanStage.PROCESS
 

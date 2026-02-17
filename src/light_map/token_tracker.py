@@ -47,18 +47,25 @@ class TokenTracker:
 
     def detect_tokens(
         self,
-        frame_pattern: np.ndarray,
-        projector_matrix: np.ndarray,
-        map_system: MapSystem,
+        frame_white: Optional[np.ndarray] = None,
+        frame_pattern: Optional[np.ndarray] = None,
         frame_dark: Optional[np.ndarray] = None,
+        projector_matrix: Optional[np.ndarray] = None,
+        map_system: Optional[MapSystem] = None,
         grid_spacing_svg: float = 0.0,
         grid_origin_x: float = 0.0,
         grid_origin_y: float = 0.0,
         mask_rois: Optional[List[Tuple[int, int, int, int]]] = None,
-        ppi: float = 0.0,
+        ppi: float = 96.0,
         algorithm: TokenDetectionAlgorithm = TokenDetectionAlgorithm.FLASH,
     ) -> List[Token]:
-        if frame_pattern is None:
+        # Handle case where only one frame is passed (default to frame_pattern for SL or frame_white for Flash)
+        if frame_pattern is None and frame_white is not None:
+            frame_pattern = frame_white
+        if frame_white is None and frame_pattern is not None:
+            frame_white = frame_pattern
+
+        if frame_white is None:
             return []
 
         if (
@@ -285,7 +292,7 @@ class TokenTracker:
             # However, we don't know grid spacing perfectly here without recalculating from PPI.
             # Let's estimate spacing from expected_points or pass it.
             # For simplicity, let's use a fixed pixel distance for clustering, e.g. 30px
-            CLUSTER_DIST = 40.0
+            CLUSTER_DIST = 80.0
 
             clusters = []
             for p in detected_tokens_points:

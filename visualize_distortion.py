@@ -15,8 +15,20 @@ def visualize_distortion(
     matrix = data["projector_matrix"]
     cam_pts = data["camera_points"]
     proj_pts = data["projector_points"]
-    res = data["resolution"]
-    width, height = res[0], res[1]
+
+    # Use projector_resolution if available, else fallback to standard logic
+    if "projector_resolution" in data:
+        width, height = data["projector_resolution"]
+    elif "resolution" in data:
+        # Legacy: Check if resolution field is actually projector size or camera size
+        res = data["resolution"]
+        # Basic heuristic: if it matches the current camera spec, it might be camera res
+        # But for visualization we want the projector space.
+        # If we don't have explicit projector_resolution, we assume the stored one is the target canvas.
+        width, height = res[0], res[1]
+    else:
+        print("Warning: Missing resolution metadata. Falling back to 1920x1080.")
+        width, height = 1920, 1080
 
     # 2. Calculate Theoretical (Homography) Points
     # Transformation: Camera -> Projector (Screen)

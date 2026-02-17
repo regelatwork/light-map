@@ -56,6 +56,7 @@ class InteractiveApp:
             map_config_manager=self.map_config,
             projector_matrix=self.config.projector_matrix,
             notifications=self.notifications,
+            distortion_model=self.config.distortion_model,
         )
 
         # Scene Management
@@ -99,6 +100,7 @@ class InteractiveApp:
             map_config_manager=self.map_config,
             projector_matrix=self.config.projector_matrix,
             notifications=self.notifications,
+            distortion_model=self.config.distortion_model,
             debug_mode=self.app_context.debug_mode,
             show_tokens=self.app_context.show_tokens,
         )
@@ -207,7 +209,13 @@ class InteractiveApp:
             cam_point = np.array(
                 [tip.x * frame_shape[1], tip.y * frame_shape[0]], dtype=np.float32
             ).reshape(1, 1, 2)
-            proj_point = cv2.perspectiveTransform(cam_point, matrix)[0][0]
+
+            if self.app_context.distortion_model:
+                proj_point = self.app_context.distortion_model.apply_correction(
+                    cam_point
+                )[0][0]
+            else:
+                proj_point = cv2.perspectiveTransform(cam_point, matrix)[0][0]
 
             inputs.append(
                 HandInput(

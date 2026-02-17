@@ -1,6 +1,6 @@
 import cv2
 import numpy as np
-from typing import Optional
+from typing import Optional, Tuple
 
 from .camera import Camera
 from .projector import generate_calibration_pattern, compute_projector_homography
@@ -8,9 +8,10 @@ from .projector import generate_calibration_pattern, compute_projector_homograph
 
 def run_calibration_sequence(
     camera: Camera, width: int = 1920, height: int = 1080, rows: int = 6, cols: int = 9
-) -> Optional[np.ndarray]:
+) -> Optional[Tuple[np.ndarray, np.ndarray, np.ndarray]]:
     """
     Runs the projector calibration sequence using an existing camera instance.
+    Returns (matrix, cam_pts, proj_pts) or None.
     """
     # Setup Fullscreen Window
     window_name = "calibration_pattern"
@@ -40,8 +41,7 @@ def run_calibration_sequence(
         cv2.imwrite("captured_frame.jpg", frame)
         print("Saved capture to captured_frame.jpg")
 
-        matrix = compute_projector_homography(frame, params)
-        return matrix
+        return compute_projector_homography(frame, params)
 
     except Exception as e:
         print(f"Error computing homography: {e}")

@@ -1,5 +1,6 @@
 import cv2
 import numpy as np
+from typing import Tuple, List, Optional
 
 
 def generate_calibration_pattern(
@@ -139,4 +140,112 @@ def compute_projector_homography(
     # Compute homography
     transformation_matrix, _ = cv2.findHomography(camera_points, screen_points)
 
-    return transformation_matrix
+    return transformation_matrix, camera_points, screen_points
+class ProjectorDistortionModel:
+    """
+    Handles non-linear correction for projector distortion (barrel/keystone)
+    by interpolating residuals from a calibration grid.
+    """
+
+    def __init__(
+        self,
+        homography: np.ndarray,
+        camera_points: np.ndarray,
+        projector_points: np.ndarray,
+    ):
+        self.homography = homography
+        self.cam_pts = camera_points
+        self.proj_pts = projector_points
+
+        # 1. Calculate theoretical points for each camera point
+        src_pts = camera_points.reshape(-1, 1, 2)
+        theoretical = cv2.perspectiveTransform(src_pts, homography).reshape(-1, 2)
+
+        # 2. Calculate residuals (Actual - Theoretical)
+        # We define residuals in PROJECTOR (Screen) Space
+        self.residuals = projector_points - theoretical
+
+        # 3. Organize into a grid for faster lookup
+        # We assume the camera_points/projector_points are ordered row-by-row
+        # Find unique X and Y coordinates in projector space to define the grid
+        # Actually, projector_points ARE a perfect grid by construction in generate_calibration_pattern
+        self.unique_proj_x = np.unique(projector_points[:, 0])
+        self.unique_proj_y = np.unique(projector_points[:, 1])
+
+        self.rows = len(self.unique_proj_y)
+        self.cols = len(self.unique_proj_x)
+
+        # Map (px, py) to residual (dx, dy)
+        self.grid_residuals = np.zeros((self.rows, self.cols, 2), dtype=np.float32)
+        
+        # Sort projector points to map them to the grid index
+        # This is a bit robust against jumbled points if they ever occur
+        for i in range(len(projector_points)):
+            px, py = projector_points[i]
+            ix = np.where(self.unique_proj_x == px)[0][0]
+            iy = np.where(self.unique_proj_y == py)[0][0]
+            self.grid_residuals[iy, ix] = self.residuals[i]
+
+    def apply_correction(self, points_cam: np.ndarray) -> np.ndarray:
+        """
+        Applies homography followed by non-linear residual correction.
+        points_cam: (N, 2) or (N, 1, 2)
+        """
+        if points_cam.size == 0:
+            return points_cam
+
+        pts = points_cam.reshape(-1, 1, 2)
+        # Linear transform
+        pts_proj_raw = cv2.perspectiveTransform(pts, self.homography).reshape(-1, 2)
+
+        corrected_pts = []
+        for p in pts_proj_raw:
+            # Bilinear interpolation of residuals
+            rx, ry = self._interpolate_residual(p[0], p[1])
+            corrected_pts.append([p[0] + rx, p[1] + ry])
+
+        return np.array(corrected_pts, dtype=np.float32).reshape(-1, 1, 2)
+
+    def correct_theoretical_point(self, px: float, py: float) -> Tuple[float, float]:
+        """
+        Corrects a point that is already in theoretical projector space (e.g. from warped image).
+        """
+        rx, ry = self._interpolate_residual(px, py)
+        return px + rx, py + ry
+
+    def _interpolate_residual(self, px: float, py: float) -> Tuple[float, float]:
+        """Performs bilinear interpolation of the residual at screen pixel (px, py)."""
+        # 1. Find the cell in the projector grid
+        # self.unique_proj_x/y are sorted
+        ix_high = np.searchsorted(self.unique_proj_x, px)
+        iy_high = np.searchsorted(self.unique_proj_y, py)
+
+        # Handle out of bounds by clamping to edge residuals (Nearest Neighbor at edges)
+        ix_high = max(1, min(ix_high, self.cols - 1))
+        iy_high = max(1, min(iy_high, self.rows - 1))
+        ix_low = ix_high - 1
+        iy_low = iy_high - 1
+
+        # Grid coordinates
+        x0, x1 = self.unique_proj_x[ix_low], self.unique_proj_x[ix_high]
+        y0, y1 = self.unique_proj_y[iy_low], self.unique_proj_y[iy_high]
+
+        # Normalized coordinates [0, 1] within cell
+        tx = (px - x0) / (x1 - x0) if x1 != x0 else 0
+        ty = (py - y0) / (y1 - y0) if y1 != y0 else 0
+        tx = max(0, min(1, tx))
+        ty = max(0, min(1, ty))
+
+        # Residuals at corners
+        r00 = self.grid_residuals[iy_low, ix_low]
+        r10 = self.grid_residuals[iy_low, ix_high]
+        r01 = self.grid_residuals[iy_high, ix_low]
+        r11 = self.grid_residuals[iy_high, ix_high]
+
+        # Bilinear interpolation
+        r = (r00 * (1 - tx) * (1 - ty) +
+             r10 * tx * (1 - ty) +
+             r01 * (1 - tx) * ty +
+             r11 * tx * ty)
+
+        return r[0], r[1]

@@ -1,6 +1,6 @@
 from enum import StrEnum
 from dataclasses import dataclass, field
-from typing import List, Optional, Tuple
+from typing import Any, List, Optional, Tuple
 
 import numpy as np
 
@@ -63,6 +63,7 @@ class AppConfig:
     projector_matrix: np.ndarray
     projector_matrix_resolution: Tuple[int, int] = (1920, 1080)
     map_search_patterns: List[str] = field(default_factory=list)
+    distortion_model: Optional[Any] = None
 
 
 @dataclass

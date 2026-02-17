@@ -16,16 +16,21 @@ def main():
     # Initialize Camera
     print("Initializing Camera...")
     with Camera() as cam:
-        matrix = run_calibration_sequence(cam, width=width, height=height)
+        result = run_calibration_sequence(cam, width=width, height=height)
 
-    if matrix is not None:
+    if result is not None:
+        matrix, cam_pts, proj_pts = result
         print("Transformation matrix:")
         print(matrix)
 
         output_file = "projector_calibration.npz"
         print(f"Saving calibration to {output_file}...")
         np.savez(
-            output_file, projector_matrix=matrix, resolution=np.array([width, height])
+            output_file,
+            projector_matrix=matrix,
+            camera_points=cam_pts,
+            projector_points=proj_pts,
+            resolution=np.array([width, height]),
         )
         print("Saved successfully.")
     else:

@@ -16,8 +16,11 @@ from light_map.map_config import MapConfigManager
 from light_map.calibration_logic import run_calibration_sequence
 from light_map.camera_pipeline import CameraPipeline
 
+from light_map.projector import generate_calibration_pattern, ProjectorDistortionModel
+
 
 def main():
+    # ... (args setup)
     parser = argparse.ArgumentParser(description="Hand Tracker & Menu System")
     parser.add_argument(
         "--debug", action="store_true", help="Enable debug overlay", default=False
@@ -40,23 +43,31 @@ def main():
     def load_calib():
         if not os.path.exists(calibration_file):
             print(f"Warning: {calibration_file} not found. Using default resolution.")
-            return None, 1920, 1080
+            return None, 1920, 1080, None
         try:
             with np.load(calibration_file) as data:
                 if "projector_matrix" not in data:
                     print("Error: Invalid calibration file (missing projector_matrix).")
-                    return None, 1920, 1080
+                    return None, 1920, 1080, None
                 matrix = data["projector_matrix"]
                 if "resolution" in data:
                     w, h = data["resolution"]
                 else:
                     w, h = 1920, 1080
-                return matrix, w, h
+
+                model = None
+                if "camera_points" in data and "projector_points" in data:
+                    print("Loading non-linear distortion model...")
+                    model = ProjectorDistortionModel(
+                        matrix, data["camera_points"], data["projector_points"]
+                    )
+
+                return matrix, w, h, model
         except Exception as e:
             print(f"Error loading calibration: {e}")
-            return None, 1920, 1080
+            return None, 1920, 1080, None
 
-    transformation_matrix, screen_w, screen_h = load_calib()
+    transformation_matrix, screen_w, screen_h, dist_model = load_calib()
 
     if transformation_matrix is None:
         print("Starting uncalibrated (or using defaults). Please calibrate via menu.")
@@ -80,6 +91,7 @@ def main():
         projector_matrix=transformation_matrix,
         projector_matrix_resolution=(screen_w, screen_h),
         map_search_patterns=map_sources,
+        distortion_model=dist_model,
     )
     app = InteractiveApp(config)
     app.set_debug_mode(args.debug)
@@ -184,7 +196,7 @@ def main():
                                 )
                                 app.map_config.set_detection_algorithm(new_algo)
                                 # Force reload menu to update UI text if needed (though visual only)
-                                if isinstance(app.current_scene, SceneId.MENU):
+                                if app.current_scene == app.scenes[SceneId.MENU]:
                                     app.current_scene.on_enter()
 
                             # Process the frame normally

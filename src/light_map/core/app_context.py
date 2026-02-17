@@ -11,6 +11,7 @@ if TYPE_CHECKING:
     from .notification import NotificationManager
     from light_map.renderer import Renderer
     from light_map.common_types import AppConfig
+    from light_map.projector import ProjectorDistortionModel
 
 
 @dataclass
@@ -23,6 +24,7 @@ class AppContext:
     map_config_manager: MapConfigManager
     projector_matrix: np.ndarray
     notifications: NotificationManager
+    distortion_model: Optional[ProjectorDistortionModel] = None
     show_tokens: bool = True
     debug_mode: bool = False
     last_camera_frame: Optional[np.ndarray] = None

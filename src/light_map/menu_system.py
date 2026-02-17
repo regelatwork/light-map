@@ -107,10 +107,10 @@ class MenuSystem:
 
         # 2. Traverse new tree
         self.root = new_root
-        
+
         new_node_stack: List[MenuItem] = []
         curr = new_root
-        
+
         # Verify root matches first item in path
         if not path_titles or new_root.title != path_titles[0]:
             # Root mismatch or empty path, fallback to reset
@@ -127,21 +127,21 @@ class MenuSystem:
                 if child.title == title:
                     found_child = child
                     break
-            
+
             if found_child:
                 new_node_stack.append(curr)
                 curr = found_child
             else:
                 match_success = False
                 break
-        
+
         if match_success:
             self.node_stack = new_node_stack
             self.current_node = curr
             # We keep page_index, but should clamp it just in case
             # For simplicity, we can reset it or keep it. resetting is safer for dynamic lists.
             # But for a toggle, keeping it is better UX.
-            # self.page_index = 0 
+            # self.page_index = 0
         else:
             # Fallback to root if path lost
             self.current_node = self.root

@@ -126,21 +126,21 @@ def main():
             # to prevent coordinate expansion/shrinkage issues.
             cam_w, cam_h = cam.width, cam.height
             calib_w, calib_h = app.config.projector_matrix_resolution
-            
+
             if calib_w > 0 and (cam_w != calib_w or cam_h != calib_h):
-                 print("\n" + "!" * 60)
-                 print(f"CRITICAL WARNING: Camera Resolution Mismatch!")
-                 print(f"  Runtime:     {cam_w}x{cam_h}")
-                 print(f"  Calibration: {calib_w}x{calib_h}")
-                 print("  The projector matrix will map points incorrectly.")
-                 print("  PLEASE RE-CALIBRATE: python3 projector_calibration.py")
-                 print("!" * 60 + "\n")
-                 
-                 # Optional: We could try to auto-scale the matrix here, but it's risky
-                 # float_scale_x = cam_w / calib_w
-                 # float_scale_y = cam_h / calib_h
-                 # But homography isn't just a scale. 
-            
+                print("\n" + "!" * 60)
+                print("CRITICAL WARNING: Camera Resolution Mismatch!")
+                print(f"  Runtime:     {cam_w}x{cam_h}")
+                print(f"  Calibration: {calib_w}x{calib_h}")
+                print("  The projector matrix will map points incorrectly.")
+                print("  PLEASE RE-CALIBRATE: python3 projector_calibration.py")
+                print("!" * 60 + "\n")
+
+                # Optional: We could try to auto-scale the matrix here, but it's risky
+                # float_scale_x = cam_w / calib_w
+                # float_scale_y = cam_h / calib_h
+                # But homography isn't just a scale.
+
             # Initialize Pipeline
             pipeline = CameraPipeline(cam, hands)
             pipeline.start()
@@ -161,7 +161,7 @@ def main():
 
                         if args.action and last_processed_id == 0:
                             print(f"Executing Startup Action: {args.action}")
-                            
+
                             # Manually Handle Actions (since process_frame doesn't ingest them)
                             if args.action == MenuActions.SCAN_SESSION:
                                 if app.map_system.is_map_loaded():
@@ -171,7 +171,7 @@ def main():
                                     app.current_scene.on_enter()
                                 else:
                                     print("Error: Cannot start scan. No map loaded.")
-                                    
+
                             elif args.action == MenuActions.SCAN_ALGORITHM:
                                 current = app.map_config.get_detection_algorithm()
                                 new_algo = (
@@ -179,7 +179,9 @@ def main():
                                     if current == TokenDetectionAlgorithm.FLASH
                                     else TokenDetectionAlgorithm.FLASH
                                 )
-                                print(f"Toggling Scan Algorithm: {current} -> {new_algo}")
+                                print(
+                                    f"Toggling Scan Algorithm: {current} -> {new_algo}"
+                                )
                                 app.map_config.set_detection_algorithm(new_algo)
                                 # Force reload menu to update UI text if needed (though visual only)
                                 if isinstance(app.current_scene, SceneId.MENU):
@@ -195,7 +197,9 @@ def main():
                             )
 
                         # Update Debug View if requested
-                        should_hide_overlays = getattr(app.current_scene, "should_hide_overlays", False)
+                        should_hide_overlays = getattr(
+                            app.current_scene, "should_hide_overlays", False
+                        )
                         if app.debug_mode and not should_hide_overlays:
                             cv2.putText(
                                 output_image,

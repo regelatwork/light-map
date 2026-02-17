@@ -269,7 +269,7 @@ class InteractiveApp:
         self, frame: np.ndarray, inputs: List[HandInput]
     ) -> np.ndarray:
         """Renders UI elements that are always visible, like debug info and notifications."""
-        
+
         # Check if the current scene requests to hide overlays (e.g. during scanning)
         if getattr(self.current_scene, "should_hide_overlays", False):
             return frame

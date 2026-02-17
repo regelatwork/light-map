@@ -5,7 +5,12 @@ from typing import TYPE_CHECKING, Any, List, Optional
 
 import numpy as np
 
-from light_map.common_types import GestureType, MenuActions, SceneId, TokenDetectionAlgorithm
+from light_map.common_types import (
+    GestureType,
+    MenuActions,
+    SceneId,
+    TokenDetectionAlgorithm,
+)
 from light_map.core.scene import HandInput, Scene, SceneTransition
 from light_map.input_manager import InputManager
 from light_map.menu_builder import build_root_menu

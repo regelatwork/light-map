@@ -29,10 +29,9 @@ def test_get_scan_pattern_shape(tracker):
 
     assert img.shape == (height, width, 3)
     assert len(points) > 0
-    # Approx spacing is 96 * 0.8 = 76 pixels (sparser grid)
-    # Grid size approx (640/76) * (480/76) = 8.4 * 6.3 = ~53 points
-    # Range should be lower
-    assert 40 <= len(points) <= 100
+    # Spacing is now approx ppi * 0.5 = 48 pixels (equilateral triangle layout)
+    # Range increased for denser staggered grid
+    assert 100 <= len(points) <= 200
 
 
 def test_detect_structured_light_no_shift(tracker, map_system):

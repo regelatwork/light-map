@@ -49,7 +49,7 @@ class TokenTracker:
         self, width: int, height: int, ppi: float
     ) -> Tuple[np.ndarray, List[Tuple[int, int]]]:
         """
-        Generates a jittered dot grid pattern for structured light detection.
+        Generates a jittered staggered (hexagonal) dot grid pattern for optimal coverage.
         Returns: (pattern_image, list_of_expected_points_projector_space)
         """
         img = np.zeros((height, width, 3), dtype=np.uint8)
@@ -58,11 +58,18 @@ class TokenTracker:
         # Spacing to account for effective resolution
         spacing = max(self.SL_MIN_SPACING, int(ppi * self.SL_SPACING_FACTOR))
 
+        # Vertical spacing for equilateral triangles (h = d * sin(60) = d * sqrt(3)/2)
+        row_spacing = int(spacing * math.sqrt(3) / 2)
+
         # Constrain jitter to guarantee separation
         max_jitter = max(1, int(spacing * self.SL_JITTER_FACTOR))
 
-        for y in range(spacing // 2, height, spacing):
-            for x in range(spacing // 2, width, spacing):
+        row_idx = 0
+        for y in range(spacing // 2, height, row_spacing):
+            # Stagger every other row
+            x_offset = (spacing // 2) if (row_idx % 2 == 1) else 0
+
+            for x in range(spacing // 2 + x_offset, width, spacing):
                 jx = x + random.randint(-max_jitter, max_jitter)
                 jy = y + random.randint(-max_jitter, max_jitter)
 
@@ -72,6 +79,8 @@ class TokenTracker:
 
                 cv2.circle(img, (jx, jy), self.SL_DOT_RADIUS, (255, 255, 255), -1)
                 expected_points.append((jx, jy))
+
+            row_idx += 1
 
         return img, expected_points
 

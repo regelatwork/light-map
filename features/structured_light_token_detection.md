@@ -11,6 +11,7 @@ The algorithm relies on the geometric relationship between the camera and the pr
 ### Validated Logic
 
 - **Existing Homography**: The `projector_matrix` ($H$) transforms points from **Camera Space** $\\to$ **Projector Space**.
+- **Non-Linear Correction**: To account for lens distortion (barrel/keystone), the system optionally applies a `ProjectorDistortionModel` ($f(x)$) which interpolates residuals from a calibration grid: $P = f(H \cdot P_{cam})$.
 - **Planar Assumption**: The calibration assumes the map is a flat plane. Any deviation in height ($z > 0$) results in a coordinate shift when viewed from the camera's offset angle.
 - **Mechanism**:
   1. Project a grid of dots at known projector coordinates $P\_{expected}$.
@@ -43,7 +44,7 @@ The tracker generates a **Jittered Grid**. This combines the uniform coverage of
 1. **Centroid Extraction**:
    - Get centroids of all blobs: `observed_points_cam` (Camera Space).
 1. **Transform**:
-   - Convert `observed_points_cam` $\\to$ `observed_points_proj` using `projector_matrix`.
+   - Convert `observed_points_cam` $\\to$ `observed_points_proj` using `projector_matrix` and the `ProjectorDistortionModel` (if available).
 
 ### 3.3 Token Identification (Occlusion + Disparity)
 

@@ -39,7 +39,7 @@ The `calibrate.py` script calibrates a camera using a series of chessboard image
 
 ## Projector-Camera Calibration
 
-The `projector_calibration.py` script calculates the perspective transformation matrix to map camera coordinates to screen (projector) coordinates.
+The `projector_calibration.py` script calculates the perspective transformation matrix to map camera coordinates to screen (projector) coordinates. It also captures raw calibration points to enable **non-linear distortion correction** (barrel/keystone compensation).
 
 ### Raspberry Pi Setup
 
@@ -61,7 +61,22 @@ sudo apt update && sudo apt install -y gstreamer1.0-tools gstreamer1.0-plugins-g
 
 1. The script will display a fullscreen chessboard pattern. Your camera needs to be able to see this pattern.
 
-1. The script will then capture an image, find the chessboard, and print the resulting transformation matrix to the console.
+1. The script will then capture an image, find the chessboard, and print the resulting transformation matrix to the console. It saves both the matrix and the raw point correspondences to `projector_calibration.npz`.
+
+## Distortion Visualization
+
+After projector calibration, you can visualize the mapping residuals (non-linear errors) using the `visualize_distortion.py` tool.
+
+### Usage
+
+1. Ensure you have run `projector_calibration.py`.
+1. Run the visualization script:
+
+   ```bash
+   python visualize_distortion.py
+   ```
+
+1. The script will generate a vector plot (`distortion_field.png`) showing the magnitude and direction of the distortion across the screen. This is useful for diagnosing calibration quality and lens distortion.
 
 ## Hand Tracking and Projection
 

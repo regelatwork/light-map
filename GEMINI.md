@@ -7,7 +7,7 @@ This project aims to provide tools for calibrating a projector-camera system.
 - **`src/light_map/`**: The core python package containing the modular logic.
   - **`camera.py`**: Contains the `Camera` class, handling efficient image capture and abstracting differences between Raspberry Pi (GStreamer) and standard webcams (OpenCV).
   - **`calibration.py`**: Functions for processing chessboard images and calculating camera intrinsics.
-  - **`projector.py`**: Functions for generating calibration patterns and computing the camera-to-projector homography.
+  - **`projector.py`**: Functions for generating calibration patterns and computing the camera-to-projector homography. Contains the `ProjectorDistortionModel` for non-linear residual correction.
   - **`gestures.py`**: Functions for heuristic-based hand gesture recognition (e.g., Open Palm, Closed Fist, Pointing, Gun, Victory).
   - **`common_types.py`**: Shared type definitions for the menu system.
   - **`menu_config.py`**: Configuration for the hierarchical menu system.
@@ -26,6 +26,7 @@ This project aims to provide tools for calibrating a projector-camera system.
 - **`projector_calibration.py`**: Entry point script. Displays a pattern, captures it, and computes the perspective transformation matrix.
 - **`hand_tracker.py`**: Entry point script. Continuously tracks hands, projecting landmarks and detecting gestures in real-time with a hierarchical menu system and SVG map support. Supports live vision tuning.
 - **`generate_calibration_target.py`**: Standalone script to generate a printable calibration target for PPI scale calibration.
+- **`visualize_distortion.py`**: Diagnostic tool to visualize projection mapping residuals and distortion fields.
 
 ## Goal:
 
@@ -47,6 +48,8 @@ The ultimate goal of this project is to enable precise mapping between camera an
 - **`GEMINI.md`**: This file, providing a high-level overview of the project.
 - **`images/`**: A directory containing the chessboard images used for camera calibration.
 - **`.venv/`**: The Python virtual environment.
+- **`visualize_distortion.py`**: Script to visualize projector distortion residuals.
+- **`projector_calibration.npz`**: Stores projector homography matrix and raw calibration points.
 
 ## Development Guidelines
 
@@ -169,3 +172,16 @@ The ultimate goal of this project is to enable precise mapping between camera an
 - [x] **Phase 4: Integration**
   - Updated `InteractiveApp` to support parameter passing via `action_id` (pipe-delimited).
   - Integrated "Scan for Maps" with live menu refreshing.
+
+## Feature Tracking: Projector Distortion Correction
+
+- [x] **Phase 1: Raw Data Collection**
+  - Updated `projector.py` and `calibration_logic.py` to return camera/screen points.
+  - Saved points to `projector_calibration.npz`.
+- [x] **Phase 2: Visualization Tool**
+  - Created `visualize_distortion.py` for residual field diagnostics.
+- [x] **Phase 3: Non-Linear Correction Implementation**
+  - Implemented `ProjectorDistortionModel` with bilinear interpolation.
+- [x] **Phase 4: System Integration**
+  - Integrated into Hand Tracking (InteractiveApp) and Token Tracking (TokenTracker).
+  - Added radial distortion diagnostic logging.

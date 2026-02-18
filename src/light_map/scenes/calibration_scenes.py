@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
 
 import math
 import numpy as np
+import os
 from collections import Counter
 import cv2
 
@@ -374,19 +375,49 @@ class MapGridCalibrationScene(Scene):
         self.is_interacting = False
         self.summon_gesture_start_time = 0.0
 
-        ppi = self.context.map_config_manager.get_ppi()
-        if ppi <= 0:
-            ppi = 96.0  # Fallback defaults
+        map_system = self.context.map_system
+        map_config = self.context.map_config_manager
 
-        # Initialize grid overlay
-        start_spacing = ppi * self.calib_map_grid_size_inches
-        self.grid_overlay = GridOverlay(
-            start_spacing, self.context.app_config.width, self.context.app_config.height
+        # Check for existing calibration
+        filename = map_system.svg_loader.filename if map_system.svg_loader else None
+        entry = (
+            map_config.data.maps.get(os.path.abspath(filename)) if filename else None
         )
 
-        # Center the grid initially
-        self.grid_overlay.offset_x = self.context.app_config.width / 2
-        self.grid_overlay.offset_y = self.context.app_config.height / 2
+        if entry and entry.grid_spacing_svg > 0:
+            # Initialize from existing config
+            start_spacing = entry.grid_spacing_svg * map_system.state.zoom
+            self.grid_overlay = GridOverlay(
+                start_spacing,
+                self.context.app_config.width,
+                self.context.app_config.height,
+            )
+            # Use world_to_screen to find the current screen position of the saved world origin
+            sx, sy = map_system.world_to_screen(
+                entry.grid_origin_svg_x, entry.grid_origin_svg_y
+            )
+            self.grid_overlay.offset_x = sx
+            self.grid_overlay.offset_y = sy
+            print(
+                f"Restored grid for {filename}: spacing={start_spacing:.1f}, offset=({sx:.1f}, {sy:.1f})"
+            )
+        else:
+            # Fallback/Default behavior
+            ppi = map_config.get_ppi()
+            if ppi <= 0:
+                ppi = 96.0
+
+            start_spacing = ppi * self.calib_map_grid_size_inches
+            self.grid_overlay = GridOverlay(
+                start_spacing,
+                self.context.app_config.width,
+                self.context.app_config.height,
+            )
+
+            # Center the grid initially
+            self.grid_overlay.offset_x = self.context.app_config.width / 2
+            self.grid_overlay.offset_y = self.context.app_config.height / 2
+            print("Initialized default grid (centered)")
 
     def on_exit(self) -> None:
         pass

@@ -70,6 +70,7 @@ After projector calibration, you can visualize the mapping residuals (non-linear
 ### Usage
 
 1. Ensure you have run `projector_calibration.py`.
+
 1. Run the visualization script:
 
    ```bash

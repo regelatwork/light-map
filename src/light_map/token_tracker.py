@@ -235,7 +235,6 @@ class TokenTracker:
             tuple(np.array(p) - median_shift) for p in observed_points_proj
         ]
 
-        SHIFT_THRESHOLD = 15.0
         detected_tokens_points = []
         for i, corr_p in enumerate(corrected_points):
             dists = np.linalg.norm(expected_arr - np.array(corr_p), axis=1)
@@ -245,7 +244,6 @@ class TokenTracker:
         # --- Missing Dot Detection ---
         # Identify expected dots that SHOULD be visible but have no corresponding observed dot.
         # This handles shadows and absorbent materials (black tokens).
-        MISSING_THRESHOLD = 15.0
         inv_proj_matrix = np.linalg.inv(projector_matrix)
         for exp_p in expected_points:
             # Transform expected projector point to camera space to check visibility

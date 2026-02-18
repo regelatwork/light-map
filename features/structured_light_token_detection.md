@@ -11,7 +11,7 @@ The algorithm relies on the geometric relationship between the camera and the pr
 ### Validated Logic
 
 - **Existing Homography**: The `projector_matrix` ($H$) transforms points from **Camera Space** $\\to$ **Projector Space**.
-- **Non-Linear Correction**: To account for lens distortion (barrel/keystone), the system optionally applies a `ProjectorDistortionModel` ($f(x)$) which interpolates residuals from a calibration grid: $P = f(H \cdot P_{cam})$.
+- **Non-Linear Correction**: To account for lens distortion (barrel/keystone), the system optionally applies a `ProjectorDistortionModel` ($f(x)$) which interpolates residuals from a calibration grid: $P = f(H \\cdot P\_{cam})$.
 - **Planar Assumption**: The calibration assumes the map is a flat plane. Any deviation in height ($z > 0$) results in a coordinate shift when viewed from the camera's offset angle.
 - **Mechanism**:
   1. Project a grid of dots at known projector coordinates $P\_{expected}$.

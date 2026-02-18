@@ -1,12 +1,14 @@
 import pytest
 from unittest.mock import MagicMock, patch
 import numpy as np
+import os
 
 from light_map.core.app_context import AppContext
 from light_map.scenes.calibration_scenes import MapGridCalibrationScene, GridOverlay
 from light_map.common_types import AppConfig, GestureType, SceneId
 from light_map.core.scene import HandInput, SceneTransition
 from light_map.map_system import MapSystem, MapState
+from light_map.map_config import MapEntry
 
 
 @pytest.fixture
@@ -35,6 +37,8 @@ def mock_app_context():
     # Mock MapConfigManager
     mock_map_config_manager = MagicMock()
     mock_map_config_manager.get_ppi.return_value = 100.0
+    mock_map_config_manager.data = MagicMock()
+    mock_map_config_manager.data.maps = {}
     mock_context.map_config_manager = mock_map_config_manager
 
     mock_context.notifications = MagicMock()
@@ -63,6 +67,32 @@ def test_map_grid_calibration_on_enter_initializes_overlay(
 
     # Ensure map view was NOT reset
     mock_app_context.map_system.reset_view_to_base.assert_not_called()
+
+
+def test_map_grid_calibration_on_enter_restores_from_config(
+    map_grid_calib_scene, mock_app_context
+):
+    """Verify on_enter restores grid from existing config aligned to viewport."""
+    # Setup existing config
+    abs_path = os.path.abspath("test_map.svg")
+    # Mocking map_config_manager.data.maps
+    mock_app_context.map_config_manager.data = MagicMock()
+    mock_app_context.map_config_manager.data.maps = {
+        abs_path: MapEntry(
+            grid_spacing_svg=50.0, grid_origin_svg_x=100.0, grid_origin_svg_y=100.0
+        )
+    }
+
+    # Setup viewport (zoom=2.0 already set in fixture)
+    mock_app_context.map_system.world_to_screen.return_value = (250.0, 350.0)
+
+    map_grid_calib_scene.on_enter()
+
+    # Expected screen spacing: svg_spacing (50) * zoom (2.0) = 100.0
+    assert map_grid_calib_scene.grid_overlay.spacing == 100.0
+    # Expected screen offset: world_to_screen(100, 100) = (250.0, 350.0)
+    assert map_grid_calib_scene.grid_overlay.offset_x == 250.0
+    assert map_grid_calib_scene.grid_overlay.offset_y == 350.0
 
 
 @patch("time.monotonic")

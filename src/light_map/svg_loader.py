@@ -17,10 +17,12 @@ class SVGLoader:
         Args:
             filename: Path to the .svg file.
         """
-        self.filename = filename
+        import os
+
+        self.filename = os.path.abspath(filename)
         try:
             # Parse SVG with explicit unit scaling (defaulting to 96 DPI)
-            self.svg = svgelements.SVG.parse(filename)
+            self.svg = svgelements.SVG.parse(self.filename)
         except Exception as e:
             print(f"Error loading SVG: {e}")
             self.svg = None

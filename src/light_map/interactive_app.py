@@ -91,7 +91,9 @@ class InteractiveApp:
         self.renderer = Renderer(new_config.width, new_config.height)
 
         # We keep the map system and config manager to preserve state
-        # But we need to update projector matrix in context
+        # But we need to update projector matrix in context and map system dims
+        self.map_system.width = self.config.width
+        self.map_system.height = self.config.height
 
         self.app_context = AppContext(
             app_config=self.config,
@@ -233,6 +235,9 @@ class InteractiveApp:
 
     def load_map(self, filename: str, load_session: bool = False):
         """Loads an SVG map file and restores its state."""
+        import os
+
+        filename = os.path.abspath(filename)
         self.map_system.svg_loader = SVGLoader(filename)
 
         entry = self.map_config.data.maps.get(filename)

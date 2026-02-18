@@ -64,14 +64,17 @@ class TokenTracker:
         # Constrain jitter to guarantee separation
         max_jitter = max(1, int(spacing * self.SL_JITTER_FACTOR))
 
+        # Use local random instance for thread-safety and determinism
+        rng = random.Random(self.SL_SEED)
+
         row_idx = 0
         for y in range(spacing // 2, height, row_spacing):
             # Stagger every other row
             x_offset = (spacing // 2) if (row_idx % 2 == 1) else 0
 
             for x in range(spacing // 2 + x_offset, width, spacing):
-                jx = x + random.randint(-max_jitter, max_jitter)
-                jy = y + random.randint(-max_jitter, max_jitter)
+                jx = x + rng.randint(-max_jitter, max_jitter)
+                jy = y + rng.randint(-max_jitter, max_jitter)
 
                 # Ensure within bounds with margin to avoid straddling the border
                 jx = max(self.SL_EDGE_MARGIN, min(width - 1 - self.SL_EDGE_MARGIN, jx))
@@ -112,7 +115,6 @@ class TokenTracker:
             algorithm == TokenDetectionAlgorithm.STRUCTURED_LIGHT
             and frame_dark is not None
         ):
-            random.seed(self.SL_SEED)
             w_proj = map_system.width
             h_proj = map_system.height
             _, expected_points = self.get_scan_pattern(w_proj, h_proj, ppi)
@@ -157,8 +159,12 @@ class TokenTracker:
         h, w = frame_pattern.shape[:2]
 
         # 1. Difference and Threshold
-        diff = cv2.subtract(frame_pattern, frame_dark)
-        gray = cv2.cvtColor(diff, cv2.COLOR_BGR2GRAY)
+        # CRITICAL FIX: Auto-exposure often makes frame_dark brighter than frame_pattern's background,
+        # causing cv2.subtract to clip to zero and lose the dot signal.
+        # We skip subtraction and rely on dynamic thresholding of the pattern frame directly.
+        # This reduces ambient light rejection but ensures we actually detect the dots.
+        # diff = cv2.subtract(frame_pattern, frame_dark)
+        gray = cv2.cvtColor(frame_pattern, cv2.COLOR_BGR2GRAY)
 
         if mask_rois:
             for mx, my, mw, mh in mask_rois:
@@ -167,6 +173,7 @@ class TokenTracker:
         # 2. Mask Out Areas Outside Projector FOV
         w_proj = map_system.width
         h_proj = map_system.height
+
         try:
             inv_proj_matrix = np.linalg.inv(projector_matrix)
             proj_corners = np.array(
@@ -196,6 +203,7 @@ class TokenTracker:
         contours, _ = cv2.findContours(
             thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE
         )
+
         for cnt in contours:
             M = cv2.moments(cnt)
             if M["m00"] > 0 and cv2.contourArea(cnt) > self.SL_MIN_CONTOUR_AREA:
@@ -211,6 +219,21 @@ class TokenTracker:
             dst_pts = distortion_model.apply_correction(src_pts)
         else:
             dst_pts = cv2.perspectiveTransform(src_pts, projector_matrix)
+
+        if self.debug_mode:
+            self._log_sl_debug_data(
+                frame_pattern,
+                frame_dark,
+                gray,
+                thresh,
+                max_val,
+                dynamic_thresh,
+                contours,
+                observed_points_cam,
+                dst_pts,
+                w_proj,
+                h_proj,
+            )
 
         observed_points_proj = []
         for p in dst_pts:
@@ -417,6 +440,50 @@ class TokenTracker:
                 grid_origin_y,
             )
         return tokens
+
+    def _log_sl_debug_data(
+        self,
+        frame_pattern,
+        frame_dark,
+        gray,
+        thresh,
+        max_val,
+        dynamic_thresh,
+        contours,
+        observed_points_cam,
+        dst_pts,
+        w_proj,
+        h_proj,
+    ):
+        h, w = frame_pattern.shape[:2]
+        print(f"SL Debug: Camera Frame Res: {w}x{h}")
+        print(f"SL Debug: Projector/Map Res: {w_proj}x{h_proj}")
+        print(f"SL Debug: Max Val: {max_val}, Dynamic Thresh: {dynamic_thresh}")
+        print(f"SL Debug: Found {len(contours)} raw contours.")
+        print(
+            f"SL Debug: Extracted {len(observed_points_cam)} observed centroids from {len(contours)} contours."
+        )
+        if len(observed_points_cam) > 0:
+            print(f"SL Debug: Sample Camera Coords: {observed_points_cam[:5]}")
+        if len(dst_pts) > 0:
+            print(
+                f"SL Debug: Sample Projector Coords: {[tuple(p[0]) for p in dst_pts[:5]]}"
+            )
+
+        # Save debug images
+        timestamp = datetime.now().strftime("%H%M%S")
+        cv2.imwrite(f"debug_sl_frame_pattern_{timestamp}.png", frame_pattern)
+        cv2.imwrite(f"debug_sl_frame_dark_{timestamp}.png", frame_dark)
+
+        # Calculate diff for visualization only
+        diff = cv2.subtract(frame_pattern, frame_dark)
+        cv2.imwrite(f"debug_sl_diff_{timestamp}.png", diff)
+
+        cv2.imwrite(f"debug_sl_gray_{timestamp}.png", gray)
+        cv2.imwrite(f"debug_sl_thresh_{timestamp}.png", thresh)
+        print(
+            f"SL Debug: Saved debug images (frames, diff, gray, thresh) with timestamp {timestamp}"
+        )
 
     def _save_debug_image(
         self,

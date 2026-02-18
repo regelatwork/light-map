@@ -3,7 +3,6 @@ from __future__ import annotations
 import time
 from enum import Enum, auto
 from typing import TYPE_CHECKING, List, Optional
-import random
 
 import numpy as np
 
@@ -115,7 +114,7 @@ class ScanningScene(Scene):
             self._change_stage(ScanStage.WAIT_DARK, current_time)
 
         elif self._stage == ScanStage.WAIT_DARK:
-            if elapsed_time > 0.5:  # 500ms wait for projector/camera latency
+            if elapsed_time > 1.5:  # Increased for camera stability (auto-exposure)
                 self._change_stage(ScanStage.CAPTURE_DARK, current_time)
 
         elif self._stage == ScanStage.CAPTURE_DARK:
@@ -129,8 +128,7 @@ class ScanningScene(Scene):
                 ppi = self.context.map_config_manager.get_ppi()
                 w, h = self.context.app_config.width, self.context.app_config.height
 
-                # CRITICAL: Seed for determinism if needed, though we cache the image now.
-                random.seed(42)
+                # The pattern generation is now deterministic with its own seed
                 self._pattern_image, self._cached_pattern_points = (
                     self.token_tracker.get_scan_pattern(w, h, ppi)
                 )

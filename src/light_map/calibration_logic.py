@@ -10,8 +10,8 @@ def run_calibration_sequence(
     camera: Camera,
     projector_width: int = 1920,
     projector_height: int = 1080,
-    rows: int = 6,
-    cols: int = 9,
+    rows: int = 12,
+    cols: int = 18,
 ) -> Optional[Tuple[np.ndarray, np.ndarray, np.ndarray]]:
     """
     Runs the projector calibration sequence using an existing camera instance.
@@ -25,7 +25,7 @@ def run_calibration_sequence(
     try:
         # Generate Pattern
         pattern_img, params = generate_calibration_pattern(
-            projector_width, projector_height, rows, cols
+            projector_width, projector_height, rows, cols, border_size=30
         )
 
         cv2.imshow(window_name, pattern_img)

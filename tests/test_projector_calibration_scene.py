@@ -30,7 +30,7 @@ def test_projector_calibration_flow_success(mock_app_context):
     """Verify successful projector calibration flow."""
     scene = ProjectorCalibrationScene(mock_app_context)
     mock_frame = np.zeros((100, 100, 3), dtype=np.uint8)
-    mock_app_context.app_config.camera = MockCamera(mock_frame)
+    mock_app_context.last_camera_frame = mock_frame
 
     mock_time = 0.0
 
@@ -67,7 +67,7 @@ def test_projector_calibration_flow_success(mock_app_context):
 def test_projector_calibration_no_camera_error(mock_app_context):
     """Verify error handling when no camera is available."""
     scene = ProjectorCalibrationScene(mock_app_context)
-    mock_app_context.app_config.camera = None
+    mock_app_context.last_camera_frame = None
 
     mock_time = 0.0
 
@@ -92,7 +92,7 @@ def test_projector_calibration_no_camera_error(mock_app_context):
         assert isinstance(transition, SceneTransition)
         assert transition.target_scene == SceneId.MENU
         mock_app_context.notifications.add_notification.assert_called_with(
-            "Error: No camera available."
+            "Error: Failed to capture frame/No camera available."
         )
 
 

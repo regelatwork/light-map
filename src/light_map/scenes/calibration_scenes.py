@@ -154,19 +154,17 @@ class IntrinsicsCalibrationScene(Scene):
         if self._stage == "CAPTURE":
             if inputs and inputs[0].gesture == GestureType.CLOSED_FIST:
                 # Capture image
-                camera = self.context.app_config.camera
-                if camera:
-                    frame = camera.get_frame()
-                    if frame is not None:
-                        self._captured_images.append(frame)
+                frame = self.context.last_camera_frame
+                if frame is not None:
+                    self._captured_images.append(frame)
+                    self.context.notifications.add_notification(
+                        f"Captured image {len(self._captured_images)}/{self._required_images}"
+                    )
+                    if len(self._captured_images) >= self._required_images:
+                        self._stage = "PROCESSING"
                         self.context.notifications.add_notification(
-                            f"Captured image {len(self._captured_images)}/{self._required_images}"
+                            "Processing chessboard images..."
                         )
-                        if len(self._captured_images) >= self._required_images:
-                            self._stage = "PROCESSING"
-                            self.context.notifications.add_notification(
-                                "Processing chessboard images..."
-                            )
                 else:
                     self.context.notifications.add_notification(
                         "Error: Camera not available for calibration."
@@ -263,26 +261,19 @@ class ProjectorCalibrationScene(Scene):
             # For now, we just simulate success after a brief delay
             # We need to actually access the camera to do this for real.
 
-            camera = self.context.app_config.camera
-            if camera:
-                frame = camera.get_frame()
-                if frame is not None:
-                    # TODO: Implement actual homography computation
-                    # ret, homography = compute_homography(frame, pattern_info)
-                    # if ret: ...
+            frame = self.context.last_camera_frame
+            if frame is not None:
+                # TODO: Implement actual homography computation
+                # ret, homography = compute_homography(frame, pattern_info)
+                # if ret: ...
 
-                    # For now, assume success if we got a frame
-                    self.context.notifications.add_notification("Projector calibrated.")
-                    self._stage = "DONE"
-                    return SceneTransition(SceneId.MENU)
-                else:
-                    self.context.notifications.add_notification(
-                        "Error: Failed to capture frame."
-                    )
-                    self._stage = "ERROR"
+                # For now, assume success if we got a frame
+                self.context.notifications.add_notification("Projector calibrated.")
+                self._stage = "DONE"
+                return SceneTransition(SceneId.MENU)
             else:
                 self.context.notifications.add_notification(
-                    "Error: No camera available."
+                    "Error: Failed to capture frame/No camera available."
                 )
                 self._stage = "ERROR"
 

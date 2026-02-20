@@ -43,9 +43,7 @@ def test_intrinsics_calibration_capture_and_process(
     mock_app_context.notifications.reset_mock()  # Reset mock calls after on_enter
 
     # Simulate images being available
-    mock_app_context.app_config.camera = MockCamera(
-        np.zeros((100, 100, 3), dtype=np.uint8)
-    )
+    mock_app_context.last_camera_frame = np.zeros((100, 100, 3), dtype=np.uint8)
 
     with patch(
         "light_map.scenes.calibration_scenes.process_chessboard_images",
@@ -91,9 +89,7 @@ def test_intrinsics_calibration_process_failure(
     """Verify error notification on calibration failure."""
     intrinsics_calib_scene.on_enter()
     mock_app_context.notifications.reset_mock()  # Reset mock calls after on_enter
-    mock_app_context.app_config.camera = MockCamera(
-        np.zeros((100, 100, 3), dtype=np.uint8)
-    )
+    mock_app_context.last_camera_frame = np.zeros((100, 100, 3), dtype=np.uint8)
 
     with patch(
         "light_map.scenes.calibration_scenes.process_chessboard_images",

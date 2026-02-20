@@ -213,18 +213,67 @@ class StructuredLightTokenDetector:
         tokens = []
         if detected_tokens_points:
             if grid_spacing_svg > 0:
-                cell_map = {}
+                # Phase 1: Convert all points to world coordinates
+                world_points = []
                 for p in detected_tokens_points:
                     wx, wy = map_system.screen_to_world(p[0], p[1])
-                    gx = int(math.floor((wx - grid_origin_x) / grid_spacing_svg))
-                    gy = int(math.floor((wy - grid_origin_y) / grid_spacing_svg))
-                    if (gx, gy) not in cell_map:
-                        cell_map[(gx, gy)] = []
-                    cell_map[(gx, gy)].append(p)
-
+                    world_points.append((wx, wy))
+                
+                # Phase 2: Cover areas with grid-sized continuous rectangles
+                placed_rects = []
+                remaining_pts = list(world_points)
+                
+                while len(remaining_pts) >= 2:
+                    best_rect_center = None
+                    best_count = 0
+                    best_covered = []
+                    
+                    # Find the dense center that covers the most points
+                    for p in remaining_pts:
+                        cx, cy = p
+                        # Mean-shift to settle on the local centroid
+                        for _ in range(5):
+                            covered = []
+                            for i, pt in enumerate(remaining_pts):
+                                if abs(pt[0] - cx) <= grid_spacing_svg / 2 and abs(pt[1] - cy) <= grid_spacing_svg / 2:
+                                    covered.append(i)
+                            
+                            if not covered:
+                                break
+                                
+                            new_cx = sum(remaining_pts[i][0] for i in covered) / len(covered)
+                            new_cy = sum(remaining_pts[i][1] for i in covered) / len(covered)
+                            
+                            if abs(new_cx - cx) < 1.0 and abs(new_cy - cy) < 1.0:
+                                cx, cy = new_cx, new_cy
+                                break
+                            cx, cy = new_cx, new_cy
+                            
+                        if len(covered) > best_count:
+                            best_count = len(covered)
+                            best_rect_center = (cx, cy)
+                            best_covered = covered
+                            
+                    if best_count < 2:
+                        break
+                        
+                    placed_rects.append((best_rect_center[0], best_rect_center[1], best_count))
+                    
+                    # Remove the covered points
+                    for i in sorted(best_covered, reverse=True):
+                        remaining_pts.pop(i)
+                
+                # Phase 3: Snap continuous rectangles to the grid
+                occupied_cells = set()
                 token_id = 1
-                for (gx, gy), cluster in cell_map.items():
-                    if len(cluster) >= 2:
+                
+                for cx, cy, count in placed_rects:
+                    gx = int(math.floor((cx - grid_origin_x) / grid_spacing_svg))
+                    gy = int(math.floor((cy - grid_origin_y) / grid_spacing_svg))
+                    
+                    # Ensure no two tokens snap to the exact same cell
+                    if (gx, gy) not in occupied_cells:
+                        occupied_cells.add((gx, gy))
                         tokens.append(
                             Token(
                                 id=token_id,
@@ -232,9 +281,7 @@ class StructuredLightTokenDetector:
                                 world_y=grid_origin_y + (gy + 0.5) * grid_spacing_svg,
                                 grid_x=gx,
                                 grid_y=gy,
-                                confidence=min(
-                                    1.0, len(cluster) / self.CONFIDENCE_SCALING
-                                ),
+                                confidence=min(1.0, count / self.CONFIDENCE_SCALING),
                             )
                         )
                         token_id += 1

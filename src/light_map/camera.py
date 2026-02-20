@@ -31,7 +31,7 @@ class Camera:
         camera_name = "/base/axi/pcie@1000120000/rp1/i2c@88000/imx708@1a"
 
         return (
-            f"libcamerasrc camera-name={camera_name} ! "
+            f"libcamerasrc camera-name={camera_name} af-mode=continuous ! "
             f"video/x-raw, format=BGR, width={self.width}, height={self.height}, framerate={self.framerate}/1 ! "
             f"videoconvert ! "
             f"appsink drop=true sync=false max-buffers=1"

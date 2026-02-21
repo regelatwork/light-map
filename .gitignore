@@ -11,5 +11,5 @@ captured_frame.jpg
 session.json
 maps/
 map_state.json
-calibration_target.svg
-debug*.png
+*.svg
+*.png

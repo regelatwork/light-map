@@ -10,7 +10,7 @@ def run_calibration_sequence(
     camera: Camera,
     projector_width: int = 1920,
     projector_height: int = 1080,
-    rows: int = 12,
+    rows: int = 13,
     cols: int = 18,
 ) -> Optional[Tuple[np.ndarray, np.ndarray, np.ndarray]]:
     """

@@ -423,7 +423,9 @@ class InteractiveApp:
 
             # Draw circle
             color = (255, 255, 0)  # Cyan/Yellow
-            if not resolved.is_known:
+            if t.is_duplicate:
+                color = (0, 0, 255)  # Red for duplicates
+            elif not resolved.is_known:
                 color = (200, 200, 200)  # Gray for unknown
             elif resolved.type == "PC":
                 color = (0, 255, 0)  # Green for players
@@ -436,7 +438,18 @@ class InteractiveApp:
                 alpha_pulse = 0.2 + 0.8 * pulse
                 color = tuple(int(c * alpha_pulse) for c in color)
 
-            if not resolved.is_known:
+            if t.is_duplicate:
+                draw_dashed_circle(image, (int(sx), int(sy)), radius, color, 2)
+                cv2.putText(
+                    image,
+                    "DUPLICATE",
+                    (int(sx) - radius, int(sy) + radius + 20),
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    0.5,
+                    color,
+                    1,
+                )
+            elif not resolved.is_known:
                 draw_dashed_circle(image, (int(sx), int(sy)), radius, color, 2)
                 # Draw "?" in the center
                 cv2.putText(

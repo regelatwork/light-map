@@ -89,6 +89,7 @@ class Token:
     grid_y: Optional[int] = None
     confidence: float = 1.0
     is_occluded: bool = False
+    is_duplicate: bool = False
 
 
 @dataclass

@@ -56,6 +56,7 @@ class ArucoTokenDetector:
     ) -> List[Token]:
         """
         Detects ArUco tokens in the frame and applies parallax correction.
+        Resolves duplicate IDs by selecting the one with the largest area.
         """
         if self.camera_matrix is None or self.R is None:
             return []
@@ -63,17 +64,38 @@ class ArucoTokenDetector:
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         corners, ids, rejected = self.detector.detectMarkers(gray)
 
-        tokens = []
-        if ids is not None:
-            ppi_mm = ppi / 25.4
-            for i, marker_id_arr in enumerate(ids):
-                marker_id = int(marker_id_arr[0])
-                marker_corners = corners[i][0]
+        if ids is None:
+            return []
 
-                # Get center of marker in camera pixels
+        # 1. Group detections by ID and calculate areas
+        detections_by_id = {}
+        for i, marker_id_arr in enumerate(ids):
+            marker_id = int(marker_id_arr[0])
+            marker_corners = corners[i][0]
+            
+            # Area of the marker in camera pixels
+            area = cv2.contourArea(marker_corners)
+            
+            if marker_id not in detections_by_id:
+                detections_by_id[marker_id] = []
+            
+            detections_by_id[marker_id].append({
+                "corners": marker_corners,
+                "area": area
+            })
+
+        tokens = []
+        ppi_mm = ppi / 25.4
+        
+        for marker_id, detections in detections_by_id.items():
+            # Sort by area descending
+            sorted_detections = sorted(detections, key=lambda x: x["area"], reverse=True)
+            
+            for i, det in enumerate(sorted_detections):
+                marker_corners = det["corners"]
                 u, v = np.mean(marker_corners, axis=0)
 
-                # Apply parallax correction (returns mm in table space)
+                # Apply parallax correction
                 height_mm = default_height_mm
                 if token_configs and marker_id in token_configs:
                     height_mm = token_configs[marker_id].get(
@@ -82,19 +104,24 @@ class ArucoTokenDetector:
 
                 wx_mm, wy_mm = self._parallax_correction(u, v, height_mm)
 
-                # Map mm to projector pixels
+                # Map to projector pixels
                 px = wx_mm * ppi_mm
                 py = wy_mm * ppi_mm
 
-                # Apply distortion correction if available (Projector space)
                 if distortion_model:
                     px, py = distortion_model.correct_theoretical_point(px, py)
 
-                # Map projector pixels to MapSystem world coordinates (SVG units)
+                # Map to SVG units
                 wx_svg, wy_svg = map_system.screen_to_world(px, py)
 
                 tokens.append(
-                    Token(id=marker_id, world_x=wx_svg, world_y=wy_svg, confidence=1.0)
+                    Token(
+                        id=marker_id, 
+                        world_x=wx_svg, 
+                        world_y=wy_svg, 
+                        confidence=1.0,
+                        is_duplicate=(i > 0)
+                    )
                 )
 
         return tokens

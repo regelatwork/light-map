@@ -71,6 +71,7 @@ The goal of Light Map is to create a seamless bridge between physical and digita
 
 ### Active / Proposed Features
 
+- **Improved Calibration and Marker Defaults**: Multi-step wizard for PPI and camera pose calibration, and global default configuration for ArUco markers. (Design: [improved_calibration_and_marker_defaults.md](file:///home/rchandia/light_map/features/improved_calibration_and_marker_defaults.md))
 - **ArUco-Based Token Tracking**: Robust, continuous tracking using ArUco markers, featuring parallax correction and configurable token sizes. (Design: [aruco_token_tracking.md](file:///home/rchandia/light_map/features/aruco_token_tracking.md))
 - **Structured Light Token Detection**: Utilizing dot grid disparity to detect tokens regardless of color or contrast. (Design: [structured_light_token_detection.md](file:///home/rchandia/light_map/features/structured_light_token_detection.md))
 - **Refactor InteractiveApp (Scene Architecture)**: Transitioning to a scene-based architecture for improved maintainability and testability. (Design: [refactor_interactive_app.md](file:///home/rchandia/light_map/features/refactor_interactive_app.md))

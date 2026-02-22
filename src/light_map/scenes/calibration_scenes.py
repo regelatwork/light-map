@@ -13,6 +13,7 @@ from light_map.core.scene import Scene, SceneTransition
 from light_map.core.map_interaction import MapInteractionController
 from light_map.gestures import GestureType
 from light_map.token_tracker import TokenTracker
+from light_map.display_utils import draw_dashed_circle
 from light_map.calibration_logic import calculate_ppi_from_frame, calibrate_extrinsics
 from light_map.common_types import SceneId
 from light_map.calibration import (
@@ -562,12 +563,21 @@ class ExtrinsicsCalibrationScene(Scene):
                         cv2.circle(canvas, (tx, ty), radius, (0, 255, 0), 2)
 
             elif status == "UNKNOWN":
-                color = (0, 0, 255) # Red
-                thickness = 2
+                color = (200, 200, 200)  # Gray
                 aid = info.get("aid", "???")
                 label = f"Unknown ID {aid}"
-
-            cv2.circle(canvas, (tx, ty), 50, color, thickness)
+                draw_dashed_circle(canvas, (tx, ty), 50, color, 2)
+                cv2.putText(
+                    canvas,
+                    "?",
+                    (tx - 12, ty + 15),
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    1.2,
+                    color,
+                    2,
+                )
+            else:
+                cv2.circle(canvas, (tx, ty), 50, color, thickness)
             
             # Label below
             cv2.putText(

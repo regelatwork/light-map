@@ -17,6 +17,7 @@ from light_map.map_system import MapSystem
 from light_map.svg_loader import SVGLoader
 from light_map.map_config import MapConfigManager
 from light_map.session_manager import SessionManager
+from light_map.display_utils import draw_dashed_circle
 
 from light_map.core.app_context import AppContext
 from light_map.core.notification import NotificationManager
@@ -422,19 +423,33 @@ class InteractiveApp:
 
             # Draw circle
             color = (255, 255, 0)  # Cyan/Yellow
-            if resolved.type == "PC":
+            if not resolved.is_known:
+                color = (200, 200, 200)  # Gray for unknown
+            elif resolved.type == "PC":
                 color = (0, 255, 0)  # Green for players
             elif resolved.type == "NPC":
                 color = (0, 0, 255)  # Red for NPCs
 
             if t.is_occluded:
                 # Pulse brightness
-                pulse = (math.sin(self.time_provider() * 10) + 1) / 2  # 0.5 to 1.0ish?
-                # Let's do 0.2 to 1.0
+                pulse = (math.sin(self.time_provider() * 10) + 1) / 2
                 alpha_pulse = 0.2 + 0.8 * pulse
                 color = tuple(int(c * alpha_pulse) for c in color)
 
-            cv2.circle(image, (int(sx), int(sy)), radius, color, 2)
+            if not resolved.is_known:
+                draw_dashed_circle(image, (int(sx), int(sy)), radius, color, 2)
+                # Draw "?" in the center
+                cv2.putText(
+                    image,
+                    "?",
+                    (int(sx) - 8, int(sy) + 10),
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    0.8,
+                    color,
+                    2,
+                )
+            else:
+                cv2.circle(image, (int(sx), int(sy)), radius, color, 2)
 
             # Draw name
             cv2.putText(

@@ -32,6 +32,7 @@ class ResolvedToken:
     type: str
     size: int
     height_mm: float
+    is_known: bool = True
 
 
 @dataclass
@@ -369,7 +370,11 @@ class MapConfigManager:
         # 3. Fallback Generic if still not found
         if not definition:
             return ResolvedToken(
-                name=f"Unknown Token #{aruco_id}", type="NPC", size=1, height_mm=10.0
+                name=f"Unknown Token #{aruco_id}",
+                type="NPC",
+                size=1,
+                height_mm=10.0,
+                is_known=False,
             )
 
         # 4. Resolve dimensions

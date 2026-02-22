@@ -25,10 +25,12 @@ def test_map_config_manager_aruco_defaults():
     resolved_global = manager.resolve_token_profile(1)
     assert resolved_global.name == "Fighter"
     assert resolved_global.height_mm == 25.0  # medium profile
+    assert resolved_global.is_known is True
 
     resolved_override = manager.resolve_token_profile(1, map_name)
     assert resolved_override.name == "Strong Fighter"
     assert resolved_override.height_mm == 30.0  # override
+    assert resolved_override.is_known is True
 
     # 5. Check all configs
     manager.set_global_aruco_definition(2, "Goblin", type="NPC", profile="small")
@@ -41,6 +43,7 @@ def test_map_config_manager_aruco_defaults():
     # 6. Check unknown ID
     unknown = manager.resolve_token_profile(99)
     assert "Unknown Token #99" == unknown.name
+    assert unknown.is_known is False
 
     # Cleanup
     if os.path.exists(test_file):

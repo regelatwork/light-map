@@ -15,24 +15,36 @@ To avoid repeated configuration for every map, the system will maintain a global
 ```json
 {
   "global": {
-    "aruco_defaults": {
-      "1": { "name": "Fighter", "type": "PC", "size": 1, "height_mm": 25.0 },
-      "10": { "name": "Goblin", "type": "NPC", "size": 1, "height_mm": 15.0 },
-      "50": { "name": "Dragon", "type": "NPC", "size": 3, "height_mm": 50.0 }
+    "token_profiles": {
+      "small": { "size": 1, "height_mm": 15.0 },
+      "medium": { "size": 1, "height_mm": 25.0 },
+      "large": { "size": 2, "height_mm": 40.0 },
+      "huge": { "size": 3, "height_mm": 60.0 }
     },
-    "projector_ppi": 96.0,
-    "..." : "..."
+    "aruco_defaults": {
+      "1": { "name": "Fighter", "type": "PC", "profile": "medium" },
+      "10": { "name": "Goblin", "type": "NPC", "profile": "small" },
+      "50": { "name": "Dragon", "type": "NPC", "profile": "huge" },
+      "99": { "name": "Custom Mini", "type": "PC", "size": 1, "height_mm": 32.5 }
+    },
+    "projector_ppi": 96.0
   },
   "maps": {
     "maps/dungeon.svg": {
       "aruco_overrides": {
-        "10": { "name": "Boss Goblin", "type": "NPC", "size": 2, "height_mm": 30.0 }
+        "10": { "name": "Boss Goblin", "type": "NPC", "profile": "medium" }
       }
     }
   }
 }
 ```
 
+- **Profile Resolution Logic**:
+  1. If an entry (in `aruco_defaults` or `aruco_overrides`) has a `"profile"` field:
+     - Look up the profile in `global.token_profiles`.
+     - If found, use its `size` and `height_mm`.
+     - If NOT found, fallback to generic defaults.
+  1. If an entry explicitly defines `"size"` and `"height_mm"`, these take precedence over a `"profile"` (if both are present).
 - **Lookup Logic**: When a marker with ID $N$ is detected:
   1. Check `aruco_overrides` for the current map.
   1. If not found, check `aruco_defaults` in `GlobalMapConfig`.

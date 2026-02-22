@@ -12,6 +12,8 @@ ArUco markers provide a unique ID for each token, allowing the system to disting
 
 ### 2.2 The Elevation Challenge (Parallax)
 
+*(See also: [Design Refinement: Token Tracking Stability](design_refinement_aruco_stability.md))*
+
 Tokens have a physical height $h$. ArUco markers are placed on the *top* surface. Because the camera is offset from the projector's optical axis, the detected position of a marker on top of a token will be shifted (parallax error) compared to its actual base position on the table.
 
 **Correction Strategy:**

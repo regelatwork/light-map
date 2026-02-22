@@ -53,7 +53,11 @@ A new configuration section in `map_state.json` will map ArUco IDs to token prop
 6.  **Temporal Filtering**:
     - Maintain a "Last Seen" state for each ID.
     - Use an Alpha-Beta filter or Kalman filter to smooth movement.
-    - If a marker is lost, keep it at its last known position for $N$ frames (handling hand occlusions).
+    - **Occlusion Buffer Strategy:**
+        - If a marker is lost (e.g., hand occlusion), keep it at its last known position for **2000ms**.
+        - During this buffer period, the token's digital visualization (highlight/label) will **pulse** to indicate temporary tracking loss.
+        - If the marker reappears within 2000ms, the pulsing stops and tracking resumes immediately.
+        - If the timeout expires without re-detection, the token is removed from the map.
 
 ### 3.3 Integration Architecture
 

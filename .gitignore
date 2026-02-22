@@ -5,6 +5,7 @@ images/*.jpg
 images/*.jpeg
 .venv/*
 camera_calibration.npz
+camera_extrinsics.npz
 __pycache__/
 projector_calibration.npz
 captured_frame.jpg

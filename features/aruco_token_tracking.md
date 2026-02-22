@@ -13,12 +13,12 @@ ArUco markers provide a unique ID for each token, allowing the system to disting
 Tokens have a physical height $h$. ArUco markers are placed on the *top* surface. Because the camera is offset from the projector's optical axis, the detected position of a marker on top of a token will be shifted (parallax error) compared to its actual base position on the table.
 
 **Correction Strategy:**
-1.  **Camera Pose Estimation**: Decompose the existing Projector-Camera Homography ($H$) using the Camera Intrinsics ($K$) to find the camera's rotation ($R$) and translation ($t$) relative to the table plane ($z=0$).
+1.  **Camera Pose Estimation**: Use the camera's rotation ($R$) and translation ($t$) obtained via `cv2.solvePnP` during the expanded projector calibration wizard (stored in `camera_extrinsics.npz`).
 2.  **Ray-Plane Intersection**: For a detected marker center $(u, v)$ in the camera frame:
-    - Back-project to a 3D ray in camera space.
+    - Back-project to a 3D ray in camera space using the camera intrinsics ($K$).
     - Transform the ray to table space using $(R, t)$.
     - Intersect the ray with the plane $z=h$ (where $h$ is the token height).
-    - The resulting $(X, Y)$ coordinates represent the true center of the token's base on the table.
+    - The resulting $(X, Y)$ coordinates represent the true center of the token's base on the table (Table Space).
 
 ## 3. Technical Specifications
 
@@ -42,13 +42,14 @@ A new configuration section in `map_state.json` will map ArUco IDs to token prop
 
 1.  **Capture**: Continuous background capture (no flash).
 2.  **ArUco Detection**: Use `cv2.aruco.ArucoDetector`.
-3.  **Parallax Correction**: Apply the ray-plane intersection logic.
+3.  **Parallax Correction**: Apply the ray-plane intersection logic to obtain $(X, Y)_{table}$.
 4.  **Coordinate Mapping**:
-    - Table (mm) $	o$ Projector (pixels) using PPI.
-    - Projector $	o$ World (SVG) using `MapSystem.screen_to_world`.
+    - **Table to Projector**: $(X, Y)_{table}$ to Projector coordinates using PPI.
+    - **Projector to World**: Projector coordinates to World (SVG) using `MapSystem.screen_to_world`.
 5.  **Grid Snapping**:
     - Calculate `grid_x, grid_y` based on `grid_origin` and `grid_spacing`.
-    - For $n 	imes n$ tokens, snap the centroid to the intersection or center that aligns the footprint with the grid.
+    - **Odd Size ($n=1, 3, 5$):** Snap centroid to the **center** of a grid cell.
+    - **Even Size ($n=2, 4$):** Snap centroid to the **intersection** (corner) of grid cells.
 6.  **Temporal Filtering**:
     - Maintain a "Last Seen" state for each ID.
     - Use an Alpha-Beta filter or Kalman filter to smooth movement.
@@ -74,7 +75,7 @@ Add `TokenDetectionAlgorithm.ARUCO` and delegate to the new detector.
 
 ## 5. Implementation Plan
 
-1.  **Research**: Verify homography decomposition accuracy with current calibration data.
+1.  **Research**: Verify `solvePnP` accuracy with synthetic and physical calibration data.
 2.  **Core Logic**: Implement `ArucoTokenDetector` with parallax correction.
 3.  **Config**: Add ArUco token mapping to `MapConfigManager`.
 4.  **UI**: Add ArUco detection toggle to the menu.

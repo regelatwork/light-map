@@ -49,7 +49,8 @@ The `projector_calibration.py` script will be expanded into a multi-step interac
 
 ### 3.2 Step 2: PPI Calibration (Physical Scale)
 - Project two ArUco markers (ID 0 and 1) at a fixed projector distance.
-- Ask the user to place two physical ArUco markers on the table at a known distance (e.g., 100mm) OR use the projected markers if they are printed/placed on the table.
+- Ask the user to place two physical ArUco markers on the table at a known distance (e.g., 100mm).
+- **CRITICAL**: The physical markers MUST be placed directly on the table surface ($Z=0$). If placed on tokens, parallax will skew the calculation.
 - **Improved PPI**: Detect markers 0 and 1. Use the homography from Step 1 to map detected centers to projector space. Calculate PPI based on the known physical distance.
 
 ### 3.3 Step 3: Camera Pose Estimation (Extrinsics)
@@ -60,7 +61,7 @@ The `projector_calibration.py` script will be expanded into a multi-step interac
   3. The system detects the markers at $(u, v)_{cam}$.
   4. Even if placement is slightly imprecise, the system uses $H_{cam\_to\_proj}$ to find the "Ground" $(X, Y)$ coordinates of the marker's center (as if it was on the floor).
   5. **Refinement**: Combine the $(X, Y, h)$ 3D points and their 2D camera projections $(u, v)$ with the $Z=0$ points from the chessboard calibration.
-  6. Run `cv2.solvePnP` to compute rotation ($R$) and translation ($t$).
+  6. Run `cv2.solvePnP` to compute rotation ($R$) and translation ($t$). This method is preferred over homography decomposition for its robustness and accuracy.
 - **Output**: `camera_extrinsics.npz` containing $R$ and $t$.
 
 ## 4. Implementation Strategy

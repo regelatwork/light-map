@@ -149,9 +149,29 @@ def build_root_menu(map_config: MapConfigManager) -> MenuItem:
                 ],
             ),
             MenuItem(
-                title="Calibrate",
-                action_id=MenuActions.CALIBRATE,
-                should_close_on_trigger=True,
+                title="Calibration",
+                children=[
+                    MenuItem(
+                        title="1. Camera Intrinsics",
+                        action_id=MenuActions.CALIBRATE_INTRINSICS,
+                        should_close_on_trigger=True,
+                    ),
+                    MenuItem(
+                        title="2. Projector Homography",
+                        action_id=MenuActions.CALIBRATE_PROJECTOR,
+                        should_close_on_trigger=True,
+                    ),
+                    MenuItem(
+                        title="3. Physical PPI",
+                        action_id=MenuActions.CALIBRATE_PPI,
+                        should_close_on_trigger=True,
+                    ),
+                    MenuItem(
+                        title="4. Camera Extrinsics",
+                        action_id=MenuActions.CALIBRATE_EXTRINSICS,
+                        should_close_on_trigger=True,
+                    ),
+                ],
             ),
             MenuItem(
                 title="Session",

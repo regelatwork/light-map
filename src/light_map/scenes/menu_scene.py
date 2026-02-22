@@ -93,10 +93,14 @@ class MenuScene(Scene):
             if patterns:
                 self.context.map_config_manager.scan_for_maps(patterns)
                 self.on_enter()  # Rebuild menu
-        elif action == MenuActions.CALIBRATE_SCALE:
-            return SceneTransition(SceneId.CALIBRATE_PPI)
-        elif action == MenuActions.CALIBRATE:
+        elif action == MenuActions.CALIBRATE_INTRINSICS:
             return SceneTransition(SceneId.CALIBRATE_INTRINSICS)
+        elif action == MenuActions.CALIBRATE_PROJECTOR:
+            return SceneTransition(SceneId.CALIBRATE_PROJECTOR)
+        elif action == MenuActions.CALIBRATE_PPI:
+            return SceneTransition(SceneId.CALIBRATE_PPI)
+        elif action == MenuActions.CALIBRATE_EXTRINSICS:
+            return SceneTransition(SceneId.CALIBRATE_EXTRINSICS)
         elif action == MenuActions.CALIBRATE_FLASH:
             return SceneTransition(SceneId.CALIBRATE_FLASH)
         elif action == MenuActions.SET_MAP_SCALE:

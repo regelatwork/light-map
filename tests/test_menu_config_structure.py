@@ -34,8 +34,20 @@ def test_root_menu_structure(root_menu):
     titles = [c.title for c in root_menu.children]
     assert "Map Controls" in titles
     assert "Map Settings" in titles
-    assert "Calibrate" in titles
+    assert "Calibration" in titles
     assert "Options" in titles
+
+
+def test_calibration_submenu(root_menu):
+    # Find Calibration
+    calib_menu = next(c for c in root_menu.children if c.title == "Calibration")
+
+    # Verify children
+    sub_titles = [c.title for c in calib_menu.children]
+    assert "1. Camera Intrinsics" in sub_titles
+    assert "2. Projector Homography" in sub_titles
+    assert "3. Physical PPI" in sub_titles
+    assert "4. Camera Extrinsics" in sub_titles
 
 
 def test_map_settings_submenu(root_menu):

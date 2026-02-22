@@ -2,6 +2,7 @@ from __future__ import annotations
 import cv2
 import numpy as np
 import time
+import os
 import mediapipe as mp
 from typing import List, Tuple, Any, Dict
 
@@ -28,6 +29,7 @@ from light_map.scenes.calibration_scenes import (
     PpiCalibrationScene,
     IntrinsicsCalibrationScene,
     ProjectorCalibrationScene,
+    ExtrinsicsCalibrationScene,
 )
 
 
@@ -44,6 +46,15 @@ class InteractiveApp:
         self.map_config = MapConfigManager()
         self.notifications = NotificationManager()
 
+        # Load Camera Calibration
+        camera_matrix = None
+        dist_coeffs = None
+        if os.path.exists("camera_calibration.npz"):
+            calib = np.load("camera_calibration.npz")
+            camera_matrix = calib["camera_matrix"]
+            dist_coeffs = calib["dist_coeffs"]
+            print("Loaded camera intrinsics.")
+
         # Scan for maps if provided
         if config.map_search_patterns:
             self.map_config.scan_for_maps(config.map_search_patterns)
@@ -57,6 +68,8 @@ class InteractiveApp:
             projector_matrix=self.config.projector_matrix,
             notifications=self.notifications,
             distortion_model=self.config.distortion_model,
+            camera_matrix=camera_matrix,
+            dist_coeffs=dist_coeffs,
         )
 
         # Scene Management
@@ -70,6 +83,7 @@ class InteractiveApp:
             SceneId.CALIBRATE_MAP_GRID: MapGridCalibrationScene(self.app_context),
             SceneId.CALIBRATE_INTRINSICS: IntrinsicsCalibrationScene(self.app_context),
             SceneId.CALIBRATE_PROJECTOR: ProjectorCalibrationScene(self.app_context),
+            SceneId.CALIBRATE_EXTRINSICS: ExtrinsicsCalibrationScene(self.app_context),
         }
         self.current_scene: Scene = self.scenes[SceneId.MENU]
         self.current_scene.on_enter()
@@ -95,6 +109,14 @@ class InteractiveApp:
         self.map_system.width = self.config.width
         self.map_system.height = self.config.height
 
+        # Load Camera Calibration
+        camera_matrix = None
+        dist_coeffs = None
+        if os.path.exists("camera_calibration.npz"):
+            calib = np.load("camera_calibration.npz")
+            camera_matrix = calib["camera_matrix"]
+            dist_coeffs = calib["dist_coeffs"]
+
         self.app_context = AppContext(
             app_config=self.config,
             renderer=self.renderer,
@@ -103,6 +125,8 @@ class InteractiveApp:
             projector_matrix=self.config.projector_matrix,
             notifications=self.notifications,
             distortion_model=self.config.distortion_model,
+            camera_matrix=camera_matrix,
+            dist_coeffs=dist_coeffs,
             debug_mode=self.app_context.debug_mode,
             show_tokens=self.app_context.show_tokens,
         )
@@ -118,6 +142,7 @@ class InteractiveApp:
             SceneId.CALIBRATE_MAP_GRID: MapGridCalibrationScene(self.app_context),
             SceneId.CALIBRATE_INTRINSICS: IntrinsicsCalibrationScene(self.app_context),
             SceneId.CALIBRATE_PROJECTOR: ProjectorCalibrationScene(self.app_context),
+            SceneId.CALIBRATE_EXTRINSICS: ExtrinsicsCalibrationScene(self.app_context),
         }
         # Reset to Menu or Viewing?
         # Ideally preserve current scene type if possible, but simple reset is safer.

@@ -103,6 +103,13 @@ def save_camera_calibration(camera_matrix: np.ndarray, dist_coeffs: np.ndarray):
     print(f"Camera calibration saved to {CALIBRATION_FILE}")
 
 
+def save_camera_extrinsics(rvec: np.ndarray, tvec: np.ndarray):
+    """Saves the camera extrinsic parameters (R, t) to a file."""
+    output_file = "camera_extrinsics.npz"
+    np.savez(output_file, rvec=rvec, tvec=tvec)
+    print(f"Camera extrinsics saved to {output_file}")
+
+
 def calibrate_camera_from_images(image_paths, checkerboard_dims=(6, 9)):
     """
     Performs camera calibration using a list of image paths.

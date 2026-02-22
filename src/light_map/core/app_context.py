@@ -24,6 +24,8 @@ class AppContext:
     map_config_manager: MapConfigManager
     projector_matrix: np.ndarray
     notifications: NotificationManager
+    camera_matrix: Optional[np.ndarray] = None
+    dist_coeffs: Optional[np.ndarray] = None
     distortion_model: Optional[ProjectorDistortionModel] = None
     show_tokens: bool = True
     debug_mode: bool = False

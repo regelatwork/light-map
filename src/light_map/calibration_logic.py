@@ -1,6 +1,6 @@
 import cv2
 import numpy as np
-from typing import Optional, Tuple
+from typing import Optional, Tuple, Dict
 
 from .camera import Camera
 from .projector import generate_calibration_pattern, compute_projector_homography
@@ -106,3 +106,97 @@ def calculate_ppi_from_frame(
     ppi = dist_px / dist_inches
 
     return ppi
+
+
+def calibrate_extrinsics(
+    frame: np.ndarray,
+    projector_matrix: np.ndarray,
+    camera_matrix: np.ndarray,
+    dist_coeffs: np.ndarray,
+    token_heights: Dict[int, float],
+    ppi: float,
+    ground_points_cam: Optional[np.ndarray] = None,
+    ground_points_proj: Optional[np.ndarray] = None,
+    known_targets: Optional[Dict[int, Tuple[float, float]]] = None,
+) -> Optional[Tuple[np.ndarray, np.ndarray]]:
+    """
+    Estimates Camera Extrinsics (R, t) using ArUco markers with known heights.
+    
+    Args:
+        frame: The camera frame containing ArUco markers.
+        projector_matrix: Homography (Camera -> Projector).
+        camera_matrix: Camera intrinsic matrix.
+        dist_coeffs: Camera distortion coefficients.
+        token_heights: Mapping of ArUco ID to token height in mm.
+        ppi: Projector PPI (Pixels Per Inch).
+        ground_points_cam: (N, 2) array of camera coordinates at Z=0.
+        ground_points_proj: (N, 2) array of projector coordinates corresponding to ground_points_cam.
+        known_targets: Optional mapping of ArUco ID to (x, y) projector coordinates.
+
+    Returns:
+        (rvec, tvec) or None.
+    """
+    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+    aruco_dict = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_4X4_50)
+    parameters = cv2.aruco.DetectorParameters()
+    detector = cv2.aruco.ArucoDetector(aruco_dict, parameters)
+
+    corners, ids, rejected = detector.detectMarkers(gray)
+
+    obj_points = [] # 3D points in World Space (mm)
+    img_points = [] # 2D points in Camera Space (px)
+    
+    ppi_mm = ppi / 25.4
+
+    # 1. Add Ground Points (Z=0) from Step 1 if available
+    if ground_points_cam is not None and ground_points_proj is not None:
+        for i in range(len(ground_points_cam)):
+            px, py = ground_points_proj[i]
+            wx = px / ppi_mm
+            wy = py / ppi_mm
+            wz = 0.0
+            obj_points.append([wx, wy, wz])
+            img_points.append(ground_points_cam[i])
+
+    # 2. Add Token Points (Z=h)
+    if ids is not None:
+        ids = ids.flatten()
+        for i, aruco_id in enumerate(ids):
+            if aruco_id not in token_heights:
+                continue
+                
+            h = token_heights[aruco_id]
+            c_cam = np.mean(corners[i][0], axis=0)
+            
+            # Find (X, Y)
+            if known_targets and aruco_id in known_targets:
+                px, py = known_targets[aruco_id]
+            else:
+                # Fallback to homography projection (estimate from top of token)
+                pts_cam = np.array([c_cam], dtype=np.float32).reshape(-1, 1, 2)
+                pts_proj = cv2.perspectiveTransform(pts_cam, projector_matrix).reshape(-1, 2)
+                px, py = pts_proj[0]
+            
+            wx = px / ppi_mm
+            wy = py / ppi_mm
+            wz = h
+            
+            obj_points.append([wx, wy, wz])
+            img_points.append(c_cam)
+
+    if len(obj_points) < 4:
+        print("Extrinsics: Not enough points detected (need at least 4 combined points).")
+        return None
+
+    obj_points = np.array(obj_points, dtype=np.float32)
+    img_points = np.array(img_points, dtype=np.float32)
+
+    # Solve PnP
+    ret, rvec, tvec = cv2.solvePnP(
+        obj_points, img_points, camera_matrix, dist_coeffs
+    )
+
+    if ret:
+        return rvec, tvec
+    
+    return None

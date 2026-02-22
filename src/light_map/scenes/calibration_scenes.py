@@ -329,10 +329,26 @@ class ExtrinsicsCalibrationScene(Scene):
         self._rvec: Optional[np.ndarray] = None
         self._tvec: Optional[np.ndarray] = None
         self._token_heights: Dict[int, float] = {}
+        self._ground_points_cam: Optional[np.ndarray] = None
+        self._ground_points_proj: Optional[np.ndarray] = None
 
     def on_enter(self, payload: Any = None) -> None:
         self._stage = "PLACEMENT"
         self._ppi = self.context.map_config_manager.get_ppi()
+
+        # Load ground points (Z=0) from projector calibration
+        try:
+            if os.path.exists("projector_calibration.npz"):
+                data = np.load("projector_calibration.npz")
+                self._ground_points_cam = data["camera_points"]
+                self._ground_points_proj = data["projector_points"]
+                print(
+                    f"Loaded {len(self._ground_points_cam)} ground points from projector calibration."
+                )
+        except Exception as e:
+            print(f"Failed to load projector calibration points: {e}")
+            self._ground_points_cam = None
+            self._ground_points_proj = None
 
         # Load token heights from global config
         self._token_heights = {}
@@ -410,6 +426,8 @@ class ExtrinsicsCalibrationScene(Scene):
                 self.context.dist_coeffs,
                 self._token_heights,
                 self._ppi,
+                ground_points_cam=self._ground_points_cam,
+                ground_points_proj=self._ground_points_proj,
                 known_targets=None,  # For now, let H find the (X, Y) as in design
             )
 

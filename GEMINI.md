@@ -56,8 +56,8 @@ This project strictly adheres to a TDD workflow to ensure reliability and mainta
 
 - **TDD Lifecycle**:
   1. **Red**: Write a failing test for a new feature or bug fix.
-  2. **Green**: Implement the minimum code necessary to pass the test.
-  3. **Refactor**: Clean up the implementation while ensuring all tests still pass.
+  1. **Green**: Implement the minimum code necessary to pass the test.
+  1. **Refactor**: Clean up the implementation while ensuring all tests still pass.
 - **Execution**: Run tests using `pytest`.
 - **Mandate**: All new features and bug fixes MUST be accompanied by corresponding tests.
 - **Coverage**:

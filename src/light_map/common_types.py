@@ -47,6 +47,8 @@ class MenuActions(StrEnum):
     LOAD_SESSION = "LOAD_SESSION"
     CALIBRATE_FLASH = "CALIBRATE_FLASH"
     SCAN_ALGORITHM = "SCAN_ALGORITHM"
+    TOGGLE_HAND_MASKING = "TOGGLE_HAND_MASKING"
+    SET_GM_POSITION = "SET_GM_POSITION"
 
 
 class SceneId(StrEnum):
@@ -62,6 +64,18 @@ class SceneId(StrEnum):
     CALIBRATE_EXTRINSICS = "CALIBRATE_EXTRINSICS"
 
 
+class GmPosition(StrEnum):
+    NONE = "None"
+    NORTH = "North"
+    SOUTH = "South"
+    EAST = "East"
+    WEST = "West"
+    NORTH_WEST = "North West"
+    NORTH_EAST = "North East"
+    SOUTH_WEST = "South West"
+    SOUTH_EAST = "South East"
+
+
 @dataclass
 class AppConfig:
     width: int
@@ -72,6 +86,12 @@ class AppConfig:
     distortion_model: Optional[Any] = None
     log_level: str = "INFO"
     log_file: str = "light_map.log"
+
+    # Masking settings
+    enable_hand_masking: bool = False
+    hand_mask_padding: int = 30
+    hand_mask_blur: int = 15
+    gm_position: GmPosition = GmPosition.NONE
 
 
 @dataclass

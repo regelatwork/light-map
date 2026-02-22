@@ -67,7 +67,9 @@ def test_draw_ghost_tokens_unknown(app):
     with (
         patch("cv2.circle") as mock_circle,
         patch("cv2.putText") as mock_putText,
-        patch("light_map.vision.overlay_renderer.draw_dashed_circle") as mock_dashed_circle,
+        patch(
+            "light_map.vision.overlay_renderer.draw_dashed_circle"
+        ) as mock_dashed_circle,
     ):
         app._draw_ghost_tokens(frame)
 
@@ -115,7 +117,9 @@ def test_draw_ghost_tokens_duplicate(app):
     with (
         patch("cv2.circle") as mock_circle,
         patch("cv2.putText") as mock_putText,
-        patch("light_map.vision.overlay_renderer.draw_dashed_circle") as mock_dashed_circle,
+        patch(
+            "light_map.vision.overlay_renderer.draw_dashed_circle"
+        ) as mock_dashed_circle,
     ):
         app._draw_ghost_tokens(frame)
 

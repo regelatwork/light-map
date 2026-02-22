@@ -65,7 +65,9 @@ def main():
         try:
             with np.load(calibration_file) as data:
                 if "projector_matrix" not in data:
-                    logging.error("Invalid calibration file (missing projector_matrix).")
+                    logging.error(
+                        "Invalid calibration file (missing projector_matrix)."
+                    )
                     return None, 2304, 1296, None
                 matrix = data["projector_matrix"]
                 if "resolution" in data:
@@ -93,7 +95,9 @@ def main():
     )
 
     if transformation_matrix is None:
-        logging.info("Starting uncalibrated (or using defaults). Please calibrate via menu.")
+        logging.info(
+            "Starting uncalibrated (or using defaults). Please calibrate via menu."
+        )
         # Create a dummy identity matrix if calibration missing, so app doesn't crash
         transformation_matrix = np.eye(3, dtype=np.float32)
 
@@ -106,6 +110,7 @@ def main():
 
     # Initialize MapConfigManager early to get last_used_map
     map_config_manager = MapConfigManager()
+    gs = map_config_manager.data.global_settings
 
     # 2. Setup App
     config = AppConfig(
@@ -117,6 +122,10 @@ def main():
         distortion_model=dist_model,
         log_level=args.log_level,
         log_file=args.log_file,
+        enable_hand_masking=gs.enable_hand_masking,
+        hand_mask_padding=gs.hand_mask_padding,
+        hand_mask_blur=gs.hand_mask_blur,
+        gm_position=gs.gm_position,
     )
     app = InteractiveApp(config)
     app.set_debug_mode(args.debug)
@@ -210,7 +219,9 @@ def main():
                                     app.current_scene = app.scenes[SceneId.SCANNING]
                                     app.current_scene.on_enter()
                                 else:
-                                    logging.error("Error: Cannot start scan. No map loaded.")
+                                    logging.error(
+                                        "Error: Cannot start scan. No map loaded."
+                                    )
 
                             elif args.action == MenuActions.SCAN_ALGORITHM:
                                 current = app.map_config.get_detection_algorithm()
@@ -220,7 +231,9 @@ def main():
                                     else TokenDetectionAlgorithm.FLASH
                                 )
                                 logging.info(
-                                    "Toggling Scan Algorithm: %s -> %s", current, new_algo
+                                    "Toggling Scan Algorithm: %s -> %s",
+                                    current,
+                                    new_algo,
                                 )
                                 app.map_config.set_detection_algorithm(new_algo)
                                 # Force reload menu to update UI text if needed (though visual only)
@@ -285,7 +298,9 @@ def main():
                                             [native_screen_w, native_screen_h]
                                         ),
                                     )
-                                    logging.info("Reloading application configuration...")
+                                    logging.info(
+                                        "Reloading application configuration..."
+                                    )
                                     new_config = AppConfig(
                                         width=native_screen_w,
                                         height=native_screen_h,
@@ -337,7 +352,9 @@ def main():
                     pipeline.stop()
 
     except Exception as e:
-        logging.critical("An unhandled error occurred in the main loop: %s", e, exc_info=True)
+        logging.critical(
+            "An unhandled error occurred in the main loop: %s", e, exc_info=True
+        )
     finally:
         hands.close()
         cv2.destroyAllWindows()

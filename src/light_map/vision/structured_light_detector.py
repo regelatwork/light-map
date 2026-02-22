@@ -397,7 +397,9 @@ class StructuredLightTokenDetector:
         h, w = frame_pattern.shape[:2]
         logging.debug("SL Debug: Camera Frame Res: %dx%d", w, h)
         logging.debug("SL Debug: Projector/Map Res: %dx%d", w_proj, h_proj)
-        logging.debug("SL Debug: Max Val: %d, Dynamic Thresh: %d", max_val, dynamic_thresh)
+        logging.debug(
+            "SL Debug: Max Val: %d, Dynamic Thresh: %d", max_val, dynamic_thresh
+        )
         logging.debug("SL Debug: Found %d raw contours.", len(contours))
         logging.debug(
             "SL Debug: Extracted %d observed centroids from %d contours.",

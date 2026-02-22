@@ -35,6 +35,7 @@ from light_map.scenes.calibration_scenes import (
 from light_map.vision.tracking_coordinator import TrackingCoordinator
 from light_map.vision.input_processor import InputProcessor
 from light_map.vision.overlay_renderer import OverlayRenderer
+from light_map.vision.hand_masker import HandMasker
 
 
 class InteractiveApp:
@@ -53,6 +54,7 @@ class InteractiveApp:
         # New Modular Coordinators
         self.tracking_coordinator = TrackingCoordinator(time_provider)
         self.input_processor = InputProcessor(config)
+        self.hand_masker = HandMasker()
 
         # Load Camera Calibration
         camera_matrix, dist_coeffs = self._load_camera_calibration()
@@ -188,10 +190,53 @@ class InteractiveApp:
         # 5. Scene Render
         scene_frame = self.current_scene.render(base_frame)
 
-        # 6. Global Overlays
-        final_frame = self._render_global_overlays(scene_frame, inputs)
+        # 6. Hand Masking (Digital Shadow)
+        masked_frame = self._apply_hand_masking(scene_frame, results)
+
+        # 7. Global Overlays
+        final_frame = self._render_global_overlays(masked_frame, inputs)
 
         return final_frame, []
+
+    def _apply_hand_masking(self, frame: np.ndarray, results: Any) -> np.ndarray:
+        if not self.config.enable_hand_masking:
+            return frame
+
+        if not results or not results.multi_hand_landmarks:
+            # Still call compute_hulls with empty list for persistence
+            hulls = self.hand_masker.compute_hulls([], None)
+        else:
+
+            def transform_pts(pts):
+                # pts is (N, 2) normalized
+                cam_pts = pts.reshape(-1, 1, 2).copy()
+                cam_pts[:, :, 0] *= self.app_context.last_camera_frame.shape[1]
+                cam_pts[:, :, 1] *= self.app_context.last_camera_frame.shape[0]
+
+                if self.config.distortion_model:
+                    proj_pts = self.config.distortion_model.apply_correction(cam_pts)
+                else:
+                    proj_pts = cv2.perspectiveTransform(
+                        cam_pts, self.config.projector_matrix
+                    )
+                return proj_pts.reshape(-1, 2)
+
+            hulls = self.hand_masker.compute_hulls(
+                results.multi_hand_landmarks, transform_pts
+            )
+
+        if hulls:
+            mask = self.hand_masker.generate_mask_image(
+                hulls,
+                self.config.width,
+                self.config.height,
+                padding=self.config.hand_mask_padding,
+                blur=self.config.hand_mask_blur,
+            )
+            # Apply mask
+            frame[mask > 127] = 0
+
+        return frame
 
     def _render_base_layer(self, frame: np.ndarray) -> np.ndarray:
         """Renders the map background if applicable, or returns a blank frame."""

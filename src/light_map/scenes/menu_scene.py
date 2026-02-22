@@ -129,6 +129,24 @@ class MenuScene(Scene):
         # --- Actions that modify state but don't transition ---
         elif action == MenuActions.TOGGLE_DEBUG_MODE:
             self.context.debug_mode = not self.context.debug_mode
+        elif action == MenuActions.TOGGLE_HAND_MASKING:
+            gs = self.context.map_config_manager.data.global_settings
+            gs.enable_hand_masking = not gs.enable_hand_masking
+            self.context.map_config_manager.save()
+            self.context.app_config.enable_hand_masking = gs.enable_hand_masking
+            self.on_enter()
+        elif action == MenuActions.SET_GM_POSITION:
+            from light_map.common_types import GmPosition
+
+            try:
+                new_pos = GmPosition(payload)
+                gs = self.context.map_config_manager.data.global_settings
+                gs.gm_position = new_pos
+                self.context.map_config_manager.save()
+                self.context.app_config.gm_position = gs.gm_position
+                self.on_enter()
+            except ValueError:
+                pass
         elif action == MenuActions.ROTATE_CW:
             self.context.map_system.rotate(90)
         elif action == MenuActions.ROTATE_CCW:

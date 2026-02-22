@@ -30,7 +30,9 @@ def run_calibration_sequence(
         )
 
         cv2.imshow(window_name, pattern_img)
-        logging.info("Displaying pattern. Waiting 2 seconds for projector/camera to settle...")
+        logging.info(
+            "Displaying pattern. Waiting 2 seconds for projector/camera to settle..."
+        )
 
         for _ in range(20):
             cv2.waitKey(100)

@@ -90,7 +90,9 @@ class FlashCalibrationScene(Scene):
                     map_system=self.context.map_system,
                 )
                 self._results[intensity] = len(tokens)
-                logging.info("Calibration: Level %d -> Found %d tokens", intensity, len(tokens))
+                logging.info(
+                    "Calibration: Level %d -> Found %d tokens", intensity, len(tokens)
+                )
                 self._capture_frame = False
                 self._current_level_idx += 1
 
@@ -358,7 +360,8 @@ class ExtrinsicsCalibrationScene(Scene):
                 self._ground_points_cam = data["camera_points"]
                 self._ground_points_proj = data["projector_points"]
                 logging.info(
-                    "Loaded %d ground points from projector calibration.", len(self._ground_points_cam)
+                    "Loaded %d ground points from projector calibration.",
+                    len(self._ground_points_cam),
                 )
         except Exception as e:
             logging.error("Failed to load projector calibration points: %s", e)
@@ -890,7 +893,10 @@ class MapGridCalibrationScene(Scene):
             self.grid_overlay.offset_y = sy
             logging.info(
                 "Restored grid for %s: spacing=%.1f, offset=(%.1f, %.1f)",
-                filename, start_spacing, sx, sy
+                filename,
+                start_spacing,
+                sx,
+                sy,
             )
         else:
             # Fallback/Default behavior
@@ -970,7 +976,10 @@ class MapGridCalibrationScene(Scene):
 
         logging.info(
             "Calibrated %s: Spacing=%.1f, Origin=(%.1f, %.1f)",
-            filename, derived_spacing_svg, wx, wy
+            filename,
+            derived_spacing_svg,
+            wx,
+            wy,
         )
 
         map_config.save_map_grid_config(

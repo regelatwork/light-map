@@ -9,7 +9,7 @@ from typing import Tuple
 def setup_logging(level=logging.INFO, log_file="light_map.log"):
     """
     Configures the root logger with console and file handlers.
-    
+
     Args:
         level: Logging level (e.g., logging.INFO).
         log_file: Path to the log file.

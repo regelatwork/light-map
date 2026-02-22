@@ -6,7 +6,11 @@ import logging
 import numpy as np
 from dataclasses import asdict, dataclass, field
 from typing import Dict, Optional, List
-from light_map.common_types import ViewportState, TokenDetectionAlgorithm
+from light_map.common_types import (
+    ViewportState,
+    TokenDetectionAlgorithm,
+    GmPosition,
+)
 from light_map.session_manager import SessionManager
 
 STATE_FILE = "map_state.json"
@@ -65,6 +69,11 @@ class GlobalMapConfig:
         }
     )
     aruco_defaults: Dict[int, ArucoDefinition] = field(default_factory=dict)
+    # Masking Settings
+    enable_hand_masking: bool = False
+    hand_mask_padding: int = 30
+    hand_mask_blur: int = 15
+    gm_position: GmPosition = GmPosition.NONE
 
 
 @dataclass
@@ -128,6 +137,10 @@ class MapConfigManager:
                 ),
                 token_profiles=token_profiles,
                 aruco_defaults=aruco_defaults,
+                enable_hand_masking=global_data.get("enable_hand_masking", False),
+                hand_mask_padding=global_data.get("hand_mask_padding", 30),
+                hand_mask_blur=global_data.get("hand_mask_blur", 15),
+                gm_position=GmPosition(global_data.get("gm_position", "None")),
             )
 
             # Deserialize Maps

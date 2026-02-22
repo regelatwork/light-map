@@ -206,6 +206,37 @@ def build_root_menu(map_config: MapConfigManager) -> MenuItem:
                         action_id=MenuActions.TOGGLE_DEBUG_MODE,
                         should_close_on_trigger=False,
                     ),
+                    MenuItem(
+                        title="Masking",
+                        children=[
+                            MenuItem(
+                                title=f"Projection Masking: {'ON' if map_config.data.global_settings.enable_hand_masking else 'OFF'}",
+                                action_id=MenuActions.TOGGLE_HAND_MASKING,
+                                should_close_on_trigger=False,
+                            ),
+                            MenuItem(
+                                title="GM Position",
+                                children=[
+                                    MenuItem(
+                                        title=f"{'[*] ' if map_config.data.global_settings.gm_position == pos else ''}{pos}",
+                                        action_id=f"SET_GM_POSITION|{pos}",
+                                        should_close_on_trigger=False,
+                                    )
+                                    for pos in [
+                                        "None",
+                                        "North",
+                                        "South",
+                                        "East",
+                                        "West",
+                                        "North West",
+                                        "North East",
+                                        "South West",
+                                        "South East",
+                                    ]
+                                ],
+                            ),
+                        ],
+                    ),
                 ],
             ),
             MenuItem(

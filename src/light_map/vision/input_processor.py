@@ -6,6 +6,7 @@ from typing import List, Tuple, Any, TYPE_CHECKING
 
 from light_map.core.scene import HandInput
 from light_map.gestures import detect_gesture
+from light_map.vision.hand_masker import HandMasker
 
 if TYPE_CHECKING:
     from light_map.common_types import AppConfig
@@ -16,6 +17,7 @@ class InputProcessor:
 
     def __init__(self, config: AppConfig):
         self.config = config
+        self.hand_masker = HandMasker()
 
     def convert_mediapipe_to_inputs(
         self, results: Any, frame_shape: Tuple[int, int, int]
@@ -26,6 +28,7 @@ class InputProcessor:
             return inputs
 
         matrix = self.config.projector_matrix.astype(np.float32)
+        res = (self.config.width, self.config.height)
 
         for i, landmarks in enumerate(results.multi_hand_landmarks):
             handedness = results.multi_handedness[i]
@@ -45,10 +48,16 @@ class InputProcessor:
             else:
                 proj_point = cv2.perspectiveTransform(cam_point, matrix)[0][0]
 
+            px, py = int(proj_point[0]), int(proj_point[1])
+
+            # Input Masking (Filter by GM Position)
+            if self.hand_masker.is_point_masked(px, py, self.config.gm_position, res):
+                continue
+
             inputs.append(
                 HandInput(
                     gesture=gesture,
-                    proj_pos=(int(proj_point[0]), int(proj_point[1])),
+                    proj_pos=(px, py),
                     raw_landmarks=landmarks,
                 )
             )

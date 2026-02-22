@@ -95,7 +95,7 @@ def test_calibrate_extrinsics_synthetic():
         )
 
         assert result is not None
-        rvec_res, tvec_res = result
+        rvec_res, tvec_res, _, _ = result
         assert rvec_diff(rvec_res, rvec_true) < 0.1
         assert np.linalg.norm(tvec_res.flatten() - tvec_true) < 5.0
 
@@ -113,6 +113,6 @@ def test_calibrate_extrinsics_synthetic():
         )
 
         assert result_combined is not None
-        rvec_comb, tvec_comb = result_combined
+        rvec_comb, tvec_comb, _, _ = result_combined
         assert rvec_diff(rvec_comb, rvec_true) < 0.05
         assert np.linalg.norm(tvec_comb.flatten() - tvec_true) < 1.0

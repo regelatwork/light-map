@@ -331,10 +331,17 @@ class ExtrinsicsCalibrationScene(Scene):
         self._token_heights: Dict[int, float] = {}
         self._ground_points_cam: Optional[np.ndarray] = None
         self._ground_points_proj: Optional[np.ndarray] = None
+        self._reprojection_error: float = 0.0
+        self._obj_points: Optional[np.ndarray] = None
+        self._img_points: Optional[np.ndarray] = None
 
     def on_enter(self, payload: Any = None) -> None:
         self._stage = "PLACEMENT"
         self._ppi = self.context.map_config_manager.get_ppi()
+        self._reprojection_error = 0.0
+        self._obj_points = None
+        self._img_points = None
+        self._retry_gesture_start_time = 0.0
 
         # Load ground points (Z=0) from projector calibration
         try:
@@ -432,20 +439,42 @@ class ExtrinsicsCalibrationScene(Scene):
             )
 
             if result:
-                self._rvec, self._tvec = result
-                save_camera_extrinsics(self._rvec, self._tvec)
-                self.context.notifications.add_notification("Extrinsics saved.")
-                self._stage = "VERIFY"
+                self._rvec, self._tvec, self._obj_points, self._img_points = result
+                
+                # Calculate Reprojection Error
+                projected_points, _ = cv2.projectPoints(
+                    self._obj_points, self._rvec, self._tvec, 
+                    self.context.camera_matrix, self.context.dist_coeffs
+                )
+                projected_points = projected_points.reshape(-1, 2)
+                
+                errors = np.linalg.norm(self._img_points - projected_points, axis=1)
+                self._reprojection_error = np.sqrt(np.mean(errors**2))
+                
+                self.context.notifications.add_notification(f"Calibration Error: {self._reprojection_error:.2f} px")
+                self._stage = "VALIDATION"
             else:
                 self.context.notifications.add_notification("Calibration failed.")
                 self._stage = "PLACEMENT"
 
-        elif self._stage == "VERIFY":
-            # Use Victory to confirm
+        elif self._stage == "VALIDATION":
+            # Accept
             if inputs and inputs[0].gesture == GestureType.VICTORY:
+                if self._rvec is not None and self._tvec is not None:
+                     save_camera_extrinsics(self._rvec, self._tvec)
+                     self.context.notifications.add_notification("Extrinsics saved.")
                 return SceneTransition(SceneId.MENU)
-            elif inputs and inputs[0].gesture == GestureType.OPEN_PALM:
-                self._stage = "PLACEMENT"
+            
+            # Retry
+            if inputs and inputs[0].gesture == GestureType.CLOSED_FIST:
+                 if self._retry_gesture_start_time == 0.0:
+                     self._retry_gesture_start_time = current_time
+                 elif current_time - self._retry_gesture_start_time > 2.0:
+                     self.context.notifications.add_notification("Calibration discarded.")
+                     self._stage = "PLACEMENT"
+                     self._retry_gesture_start_time = 0.0
+            else:
+                 self._retry_gesture_start_time = 0.0
 
         return None
 
@@ -491,88 +520,77 @@ class ExtrinsicsCalibrationScene(Scene):
                     2,
                 )
 
-        # Verification Overlay: 3D Wireframes
-        if (
-            self._stage == "VERIFY"
-            and self._rvec is not None
-            and self._tvec is not None
-        ):
-            self._render_verification_boxes(canvas)
+        # Verification Overlay: Visual Feedback
+        if self._stage == "VALIDATION" and self._rvec is not None and self._tvec is not None:
+             # Calculate reprojected points (Camera Space)
+             proj_pts_cam, _ = cv2.projectPoints(
+                 self._obj_points, self._rvec, self._tvec, 
+                 self.context.camera_matrix, self.context.dist_coeffs
+             )
+             proj_pts_cam = proj_pts_cam.reshape(-1, 2)
+             
+             # Transform both sets to Projector Space for rendering
+             # Detected (img_points) -> Projector
+             img_pts_reshaped = self._img_points.reshape(-1, 1, 2)
+             detected_proj = cv2.perspectiveTransform(
+                 img_pts_reshaped, self.context.projector_matrix
+             ).reshape(-1, 2)
+             
+             # Reprojected -> Projector
+             proj_pts_reshaped = proj_pts_cam.reshape(-1, 1, 2)
+             reprojected_proj = cv2.perspectiveTransform(
+                 proj_pts_reshaped, self.context.projector_matrix
+             ).reshape(-1, 2)
+             
+             # Draw residuals
+             for i in range(len(detected_proj)):
+                 p_det = detected_proj[i]
+                 p_rep = reprojected_proj[i]
+                 
+                 # Calculate error in Camera Space (pixels) for color coding
+                 error_px = np.linalg.norm(self._img_points[i] - proj_pts_cam[i])
+                 
+                 if error_px < 2.0:
+                     color = (0, 255, 0) # Green
+                 elif error_px < 5.0:
+                     color = (0, 255, 255) # Yellow
+                 else:
+                     color = (0, 0, 255) # Red
+                 
+                 pt1 = (int(p_det[0]), int(p_det[1]))
+                 pt2 = (int(p_rep[0]), int(p_rep[1]))
+                 
+                 # Line
+                 cv2.line(canvas, pt1, pt2, color, 2)
+                 
+                 # Detected: Green Cross
+                 cv2.line(canvas, (pt1[0]-5, pt1[1]), (pt1[0]+5, pt1[1]), (0, 255, 0), 2)
+                 cv2.line(canvas, (pt1[0], pt1[1]-5), (pt1[0], pt1[1]+5), (0, 255, 0), 2)
+                 
+                 # Reprojected: Red Circle
+                 cv2.circle(canvas, pt2, 5, (0, 0, 255), 2)
+
+             # HUD
+             rms = self._reprojection_error
+             status_color = (0, 255, 0) if rms < 2.0 else (0, 255, 255) if rms < 5.0 else (0, 0, 255)
+             status_text = "GOOD" if rms < 2.0 else "FAIR" if rms < 5.0 else "POOR"
+             
+             cv2.rectangle(canvas, (w//2 - 150, 20), (w//2 + 150, 80), (50, 50, 50), -1)
+             cv2.putText(canvas, f"Error: {rms:.2f} px ({status_text})", (w//2 - 130, 60), 
+                         cv2.FONT_HERSHEY_SIMPLEX, 0.8, status_color, 2)
 
         # Instructions
         instr = (
             "Fist to calibrate (Need 3+ tokens)" if self._stage == "PLACEMENT" else ""
         )
-        if self._stage == "VERIFY":
-            instr = "Victory to accept, Palm to retry"
+        if self._stage == "VALIDATION":
+            instr = "VICTORY to Accept, FIST (hold 2s) to Retry"
         cv2.putText(
             canvas, instr, (50, h - 50), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 0, 0), 2
         )
 
         return canvas
 
-    def _render_verification_boxes(self, canvas: np.ndarray):
-        """Draws 3D wireframe boxes where the camera thinks the tokens are."""
-        if self.context.camera_matrix is None:
-            return
-
-        ppi_mm = self._ppi / 25.4
-
-        for aid, (cx, cy) in self._detected_ids.items():
-            h_mm = self._token_heights[aid]
-
-            # Ground (X, Y) from H
-            pts_cam = np.array([[cx, cy]], dtype=np.float32).reshape(-1, 1, 2)
-            pts_proj = cv2.perspectiveTransform(
-                pts_cam, self.context.projector_matrix
-            ).reshape(-1, 2)
-            px, py = pts_proj[0]
-            wx, wy = px / ppi_mm, py / ppi_mm
-
-            # 3D points of a box (mm)
-            # Size 1 inch = 25.4 mm
-            s = 25.4 / 2
-            box_points = np.array(
-                [
-                    [wx - s, wy - s, 0],
-                    [wx + s, wy - s, 0],
-                    [wx + s, wy + s, 0],
-                    [wx - s, wy + s, 0],
-                    [wx - s, wy - s, h_mm],
-                    [wx + s, wy - s, h_mm],
-                    [wx + s, wy + s, h_mm],
-                    [wx - s, wy + s, h_mm],
-                ],
-                dtype=np.float32,
-            )
-
-            # Project to Camera pixels
-            img_pts, _ = cv2.projectPoints(
-                box_points,
-                self._rvec,
-                self._tvec,
-                self.context.camera_matrix,
-                self.context.dist_coeffs,
-            )
-
-            # Now, project THESE camera pixels to Projector Pixels to draw them!
-            img_pts = img_pts.reshape(-1, 1, 2)
-            proj_pts = cv2.perspectiveTransform(
-                img_pts, self.context.projector_matrix
-            ).reshape(-1, 2)
-
-            # Draw edges
-            pts = proj_pts.astype(int)
-            for i in range(4):
-                cv2.line(canvas, tuple(pts[i]), tuple(pts[(i + 1) % 4]), (255, 0, 0), 2)
-                cv2.line(
-                    canvas,
-                    tuple(pts[i + 4]),
-                    tuple(pts[(i + 1) % 4 + 4]),
-                    (255, 0, 0),
-                    2,
-                )
-                cv2.line(canvas, tuple(pts[i]), tuple(pts[i + 4]), (255, 0, 0), 2)
 
 
 class PpiCalibrationScene(Scene):

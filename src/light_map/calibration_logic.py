@@ -118,7 +118,7 @@ def calibrate_extrinsics(
     ground_points_cam: Optional[np.ndarray] = None,
     ground_points_proj: Optional[np.ndarray] = None,
     known_targets: Optional[Dict[int, Tuple[float, float]]] = None,
-) -> Optional[Tuple[np.ndarray, np.ndarray]]:
+) -> Optional[Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]]:
     """
     Estimates Camera Extrinsics (R, t) using ArUco markers with known heights.
 
@@ -134,7 +134,7 @@ def calibrate_extrinsics(
         known_targets: Optional mapping of ArUco ID to (x, y) projector coordinates.
 
     Returns:
-        (rvec, tvec) or None.
+        (rvec, tvec, obj_points, img_points) or None.
     """
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
     aruco_dict = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_4X4_50)
@@ -143,8 +143,8 @@ def calibrate_extrinsics(
 
     corners, ids, rejected = detector.detectMarkers(gray)
 
-    obj_points = []  # 3D points in World Space (mm)
-    img_points = []  # 2D points in Camera Space (px)
+    obj_points_list = []  # 3D points in World Space (mm)
+    img_points_list = []  # 2D points in Camera Space (px)
 
     ppi_mm = ppi / 25.4
 
@@ -155,8 +155,8 @@ def calibrate_extrinsics(
             wx = px / ppi_mm
             wy = py / ppi_mm
             wz = 0.0
-            obj_points.append([wx, wy, wz])
-            img_points.append(ground_points_cam[i])
+            obj_points_list.append([wx, wy, wz])
+            img_points_list.append(ground_points_cam[i])
 
     # 2. Add Token Points (Z=h)
     if ids is not None:
@@ -183,22 +183,22 @@ def calibrate_extrinsics(
             wy = py / ppi_mm
             wz = h
 
-            obj_points.append([wx, wy, wz])
-            img_points.append(c_cam)
+            obj_points_list.append([wx, wy, wz])
+            img_points_list.append(c_cam)
 
-    if len(obj_points) < 4:
+    if len(obj_points_list) < 4:
         print(
             "Extrinsics: Not enough points detected (need at least 4 combined points)."
         )
         return None
 
-    obj_points = np.array(obj_points, dtype=np.float32)
-    img_points = np.array(img_points, dtype=np.float32)
+    obj_points = np.array(obj_points_list, dtype=np.float32)
+    img_points = np.array(img_points_list, dtype=np.float32)
 
     # Solve PnP
     ret, rvec, tvec = cv2.solvePnP(obj_points, img_points, camera_matrix, dist_coeffs)
 
     if ret:
-        return rvec, tvec
+        return rvec, tvec, obj_points, img_points
 
     return None

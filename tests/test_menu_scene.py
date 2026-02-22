@@ -191,6 +191,7 @@ def test_menu_scene_handles_calibrate_intrinsics(mock_app_context):
         transition = scene.update(inputs=[], current_time=0.0)
     assert transition.target_scene == SceneId.CALIBRATE_INTRINSICS
 
+
 def test_menu_scene_handles_calibrate_projector(mock_app_context):
     scene = MenuScene(mock_app_context)
     mock_menu_state = MagicMock(spec=MenuState)
@@ -201,6 +202,7 @@ def test_menu_scene_handles_calibrate_projector(mock_app_context):
         transition = scene.update(inputs=[], current_time=0.0)
     assert transition.target_scene == SceneId.CALIBRATE_PROJECTOR
 
+
 def test_menu_scene_handles_calibrate_ppi(mock_app_context):
     scene = MenuScene(mock_app_context)
     mock_menu_state = MagicMock(spec=MenuState)
@@ -210,6 +212,7 @@ def test_menu_scene_handles_calibrate_ppi(mock_app_context):
     with patch.object(scene.menu_system, "update", return_value=mock_menu_state):
         transition = scene.update(inputs=[], current_time=0.0)
     assert transition.target_scene == SceneId.CALIBRATE_PPI
+
 
 def test_menu_scene_handles_calibrate_extrinsics(mock_app_context):
     scene = MenuScene(mock_app_context)

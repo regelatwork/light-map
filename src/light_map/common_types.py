@@ -20,6 +20,7 @@ class GestureType(StrEnum):
 class TokenDetectionAlgorithm(StrEnum):
     FLASH = "FLASH"
     STRUCTURED_LIGHT = "STRUCTURED_LIGHT"
+    ARUCO = "ARUCO"
 
 
 class MenuActions(StrEnum):
@@ -87,6 +88,7 @@ class Token:
     grid_x: Optional[int] = None
     grid_y: Optional[int] = None
     confidence: float = 1.0
+    is_occluded: bool = False
 
 
 @dataclass

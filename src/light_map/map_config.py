@@ -4,7 +4,7 @@ import glob
 import datetime
 import numpy as np
 from dataclasses import asdict, dataclass, field
-from typing import Dict, Optional, List, Union
+from typing import Dict, Optional, List
 from light_map.common_types import ViewportState, TokenDetectionAlgorithm
 from light_map.session_manager import SessionManager
 
@@ -54,12 +54,14 @@ class GlobalMapConfig:
     flash_intensity: int = 255
     last_used_map: Optional[str] = None
     detection_algorithm: TokenDetectionAlgorithm = TokenDetectionAlgorithm.FLASH
-    token_profiles: Dict[str, SizeProfile] = field(default_factory=lambda: {
-        "small": SizeProfile(1, 15.0),
-        "medium": SizeProfile(1, 25.0),
-        "large": SizeProfile(2, 40.0),
-        "huge": SizeProfile(3, 60.0),
-    })
+    token_profiles: Dict[str, SizeProfile] = field(
+        default_factory=lambda: {
+            "small": SizeProfile(1, 15.0),
+            "medium": SizeProfile(1, 25.0),
+            "large": SizeProfile(2, 40.0),
+            "huge": SizeProfile(3, 60.0),
+        }
+    )
     aruco_defaults: Dict[int, ArucoDefinition] = field(default_factory=dict)
 
 
@@ -84,14 +86,14 @@ class MapConfigManager:
 
             # Deserialize Global Settings
             global_data = raw.get("global", {})
-            
+
             # Load Token Profiles
             raw_profiles = global_data.get("token_profiles", {})
             token_profiles = {
                 k: SizeProfile(v.get("size", 1), v.get("height_mm", 10.0))
                 for k, v in raw_profiles.items()
             }
-            if not token_profiles: # If empty or missing, use defaults
+            if not token_profiles:  # If empty or missing, use defaults
                 token_profiles = {
                     "small": SizeProfile(1, 15.0),
                     "medium": SizeProfile(1, 25.0),
@@ -110,7 +112,7 @@ class MapConfigManager:
                         type=v.get("type", "NPC"),
                         profile=v.get("profile"),
                         size=v.get("size"),
-                        height_mm=v.get("height_mm")
+                        height_mm=v.get("height_mm"),
                     )
                 except ValueError:
                     pass
@@ -123,7 +125,7 @@ class MapConfigManager:
                     global_data.get("detection_algorithm", "FLASH")
                 ),
                 token_profiles=token_profiles,
-                aruco_defaults=aruco_defaults
+                aruco_defaults=aruco_defaults,
             )
 
             # Deserialize Maps
@@ -137,7 +139,7 @@ class MapConfigManager:
                     zoom=vp_data.get("zoom", 1.0),
                     rotation=vp_data.get("rotation", 0.0),
                 )
-                
+
                 # Load Map Overrides
                 raw_overrides = entry_data.get("aruco_overrides", {})
                 aruco_overrides = {}
@@ -149,11 +151,11 @@ class MapConfigManager:
                             type=v.get("type", "NPC"),
                             profile=v.get("profile"),
                             size=v.get("size"),
-                            height_mm=v.get("height_mm")
+                            height_mm=v.get("height_mm"),
                         )
                     except ValueError:
                         pass
-                
+
                 maps[name] = MapEntry(
                     scale_factor=entry_data.get("scale_factor", 1.0),
                     viewport=viewport,
@@ -163,7 +165,7 @@ class MapConfigManager:
                     physical_unit_inches=entry_data.get("physical_unit_inches", 1.0),
                     scale_factor_1to1=entry_data.get("scale_factor_1to1", 1.0),
                     last_seen=entry_data.get("last_seen", ""),
-                    aruco_overrides=aruco_overrides
+                    aruco_overrides=aruco_overrides,
                 )
 
             return MapConfigData(global_settings=global_settings, maps=maps)
@@ -323,7 +325,29 @@ class MapConfigManager:
 
     # --- New ArUco / Profile Methods ---
 
-    def resolve_token_profile(self, aruco_id: int, map_name: Optional[str] = None) -> ResolvedToken:
+    def get_aruco_configs(self, map_name: Optional[str] = None) -> Dict[int, Dict]:
+        """
+        Returns a dictionary of all known ArUco IDs and their resolved properties
+        for the current map (if provided) and global defaults.
+        """
+        # 1. Get all unique IDs from global and map-specific overrides
+        all_ids = set(self.data.global_settings.aruco_defaults.keys())
+        if map_name:
+            map_name = os.path.abspath(map_name)
+            if map_name in self.data.maps:
+                all_ids.update(self.data.maps[map_name].aruco_overrides.keys())
+
+        # 2. Resolve each ID
+        configs = {}
+        for aid in all_ids:
+            resolved = self.resolve_token_profile(aid, map_name)
+            configs[aid] = asdict(resolved)
+
+        return configs
+
+    def resolve_token_profile(
+        self, aruco_id: int, map_name: Optional[str] = None
+    ) -> ResolvedToken:
         """
         Resolves the full token profile for a given ArUco ID, considering:
         1. Map-specific overrides (if map_name provided)
@@ -331,78 +355,78 @@ class MapConfigManager:
         3. Fallback to generic defaults
         """
         definition: Optional[ArucoDefinition] = None
-        
+
         # 1. Check Map Override
         if map_name:
             map_name = os.path.abspath(map_name)
             if map_name in self.data.maps:
                 definition = self.data.maps[map_name].aruco_overrides.get(aruco_id)
-        
+
         # 2. Check Global Default
         if not definition:
             definition = self.data.global_settings.aruco_defaults.get(aruco_id)
-            
+
         # 3. Fallback Generic if still not found
         if not definition:
             return ResolvedToken(
-                name=f"Unknown Token #{aruco_id}",
-                type="NPC",
-                size=1,
-                height_mm=10.0
+                name=f"Unknown Token #{aruco_id}", type="NPC", size=1, height_mm=10.0
             )
 
         # 4. Resolve dimensions
         # Start with defaults
         size = 1
         height_mm = 10.0
-        
+
         # If profile is specified, apply it first
         if definition.profile:
-             profile_def = self.data.global_settings.token_profiles.get(definition.profile)
-             if profile_def:
-                 size = profile_def.size
-                 height_mm = profile_def.height_mm
-        
+            profile_def = self.data.global_settings.token_profiles.get(
+                definition.profile
+            )
+            if profile_def:
+                size = profile_def.size
+                height_mm = profile_def.height_mm
+
         # Specific overrides take precedence
         if definition.size is not None:
             size = definition.size
-            
+
         if definition.height_mm is not None:
             height_mm = definition.height_mm
-        
+
         return ResolvedToken(
-            name=definition.name,
-            type=definition.type,
-            size=size,
-            height_mm=height_mm
+            name=definition.name, type=definition.type, size=size, height_mm=height_mm
         )
 
-    def set_global_aruco_definition(self, 
-                                    aruco_id: int, 
-                                    name: str, 
-                                    type: str = "NPC", 
-                                    profile: Optional[str] = None,
-                                    size: Optional[int] = None,
-                                    height_mm: Optional[float] = None):
+    def set_global_aruco_definition(
+        self,
+        aruco_id: int,
+        name: str,
+        type: str = "NPC",
+        profile: Optional[str] = None,
+        size: Optional[int] = None,
+        height_mm: Optional[float] = None,
+    ):
         """Helper to set a global definition."""
         self.data.global_settings.aruco_defaults[aruco_id] = ArucoDefinition(
             name=name, type=type, profile=profile, size=size, height_mm=height_mm
         )
         self.save()
 
-    def set_map_aruco_override(self, 
-                               map_name: str,
-                               aruco_id: int, 
-                               name: str, 
-                               type: str = "NPC", 
-                               profile: Optional[str] = None,
-                               size: Optional[int] = None,
-                               height_mm: Optional[float] = None):
+    def set_map_aruco_override(
+        self,
+        map_name: str,
+        aruco_id: int,
+        name: str,
+        type: str = "NPC",
+        profile: Optional[str] = None,
+        size: Optional[int] = None,
+        height_mm: Optional[float] = None,
+    ):
         """Helper to set a map override."""
         map_name = os.path.abspath(map_name)
         if map_name not in self.data.maps:
             self.data.maps[map_name] = MapEntry()
-            
+
         self.data.maps[map_name].aruco_overrides[aruco_id] = ArucoDefinition(
             name=name, type=type, profile=profile, size=size, height_mm=height_mm
         )

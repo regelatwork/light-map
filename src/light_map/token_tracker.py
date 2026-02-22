@@ -1,25 +1,27 @@
 import numpy as np
-from typing import List, Optional, Tuple, TYPE_CHECKING
+from typing import List, Optional, Tuple, Dict, TYPE_CHECKING
 from light_map.common_types import Token, TokenDetectionAlgorithm
 from light_map.map_system import MapSystem
 from light_map.vision.flash_detector import FlashTokenDetector
 from light_map.vision.structured_light_detector import StructuredLightTokenDetector
+from light_map.vision.aruco_detector import ArucoTokenDetector
 
 if TYPE_CHECKING:
     from light_map.projector import ProjectorDistortionModel
 
 
 class TokenTracker:
-    # Expose constants for backward compatibility if needed, 
+    # Expose constants for backward compatibility if needed,
     # though ideally consumers should not rely on them.
-    # We can alias them from the new modules if strictly necessary, 
-    # but for now let's assume external code doesn't access them directly 
+    # We can alias them from the new modules if strictly necessary,
+    # but for now let's assume external code doesn't access them directly
     # or we will fix it if tests fail.
 
     def __init__(self):
         self.debug_mode = False
         self._flash_detector = FlashTokenDetector(debug_mode=self.debug_mode)
         self._sl_detector = StructuredLightTokenDetector(debug_mode=self.debug_mode)
+        self._aruco_detector = ArucoTokenDetector(debug_mode=self.debug_mode)
 
     @property
     def debug_mode(self):
@@ -32,6 +34,8 @@ class TokenTracker:
             self._flash_detector.debug_mode = value
         if hasattr(self, "_sl_detector"):
             self._sl_detector.debug_mode = value
+        if hasattr(self, "_aruco_detector"):
+            self._aruco_detector.debug_mode = value
 
     def get_scan_pattern(
         self, width: int, height: int, ppi: float
@@ -55,6 +59,7 @@ class TokenTracker:
         mask_rois: Optional[List[Tuple[int, int, int, int]]] = None,
         ppi: float = 96.0,
         algorithm: TokenDetectionAlgorithm = TokenDetectionAlgorithm.FLASH,
+        token_configs: Optional[Dict[int, Dict]] = None,
         distortion_model: Optional["ProjectorDistortionModel"] = None,
     ) -> List[Token]:
         # Handle case where only one frame is passed (default to frame_pattern for SL or frame_white for Flash)
@@ -65,6 +70,15 @@ class TokenTracker:
 
         if frame_white is None:
             return []
+
+        if algorithm == TokenDetectionAlgorithm.ARUCO:
+            return self._aruco_detector.detect(
+                frame_white,
+                map_system,
+                token_configs=token_configs,
+                ppi=ppi,
+                distortion_model=distortion_model,
+            )
 
         if (
             algorithm == TokenDetectionAlgorithm.STRUCTURED_LIGHT

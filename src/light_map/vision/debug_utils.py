@@ -1,20 +1,22 @@
 import cv2
 import math
-import numpy as np
 from datetime import datetime
+
 
 class DebugVisualizer:
     @staticmethod
-    def draw_grid(debug_img, map_system, grid_spacing_svg, grid_origin_x, grid_origin_y):
+    def draw_grid(
+        debug_img, map_system, grid_spacing_svg, grid_origin_x, grid_origin_y
+    ):
         h, w = debug_img.shape[:2]
         grid_color = (100, 100, 100)
-        
+
         # Find world bounds to draw enough lines
         p_top_left = map_system.screen_to_world(0, 0)
         p_top_right = map_system.screen_to_world(w, 0)
         p_bot_left = map_system.screen_to_world(0, h)
         p_bot_right = map_system.screen_to_world(w, h)
-        
+
         min_wx = min(p_top_left[0], p_top_right[0], p_bot_left[0], p_bot_right[0])
         max_wx = max(p_top_left[0], p_top_right[0], p_bot_left[0], p_bot_right[0])
         min_wy = min(p_top_left[1], p_top_right[1], p_bot_left[1], p_bot_right[1])
@@ -55,7 +57,7 @@ class DebugVisualizer:
         for token in tokens:
             sx, sy = map_system.world_to_screen(token.world_x, token.world_y)
             cv2.circle(debug_img, (int(sx), int(sy)), 20, (0, 255, 255), 2)
-            
+
     @staticmethod
     def save_debug_image(filename_prefix, debug_img):
         filename = f"{filename_prefix}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png"

@@ -3,6 +3,7 @@ import cv2
 import numpy as np
 import time
 import os
+import math
 import mediapipe as mp
 from typing import List, Tuple, Any, Dict
 
@@ -31,6 +32,9 @@ from light_map.scenes.calibration_scenes import (
     ProjectorCalibrationScene,
     ExtrinsicsCalibrationScene,
 )
+from light_map.token_tracker import TokenTracker
+from light_map.common_types import TokenDetectionAlgorithm
+from light_map.vision.token_filter import TokenFilter
 
 
 class InteractiveApp:
@@ -45,6 +49,8 @@ class InteractiveApp:
         self.map_system = MapSystem(config.width, config.height)
         self.map_config = MapConfigManager()
         self.notifications = NotificationManager()
+        self.token_tracker = TokenTracker()
+        self.token_filter = TokenFilter()
 
         # Load Camera Calibration
         camera_matrix = None
@@ -174,7 +180,11 @@ class InteractiveApp:
         # 2. Standardize Input
         inputs = self._convert_mediapipe_to_inputs(results, frame.shape)
 
-        # 3. Scene Update
+        # 3. ArUco Background Tracking
+        if self.map_config.get_detection_algorithm() == TokenDetectionAlgorithm.ARUCO:
+            self._process_aruco_tracking(frame)
+
+        # 4. Scene Update
         transition = self.current_scene.update(inputs, current_time)
         if transition:
             self._handle_payloads(transition.payload)
@@ -350,12 +360,92 @@ class InteractiveApp:
 
         return frame
 
+    def _process_aruco_tracking(self, frame: np.ndarray):
+        """Performs background ArUco tracking and updates the map system."""
+        map_file = (
+            self.map_system.svg_loader.filename if self.map_system.svg_loader else None
+        )
+        current_time = self.time_provider()
+
+        # Get resolved configs for current map
+        token_configs = self.map_config.get_aruco_configs(map_file)
+
+        # Detect
+        detections = self.token_tracker.detect_tokens(
+            frame_white=frame,
+            projector_matrix=self.config.projector_matrix,
+            map_system=self.map_system,
+            ppi=self.map_config.get_ppi(),
+            algorithm=TokenDetectionAlgorithm.ARUCO,
+            token_configs=token_configs,
+            distortion_model=self.config.distortion_model,
+        )
+
+        # Grid parameters
+        grid_spacing = 0.0
+        grid_origin_x = 0.0
+        grid_origin_y = 0.0
+        if map_file:
+            entry = self.map_config.data.maps.get(map_file)
+            if entry:
+                grid_spacing = entry.grid_spacing_svg
+                grid_origin_x = entry.grid_origin_svg_x
+                grid_origin_y = entry.grid_origin_svg_y
+
+        # Temporal Filtering and Grid Snapping
+        tokens = self.token_filter.update(
+            detections,
+            current_time,
+            grid_spacing=grid_spacing,
+            grid_origin_x=grid_origin_x,
+            grid_origin_y=grid_origin_y,
+            token_configs=token_configs,
+        )
+
+        # Update context
+        self.map_system.ghost_tokens = tokens
+
     def _draw_ghost_tokens(self, image: np.ndarray):
         ppi = self.map_config.get_ppi()
-        radius = int(ppi * 0.75) if ppi > 0 else 30
+        map_file = (
+            self.map_system.svg_loader.filename if self.map_system.svg_loader else None
+        )
+
         for t in self.map_system.ghost_tokens:
             sx, sy = self.map_system.world_to_screen(t.world_x, t.world_y)
-            cv2.circle(image, (int(sx), int(sy)), radius, (255, 255, 0), 2)
+
+            # Resolve properties for display
+            resolved = self.map_config.resolve_token_profile(t.id, map_file)
+
+            # Radius based on size (1 grid cell = 1 inch = ppi pixels)
+            radius = int(ppi * resolved.size / 2) if ppi > 0 else 30
+
+            # Draw circle
+            color = (255, 255, 0)  # Cyan/Yellow
+            if resolved.type == "PC":
+                color = (0, 255, 0)  # Green for players
+            elif resolved.type == "NPC":
+                color = (0, 0, 255)  # Red for NPCs
+
+            if t.is_occluded:
+                # Pulse brightness
+                pulse = (math.sin(self.time_provider() * 10) + 1) / 2  # 0.5 to 1.0ish?
+                # Let's do 0.2 to 1.0
+                alpha_pulse = 0.2 + 0.8 * pulse
+                color = tuple(int(c * alpha_pulse) for c in color)
+
+            cv2.circle(image, (int(sx), int(sy)), radius, color, 2)
+
+            # Draw name
+            cv2.putText(
+                image,
+                resolved.name,
+                (int(sx) - radius, int(sy) - radius - 10),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.5,
+                color,
+                1,
+            )
 
     def _draw_debug_overlay(self, image, inputs: List[HandInput]):
         cv2.putText(

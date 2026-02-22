@@ -12,6 +12,7 @@ from light_map.vision.debug_utils import DebugVisualizer
 if TYPE_CHECKING:
     from light_map.projector import ProjectorDistortionModel
 
+
 class StructuredLightTokenDetector:
     # --- Structured Light Pattern Parameters ---
     SL_SEED = 42
@@ -28,7 +29,7 @@ class StructuredLightTokenDetector:
     SL_MIN_CONTOUR_AREA = 2
     SL_SHIFT_THRESHOLD_PX = 15.0
     SL_MISSING_THRESHOLD_PX = 15.0
-    
+
     # --- Clustering & Result Parameters ---
     CLUSTER_DIST_PX = 80.0
     CONFIDENCE_SCALING = 3.0
@@ -218,16 +219,16 @@ class StructuredLightTokenDetector:
                 for p in detected_tokens_points:
                     wx, wy = map_system.screen_to_world(p[0], p[1])
                     world_points.append((wx, wy))
-                
+
                 # Phase 2: Cover areas with grid-sized continuous rectangles
                 placed_rects = []
                 remaining_pts = list(world_points)
-                
+
                 while len(remaining_pts) >= 2:
                     best_rect_center = None
                     best_count = 0
                     best_covered = []
-                    
+
                     # Find the dense center that covers the most points
                     for p in remaining_pts:
                         cx, cy = p
@@ -235,42 +236,51 @@ class StructuredLightTokenDetector:
                         for _ in range(5):
                             covered = []
                             for i, pt in enumerate(remaining_pts):
-                                if abs(pt[0] - cx) <= grid_spacing_svg / 2 and abs(pt[1] - cy) <= grid_spacing_svg / 2:
+                                if (
+                                    abs(pt[0] - cx) <= grid_spacing_svg / 2
+                                    and abs(pt[1] - cy) <= grid_spacing_svg / 2
+                                ):
                                     covered.append(i)
-                            
+
                             if not covered:
                                 break
-                                
-                            new_cx = sum(remaining_pts[i][0] for i in covered) / len(covered)
-                            new_cy = sum(remaining_pts[i][1] for i in covered) / len(covered)
-                            
+
+                            new_cx = sum(remaining_pts[i][0] for i in covered) / len(
+                                covered
+                            )
+                            new_cy = sum(remaining_pts[i][1] for i in covered) / len(
+                                covered
+                            )
+
                             if abs(new_cx - cx) < 1.0 and abs(new_cy - cy) < 1.0:
                                 cx, cy = new_cx, new_cy
                                 break
                             cx, cy = new_cx, new_cy
-                            
+
                         if len(covered) > best_count:
                             best_count = len(covered)
                             best_rect_center = (cx, cy)
                             best_covered = covered
-                            
+
                     if best_count < 2:
                         break
-                        
-                    placed_rects.append((best_rect_center[0], best_rect_center[1], best_count))
-                    
+
+                    placed_rects.append(
+                        (best_rect_center[0], best_rect_center[1], best_count)
+                    )
+
                     # Remove the covered points
                     for i in sorted(best_covered, reverse=True):
                         remaining_pts.pop(i)
-                
+
                 # Phase 3: Snap continuous rectangles to the grid
                 occupied_cells = set()
                 token_id = 1
-                
+
                 for cx, cy, count in placed_rects:
                     gx = int(math.floor((cx - grid_origin_x) / grid_spacing_svg))
                     gy = int(math.floor((cy - grid_origin_y) / grid_spacing_svg))
-                    
+
                     # Ensure no two tokens snap to the exact same cell
                     if (gx, gy) not in occupied_cells:
                         occupied_cells.add((gx, gy))
@@ -455,7 +465,9 @@ class StructuredLightTokenDetector:
                 cv2.circle(debug_img, (int(ep[0]), int(ep[1])), 3, (255, 255, 0), -1)
 
         if grid_spacing_svg > 0:
-            DebugVisualizer.draw_grid(debug_img, map_system, grid_spacing_svg, grid_origin_x, grid_origin_y)
+            DebugVisualizer.draw_grid(
+                debug_img, map_system, grid_spacing_svg, grid_origin_x, grid_origin_y
+            )
 
         DebugVisualizer.draw_tokens(debug_img, tokens, map_system)
         DebugVisualizer.save_debug_image("debug_token_detection_sl", debug_img)

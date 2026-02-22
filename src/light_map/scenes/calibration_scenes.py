@@ -16,9 +16,9 @@ from light_map.token_tracker import TokenTracker
 from light_map.calibration_logic import calculate_ppi_from_frame, calibrate_extrinsics
 from light_map.common_types import SceneId
 from light_map.calibration import (
-    process_chessboard_images, 
-    save_camera_calibration, 
-    save_camera_extrinsics
+    process_chessboard_images,
+    save_camera_calibration,
+    save_camera_extrinsics,
 )
 
 if TYPE_CHECKING:
@@ -228,17 +228,16 @@ class ProjectorCalibrationScene(Scene):
 
     def __init__(self, context: AppContext):
         super().__init__(context)
-        self._stage = (
-            "DISPLAY_PATTERN"  # DISPLAY_PATTERN | SETTLE | CAPTURE | PROCESSING | DONE | ERROR
-        )
+        self._stage = "DISPLAY_PATTERN"  # DISPLAY_PATTERN | SETTLE | CAPTURE | PROCESSING | DONE | ERROR
         self._pattern_image: Optional[np.ndarray] = None
         self._pattern_params: Optional[Dict] = None
         self._start_time = 0.0
 
     def on_enter(self, payload: Any = None) -> None:
         from light_map.projector import generate_calibration_pattern
+
         self._stage = "DISPLAY_PATTERN"
-        
+
         # Generate pattern
         w, h = self.context.app_config.width, self.context.app_config.height
         self._pattern_image, self._pattern_params = generate_calibration_pattern(
@@ -253,12 +252,12 @@ class ProjectorCalibrationScene(Scene):
         elapsed = current_time - self._start_time
 
         if self._stage == "DISPLAY_PATTERN":
-            if elapsed > 1.0: # Ensure it's being projected
+            if elapsed > 1.0:  # Ensure it's being projected
                 self._stage = "SETTLE"
                 self._start_time = current_time
 
         elif self._stage == "SETTLE":
-            if elapsed > 2.0: # Camera settle time
+            if elapsed > 2.0:  # Camera settle time
                 self._stage = "CAPTURE"
 
         elif self._stage == "CAPTURE":
@@ -266,9 +265,12 @@ class ProjectorCalibrationScene(Scene):
             if frame is not None:
                 self._stage = "PROCESSING"
                 from light_map.projector import compute_projector_homography
+
                 try:
-                    matrix, cam_pts, proj_pts = compute_projector_homography(frame, self._pattern_params)
-                    
+                    matrix, cam_pts, proj_pts = compute_projector_homography(
+                        frame, self._pattern_params
+                    )
+
                     # Save results
                     output_file = "projector_calibration.npz"
                     np.savez(
@@ -278,23 +280,34 @@ class ProjectorCalibrationScene(Scene):
                         projector_points=proj_pts,
                         resolution=np.array([frame.shape[1], frame.shape[0]]),
                         camera_resolution=np.array([frame.shape[1], frame.shape[0]]),
-                        projector_resolution=np.array([self.context.app_config.width, self.context.app_config.height]),
+                        projector_resolution=np.array(
+                            [
+                                self.context.app_config.width,
+                                self.context.app_config.height,
+                            ]
+                        ),
                     )
                     # Update context
                     self.context.projector_matrix = matrix
-                    self.context.notifications.add_notification("Projector calibrated successfully.")
+                    self.context.notifications.add_notification(
+                        "Projector calibrated successfully."
+                    )
                     self._stage = "DONE"
                     return SceneTransition(SceneId.MENU)
                 except Exception as e:
                     print(f"Homography error: {e}")
-                    self.context.notifications.add_notification(f"Calibration failed: {e}")
+                    self.context.notifications.add_notification(
+                        f"Calibration failed: {e}"
+                    )
                     self._stage = "ERROR"
             else:
-                self.context.notifications.add_notification("Error: No camera frame captured.")
+                self.context.notifications.add_notification(
+                    "Error: No camera frame captured."
+                )
                 self._stage = "ERROR"
 
         if self._stage == "ERROR":
-             return SceneTransition(SceneId.MENU)
+            return SceneTransition(SceneId.MENU)
 
         return None
 
@@ -310,8 +323,8 @@ class ExtrinsicsCalibrationScene(Scene):
     def __init__(self, context: AppContext):
         super().__init__(context)
         self._stage = "PLACEMENT"  # PLACEMENT | CAPTURE | VERIFY | DONE | ERROR
-        self._target_zones: List[Tuple[int, int, int]] = [] # x, y, id
-        self._detected_ids: Dict[int, Tuple[float, float]] = {} # id -> (u, v) cam
+        self._target_zones: List[Tuple[int, int, int]] = []  # x, y, id
+        self._detected_ids: Dict[int, Tuple[float, float]] = {}  # id -> (u, v) cam
         self._ppi = 0.0
         self._rvec: Optional[np.ndarray] = None
         self._tvec: Optional[np.ndarray] = None
@@ -320,10 +333,15 @@ class ExtrinsicsCalibrationScene(Scene):
     def on_enter(self, payload: Any = None) -> None:
         self._stage = "PLACEMENT"
         self._ppi = self.context.map_config_manager.get_ppi()
-        
+
         # Load token heights from global config
         self._token_heights = {}
-        for aid, defn in self.context.map_config_manager.data.global_settings.aruco_defaults.items():
+        for (
+            aid,
+            defn,
+        ) in (
+            self.context.map_config_manager.data.global_settings.aruco_defaults.items()
+        ):
             resolved = self.context.map_config_manager.resolve_token_profile(aid)
             self._token_heights[aid] = resolved.height_mm
 
@@ -332,11 +350,11 @@ class ExtrinsicsCalibrationScene(Scene):
         w, h = self.context.app_config.width, self.context.app_config.height
         margin = 200
         self._target_zones = [
-            (margin, margin, 10),     # TL
-            (w - margin, margin, 11), # TR
-            (margin, h - margin, 12), # BL
-            (w - margin, h - margin, 13), # BR
-            (w // 2, h // 2, 14),     # C
+            (margin, margin, 10),  # TL
+            (w - margin, margin, 11),  # TR
+            (margin, h - margin, 12),  # BL
+            (w - margin, h - margin, 13),  # BR
+            (w // 2, h // 2, 14),  # C
         ]
         self.context.notifications.add_notification("Place tokens on target zones.")
 
@@ -346,7 +364,7 @@ class ExtrinsicsCalibrationScene(Scene):
         if self._stage == "PLACEMENT":
             # Continuous detection (simulated via last_camera_frame in render)
             # Actually update logic should be here.
-            
+
             # Detect markers
             frame = self.context.last_camera_frame
             if frame is not None:
@@ -355,27 +373,33 @@ class ExtrinsicsCalibrationScene(Scene):
                 parameters = cv2.aruco.DetectorParameters()
                 detector = cv2.aruco.ArucoDetector(aruco_dict, parameters)
                 corners, ids, rejected = detector.detectMarkers(gray)
-                
+
                 if ids is not None:
                     ids = ids.flatten()
                     self._detected_ids = {}
                     for i, aid in enumerate(ids):
                         if aid in self._token_heights:
-                             c_cam = np.mean(corners[i][0], axis=0)
-                             self._detected_ids[aid] = (c_cam[0], c_cam[1])
+                            c_cam = np.mean(corners[i][0], axis=0)
+                            self._detected_ids[aid] = (c_cam[0], c_cam[1])
 
             # Validation: At least 3 targets are "covered"?
             # Actually, the user can use ANY known ID.
             valid_count = len(self._detected_ids)
-            
+
             # Use Fist to trigger capture if enough tokens
-            if valid_count >= 3 and inputs and inputs[0].gesture == GestureType.CLOSED_FIST:
+            if (
+                valid_count >= 3
+                and inputs
+                and inputs[0].gesture == GestureType.CLOSED_FIST
+            ):
                 self._stage = "CAPTURE"
-        
+
         elif self._stage == "CAPTURE":
             # Run solvePnP
             if self.context.camera_matrix is None:
-                self.context.notifications.add_notification("Error: Camera intrinsics missing.")
+                self.context.notifications.add_notification(
+                    "Error: Camera intrinsics missing."
+                )
                 self._stage = "ERROR"
                 return None
 
@@ -386,9 +410,9 @@ class ExtrinsicsCalibrationScene(Scene):
                 self.context.dist_coeffs,
                 self._token_heights,
                 self._ppi,
-                known_targets=None # For now, let H find the (X, Y) as in design
+                known_targets=None,  # For now, let H find the (X, Y) as in design
             )
-            
+
             if result:
                 self._rvec, self._tvec = result
                 save_camera_extrinsics(self._rvec, self._tvec)
@@ -397,91 +421,140 @@ class ExtrinsicsCalibrationScene(Scene):
             else:
                 self.context.notifications.add_notification("Calibration failed.")
                 self._stage = "PLACEMENT"
-        
+
         elif self._stage == "VERIFY":
-             # Use Victory to confirm
-             if inputs and inputs[0].gesture == GestureType.VICTORY:
-                 return SceneTransition(SceneId.MENU)
-             elif inputs and inputs[0].gesture == GestureType.OPEN_PALM:
-                 self._stage = "PLACEMENT"
+            # Use Victory to confirm
+            if inputs and inputs[0].gesture == GestureType.VICTORY:
+                return SceneTransition(SceneId.MENU)
+            elif inputs and inputs[0].gesture == GestureType.OPEN_PALM:
+                self._stage = "PLACEMENT"
 
         return None
 
     def render(self, frame: np.ndarray) -> np.ndarray:
         h, w = frame.shape[:2]
-        canvas = np.full((h, w, 3), 200, dtype=np.uint8) # Light gray "Arena"
-        
+        canvas = np.full((h, w, 3), 200, dtype=np.uint8)  # Light gray "Arena"
+
         # Draw Target Zones
         for tx, ty, tid in self._target_zones:
-            color = (0, 0, 255) # Red
+            color = (0, 0, 255)  # Red
             # Check if ANY detected marker is "near" this target (in projector space)
             # Actually, let's just show detections and highlights
             cv2.circle(canvas, (tx, ty), 50, color, 2)
-            cv2.putText(canvas, f"Target", (tx-30, ty+70), 
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 1)
+            cv2.putText(
+                canvas,
+                "Target",
+                (tx - 30, ty + 70),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.5,
+                color,
+                1,
+            )
 
         # Highlight Detections (re-mapping from Camera to Projector)
         for aid, (cx, cy) in self._detected_ids.items():
             # Project to canvas
             pts_cam = np.array([[cx, cy]], dtype=np.float32).reshape(-1, 1, 2)
-            pts_proj = cv2.perspectiveTransform(pts_cam, self.context.projector_matrix).reshape(-1, 2)
+            pts_proj = cv2.perspectiveTransform(
+                pts_cam, self.context.projector_matrix
+            ).reshape(-1, 2)
             px, py = int(pts_proj[0][0]), int(pts_proj[0][1])
-            
+
             if 0 <= px < w and 0 <= py < h:
                 # Target ID green circle
                 cv2.circle(canvas, (px, py), 40, (0, 255, 0), -1)
-                cv2.putText(canvas, f"ID {aid}: {self._token_heights[aid]}mm", (px-50, py-50), 
-                            cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 100, 0), 2)
+                cv2.putText(
+                    canvas,
+                    f"ID {aid}: {self._token_heights[aid]}mm",
+                    (px - 50, py - 50),
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    0.6,
+                    (0, 100, 0),
+                    2,
+                )
 
         # Verification Overlay: 3D Wireframes
-        if self._stage == "VERIFY" and self._rvec is not None and self._tvec is not None:
+        if (
+            self._stage == "VERIFY"
+            and self._rvec is not None
+            and self._tvec is not None
+        ):
             self._render_verification_boxes(canvas)
 
         # Instructions
-        instr = "Fist to calibrate (Need 3+ tokens)" if self._stage == "PLACEMENT" else ""
-        if self._stage == "VERIFY": instr = "Victory to accept, Palm to retry"
-        cv2.putText(canvas, instr, (50, h - 50), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 0, 0), 2)
+        instr = (
+            "Fist to calibrate (Need 3+ tokens)" if self._stage == "PLACEMENT" else ""
+        )
+        if self._stage == "VERIFY":
+            instr = "Victory to accept, Palm to retry"
+        cv2.putText(
+            canvas, instr, (50, h - 50), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 0, 0), 2
+        )
 
         return canvas
 
     def _render_verification_boxes(self, canvas: np.ndarray):
         """Draws 3D wireframe boxes where the camera thinks the tokens are."""
-        if self.context.camera_matrix is None: return
-        
+        if self.context.camera_matrix is None:
+            return
+
         ppi_mm = self._ppi / 25.4
-        
+
         for aid, (cx, cy) in self._detected_ids.items():
             h_mm = self._token_heights[aid]
-            
+
             # Ground (X, Y) from H
             pts_cam = np.array([[cx, cy]], dtype=np.float32).reshape(-1, 1, 2)
-            pts_proj = cv2.perspectiveTransform(pts_cam, self.context.projector_matrix).reshape(-1, 2)
+            pts_proj = cv2.perspectiveTransform(
+                pts_cam, self.context.projector_matrix
+            ).reshape(-1, 2)
             px, py = pts_proj[0]
             wx, wy = px / ppi_mm, py / ppi_mm
-            
+
             # 3D points of a box (mm)
             # Size 1 inch = 25.4 mm
             s = 25.4 / 2
-            box_points = np.array([
-                [wx-s, wy-s, 0], [wx+s, wy-s, 0], [wx+s, wy+s, 0], [wx-s, wy+s, 0],
-                [wx-s, wy-s, h_mm], [wx+s, wy-s, h_mm], [wx+s, wy+s, h_mm], [wx-s, wy+s, h_mm],
-            ], dtype=np.float32)
-            
+            box_points = np.array(
+                [
+                    [wx - s, wy - s, 0],
+                    [wx + s, wy - s, 0],
+                    [wx + s, wy + s, 0],
+                    [wx - s, wy + s, 0],
+                    [wx - s, wy - s, h_mm],
+                    [wx + s, wy - s, h_mm],
+                    [wx + s, wy + s, h_mm],
+                    [wx - s, wy + s, h_mm],
+                ],
+                dtype=np.float32,
+            )
+
             # Project to Camera pixels
             img_pts, _ = cv2.projectPoints(
-                box_points, self._rvec, self._tvec, self.context.camera_matrix, self.context.dist_coeffs
+                box_points,
+                self._rvec,
+                self._tvec,
+                self.context.camera_matrix,
+                self.context.dist_coeffs,
             )
-            
+
             # Now, project THESE camera pixels to Projector Pixels to draw them!
             img_pts = img_pts.reshape(-1, 1, 2)
-            proj_pts = cv2.perspectiveTransform(img_pts, self.context.projector_matrix).reshape(-1, 2)
-            
+            proj_pts = cv2.perspectiveTransform(
+                img_pts, self.context.projector_matrix
+            ).reshape(-1, 2)
+
             # Draw edges
             pts = proj_pts.astype(int)
             for i in range(4):
-                cv2.line(canvas, tuple(pts[i]), tuple(pts[(i+1)%4]), (255, 0, 0), 2)
-                cv2.line(canvas, tuple(pts[i+4]), tuple(pts[(i+1)%4+4]), (255, 0, 0), 2)
-                cv2.line(canvas, tuple(pts[i]), tuple(pts[i+4]), (255, 0, 0), 2)
+                cv2.line(canvas, tuple(pts[i]), tuple(pts[(i + 1) % 4]), (255, 0, 0), 2)
+                cv2.line(
+                    canvas,
+                    tuple(pts[i + 4]),
+                    tuple(pts[(i + 1) % 4 + 4]),
+                    (255, 0, 0),
+                    2,
+                )
+                cv2.line(canvas, tuple(pts[i]), tuple(pts[i + 4]), (255, 0, 0), 2)
 
 
 class PpiCalibrationScene(Scene):
@@ -513,13 +586,13 @@ class PpiCalibrationScene(Scene):
 
     def render(self, frame: np.ndarray) -> np.ndarray:
         h, w = frame.shape[:2]
-        canvas = np.full((h, w, 3), 255, dtype=np.uint8) # White background
+        canvas = np.full((h, w, 3), 255, dtype=np.uint8)  # White background
 
         # ArUco markers 0 and 1
         aruco_dict = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_4X4_50)
         marker0 = cv2.aruco.generateImageMarker(aruco_dict, 0, 100)
         marker1 = cv2.aruco.generateImageMarker(aruco_dict, 1, 100)
-        
+
         # Convert to BGR
         marker0 = cv2.cvtColor(marker0, cv2.COLOR_GRAY2BGR)
         marker1 = cv2.cvtColor(marker1, cv2.COLOR_GRAY2BGR)
@@ -531,31 +604,38 @@ class PpiCalibrationScene(Scene):
         # If we project them at px=200 and px=600, dist = 400px.
         # If the user places physical tokens on them, and we know tokens are 100mm apart.
         # Then PPI = 400px / (100mm / 25.4) = 101.6 PPI.
-        
+
         # Let's project them at a fixed pixel distance.
         dist_px = 500
         cx, cy = w // 2, h // 2
-        
+
         x0, y0 = cx - dist_px // 2, cy
         x1, y1 = cx + dist_px // 2, cy
-        
+
         # Draw on canvas (with bounds check)
         for x, y, marker in [(x0, y0, marker0), (x1, y1, marker1)]:
-            y1_idx, y2_idx = max(0, y-50), min(h, y+50)
-            x1_idx, x2_idx = max(0, x-50), min(w, x+50)
-            
+            y1_idx, y2_idx = max(0, y - 50), min(h, y + 50)
+            x1_idx, x2_idx = max(0, x - 50), min(w, x + 50)
+
             # Sub-marker crop if at edges
             m_y1 = 50 - (y - y1_idx)
             m_y2 = m_y1 + (y2_idx - y1_idx)
             m_x1 = 50 - (x - x1_idx)
             m_x2 = m_x1 + (x2_idx - x1_idx)
-            
+
             if y2_idx > y1_idx and x2_idx > x1_idx:
                 canvas[y1_idx:y2_idx, x1_idx:x2_idx] = marker[m_y1:m_y2, m_x1:m_x2]
-        
+
         # Text instructions
-        cv2.putText(canvas, "Place markers 100mm apart on targets.", (cx-200, cy+100), 
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 0), 2)
+        cv2.putText(
+            canvas,
+            "Place markers 100mm apart on targets.",
+            (cx - 200, cy + 100),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.7,
+            (0, 0, 0),
+            2,
+        )
 
         if self._stage == "DETECTING":
             if self.context.last_camera_frame is not None:
@@ -563,19 +643,36 @@ class PpiCalibrationScene(Scene):
                 # Wait, calculate_ppi_from_frame assumes it knows the PHYSICAL distance (100mm)
                 # and finds the PROJECTOR distance by detection.
                 ppi = calculate_ppi_from_frame(
-                    self.context.last_camera_frame, self.context.projector_matrix, 
-                    target_dist_mm=100.0
+                    self.context.last_camera_frame,
+                    self.context.projector_matrix,
+                    target_dist_mm=100.0,
                 )
                 if ppi:
                     self._candidate_ppi = ppi
                     self._stage = "CONFIRMING"
-                    self.context.notifications.add_notification(f"Detected PPI: {ppi:.2f}. Victory to save.")
-        
+                    self.context.notifications.add_notification(
+                        f"Detected PPI: {ppi:.2f}. Victory to save."
+                    )
+
         elif self._stage == "CONFIRMING":
-             cv2.putText(canvas, f"Detected PPI: {self._candidate_ppi:.2f}", (cx-150, cy-100), 
-                    cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0, 150, 0), 2)
-             cv2.putText(canvas, "VICTORY to save, PALM to retry", (cx-150, cy+150), 
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 0), 2)
+            cv2.putText(
+                canvas,
+                f"Detected PPI: {self._candidate_ppi:.2f}",
+                (cx - 150, cy - 100),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                1.0,
+                (0, 150, 0),
+                2,
+            )
+            cv2.putText(
+                canvas,
+                "VICTORY to save, PALM to retry",
+                (cx - 150, cy + 150),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.7,
+                (0, 0, 0),
+                2,
+            )
 
         return canvas
 

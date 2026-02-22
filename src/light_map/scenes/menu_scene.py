@@ -113,11 +113,13 @@ class MenuScene(Scene):
             self.context.notifications.add_notification("Load a map before scanning.")
         elif action == MenuActions.SCAN_ALGORITHM:
             current = self.context.map_config_manager.get_detection_algorithm()
-            new_algo = (
-                TokenDetectionAlgorithm.STRUCTURED_LIGHT
-                if current == TokenDetectionAlgorithm.FLASH
-                else TokenDetectionAlgorithm.FLASH
-            )
+            if current == TokenDetectionAlgorithm.FLASH:
+                new_algo = TokenDetectionAlgorithm.STRUCTURED_LIGHT
+            elif current == TokenDetectionAlgorithm.STRUCTURED_LIGHT:
+                new_algo = TokenDetectionAlgorithm.ARUCO
+            else:
+                new_algo = TokenDetectionAlgorithm.FLASH
+
             self.context.map_config_manager.set_detection_algorithm(new_algo)
             # Rebuild menu to update title
             new_root = build_root_menu(self.context.map_config_manager)

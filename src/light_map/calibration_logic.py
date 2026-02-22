@@ -121,7 +121,7 @@ def calibrate_extrinsics(
 ) -> Optional[Tuple[np.ndarray, np.ndarray]]:
     """
     Estimates Camera Extrinsics (R, t) using ArUco markers with known heights.
-    
+
     Args:
         frame: The camera frame containing ArUco markers.
         projector_matrix: Homography (Camera -> Projector).
@@ -143,9 +143,9 @@ def calibrate_extrinsics(
 
     corners, ids, rejected = detector.detectMarkers(gray)
 
-    obj_points = [] # 3D points in World Space (mm)
-    img_points = [] # 2D points in Camera Space (px)
-    
+    obj_points = []  # 3D points in World Space (mm)
+    img_points = []  # 2D points in Camera Space (px)
+
     ppi_mm = ppi / 25.4
 
     # 1. Add Ground Points (Z=0) from Step 1 if available
@@ -164,39 +164,41 @@ def calibrate_extrinsics(
         for i, aruco_id in enumerate(ids):
             if aruco_id not in token_heights:
                 continue
-                
+
             h = token_heights[aruco_id]
             c_cam = np.mean(corners[i][0], axis=0)
-            
+
             # Find (X, Y)
             if known_targets and aruco_id in known_targets:
                 px, py = known_targets[aruco_id]
             else:
                 # Fallback to homography projection (estimate from top of token)
                 pts_cam = np.array([c_cam], dtype=np.float32).reshape(-1, 1, 2)
-                pts_proj = cv2.perspectiveTransform(pts_cam, projector_matrix).reshape(-1, 2)
+                pts_proj = cv2.perspectiveTransform(pts_cam, projector_matrix).reshape(
+                    -1, 2
+                )
                 px, py = pts_proj[0]
-            
+
             wx = px / ppi_mm
             wy = py / ppi_mm
             wz = h
-            
+
             obj_points.append([wx, wy, wz])
             img_points.append(c_cam)
 
     if len(obj_points) < 4:
-        print("Extrinsics: Not enough points detected (need at least 4 combined points).")
+        print(
+            "Extrinsics: Not enough points detected (need at least 4 combined points)."
+        )
         return None
 
     obj_points = np.array(obj_points, dtype=np.float32)
     img_points = np.array(img_points, dtype=np.float32)
 
     # Solve PnP
-    ret, rvec, tvec = cv2.solvePnP(
-        obj_points, img_points, camera_matrix, dist_coeffs
-    )
+    ret, rvec, tvec = cv2.solvePnP(obj_points, img_points, camera_matrix, dist_coeffs)
 
     if ret:
         return rvec, tvec
-    
+
     return None

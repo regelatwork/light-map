@@ -31,8 +31,13 @@ def test_projector_calibration_flow_success(mock_app_context):
         nonlocal mock_time
         return mock_time
 
-    with patch("time.monotonic", side_effect=mock_monotonic), \
-         patch("light_map.projector.compute_projector_homography", return_value=(np.eye(3), [], [])):
+    with (
+        patch("time.monotonic", side_effect=mock_monotonic),
+        patch(
+            "light_map.projector.compute_projector_homography",
+            return_value=(np.eye(3), [], []),
+        ),
+    ):
         scene.on_enter()
         assert scene._stage == "DISPLAY_PATTERN"
 
@@ -74,7 +79,7 @@ def test_projector_calibration_no_camera_error(mock_app_context):
         # To SETTLE
         mock_time += 1.1
         scene.update([], mock_time)
-        
+
         # To CAPTURE
         mock_time += 2.1
         scene.update([], mock_time)

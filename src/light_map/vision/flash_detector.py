@@ -1,13 +1,14 @@
 import cv2
 import numpy as np
 import math
-from typing import List, Tuple, Optional, Set, TYPE_CHECKING
+from typing import List, Tuple, Optional, TYPE_CHECKING
 from light_map.common_types import Token
 from light_map.map_system import MapSystem
 from light_map.vision.debug_utils import DebugVisualizer
 
 if TYPE_CHECKING:
     from light_map.projector import ProjectorDistortionModel
+
 
 class FlashTokenDetector:
     # --- Flash Detection Parameters ---
@@ -18,7 +19,7 @@ class FlashTokenDetector:
     FLASH_MORPH_CLOSE_ITER = 3
     FLASH_DISTANCE_THRESH = 10.0
     FLASH_MIN_BLOB_AREA = 300
-    
+
     # --- Clustering & Result Parameters ---
     CONFIDENCE_SCALING = 3.0
     GRID_OVERLAP_THRESHOLD = 0.4
@@ -238,7 +239,9 @@ class FlashTokenDetector:
 
         # Draw Grid if applicable
         if grid_spacing_svg > 0:
-            DebugVisualizer.draw_grid(debug_img, map_system, grid_spacing_svg, grid_origin_x, grid_origin_y)
+            DebugVisualizer.draw_grid(
+                debug_img, map_system, grid_spacing_svg, grid_origin_x, grid_origin_y
+            )
 
         # Draw Markers
         unique_markers = np.unique(markers)

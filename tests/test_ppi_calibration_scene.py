@@ -32,8 +32,9 @@ def test_ppi_calibration_scene_detecting_to_confirming(mock_app_context):
         frame = np.zeros((100, 100, 3), dtype=np.uint8)
         scene.render(frame)  # Call render to trigger detection
         mock_calc.assert_called_with(
-            mock_app_context.last_camera_frame, mock_app_context.projector_matrix,
-            target_dist_mm=100.0
+            mock_app_context.last_camera_frame,
+            mock_app_context.projector_matrix,
+            target_dist_mm=100.0,
         )
 
     assert scene._stage == "CONFIRMING"
@@ -48,7 +49,11 @@ def test_ppi_calibration_scene_confirming_to_done(mock_app_context):
     scene._candidate_ppi = 120.0
 
     # Simulate VICTORY gesture
-    inputs = [HandInput(gesture=GestureType.VICTORY, proj_pos=(0, 0), raw_landmarks=MagicMock())]
+    inputs = [
+        HandInput(
+            gesture=GestureType.VICTORY, proj_pos=(0, 0), raw_landmarks=MagicMock()
+        )
+    ]
     transition = scene.update(inputs, 0.0)
 
     assert isinstance(transition, SceneTransition)
@@ -63,7 +68,11 @@ def test_ppi_calibration_scene_confirming_to_detecting(mock_app_context):
     scene._stage = "CONFIRMING"
 
     # Simulate OPEN_PALM gesture
-    inputs = [HandInput(gesture=GestureType.OPEN_PALM, proj_pos=(0, 0), raw_landmarks=MagicMock())]
+    inputs = [
+        HandInput(
+            gesture=GestureType.OPEN_PALM, proj_pos=(0, 0), raw_landmarks=MagicMock()
+        )
+    ]
     scene.update(inputs, 0.0)
 
     assert scene._stage == "DETECTING"

@@ -93,6 +93,8 @@ class ScanningScene(Scene):
         if self._stage == ScanStage.START:
             if algorithm == TokenDetectionAlgorithm.STRUCTURED_LIGHT:
                 self._change_stage(ScanStage.PREPARE_DARK, current_time)
+            elif algorithm == TokenDetectionAlgorithm.ARUCO:
+                self._change_stage(ScanStage.PROCESS, current_time)
             else:
                 self._change_stage(ScanStage.FLASH, current_time)
 
@@ -236,6 +238,7 @@ class ScanningScene(Scene):
                 grid_origin_y = entry.grid_origin_svg_y
 
         ppi = map_config.get_ppi()
+        token_configs = map_config.get_aruco_configs(map_file)
 
         tokens = self.token_tracker.detect_tokens(
             frame_white=frame_white,
@@ -248,6 +251,7 @@ class ScanningScene(Scene):
             grid_origin_y=grid_origin_y,
             ppi=ppi,
             algorithm=algorithm,
+            token_configs=token_configs,
         )
 
         self._last_scan_result_count = len(tokens)
@@ -257,6 +261,10 @@ class ScanningScene(Scene):
         if algorithm == TokenDetectionAlgorithm.STRUCTURED_LIGHT:
             self.context.notifications.add_notification(
                 f"SL Scan: Found {len(tokens)} tokens."
+            )
+        elif algorithm == TokenDetectionAlgorithm.ARUCO:
+            self.context.notifications.add_notification(
+                f"ArUco Scan: Found {len(tokens)} tokens."
             )
         else:
             self.context.notifications.add_notification(

@@ -1,80 +1,132 @@
 # Calibration Guide
 
-This guide covers the calibration steps for the camera and projector-camera system.
+This guide provides comprehensive instructions for calibrating the Light Map system, ensuring precise alignment between the physical tabletop and digital projections.
 
-## Camera Calibration
+______________________________________________________________________
 
-The `calibrate.py` script calibrates a camera using a series of chessboard images.
+## 1. Hardware Setup & Best Practices
 
-### Usage
+For reliable tracking and projection, your hardware environment must be stable.
 
-1. Ensure you have `pyenv` installed and Python 3.12 (e.g., `3.12.9`) is available through `pyenv`. You can set your local Python version using:
+### Stability
 
-   ```bash
-   pyenv local 3.12.9
-   ```
+- **Tripod/Mount**: The camera and projector MUST be securely mounted. Any movement after calibration will invalidate the results.
+- **Surface**: The tabletop should be flat and vibration-free.
 
-1. Create the virtual environment with system site packages (necessary for `picamera2` on Raspberry Pi):
+### Lighting
 
-   ```bash
-   python -m venv --system-site-packages .venv
-   ```
+- **Ambient Light**: Avoid direct sunlight or strong glare on the tabletop, as this can interfere with ArUco marker detection.
+- **Projector Brightness**: Ensure the projector is bright enough to be clearly seen by the camera, but not so bright that it saturates the camera sensor.
 
-1. Activate the virtual environment and install the dependencies:
+### Camera Focus
 
-   ```bash
-   source .venv/bin/activate
-   pip install -r requirements.txt
-   ```
+- Focus the camera on the tabletop surface. If using a lens with a shallow depth of field, ensure the entire interaction area is reasonably sharp.
 
-1. Place your chessboard calibration images in the `images/` directory.
+______________________________________________________________________
 
-1. Run the script:
+## 2. Camera Intrinsics Calibration
 
-   ```bash
-   python calibrate.py
-   ```
+Camera intrinsics define the internal characteristics of the camera (focal length, optical center, and lens distortion).
 
-1. The script will save the camera matrix and distortion coefficients to `camera_calibration.npz`.
+### Why it's needed
 
-## Projector-Camera Calibration
-
-The `projector_calibration.py` script calculates the perspective transformation matrix to map camera coordinates to screen (projector) coordinates. It also captures raw calibration points to enable **non-linear distortion correction** (barrel/keystone compensation).
-
-### Raspberry Pi Setup
-
-If you are running this script on a Raspberry Pi, you will need to install GStreamer and the `libcamera` plugin. You can do this by running the following command:
-
-```bash
-sudo apt update && sudo apt install -y gstreamer1.0-tools gstreamer1.0-plugins-good gstreamer1.0-plugins-bad gstreamer1.0-libcamera
-```
+Standard camera lenses (especially wide-angle) have barrel or pincushion distortion. Calibrating intrinsics allows the system to "undistort" the image, which is critical for accurate 3D pose estimation (`solvePnP`).
 
 ### Usage
 
-1. First, ensure you have calibrated your camera and have the `camera_calibration.npz` file.
+1. **Prepare Target**: Use a standard 13x18 (or similar) chessboard pattern.
+1. **Launch Scene**: Open the menu and select **Settings > Calibrate Camera**.
+1. **Capture Images**: Hold the chessboard in front of the camera in various positions and orientations. Use the **Closed Fist** gesture to capture a frame. Capture at least 15-20 images for good results.
+1. **Process**: The system will automatically compute the camera matrix and distortion coefficients and save them to `camera_calibration.npz`.
 
-1. Run the script:
+______________________________________________________________________
 
-   ```bash
-   python projector_calibration.py
-   ```
+## 3. Projector-Camera (Homography) Calibration
 
-1. The script will display a fullscreen chessboard pattern. Your camera needs to be able to see this pattern.
+This step maps camera pixels directly to projector pixels for a flat plane.
 
-1. The script will then capture an image, find the chessboard, and print the resulting transformation matrix to the console. It saves both the matrix and the raw point correspondences to `projector_calibration.npz`.
+### Theory: The Homography Matrix
 
-## Distortion Visualization
-
-After projector calibration, you can visualize the mapping residuals (non-linear errors) using the `visualize_distortion.py` tool.
+A Homography is a 3x3 matrix ($H$) that relates two different views of the same planar surface. It accounts for rotation, scale, translation, and perspective (keystoning).
+$$p\_{proj} = H \\cdot p\_{cam}$$
+The system uses `cv2.findHomography` to compute this mapping by projecting a known chessboard pattern and detecting it with the camera.
 
 ### Usage
 
-1. Ensure you have run `projector_calibration.py`.
+1. Ensure `camera_calibration.npz` exists.
+1. Select **Settings > Calibrate Projector** from the menu (or run `python projector_calibration.py`).
+1. The system will project a fullscreen pattern. Ensure the camera has a clear view of the entire pattern.
+1. The resulting matrix and raw calibration points are saved to `projector_calibration.npz`.
 
-1. Run the visualization script:
+______________________________________________________________________
 
-   ```bash
-   python visualize_distortion.py
-   ```
+## 4. PPI Calibration (Pixels Per Inch)
 
-1. The script will generate a vector plot (`distortion_field.png`) showing the magnitude and direction of the distortion across the screen. This is useful for diagnosing calibration quality and lens distortion.
+PPI calibration tells the system how many projector pixels represent one physical inch on the table. This is required for 1:1 map scaling.
+
+### Usage
+
+1. **Print Target**: Run `python generate_calibration_target.py` and print the resulting `calibration_target.svg` at 100% scale.
+1. **Place Markers**: Place the printed target on the table. It contains two ArUco markers (IDs 0 and 1) exactly 100mm apart.
+1. **Detect**: Select **Map Settings > Calibrate PPI**. The system will detect the markers and calculate the PPI.
+1. **Confirm**: A 1-inch grid will be projected. Verify its accuracy and use the **Victory** gesture to save.
+
+______________________________________________________________________
+
+## 5. Camera Extrinsics (Pose Estimation)
+
+Extrinsics define the camera's 3D position ($t$) and orientation ($R$) relative to the tabletop.
+
+### Theory: Parallax and solvePnP
+
+Because the camera is offset from the projector's optical axis, objects with height (tokens) appear shifted compared to the flat map. This is **Parallax Error**.
+To correct this, we use `cv2.solvePnP` to find the camera's pose. By knowing the camera's 3D position, the system can use **Ray-Plane Intersection** to find the true base $(X, Y)$ of a token given its detected top-marker position and known height $h$.
+
+### Usage
+
+1. **Prepare Tokens**: Use at least 3-5 tokens with known ArUco IDs (configured in `global_settings.aruco_defaults`).
+1. **Placement**: Select **Settings > Calibrate Extrinsics**. Place tokens on the projected target zones.
+1. **Validation**: The system will show a **Validation HUD** with the RMS Reprojection Error.
+   - **Green (< 2.0px)**: Excellent.
+   - **Yellow (2.0 - 5.0px)**: Acceptable.
+   - **Red (> 5.0px)**: Poor. Check lighting or marker height config.
+1. **Save**: Use the **Victory** gesture to save the pose to `camera_extrinsics.npz`.
+
+______________________________________________________________________
+
+## 6. Map Grid Calibration
+
+Aligns a digital map's grid with the physical 1-inch tabletop grid.
+
+### Usage
+
+1. Load a map and select **Map Settings > Set Scale**.
+1. A 1-inch grid with crosshairs will be projected.
+1. Use **Pan** (Fist) and **Zoom** (Two-Hand Pointing) gestures to align the map's grid lines with the projected crosses.
+1. **Victory** to save the alignment for that specific map.
+
+______________________________________________________________________
+
+## Troubleshooting
+
+| Issue | Potential Cause | Solution |
+| :--- | :--- | :--- |
+| **Marker not detected** | Poor lighting or glare | Adjust ambient light; use matte markers. |
+| **High Reprojection Error** | Incorrect token height | Verify `height_mm` in the global configuration. |
+| **Edges are misaligned** | Lens distortion | Ensure Camera Intrinsics are accurate; use `visualize_distortion.py`. |
+| **Calibration drift** | Camera/Projector moved | Re-calibrate. Use rigid mounts to prevent movement. |
+| **"Homography failed"** | Pattern too small | Ensure the projector pattern fills most of the camera's view. |
+
+______________________________________________________________________
+
+## Math for Maintainers
+
+### Parallax Correction
+
+Given a camera coordinate $p = [u, v, 1]^T$, the ray in world space is:
+$$R(s) = C + s \\cdot (R^T \\cdot K^{-1} \\cdot p)$$
+where $C$ is the camera center, $R$ is the rotation matrix, and $K$ is the intrinsic matrix. We solve for $s$ such that the Z-coordinate of $R(s)$ equals the token height $h$.
+
+### Non-Linear Residuals
+
+While homography handles perspective, it doesn't account for radial lens distortion in the projector. The `ProjectorDistortionModel` stores a grid of residuals $(dx, dy)$ measured during calibration and applies them as a secondary correction after the linear homography.

@@ -38,6 +38,10 @@ from light_map.common_types import TokenDetectionAlgorithm
 from light_map.vision.token_filter import TokenFilter
 
 
+from light_map.vision.tracking_coordinator import TrackingCoordinator
+from light_map.vision.input_processor import InputProcessor
+
+
 class InteractiveApp:
     def __init__(self, config: AppConfig, time_provider=time.monotonic):
         self.config = config
@@ -50,24 +54,35 @@ class InteractiveApp:
         self.map_system = MapSystem(config.width, config.height)
         self.map_config = MapConfigManager()
         self.notifications = NotificationManager()
-        self.token_tracker = TokenTracker()
-        self.token_filter = TokenFilter()
+        
+        # New Modular Coordinators
+        self.tracking_coordinator = TrackingCoordinator(time_provider)
+        self.input_processor = InputProcessor(config)
 
         # Load Camera Calibration
-        camera_matrix = None
-        dist_coeffs = None
-        if os.path.exists("camera_calibration.npz"):
-            calib = np.load("camera_calibration.npz")
-            camera_matrix = calib["camera_matrix"]
-            dist_coeffs = calib["dist_coeffs"]
-            print("Loaded camera intrinsics.")
+        camera_matrix, dist_coeffs = self._load_camera_calibration()
 
         # Scan for maps if provided
         if config.map_search_patterns:
             self.map_config.scan_for_maps(config.map_search_patterns)
 
         # AppContext (shared state for scenes)
-        self.app_context = AppContext(
+        self.app_context = self._create_app_context(camera_matrix, dist_coeffs)
+
+        # Scene Management
+        self.scenes = self._initialize_scenes()
+        self.current_scene: Scene = self.scenes[SceneId.MENU]
+        self.current_scene.on_enter()
+
+    def _load_camera_calibration(self) -> Tuple[Optional[np.ndarray], Optional[np.ndarray]]:
+        if os.path.exists("camera_calibration.npz"):
+            calib = np.load("camera_calibration.npz")
+            print("Loaded camera intrinsics.")
+            return calib["camera_matrix"], calib["dist_coeffs"]
+        return None, None
+
+    def _create_app_context(self, camera_matrix, dist_coeffs, debug_mode=False, show_tokens=True) -> AppContext:
+        return AppContext(
             app_config=self.config,
             renderer=self.renderer,
             map_system=self.map_system,
@@ -77,10 +92,12 @@ class InteractiveApp:
             distortion_model=self.config.distortion_model,
             camera_matrix=camera_matrix,
             dist_coeffs=dist_coeffs,
+            debug_mode=debug_mode,
+            show_tokens=show_tokens,
         )
 
-        # Scene Management
-        self.scenes: Dict[SceneId, Scene] = {
+    def _initialize_scenes(self) -> Dict[SceneId, Scene]:
+        return {
             SceneId.MENU: MenuScene(self.app_context),
             SceneId.VIEWING: ViewingScene(self.app_context),
             SceneId.MAP: MapScene(self.app_context),
@@ -92,8 +109,6 @@ class InteractiveApp:
             SceneId.CALIBRATE_PROJECTOR: ProjectorCalibrationScene(self.app_context),
             SceneId.CALIBRATE_EXTRINSICS: ExtrinsicsCalibrationScene(self.app_context),
         }
-        self.current_scene: Scene = self.scenes[SceneId.MENU]
-        self.current_scene.on_enter()
 
     @property
     def debug_mode(self) -> bool:
@@ -110,49 +125,23 @@ class InteractiveApp:
         """Reloads application configuration, rebuilding context and scenes."""
         self.config = new_config
         self.renderer = Renderer(new_config.width, new_config.height)
+        self.input_processor = InputProcessor(new_config)
 
         # We keep the map system and config manager to preserve state
-        # But we need to update projector matrix in context and map system dims
         self.map_system.width = self.config.width
         self.map_system.height = self.config.height
 
-        # Load Camera Calibration
-        camera_matrix = None
-        dist_coeffs = None
-        if os.path.exists("camera_calibration.npz"):
-            calib = np.load("camera_calibration.npz")
-            camera_matrix = calib["camera_matrix"]
-            dist_coeffs = calib["dist_coeffs"]
+        camera_matrix, dist_coeffs = self._load_camera_calibration()
 
-        self.app_context = AppContext(
-            app_config=self.config,
-            renderer=self.renderer,
-            map_system=self.map_system,
-            map_config_manager=self.map_config,
-            projector_matrix=self.config.projector_matrix,
-            notifications=self.notifications,
-            distortion_model=self.config.distortion_model,
-            camera_matrix=camera_matrix,
-            dist_coeffs=dist_coeffs,
+        self.app_context = self._create_app_context(
+            camera_matrix, 
+            dist_coeffs,
             debug_mode=self.app_context.debug_mode,
             show_tokens=self.app_context.show_tokens,
         )
 
         # Re-initialize scenes with new context
-        self.scenes = {
-            SceneId.MENU: MenuScene(self.app_context),
-            SceneId.VIEWING: ViewingScene(self.app_context),
-            SceneId.MAP: MapScene(self.app_context),
-            SceneId.SCANNING: ScanningScene(self.app_context),
-            SceneId.CALIBRATE_FLASH: FlashCalibrationScene(self.app_context),
-            SceneId.CALIBRATE_PPI: PpiCalibrationScene(self.app_context),
-            SceneId.CALIBRATE_MAP_GRID: MapGridCalibrationScene(self.app_context),
-            SceneId.CALIBRATE_INTRINSICS: IntrinsicsCalibrationScene(self.app_context),
-            SceneId.CALIBRATE_PROJECTOR: ProjectorCalibrationScene(self.app_context),
-            SceneId.CALIBRATE_EXTRINSICS: ExtrinsicsCalibrationScene(self.app_context),
-        }
-        # Reset to Menu or Viewing?
-        # Ideally preserve current scene type if possible, but simple reset is safer.
+        self.scenes = self._initialize_scenes()
         self.current_scene = self.scenes[SceneId.MENU]
         self.current_scene.on_enter()
 
@@ -179,11 +168,12 @@ class InteractiveApp:
         self.last_fps_time = current_time
 
         # 2. Standardize Input
-        inputs = self._convert_mediapipe_to_inputs(results, frame.shape)
+        inputs = self.input_processor.convert_mediapipe_to_inputs(results, frame.shape)
 
         # 3. ArUco Background Tracking
-        if self.map_config.get_detection_algorithm() == TokenDetectionAlgorithm.ARUCO:
-            self._process_aruco_tracking(frame)
+        self.tracking_coordinator.process_aruco_tracking(
+            frame, self.config, self.map_system, self.map_config
+        )
 
         # 4. Scene Update
         transition = self.current_scene.update(inputs, current_time)
@@ -227,43 +217,6 @@ class InteractiveApp:
 
         return np.zeros((self.config.height, self.config.width, 3), dtype=np.uint8)
 
-    def _convert_mediapipe_to_inputs(
-        self, results: Any, frame_shape: Tuple[int, int, int]
-    ) -> List[HandInput]:
-        """Converts raw MediaPipe results to a list of HandInput objects."""
-        inputs = []
-        if not results.multi_hand_landmarks or not results.multi_handedness:
-            return inputs
-
-        matrix = self.config.projector_matrix.astype(np.float32)
-
-        for i, landmarks in enumerate(results.multi_hand_landmarks):
-            handedness = results.multi_handedness[i]
-            gesture = detect_gesture(
-                landmarks.landmark, handedness.classification[0].label
-            )
-
-            tip = landmarks.landmark[mp.solutions.hands.HandLandmark.INDEX_FINGER_TIP]
-            cam_point = np.array(
-                [tip.x * frame_shape[1], tip.y * frame_shape[0]], dtype=np.float32
-            ).reshape(1, 1, 2)
-
-            if self.app_context.distortion_model:
-                proj_point = self.app_context.distortion_model.apply_correction(
-                    cam_point
-                )[0][0]
-            else:
-                proj_point = cv2.perspectiveTransform(cam_point, matrix)[0][0]
-
-            inputs.append(
-                HandInput(
-                    gesture=gesture,
-                    proj_pos=(int(proj_point[0]), int(proj_point[1])),
-                    raw_landmarks=landmarks,
-                )
-            )
-        return inputs
-
     def _handle_payloads(self, payload: Any):
         """Handle side-effects from scene transitions, like loading maps."""
         if isinstance(payload, dict) and "map_file" in payload:
@@ -271,15 +224,10 @@ class InteractiveApp:
 
     def load_map(self, filename: str, load_session: bool = False):
         """Loads an SVG map file and restores its state."""
-        import os
-
         filename = os.path.abspath(filename)
         self.map_system.svg_loader = SVGLoader(filename)
 
         entry = self.map_config.data.maps.get(filename)
-        if not entry or entry.grid_spacing_svg <= 0:
-            # Auto-detection logic here if needed...
-            pass
 
         if load_session:
             session = SessionManager.load_for_map(filename)
@@ -306,7 +254,6 @@ class InteractiveApp:
         self.map_config.save()
 
         # Switch to Viewing Scene to ensure map is visible
-        # This handles the case where load_map is called during startup
         if SceneId.VIEWING in self.scenes:
             target_scene = self.scenes[SceneId.VIEWING]
             if self.current_scene != target_scene:
@@ -360,51 +307,6 @@ class InteractiveApp:
             )
 
         return frame
-
-    def _process_aruco_tracking(self, frame: np.ndarray):
-        """Performs background ArUco tracking and updates the map system."""
-        map_file = (
-            self.map_system.svg_loader.filename if self.map_system.svg_loader else None
-        )
-        current_time = self.time_provider()
-
-        # Get resolved configs for current map
-        token_configs = self.map_config.get_aruco_configs(map_file)
-
-        # Detect
-        detections = self.token_tracker.detect_tokens(
-            frame_white=frame,
-            projector_matrix=self.config.projector_matrix,
-            map_system=self.map_system,
-            ppi=self.map_config.get_ppi(),
-            algorithm=TokenDetectionAlgorithm.ARUCO,
-            token_configs=token_configs,
-            distortion_model=self.config.distortion_model,
-        )
-
-        # Grid parameters
-        grid_spacing = 0.0
-        grid_origin_x = 0.0
-        grid_origin_y = 0.0
-        if map_file:
-            entry = self.map_config.data.maps.get(map_file)
-            if entry:
-                grid_spacing = entry.grid_spacing_svg
-                grid_origin_x = entry.grid_origin_svg_x
-                grid_origin_y = entry.grid_origin_svg_y
-
-        # Temporal Filtering and Grid Snapping
-        tokens = self.token_filter.update(
-            detections,
-            current_time,
-            grid_spacing=grid_spacing,
-            grid_origin_x=grid_origin_x,
-            grid_origin_y=grid_origin_y,
-            token_configs=token_configs,
-        )
-
-        # Update context
-        self.map_system.ghost_tokens = tokens
 
     def _draw_ghost_tokens(self, image: np.ndarray):
         ppi = self.map_config.get_ppi()

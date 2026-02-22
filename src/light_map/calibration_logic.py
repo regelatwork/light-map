@@ -1,5 +1,6 @@
 import cv2
 import numpy as np
+import logging
 from typing import Optional, Tuple, Dict
 
 from .camera import Camera
@@ -29,28 +30,28 @@ def run_calibration_sequence(
         )
 
         cv2.imshow(window_name, pattern_img)
-        print("Displaying pattern. Waiting 2 seconds for projector/camera to settle...")
+        logging.info("Displaying pattern. Waiting 2 seconds for projector/camera to settle...")
 
         for _ in range(20):
             cv2.waitKey(100)
 
-        print("Capturing image...")
+        logging.info("Capturing image...")
         for _ in range(5):
             camera.read()
 
         frame = camera.read()
 
         if frame is None:
-            print("Failed to capture image.")
+            logging.error("Failed to capture image.")
             return None
 
         cv2.imwrite("captured_frame.jpg", frame)
-        print("Saved capture to captured_frame.jpg")
+        logging.info("Saved capture to captured_frame.jpg")
 
         return compute_projector_homography(frame, params)
 
     except Exception as e:
-        print(f"Error computing homography: {e}")
+        logging.error("Error computing homography: %s", e)
         return None
     finally:
         cv2.destroyWindow(window_name)
@@ -187,7 +188,7 @@ def calibrate_extrinsics(
             img_points_list.append(c_cam)
 
     if len(obj_points_list) < 4:
-        print(
+        logging.warning(
             "Extrinsics: Not enough points detected (need at least 4 combined points)."
         )
         return None

@@ -5,6 +5,7 @@ import numpy as np
 import mediapipe as mp
 import argparse
 import time
+import logging
 
 # Ensure we can import the local package
 sys.path.insert(0, os.path.abspath("src"))
@@ -14,7 +15,7 @@ from light_map.common_types import MenuActions, SceneId, TokenDetectionAlgorithm
 from light_map.interactive_app import InteractiveApp, AppConfig
 from light_map.map_config import MapConfigManager
 from light_map.calibration_logic import run_calibration_sequence
-from light_map.display_utils import get_screen_resolution
+from light_map.display_utils import get_screen_resolution, setup_logging
 from light_map.camera_pipeline import CameraPipeline
 
 from light_map.projector import ProjectorDistortionModel
@@ -35,7 +36,21 @@ def main():
     parser.add_argument(
         "--action", type=str, help="MenuAction to execute on startup", default=None
     )
+    parser.add_argument(
+        "--log-level",
+        type=str,
+        choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
+        default="INFO",
+        help="Set the logging level",
+    )
+    parser.add_argument(
+        "--log-file", type=str, default="light_map.log", help="Path to log file"
+    )
     args = parser.parse_args()
+
+    # Initialize logging
+    log_level = getattr(logging, args.log_level.upper())
+    setup_logging(level=log_level, log_file=args.log_file)
 
     # 1. Load Calibration
     calibration_file = "projector_calibration.npz"
@@ -43,14 +58,14 @@ def main():
     # Helper to load calibration
     def load_calib(default_screen_w, default_screen_h):
         if not os.path.exists(calibration_file):
-            print(
-                f"Warning: {calibration_file} not found. Using default camera resolution."
+            logging.warning(
+                "%s not found. Using default camera resolution.", calibration_file
             )
             return None, 2304, 1296, None
         try:
             with np.load(calibration_file) as data:
                 if "projector_matrix" not in data:
-                    print("Error: Invalid calibration file (missing projector_matrix).")
+                    logging.error("Invalid calibration file (missing projector_matrix).")
                     return None, 2304, 1296, None
                 matrix = data["projector_matrix"]
                 if "resolution" in data:
@@ -60,29 +75,29 @@ def main():
 
                 model = None
                 if "camera_points" in data and "projector_points" in data:
-                    print("Loading non-linear distortion model...")
+                    logging.info("Loading non-linear distortion model...")
                     model = ProjectorDistortionModel(
                         matrix, data["camera_points"], data["projector_points"]
                     )
 
                 return matrix, w, h, model
         except Exception as e:
-            print(f"Error loading calibration: {e}")
+            logging.error("Error loading calibration: %s", e, exc_info=True)
             return None, 2304, 1296, None
 
     native_screen_w, native_screen_h = get_screen_resolution()
-    print(f"Hardware Screen Resolution: {native_screen_w}x{native_screen_h}")
+    logging.info("Hardware Screen Resolution: %dx%d", native_screen_w, native_screen_h)
 
     transformation_matrix, cam_res_w, cam_res_h, dist_model = load_calib(
         native_screen_w, native_screen_h
     )
 
     if transformation_matrix is None:
-        print("Starting uncalibrated (or using defaults). Please calibrate via menu.")
+        logging.info("Starting uncalibrated (or using defaults). Please calibrate via menu.")
         # Create a dummy identity matrix if calibration missing, so app doesn't crash
         transformation_matrix = np.eye(3, dtype=np.float32)
 
-    print(f"Calibration loaded. Camera Resolution: {cam_res_w}x{cam_res_h}")
+    logging.info("Calibration loaded. Camera Resolution: %dx%d", cam_res_w, cam_res_h)
 
     # Register Maps
     map_sources = args.maps
@@ -100,6 +115,8 @@ def main():
         projector_matrix_resolution=(cam_res_w, cam_res_h),
         map_search_patterns=map_sources,
         distortion_model=dist_model,
+        log_level=args.log_level,
+        log_file=args.log_file,
     )
     app = InteractiveApp(config)
     app.set_debug_mode(args.debug)
@@ -110,19 +127,19 @@ def main():
     elif map_config_manager.data.global_settings.last_used_map:
         last_map = map_config_manager.data.global_settings.last_used_map
         if os.path.exists(last_map):
-            print(f"Loading last used map: {last_map}")
+            logging.info("Loading last used map: %s", last_map)
             map_to_load = last_map
         else:
-            print(f"Last used map not found: {last_map}. Clearing setting.")
+            logging.warning("Last used map not found: %s. Clearing setting.", last_map)
             map_config_manager.data.global_settings.last_used_map = None
             map_config_manager.save()
 
     if map_to_load:
         if os.path.exists(map_to_load):
-            print(f"Loading map: {map_to_load}")
+            logging.info("Loading map: %s", map_to_load)
             app.load_map(map_to_load)
         else:
-            print(f"Error: Map file not found: {map_to_load}")
+            logging.error("Error: Map file not found: %s", map_to_load)
 
     # 3. Setup MediaPipe
     mp_hands = mp.solutions.hands
@@ -148,13 +165,16 @@ def main():
             calib_w, calib_h = app.config.projector_matrix_resolution
 
             if calib_w > 0 and (cam_w != calib_w or cam_h != calib_h):
-                print("\n" + "!" * 60)
-                print("CRITICAL WARNING: Camera Resolution Mismatch!")
-                print(f"  Runtime:     {cam_w}x{cam_h}")
-                print(f"  Calibration: {calib_w}x{calib_h}")
-                print("  The projector matrix will map points incorrectly.")
-                print("  PLEASE RE-CALIBRATE: python3 projector_calibration.py")
-                print("!" * 60 + "\n")
+                msg = (
+                    "\n" + "!" * 60 + "\n"
+                    "CRITICAL WARNING: Camera Resolution Mismatch!\n"
+                    f"  Runtime:     {cam_w}x{cam_h}\n"
+                    f"  Calibration: {calib_w}x{calib_h}\n"
+                    "  The projector matrix will map points incorrectly.\n"
+                    "  PLEASE RE-CALIBRATE: python3 projector_calibration.py\n"
+                    "!" * 60 + "\n"
+                )
+                logging.critical(msg)
 
                 # Optional: We could try to auto-scale the matrix here, but it's risky
                 # float_scale_x = cam_w / calib_w
@@ -180,17 +200,17 @@ def main():
                         last_processed_id = data.frame_id
 
                         if args.action and last_processed_id == 0:
-                            print(f"Executing Startup Action: {args.action}")
+                            logging.info("Executing Startup Action: %s", args.action)
 
                             # Manually Handle Actions (since process_frame doesn't ingest them)
                             if args.action == MenuActions.SCAN_SESSION:
                                 if app.map_system.is_map_loaded():
-                                    print("Map Loaded. Starting Scan Sequence.")
+                                    logging.info("Map Loaded. Starting Scan Sequence.")
                                     app.current_scene.on_exit()
                                     app.current_scene = app.scenes[SceneId.SCANNING]
                                     app.current_scene.on_enter()
                                 else:
-                                    print("Error: Cannot start scan. No map loaded.")
+                                    logging.error("Error: Cannot start scan. No map loaded.")
 
                             elif args.action == MenuActions.SCAN_ALGORITHM:
                                 current = app.map_config.get_detection_algorithm()
@@ -199,8 +219,8 @@ def main():
                                     if current == TokenDetectionAlgorithm.FLASH
                                     else TokenDetectionAlgorithm.FLASH
                                 )
-                                print(
-                                    f"Toggling Scan Algorithm: {current} -> {new_algo}"
+                                logging.info(
+                                    "Toggling Scan Algorithm: %s -> %s", current, new_algo
                                 )
                                 app.map_config.set_detection_algorithm(new_algo)
                                 # Force reload menu to update UI text if needed (though visual only)
@@ -237,12 +257,12 @@ def main():
                         # Process Actions
                         should_break = False
                         for action in actions:
-                            print(f"Executing Action: {action}")
+                            logging.info("Executing Action: %s", action)
                             if action == MenuActions.EXIT:
-                                print("Exiting...")
+                                logging.info("Exiting...")
                                 should_break = True
                             elif action == MenuActions.CALIBRATE:
-                                print("Starting Calibration...")
+                                logging.info("Starting Calibration...")
                                 # STOP Pipeline to free camera
                                 pipeline.stop()
 
@@ -253,7 +273,7 @@ def main():
                                 )
 
                                 if new_matrix is not None:
-                                    print("Calibration successful! Saving...")
+                                    logging.info("Calibration successful! Saving...")
                                     np.savez(
                                         calibration_file,
                                         projector_matrix=new_matrix,
@@ -265,7 +285,7 @@ def main():
                                             [native_screen_w, native_screen_h]
                                         ),
                                     )
-                                    print("Reloading application configuration...")
+                                    logging.info("Reloading application configuration...")
                                     new_config = AppConfig(
                                         width=native_screen_w,
                                         height=native_screen_h,
@@ -274,10 +294,12 @@ def main():
                                             cam.width,
                                             cam.height,
                                         ),
+                                        log_level=args.log_level,
+                                        log_file=args.log_file,
                                     )
                                     app.reload_config(new_config)
                                 else:
-                                    print("Calibration failed or cancelled.")
+                                    logging.warning("Calibration failed or cancelled.")
 
                                 # Restore Window
                                 cv2.namedWindow(window_name, cv2.WND_PROP_FULLSCREEN)
@@ -315,13 +337,14 @@ def main():
                     pipeline.stop()
 
     except Exception as e:
-        print(f"An error occurred: {e}")
-        import traceback
-
-        traceback.print_exc()
+        logging.critical("An unhandled error occurred in the main loop: %s", e, exc_info=True)
     finally:
         hands.close()
         cv2.destroyAllWindows()
+
+
+if __name__ == "__main__":
+    main()
 
 
 if __name__ == "__main__":

@@ -3,6 +3,7 @@ import cv2
 import numpy as np
 import time
 import os
+import logging
 from typing import List, Tuple, Any, Dict, Optional
 
 from light_map.common_types import (
@@ -74,7 +75,7 @@ class InteractiveApp:
     ) -> Tuple[Optional[np.ndarray], Optional[np.ndarray]]:
         if os.path.exists("camera_calibration.npz"):
             calib = np.load("camera_calibration.npz")
-            print("Loaded camera intrinsics.")
+            logging.info("Loaded camera intrinsics.")
             return calib["camera_matrix"], calib["dist_coeffs"]
         return None, None
 
@@ -152,7 +153,7 @@ class InteractiveApp:
             self.current_scene = self.scenes[target_id]
             self.current_scene.on_enter(transition.payload)
         else:
-            print(f"Error: Scene '{target_id}' not found.")
+            logging.error("Scene '%s' not found.", target_id)
 
     def process_frame(
         self, frame: np.ndarray, results: Any

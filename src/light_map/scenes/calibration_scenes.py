@@ -1,5 +1,6 @@
 from __future__ import annotations
 import time
+import logging
 from enum import Enum, auto
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
 
@@ -89,7 +90,7 @@ class FlashCalibrationScene(Scene):
                     map_system=self.context.map_system,
                 )
                 self._results[intensity] = len(tokens)
-                print(f"Calibration: Level {intensity} -> Found {len(tokens)} tokens")
+                logging.info("Calibration: Level %d -> Found %d tokens", intensity, len(tokens))
                 self._capture_frame = False
                 self._current_level_idx += 1
 
@@ -130,7 +131,7 @@ class FlashCalibrationScene(Scene):
 
         self.context.map_config_manager.set_flash_intensity(optimal_intensity)
         self.context.notifications.add_notification(msg)
-        print(msg)
+        logging.info(msg)
 
     def _change_stage(self, new_stage: FlashCalibStage, current_time: float):
         self._stage = new_stage
@@ -296,7 +297,7 @@ class ProjectorCalibrationScene(Scene):
                     self._stage = "DONE"
                     return SceneTransition(SceneId.MENU)
                 except Exception as e:
-                    print(f"Homography error: {e}")
+                    logging.error("Homography error: %s", e)
                     self.context.notifications.add_notification(
                         f"Calibration failed: {e}"
                     )
@@ -356,11 +357,11 @@ class ExtrinsicsCalibrationScene(Scene):
                 data = np.load("projector_calibration.npz")
                 self._ground_points_cam = data["camera_points"]
                 self._ground_points_proj = data["projector_points"]
-                print(
-                    f"Loaded {len(self._ground_points_cam)} ground points from projector calibration."
+                logging.info(
+                    "Loaded %d ground points from projector calibration.", len(self._ground_points_cam)
                 )
         except Exception as e:
-            print(f"Failed to load projector calibration points: {e}")
+            logging.error("Failed to load projector calibration points: %s", e)
             self._ground_points_cam = None
             self._ground_points_proj = None
 
@@ -887,8 +888,9 @@ class MapGridCalibrationScene(Scene):
             )
             self.grid_overlay.offset_x = sx
             self.grid_overlay.offset_y = sy
-            print(
-                f"Restored grid for {filename}: spacing={start_spacing:.1f}, offset=({sx:.1f}, {sy:.1f})"
+            logging.info(
+                "Restored grid for %s: spacing=%.1f, offset=(%.1f, %.1f)",
+                filename, start_spacing, sx, sy
             )
         else:
             # Fallback/Default behavior
@@ -906,7 +908,7 @@ class MapGridCalibrationScene(Scene):
             # Center the grid initially
             self.grid_overlay.offset_x = self.context.app_config.width / 2
             self.grid_overlay.offset_y = self.context.app_config.height / 2
-            print("Initialized default grid (centered)")
+            logging.info("Initialized default grid (centered)")
 
     def on_exit(self) -> None:
         pass
@@ -966,8 +968,9 @@ class MapGridCalibrationScene(Scene):
             self.grid_overlay.offset_x, self.grid_overlay.offset_y
         )
 
-        print(
-            f"Calibrated {filename}: Spacing={derived_spacing_svg:.1f}, Origin=({wx:.1f}, {wy:.1f})"
+        logging.info(
+            "Calibrated %s: Spacing=%.1f, Origin=(%.1f, %.1f)",
+            filename, derived_spacing_svg, wx, wy
         )
 
         map_config.save_map_grid_config(

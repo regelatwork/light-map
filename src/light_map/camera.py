@@ -1,4 +1,5 @@
 import cv2
+import logging
 
 
 class Camera:
@@ -39,12 +40,12 @@ class Camera:
 
     def _initialize_camera(self):
         if self._is_raspberry_pi():
-            print("Raspberry Pi detected. Using GStreamer pipeline.")
+            logging.info("Raspberry Pi detected. Using GStreamer pipeline.")
             pipeline = self._get_gstreamer_pipeline()
-            # print(f"Pipeline: {pipeline}") # Debug
+            # logging.debug("Pipeline: %s", pipeline)
             self.cap = cv2.VideoCapture(pipeline, cv2.CAP_GSTREAMER)
         else:
-            print(f"Opening standard camera index {self.index}...")
+            logging.info("Opening standard camera index %d...", self.index)
             self.cap = cv2.VideoCapture(self.index)
             self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, self.width)
             self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, self.height)

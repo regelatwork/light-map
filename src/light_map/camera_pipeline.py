@@ -2,6 +2,7 @@ import threading
 import time
 import cv2
 import numpy as np
+import logging
 from dataclasses import dataclass
 from typing import Optional, Any
 
@@ -47,18 +48,18 @@ class CameraPipeline:
         self._stop_event.clear()
         self._thread = threading.Thread(target=self._run, daemon=True)
         self._thread.start()
-        print("Camera Pipeline started.")
+        logging.info("Camera Pipeline started.")
 
     def stop(self):
         """Stops the processing thread."""
         if self._thread is None:
             return
 
-        print("Stopping Camera Pipeline...")
+        logging.info("Stopping Camera Pipeline...")
         self._stop_event.set()
         self._thread.join()
         self._thread = None
-        print("Camera Pipeline stopped.")
+        logging.info("Camera Pipeline stopped.")
 
     def get_latest(self) -> Optional[VisionData]:
         """Returns the latest processed frame data in a thread-safe manner."""

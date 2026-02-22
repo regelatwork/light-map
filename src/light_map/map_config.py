@@ -2,6 +2,7 @@ import json
 import os
 import glob
 import datetime
+import logging
 import numpy as np
 from dataclasses import asdict, dataclass, field
 from typing import Dict, Optional, List
@@ -172,7 +173,7 @@ class MapConfigManager:
             return MapConfigData(global_settings=global_settings, maps=maps)
 
         except Exception as e:
-            print(f"Error loading map config: {e}")
+            logging.error("Error loading map config: %s", e)
             return MapConfigData()
 
     def save(self):
@@ -193,7 +194,7 @@ class MapConfigManager:
             with open(self.filename, "w") as f:
                 json.dump(data_dict, f, indent=2, default=default)
         except Exception as e:
-            print(f"Error saving map config: {e}")
+            logging.error("Error saving map config: %s", e)
 
     def get_ppi(self) -> float:
         return self.data.global_settings.projector_ppi
@@ -297,7 +298,7 @@ class MapConfigManager:
 
         for map_path in to_remove:
             del self.data.maps[map_path]
-            print(f"Pruned missing map: {map_path}")
+            logging.info("Pruned missing map: %s", map_path)
 
         self.save()
 

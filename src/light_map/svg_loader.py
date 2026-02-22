@@ -3,6 +3,7 @@ import numpy as np
 import cv2
 import math
 import base64
+import logging
 from io import BytesIO
 from PIL import Image
 import functools
@@ -24,7 +25,7 @@ class SVGLoader:
             # Parse SVG with explicit unit scaling (defaulting to 96 DPI)
             self.svg = svgelements.SVG.parse(self.filename)
         except Exception as e:
-            print(f"Error loading SVG: {e}")
+            logging.error("Error loading SVG: %s", e)
             self.svg = None
 
     def detect_grid_spacing(self) -> tuple[float, float, float]:

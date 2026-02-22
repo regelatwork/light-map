@@ -70,6 +70,8 @@ class AppConfig:
     projector_matrix_resolution: Tuple[int, int] = (2304, 1296)
     map_search_patterns: List[str] = field(default_factory=list)
     distortion_model: Optional[Any] = None
+    log_level: str = "INFO"
+    log_file: str = "light_map.log"
 
 
 @dataclass

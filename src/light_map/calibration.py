@@ -2,6 +2,7 @@ import cv2
 import numpy as np
 import glob
 import os
+import logging
 
 
 CHECKERBOARD_DIMS = (6, 9)  # Standard chessboard dimensions
@@ -82,7 +83,7 @@ def process_chessboard_images(
                 image_shape = gray.shape[::-1]
 
     if not objpoints or image_shape is None:
-        print("Error: No chessboard corners found in any images for calibration.")
+        logging.error("No chessboard corners found in any images for calibration.")
         return None
 
     try:
@@ -92,7 +93,7 @@ def process_chessboard_images(
         if ret:
             return (matrix, distortion), (r_vecs, t_vecs)
     except cv2.error as e:
-        print(f"OpenCV calibration error: {e}")
+        logging.error("OpenCV calibration error: %s", e)
 
     return None
 
@@ -100,14 +101,14 @@ def process_chessboard_images(
 def save_camera_calibration(camera_matrix: np.ndarray, dist_coeffs: np.ndarray):
     """Saves the camera matrix and distortion coefficients to a file."""
     np.savez(CALIBRATION_FILE, camera_matrix=camera_matrix, dist_coeffs=dist_coeffs)
-    print(f"Camera calibration saved to {CALIBRATION_FILE}")
+    logging.info("Camera calibration saved to %s", CALIBRATION_FILE)
 
 
 def save_camera_extrinsics(rvec: np.ndarray, tvec: np.ndarray):
     """Saves the camera extrinsic parameters (R, t) to a file."""
     output_file = "camera_extrinsics.npz"
     np.savez(output_file, rvec=rvec, tvec=tvec)
-    print(f"Camera extrinsics saved to {output_file}")
+    logging.info("Camera extrinsics saved to %s", output_file)
 
 
 def calibrate_camera_from_images(image_paths, checkerboard_dims=(6, 9)):
@@ -131,7 +132,7 @@ def calibrate_camera_from_images(image_paths, checkerboard_dims=(6, 9)):
     for fname in image_paths:
         img = cv2.imread(fname)
         if img is None:
-            print(f"Warning: Could not read image {fname}")
+            logging.warning("Could not read image %s", fname)
             continue
 
         ret, corners2, gray = find_corners(img, checkerboard_dims, criteria)

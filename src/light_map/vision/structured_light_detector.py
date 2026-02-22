@@ -2,6 +2,7 @@ import cv2
 import numpy as np
 import math
 import random
+import logging
 from typing import List, Tuple, Optional, TYPE_CHECKING
 from datetime import datetime
 
@@ -394,18 +395,21 @@ class StructuredLightTokenDetector:
         h_proj,
     ):
         h, w = frame_pattern.shape[:2]
-        print(f"SL Debug: Camera Frame Res: {w}x{h}")
-        print(f"SL Debug: Projector/Map Res: {w_proj}x{h_proj}")
-        print(f"SL Debug: Max Val: {max_val}, Dynamic Thresh: {dynamic_thresh}")
-        print(f"SL Debug: Found {len(contours)} raw contours.")
-        print(
-            f"SL Debug: Extracted {len(observed_points_cam)} observed centroids from {len(contours)} contours."
+        logging.debug("SL Debug: Camera Frame Res: %dx%d", w, h)
+        logging.debug("SL Debug: Projector/Map Res: %dx%d", w_proj, h_proj)
+        logging.debug("SL Debug: Max Val: %d, Dynamic Thresh: %d", max_val, dynamic_thresh)
+        logging.debug("SL Debug: Found %d raw contours.", len(contours))
+        logging.debug(
+            "SL Debug: Extracted %d observed centroids from %d contours.",
+            len(observed_points_cam),
+            len(contours),
         )
         if len(observed_points_cam) > 0:
-            print(f"SL Debug: Sample Camera Coords: {observed_points_cam[:5]}")
+            logging.debug("SL Debug: Sample Camera Coords: %s", observed_points_cam[:5])
         if len(dst_pts) > 0:
-            print(
-                f"SL Debug: Sample Projector Coords: {[tuple(p[0]) for p in dst_pts[:5]]}"
+            logging.debug(
+                "SL Debug: Sample Projector Coords: %s",
+                [tuple(p[0]) for p in dst_pts[:5]],
             )
 
         # Save debug images
@@ -418,8 +422,9 @@ class StructuredLightTokenDetector:
 
         cv2.imwrite(f"debug_sl_gray_{timestamp}.png", gray)
         cv2.imwrite(f"debug_sl_thresh_{timestamp}.png", thresh)
-        print(
-            f"SL Debug: Saved debug images (frames, diff, gray, thresh) with timestamp {timestamp}"
+        logging.debug(
+            "SL Debug: Saved debug images (frames, diff, gray, thresh) with timestamp %s",
+            timestamp,
         )
 
     def _save_sl_debug_image(
@@ -456,8 +461,12 @@ class StructuredLightTokenDetector:
                 d_arr = np.array(displacements)
                 r_arr = np.array(radial_dists)
                 max_r = r_arr.max() if r_arr.size > 0 else 1.0
-                print(
-                    f"\n--- Diagnostic Statistics ---\nTotal Points: {len(d_arr)}\nDisplacement: Mean={d_arr.mean():.2f}, Median={np.median(d_arr):.2f}\nZone 3 (Edge): {d_arr[r_arr >= max_r * 0.66].mean():.2f}px"
+                logging.debug(
+                    "\n--- Diagnostic Statistics ---\nTotal Points: %d\nDisplacement: Mean=%.2f, Median=%.2f\nZone 3 (Edge): %.2fpx",
+                    len(d_arr),
+                    d_arr.mean(),
+                    np.median(d_arr),
+                    d_arr[r_arr >= max_r * 0.66].mean(),
                 )
 
         if expected_points:

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import time
+import logging
 from enum import Enum, auto
 from typing import TYPE_CHECKING, List, Optional
 
@@ -197,7 +198,7 @@ class ScanningScene(Scene):
             if frame_to_process is not None:
                 self._detect_and_save_tokens(frame_to_process)
             else:
-                print("Warning: No camera frame available for token detection.")
+                logging.warning("No camera frame available for token detection.")
 
             # Immediately transition avoiding re-process
             self._change_stage(ScanStage.SHOW_RESULT, time.monotonic())
@@ -216,7 +217,7 @@ class ScanningScene(Scene):
 
     def _detect_and_save_tokens(self, frame_white: np.ndarray):
         """Performs the actual token detection and session saving."""
-        print("Scanning for tokens...")
+        logging.info("Scanning for tokens...")
         map_system = self.context.map_system
         map_config = self.context.map_config_manager
         algorithm = map_config.get_detection_algorithm()
@@ -256,7 +257,7 @@ class ScanningScene(Scene):
 
         self._last_scan_result_count = len(tokens)
         self.context.map_system.ghost_tokens = tokens  # Update context
-        print(f"Detected {len(tokens)} tokens.")
+        logging.info("Detected %d tokens.", len(tokens))
 
         if algorithm == TokenDetectionAlgorithm.STRUCTURED_LIGHT:
             self.context.notifications.add_notification(
@@ -284,9 +285,9 @@ class ScanningScene(Scene):
                 tokens=tokens,
             )
             SessionManager.save_for_map(map_file, session)  # Helper uses hash
-            print(f"Session saved for {map_file}")
+            logging.info("Session saved for %s", map_file)
         else:
-            print("No map loaded, session not saved to disk (memory only).")
+            logging.info("No map loaded, session not saved to disk (memory only).")
 
     def _change_stage(self, new_stage: ScanStage, current_time: float):
         self._stage = new_stage

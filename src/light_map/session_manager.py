@@ -2,6 +2,7 @@ import json
 import os
 import datetime
 import hashlib
+import logging
 from dataclasses import asdict
 from typing import Optional
 from light_map.common_types import SessionData, Token, ViewportState
@@ -56,16 +57,16 @@ class SessionManager:
             with open(filepath, "w") as f:
                 json.dump(data_dict, f, indent=2)
 
-            print(f"Session saved to {filepath}")
+            logging.info("Session saved to %s", filepath)
             return True
         except Exception as e:
-            print(f"Error saving session: {e}")
+            logging.error("Error saving session: %s", e)
             return False
 
     @staticmethod
     def load_session(filepath: str) -> Optional[SessionData]:
         if not os.path.exists(filepath):
-            print(f"Session file not found: {filepath}")
+            logging.info("Session file not found: %s", filepath)
             return None
 
         try:
@@ -103,5 +104,5 @@ class SessionManager:
             )
 
         except Exception as e:
-            print(f"Error loading session: {e}")
+            logging.error("Error loading session: %s", e)
             return None

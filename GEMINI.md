@@ -50,11 +50,25 @@ The goal of Light Map is to create a seamless bridge between physical and digita
 - **Python Style & Linting**: Use [Ruff](https://beta.ruff.rs/docs/). Run `ruff format .` and `ruff check . --fix`.
 - **Markdown Formatting**: Use [mdformat](https://github.com/executablebooks/mdformat). Run `mdformat .`.
 
-### Testing
+### Test-Driven Development (TDD)
 
-- **Framework**: Use [pytest](https://docs.pytest.org/).
-- **Source Layout**: The project uses a `src` layout. Configure `pytest` via `pytest.ini` (already present) to include `src` in the `pythonpath`.
-- **Naming**: Test files should be prefixed with `test_` and located in the `tests/` directory.
+This project strictly adheres to a TDD workflow to ensure reliability and maintainability.
+
+- **TDD Lifecycle**:
+  1. **Red**: Write a failing test for a new feature or bug fix.
+  2. **Green**: Implement the minimum code necessary to pass the test.
+  3. **Refactor**: Clean up the implementation while ensuring all tests still pass.
+- **Execution**: Run tests using `pytest`.
+- **Mandate**: All new features and bug fixes MUST be accompanied by corresponding tests.
+- **Coverage**:
+  - Run coverage reporting with `pytest --cov=src`.
+  - Aim for a minimum coverage threshold of **80%**.
+- **Structure**:
+  - All tests reside in the `tests/` directory.
+  - Test files MUST be prefixed with `test_` (e.g., `tests/test_camera.py`).
+- **Best Practices**:
+  - Use mocks and stubs (via `unittest.mock` or `pytest-mock`) for hardware-dependent components like the camera, projector, and GStreamer pipelines to ensure tests are fast and deterministic.
+  - Leverage `pytest` fixtures for common setup/teardown logic.
 
 ## Feature Tracking
 

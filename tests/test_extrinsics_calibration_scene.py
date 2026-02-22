@@ -77,12 +77,13 @@ def test_extrinsics_scene_uses_ground_points(
         
         detector_instance = MockDetector.return_value
 
-        # Return 3 detected markers (ID 1, 2, 3)
+        # Return 3 detected markers (ID 1, 2, 3) near targets TL, TR, BL
+        # Target zones: (200, 200), (1720, 200), (200, 880)
         ids = np.array([[1], [2], [3]], dtype=np.int32)
         corners = (
-            np.array([[[10, 10], [20, 10], [20, 20], [10, 20]]], dtype=np.float32),
-            np.array([[[30, 30], [40, 30], [40, 40], [30, 40]]], dtype=np.float32),
-            np.array([[[50, 50], [60, 50], [60, 60], [50, 60]]], dtype=np.float32),
+            np.array([[[195, 195], [205, 195], [205, 205], [195, 205]]], dtype=np.float32), # Near TL
+            np.array([[[1715, 195], [1725, 195], [1725, 205], [1715, 205]]], dtype=np.float32), # Near TR
+            np.array([[[195, 875], [205, 875], [205, 885], [195, 885]]], dtype=np.float32), # Near BL
         )
         detector_instance.detectMarkers.return_value = (corners, ids, [])
 

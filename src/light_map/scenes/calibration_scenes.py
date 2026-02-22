@@ -334,6 +334,11 @@ class ExtrinsicsCalibrationScene(Scene):
         self._reprojection_error: float = 0.0
         self._obj_points: Optional[np.ndarray] = None
         self._img_points: Optional[np.ndarray] = None
+        self._target_status: List[str] = []
+        self._target_info: List[Dict[str, Any]] = []
+        self._animation_start_times: Dict[int, float] = {}
+        self._token_names: Dict[int, str] = {}
+        self._current_time: float = 0.0
 
     def on_enter(self, payload: Any = None) -> None:
         self._stage = "PLACEMENT"
@@ -342,6 +347,7 @@ class ExtrinsicsCalibrationScene(Scene):
         self._obj_points = None
         self._img_points = None
         self._retry_gesture_start_time = 0.0
+        self._current_time = 0.0
 
         # Load ground points (Z=0) from projector calibration
         try:
@@ -357,8 +363,9 @@ class ExtrinsicsCalibrationScene(Scene):
             self._ground_points_cam = None
             self._ground_points_proj = None
 
-        # Load token heights from global config
+        # Load token heights and names from global config
         self._token_heights = {}
+        self._token_names = {}
         for (
             aid,
             defn,
@@ -367,6 +374,7 @@ class ExtrinsicsCalibrationScene(Scene):
         ):
             resolved = self.context.map_config_manager.resolve_token_profile(aid)
             self._token_heights[aid] = resolved.height_mm
+            self._token_names[aid] = resolved.name
 
         # Define 5 Target Zones (in projector pixels)
         # Use a safe margin from edges
@@ -379,11 +387,15 @@ class ExtrinsicsCalibrationScene(Scene):
             (w - margin, h - margin, 13),  # BR
             (w // 2, h // 2, 14),  # C
         ]
+        self._target_status = ["IDLE"] * len(self._target_zones)
+        self._target_info = [{} for _ in range(len(self._target_zones))]
+        self._animation_start_times = {}
         self.context.notifications.add_notification("Place tokens on target zones.")
 
     def update(
         self, inputs: List[HandInput], current_time: float
     ) -> Optional[SceneTransition]:
+        self._current_time = current_time
         if self._stage == "PLACEMENT":
             # Continuous detection (simulated via last_camera_frame in render)
             # Actually update logic should be here.
@@ -397,17 +409,55 @@ class ExtrinsicsCalibrationScene(Scene):
                 detector = cv2.aruco.ArucoDetector(aruco_dict, parameters)
                 corners, ids, rejected = detector.detectMarkers(gray)
 
+                # Reset status and detected IDs
+                self._target_status = ["IDLE"] * len(self._target_zones)
+                self._target_info = [{} for _ in range(len(self._target_zones))]
+                self._detected_ids = {}
+
                 if ids is not None:
                     ids = ids.flatten()
-                    self._detected_ids = {}
                     for i, aid in enumerate(ids):
-                        if aid in self._token_heights:
-                            c_cam = np.mean(corners[i][0], axis=0)
-                            self._detected_ids[aid] = (c_cam[0], c_cam[1])
+                        c_cam = np.mean(corners[i][0], axis=0)
+                        
+                        # Project to projector space for target matching
+                        pts_cam = np.array([c_cam], dtype=np.float32).reshape(-1, 1, 2)
+                        pts_proj = cv2.perspectiveTransform(pts_cam, self.context.projector_matrix).reshape(-1, 2)
+                        px, py = pts_proj[0]
+                        
+                        # Find nearest target zone
+                        best_dist = 100.0  # Threshold in projector pixels
+                        best_idx = -1
+                        for idx, (tx, ty, _) in enumerate(self._target_zones):
+                            dist = math.sqrt((px - tx)**2 + (py - ty)**2)
+                            if dist < best_dist:
+                                best_dist = dist
+                                best_idx = idx
+                        
+                        if best_idx != -1:
+                            info = {"aid": int(aid)}
+                            if aid in self._token_heights:
+                                self._target_status[best_idx] = "VALID"
+                                info["height"] = self._token_heights[aid]
+                                info["name"] = self._token_names.get(aid, f"Token {aid}")
+                                # Trigger animation if it's the first time it becomes valid
+                                if best_idx not in self._animation_start_times:
+                                    self._animation_start_times[best_idx] = current_time
+                                # Capture coordinates for solvePnP
+                                self._detected_ids[aid] = (c_cam[0], c_cam[1])
+                            else:
+                                self._target_status[best_idx] = "UNKNOWN"
+                                # Reset animation if it was VALID before but now UNKNOWN
+                                if best_idx in self._animation_start_times:
+                                    del self._animation_start_times[best_idx]
+                            self._target_info[best_idx] = info
 
-            # Validation: At least 3 targets are "covered"?
-            # Actually, the user can use ANY known ID.
-            valid_count = len(self._detected_ids)
+                # Clean up animation timers for IDLE targets
+                for idx in range(len(self._target_status)):
+                    if self._target_status[idx] == "IDLE" and idx in self._animation_start_times:
+                        del self._animation_start_times[idx]
+
+            # Validation: At least 3 targets are "VALID"
+            valid_count = self._target_status.count("VALID")
 
             # Use Fist to trigger capture if enough tokens
             if (
@@ -481,44 +531,54 @@ class ExtrinsicsCalibrationScene(Scene):
     def render(self, frame: np.ndarray) -> np.ndarray:
         h, w = frame.shape[:2]
         canvas = np.full((h, w, 3), 200, dtype=np.uint8)  # Light gray "Arena"
+        current_time = self._current_time
 
         # Draw Target Zones
-        for tx, ty, tid in self._target_zones:
-            color = (0, 0, 255)  # Red
-            # Check if ANY detected marker is "near" this target (in projector space)
-            # Actually, let's just show detections and highlights
-            cv2.circle(canvas, (tx, ty), 50, color, 2)
+        for idx, (tx, ty, tid) in enumerate(self._target_zones):
+            status = self._target_status[idx]
+            info = self._target_info[idx]
+            
+            # Default IDLE: White circle
+            color = (255, 255, 255)
+            thickness = 2
+            label = "Target"
+            
+            if status == "VALID":
+                color = (0, 255, 0) # Green
+                thickness = -1 # Filled
+                label = info.get("name", "Locked")
+                
+                # Metadata
+                height = info.get("height", 0.0)
+                aid = info.get("aid", 0)
+                cv2.putText(canvas, f"{label}: {height}mm", (tx - 60, ty - 60), 
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 100, 0), 2)
+                
+                # Lock Animation
+                if idx in self._animation_start_times:
+                    elapsed = current_time - self._animation_start_times[idx]
+                    if elapsed < 0.5:
+                        radius = int(50 + 40 * (1.0 - elapsed / 0.5))
+                        cv2.circle(canvas, (tx, ty), radius, (0, 255, 0), 2)
+
+            elif status == "UNKNOWN":
+                color = (0, 0, 255) # Red
+                thickness = 2
+                aid = info.get("aid", "???")
+                label = f"Unknown ID {aid}"
+
+            cv2.circle(canvas, (tx, ty), 50, color, thickness)
+            
+            # Label below
             cv2.putText(
                 canvas,
-                "Target",
-                (tx - 30, ty + 70),
+                label,
+                (tx - 40, ty + 70),
                 cv2.FONT_HERSHEY_SIMPLEX,
                 0.5,
-                color,
-                1,
+                color if thickness > 0 else (0, 100, 0),
+                1 if thickness > 0 else 2,
             )
-
-        # Highlight Detections (re-mapping from Camera to Projector)
-        for aid, (cx, cy) in self._detected_ids.items():
-            # Project to canvas
-            pts_cam = np.array([[cx, cy]], dtype=np.float32).reshape(-1, 1, 2)
-            pts_proj = cv2.perspectiveTransform(
-                pts_cam, self.context.projector_matrix
-            ).reshape(-1, 2)
-            px, py = int(pts_proj[0][0]), int(pts_proj[0][1])
-
-            if 0 <= px < w and 0 <= py < h:
-                # Target ID green circle
-                cv2.circle(canvas, (px, py), 40, (0, 255, 0), -1)
-                cv2.putText(
-                    canvas,
-                    f"ID {aid}: {self._token_heights[aid]}mm",
-                    (px - 50, py - 50),
-                    cv2.FONT_HERSHEY_SIMPLEX,
-                    0.6,
-                    (0, 100, 0),
-                    2,
-                )
 
         # Verification Overlay: Visual Feedback
         if self._stage == "VALIDATION" and self._rvec is not None and self._tvec is not None:

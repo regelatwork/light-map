@@ -72,25 +72,26 @@ class ArucoTokenDetector:
         for i, marker_id_arr in enumerate(ids):
             marker_id = int(marker_id_arr[0])
             marker_corners = corners[i][0]
-            
+
             # Area of the marker in camera pixels
             area = cv2.contourArea(marker_corners)
-            
+
             if marker_id not in detections_by_id:
                 detections_by_id[marker_id] = []
-            
-            detections_by_id[marker_id].append({
-                "corners": marker_corners,
-                "area": area
-            })
+
+            detections_by_id[marker_id].append(
+                {"corners": marker_corners, "area": area}
+            )
 
         tokens = []
         ppi_mm = ppi / 25.4
-        
+
         for marker_id, detections in detections_by_id.items():
             # Sort by area descending
-            sorted_detections = sorted(detections, key=lambda x: x["area"], reverse=True)
-            
+            sorted_detections = sorted(
+                detections, key=lambda x: x["area"], reverse=True
+            )
+
             for i, det in enumerate(sorted_detections):
                 marker_corners = det["corners"]
                 u, v = np.mean(marker_corners, axis=0)
@@ -116,11 +117,11 @@ class ArucoTokenDetector:
 
                 tokens.append(
                     Token(
-                        id=marker_id, 
-                        world_x=wx_svg, 
-                        world_y=wy_svg, 
+                        id=marker_id,
+                        world_x=wx_svg,
+                        world_y=wy_svg,
                         confidence=1.0,
-                        is_duplicate=(i > 0)
+                        is_duplicate=(i > 0),
                     )
                 )
 

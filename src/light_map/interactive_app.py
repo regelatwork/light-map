@@ -3,21 +3,17 @@ import cv2
 import numpy as np
 import time
 import os
-import math
-import mediapipe as mp
-from typing import List, Tuple, Any, Dict
+from typing import List, Tuple, Any, Dict, Optional
 
 from light_map.common_types import (
     AppConfig,
     SceneId,
 )
 from light_map.renderer import Renderer
-from light_map.gestures import detect_gesture
 from light_map.map_system import MapSystem
 from light_map.svg_loader import SVGLoader
 from light_map.map_config import MapConfigManager
 from light_map.session_manager import SessionManager
-from light_map.display_utils import draw_dashed_circle
 
 from light_map.core.app_context import AppContext
 from light_map.core.notification import NotificationManager
@@ -33,13 +29,11 @@ from light_map.scenes.calibration_scenes import (
     ProjectorCalibrationScene,
     ExtrinsicsCalibrationScene,
 )
-from light_map.token_tracker import TokenTracker
-from light_map.common_types import TokenDetectionAlgorithm
-from light_map.vision.token_filter import TokenFilter
 
 
 from light_map.vision.tracking_coordinator import TrackingCoordinator
 from light_map.vision.input_processor import InputProcessor
+from light_map.vision.overlay_renderer import OverlayRenderer
 
 
 class InteractiveApp:
@@ -54,7 +48,7 @@ class InteractiveApp:
         self.map_system = MapSystem(config.width, config.height)
         self.map_config = MapConfigManager()
         self.notifications = NotificationManager()
-        
+
         # New Modular Coordinators
         self.tracking_coordinator = TrackingCoordinator(time_provider)
         self.input_processor = InputProcessor(config)
@@ -68,20 +62,25 @@ class InteractiveApp:
 
         # AppContext (shared state for scenes)
         self.app_context = self._create_app_context(camera_matrix, dist_coeffs)
+        self.overlay_renderer = OverlayRenderer(self.app_context)
 
         # Scene Management
         self.scenes = self._initialize_scenes()
         self.current_scene: Scene = self.scenes[SceneId.MENU]
         self.current_scene.on_enter()
 
-    def _load_camera_calibration(self) -> Tuple[Optional[np.ndarray], Optional[np.ndarray]]:
+    def _load_camera_calibration(
+        self,
+    ) -> Tuple[Optional[np.ndarray], Optional[np.ndarray]]:
         if os.path.exists("camera_calibration.npz"):
             calib = np.load("camera_calibration.npz")
             print("Loaded camera intrinsics.")
             return calib["camera_matrix"], calib["dist_coeffs"]
         return None, None
 
-    def _create_app_context(self, camera_matrix, dist_coeffs, debug_mode=False, show_tokens=True) -> AppContext:
+    def _create_app_context(
+        self, camera_matrix, dist_coeffs, debug_mode=False, show_tokens=True
+    ) -> AppContext:
         return AppContext(
             app_config=self.config,
             renderer=self.renderer,
@@ -134,11 +133,12 @@ class InteractiveApp:
         camera_matrix, dist_coeffs = self._load_camera_calibration()
 
         self.app_context = self._create_app_context(
-            camera_matrix, 
+            camera_matrix,
             dist_coeffs,
             debug_mode=self.app_context.debug_mode,
             show_tokens=self.app_context.show_tokens,
         )
+        self.overlay_renderer = OverlayRenderer(self.app_context)
 
         # Re-initialize scenes with new context
         self.scenes = self._initialize_scenes()
@@ -275,7 +275,7 @@ class InteractiveApp:
 
         if should_show_tokens and self.map_system.ghost_tokens:
             if self.app_context.show_tokens:
-                self._draw_ghost_tokens(frame)
+                self.overlay_renderer.draw_ghost_tokens(frame, self.time_provider)
 
             # Draw Token Count
             count = len(self.map_system.ghost_tokens)
@@ -292,111 +292,16 @@ class InteractiveApp:
 
         # Debug Overlay
         if self.app_context.debug_mode:
-            self._draw_debug_overlay(frame, inputs)
-
-        # Notifications
-        for i, msg in enumerate(self.notifications.get_active_notifications()):
-            cv2.putText(
-                frame,
-                msg,
-                (50, 100 + i * 40),
-                cv2.FONT_HERSHEY_SIMPLEX,
-                1,
-                (0, 255, 255),
-                2,
+            self.overlay_renderer.draw_debug_overlay(
+                frame, self.fps, self.current_scene.__class__.__name__, inputs
             )
-
-        return frame
 
     def _draw_ghost_tokens(self, image: np.ndarray):
-        ppi = self.map_config.get_ppi()
-        map_file = (
-            self.map_system.svg_loader.filename if self.map_system.svg_loader else None
+        """Delegate to OverlayRenderer for test compatibility."""
+        self.overlay_renderer.draw_ghost_tokens(image, self.time_provider)
+
+    def _draw_debug_overlay(self, image: np.ndarray, inputs: List[HandInput]):
+        """Delegate to OverlayRenderer for test compatibility."""
+        self.overlay_renderer.draw_debug_overlay(
+            image, self.fps, self.current_scene.__class__.__name__, inputs
         )
-
-        for t in self.map_system.ghost_tokens:
-            sx, sy = self.map_system.world_to_screen(t.world_x, t.world_y)
-
-            # Resolve properties for display
-            resolved = self.map_config.resolve_token_profile(t.id, map_file)
-
-            # Radius based on size (1 grid cell = 1 inch = ppi pixels)
-            radius = int(ppi * resolved.size / 2) if ppi > 0 else 30
-
-            # Draw circle
-            color = (255, 255, 0)  # Cyan/Yellow
-            if t.is_duplicate:
-                color = (0, 0, 255)  # Red for duplicates
-            elif not resolved.is_known:
-                color = (200, 200, 200)  # Gray for unknown
-            elif resolved.type == "PC":
-                color = (0, 255, 0)  # Green for players
-            elif resolved.type == "NPC":
-                color = (0, 0, 255)  # Red for NPCs
-
-            if t.is_occluded:
-                # Pulse brightness
-                pulse = (math.sin(self.time_provider() * 10) + 1) / 2
-                alpha_pulse = 0.2 + 0.8 * pulse
-                color = tuple(int(c * alpha_pulse) for c in color)
-
-            if t.is_duplicate:
-                draw_dashed_circle(image, (int(sx), int(sy)), radius, color, 2)
-                cv2.putText(
-                    image,
-                    "DUPLICATE",
-                    (int(sx) - radius, int(sy) + radius + 20),
-                    cv2.FONT_HERSHEY_SIMPLEX,
-                    0.5,
-                    color,
-                    1,
-                )
-            elif not resolved.is_known:
-                draw_dashed_circle(image, (int(sx), int(sy)), radius, color, 2)
-                # Draw "?" in the center
-                cv2.putText(
-                    image,
-                    "?",
-                    (int(sx) - 8, int(sy) + 10),
-                    cv2.FONT_HERSHEY_SIMPLEX,
-                    0.8,
-                    color,
-                    2,
-                )
-            else:
-                cv2.circle(image, (int(sx), int(sy)), radius, color, 2)
-
-            # Draw name
-            cv2.putText(
-                image,
-                resolved.name,
-                (int(sx) - radius, int(sy) - radius - 10),
-                cv2.FONT_HERSHEY_SIMPLEX,
-                0.5,
-                color,
-                1,
-            )
-
-    def _draw_debug_overlay(self, image, inputs: List[HandInput]):
-        cv2.putText(
-            image,
-            f"FPS: {int(self.fps)} | Scene: {self.current_scene.__class__.__name__}",
-            (50, 50),
-            cv2.FONT_HERSHEY_SIMPLEX,
-            1,
-            (0, 0, 255),
-            2,
-        )
-        for hand_input in inputs:
-            px, py = hand_input.proj_pos
-            label = hand_input.gesture.name
-            cv2.putText(
-                image,
-                label,
-                (px, py - 40),
-                cv2.FONT_HERSHEY_SIMPLEX,
-                1,
-                (0, 255, 255),
-                2,
-            )
-            cv2.circle(image, (px, py), 10, (0, 255, 255), -1)

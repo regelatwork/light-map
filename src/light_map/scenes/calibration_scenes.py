@@ -419,27 +419,31 @@ class ExtrinsicsCalibrationScene(Scene):
                     ids = ids.flatten()
                     for i, aid in enumerate(ids):
                         c_cam = np.mean(corners[i][0], axis=0)
-                        
+
                         # Project to projector space for target matching
                         pts_cam = np.array([c_cam], dtype=np.float32).reshape(-1, 1, 2)
-                        pts_proj = cv2.perspectiveTransform(pts_cam, self.context.projector_matrix).reshape(-1, 2)
+                        pts_proj = cv2.perspectiveTransform(
+                            pts_cam, self.context.projector_matrix
+                        ).reshape(-1, 2)
                         px, py = pts_proj[0]
-                        
+
                         # Find nearest target zone
                         best_dist = 100.0  # Threshold in projector pixels
                         best_idx = -1
                         for idx, (tx, ty, _) in enumerate(self._target_zones):
-                            dist = math.sqrt((px - tx)**2 + (py - ty)**2)
+                            dist = math.sqrt((px - tx) ** 2 + (py - ty) ** 2)
                             if dist < best_dist:
                                 best_dist = dist
                                 best_idx = idx
-                        
+
                         if best_idx != -1:
                             info = {"aid": int(aid)}
                             if aid in self._token_heights:
                                 self._target_status[best_idx] = "VALID"
                                 info["height"] = self._token_heights[aid]
-                                info["name"] = self._token_names.get(aid, f"Token {aid}")
+                                info["name"] = self._token_names.get(
+                                    aid, f"Token {aid}"
+                                )
                                 # Trigger animation if it's the first time it becomes valid
                                 if best_idx not in self._animation_start_times:
                                     self._animation_start_times[best_idx] = current_time
@@ -454,7 +458,10 @@ class ExtrinsicsCalibrationScene(Scene):
 
                 # Clean up animation timers for IDLE targets
                 for idx in range(len(self._target_status)):
-                    if self._target_status[idx] == "IDLE" and idx in self._animation_start_times:
+                    if (
+                        self._target_status[idx] == "IDLE"
+                        and idx in self._animation_start_times
+                    ):
                         del self._animation_start_times[idx]
 
             # Validation: At least 3 targets are "VALID"
@@ -491,18 +498,23 @@ class ExtrinsicsCalibrationScene(Scene):
 
             if result:
                 self._rvec, self._tvec, self._obj_points, self._img_points = result
-                
+
                 # Calculate Reprojection Error
                 projected_points, _ = cv2.projectPoints(
-                    self._obj_points, self._rvec, self._tvec, 
-                    self.context.camera_matrix, self.context.dist_coeffs
+                    self._obj_points,
+                    self._rvec,
+                    self._tvec,
+                    self.context.camera_matrix,
+                    self.context.dist_coeffs,
                 )
                 projected_points = projected_points.reshape(-1, 2)
-                
+
                 errors = np.linalg.norm(self._img_points - projected_points, axis=1)
                 self._reprojection_error = np.sqrt(np.mean(errors**2))
-                
-                self.context.notifications.add_notification(f"Calibration Error: {self._reprojection_error:.2f} px")
+
+                self.context.notifications.add_notification(
+                    f"Calibration Error: {self._reprojection_error:.2f} px"
+                )
                 self._stage = "VALIDATION"
             else:
                 self.context.notifications.add_notification("Calibration failed.")
@@ -512,20 +524,22 @@ class ExtrinsicsCalibrationScene(Scene):
             # Accept
             if inputs and inputs[0].gesture == GestureType.VICTORY:
                 if self._rvec is not None and self._tvec is not None:
-                     save_camera_extrinsics(self._rvec, self._tvec)
-                     self.context.notifications.add_notification("Extrinsics saved.")
+                    save_camera_extrinsics(self._rvec, self._tvec)
+                    self.context.notifications.add_notification("Extrinsics saved.")
                 return SceneTransition(SceneId.MENU)
-            
+
             # Retry
             if inputs and inputs[0].gesture == GestureType.CLOSED_FIST:
-                 if self._retry_gesture_start_time == 0.0:
-                     self._retry_gesture_start_time = current_time
-                 elif current_time - self._retry_gesture_start_time > 2.0:
-                     self.context.notifications.add_notification("Calibration discarded.")
-                     self._stage = "PLACEMENT"
-                     self._retry_gesture_start_time = 0.0
+                if self._retry_gesture_start_time == 0.0:
+                    self._retry_gesture_start_time = current_time
+                elif current_time - self._retry_gesture_start_time > 2.0:
+                    self.context.notifications.add_notification(
+                        "Calibration discarded."
+                    )
+                    self._stage = "PLACEMENT"
+                    self._retry_gesture_start_time = 0.0
             else:
-                 self._retry_gesture_start_time = 0.0
+                self._retry_gesture_start_time = 0.0
 
         return None
 
@@ -538,23 +552,30 @@ class ExtrinsicsCalibrationScene(Scene):
         for idx, (tx, ty, tid) in enumerate(self._target_zones):
             status = self._target_status[idx]
             info = self._target_info[idx]
-            
+
             # Default IDLE: White circle
             color = (255, 255, 255)
             thickness = 2
             label = "Target"
-            
+
             if status == "VALID":
-                color = (0, 255, 0) # Green
-                thickness = -1 # Filled
+                color = (0, 255, 0)  # Green
+                thickness = -1  # Filled
                 label = info.get("name", "Locked")
-                
+
                 # Metadata
                 height = info.get("height", 0.0)
                 aid = info.get("aid", 0)
-                cv2.putText(canvas, f"{label}: {height}mm", (tx - 60, ty - 60), 
-                            cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 100, 0), 2)
-                
+                cv2.putText(
+                    canvas,
+                    f"{label}: {height}mm",
+                    (tx - 60, ty - 60),
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    0.6,
+                    (0, 100, 0),
+                    2,
+                )
+
                 # Lock Animation
                 if idx in self._animation_start_times:
                     elapsed = current_time - self._animation_start_times[idx]
@@ -578,7 +599,7 @@ class ExtrinsicsCalibrationScene(Scene):
                 )
             else:
                 cv2.circle(canvas, (tx, ty), 50, color, thickness)
-            
+
             # Label below
             cv2.putText(
                 canvas,
@@ -591,63 +612,89 @@ class ExtrinsicsCalibrationScene(Scene):
             )
 
         # Verification Overlay: Visual Feedback
-        if self._stage == "VALIDATION" and self._rvec is not None and self._tvec is not None:
-             # Calculate reprojected points (Camera Space)
-             proj_pts_cam, _ = cv2.projectPoints(
-                 self._obj_points, self._rvec, self._tvec, 
-                 self.context.camera_matrix, self.context.dist_coeffs
-             )
-             proj_pts_cam = proj_pts_cam.reshape(-1, 2)
-             
-             # Transform both sets to Projector Space for rendering
-             # Detected (img_points) -> Projector
-             img_pts_reshaped = self._img_points.reshape(-1, 1, 2)
-             detected_proj = cv2.perspectiveTransform(
-                 img_pts_reshaped, self.context.projector_matrix
-             ).reshape(-1, 2)
-             
-             # Reprojected -> Projector
-             proj_pts_reshaped = proj_pts_cam.reshape(-1, 1, 2)
-             reprojected_proj = cv2.perspectiveTransform(
-                 proj_pts_reshaped, self.context.projector_matrix
-             ).reshape(-1, 2)
-             
-             # Draw residuals
-             for i in range(len(detected_proj)):
-                 p_det = detected_proj[i]
-                 p_rep = reprojected_proj[i]
-                 
-                 # Calculate error in Camera Space (pixels) for color coding
-                 error_px = np.linalg.norm(self._img_points[i] - proj_pts_cam[i])
-                 
-                 if error_px < 2.0:
-                     color = (0, 255, 0) # Green
-                 elif error_px < 5.0:
-                     color = (0, 255, 255) # Yellow
-                 else:
-                     color = (0, 0, 255) # Red
-                 
-                 pt1 = (int(p_det[0]), int(p_det[1]))
-                 pt2 = (int(p_rep[0]), int(p_rep[1]))
-                 
-                 # Line
-                 cv2.line(canvas, pt1, pt2, color, 2)
-                 
-                 # Detected: Green Cross
-                 cv2.line(canvas, (pt1[0]-5, pt1[1]), (pt1[0]+5, pt1[1]), (0, 255, 0), 2)
-                 cv2.line(canvas, (pt1[0], pt1[1]-5), (pt1[0], pt1[1]+5), (0, 255, 0), 2)
-                 
-                 # Reprojected: Red Circle
-                 cv2.circle(canvas, pt2, 5, (0, 0, 255), 2)
+        if (
+            self._stage == "VALIDATION"
+            and self._rvec is not None
+            and self._tvec is not None
+        ):
+            # Calculate reprojected points (Camera Space)
+            proj_pts_cam, _ = cv2.projectPoints(
+                self._obj_points,
+                self._rvec,
+                self._tvec,
+                self.context.camera_matrix,
+                self.context.dist_coeffs,
+            )
+            proj_pts_cam = proj_pts_cam.reshape(-1, 2)
 
-             # HUD
-             rms = self._reprojection_error
-             status_color = (0, 255, 0) if rms < 2.0 else (0, 255, 255) if rms < 5.0 else (0, 0, 255)
-             status_text = "GOOD" if rms < 2.0 else "FAIR" if rms < 5.0 else "POOR"
-             
-             cv2.rectangle(canvas, (w//2 - 150, 20), (w//2 + 150, 80), (50, 50, 50), -1)
-             cv2.putText(canvas, f"Error: {rms:.2f} px ({status_text})", (w//2 - 130, 60), 
-                         cv2.FONT_HERSHEY_SIMPLEX, 0.8, status_color, 2)
+            # Transform both sets to Projector Space for rendering
+            # Detected (img_points) -> Projector
+            img_pts_reshaped = self._img_points.reshape(-1, 1, 2)
+            detected_proj = cv2.perspectiveTransform(
+                img_pts_reshaped, self.context.projector_matrix
+            ).reshape(-1, 2)
+
+            # Reprojected -> Projector
+            proj_pts_reshaped = proj_pts_cam.reshape(-1, 1, 2)
+            reprojected_proj = cv2.perspectiveTransform(
+                proj_pts_reshaped, self.context.projector_matrix
+            ).reshape(-1, 2)
+
+            # Draw residuals
+            for i in range(len(detected_proj)):
+                p_det = detected_proj[i]
+                p_rep = reprojected_proj[i]
+
+                # Calculate error in Camera Space (pixels) for color coding
+                error_px = np.linalg.norm(self._img_points[i] - proj_pts_cam[i])
+
+                if error_px < 2.0:
+                    color = (0, 255, 0)  # Green
+                elif error_px < 5.0:
+                    color = (0, 255, 255)  # Yellow
+                else:
+                    color = (0, 0, 255)  # Red
+
+                pt1 = (int(p_det[0]), int(p_det[1]))
+                pt2 = (int(p_rep[0]), int(p_rep[1]))
+
+                # Line
+                cv2.line(canvas, pt1, pt2, color, 2)
+
+                # Detected: Green Cross
+                cv2.line(
+                    canvas, (pt1[0] - 5, pt1[1]), (pt1[0] + 5, pt1[1]), (0, 255, 0), 2
+                )
+                cv2.line(
+                    canvas, (pt1[0], pt1[1] - 5), (pt1[0], pt1[1] + 5), (0, 255, 0), 2
+                )
+
+                # Reprojected: Red Circle
+                cv2.circle(canvas, pt2, 5, (0, 0, 255), 2)
+
+            # HUD
+            rms = self._reprojection_error
+            status_color = (
+                (0, 255, 0)
+                if rms < 2.0
+                else (0, 255, 255)
+                if rms < 5.0
+                else (0, 0, 255)
+            )
+            status_text = "GOOD" if rms < 2.0 else "FAIR" if rms < 5.0 else "POOR"
+
+            cv2.rectangle(
+                canvas, (w // 2 - 150, 20), (w // 2 + 150, 80), (50, 50, 50), -1
+            )
+            cv2.putText(
+                canvas,
+                f"Error: {rms:.2f} px ({status_text})",
+                (w // 2 - 130, 60),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.8,
+                status_color,
+                2,
+            )
 
         # Instructions
         instr = (
@@ -660,7 +707,6 @@ class ExtrinsicsCalibrationScene(Scene):
         )
 
         return canvas
-
 
 
 class PpiCalibrationScene(Scene):

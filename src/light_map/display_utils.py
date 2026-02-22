@@ -21,9 +21,7 @@ def get_screen_resolution() -> Tuple[int, int]:
         return 1920, 1080
 
 
-def draw_dashed_circle(
-    img, center, radius, color, thickness=1, dash_length_deg=12
-):
+def draw_dashed_circle(img, center, radius, color, thickness=1, dash_length_deg=12):
     """Draws a dashed circle using multiple ellipse arcs."""
     for i in range(0, 360, dash_length_deg * 2):
         cv2.ellipse(

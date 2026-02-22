@@ -1,6 +1,6 @@
 from __future__ import annotations
 import numpy as np
-from typing import TYPE_CHECKING, Dict, Optional
+from typing import TYPE_CHECKING
 
 from light_map.common_types import TokenDetectionAlgorithm
 from light_map.vision.token_filter import TokenFilter

@@ -25,8 +25,8 @@ def setup_logging(level=logging.INFO, log_file="light_map.log"):
 
     root_logger.setLevel(level)
 
-    # Console Handler
-    console_handler = logging.StreamHandler(sys.stdout)
+    # Console Handler (Stderr)
+    console_handler = logging.StreamHandler(sys.stderr)
     console_handler.setFormatter(formatter)
     root_logger.addHandler(console_handler)
 

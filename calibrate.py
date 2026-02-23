@@ -4,38 +4,39 @@ import os
 # Ensure we can import the local package
 sys.path.insert(0, os.path.abspath("src"))
 
+import logging
 from light_map.calibration import load_calibration_images, calibrate_camera_from_images
+from light_map.display_utils import setup_logging
 import numpy as np
 
 
 def main():
+    setup_logging(log_file="camera_calibration.log")
     image_dir = "./images"
-    print(f"Looking for images in {image_dir}...")
+    logging.info("Looking for images in %s...", image_dir)
 
     images = load_calibration_images(image_dir)
 
     if not images:
-        print(
+        logging.error(
             "No images found. Please ensure .jpg or .jpeg files are in the 'images' directory."
         )
         return
 
-    print(f"Found {len(images)} images. Starting calibration...")
+    logging.info("Found %d images. Starting calibration...", len(images))
 
     try:
         matrix, distortion = calibrate_camera_from_images(images)
 
-        print("Camera matrix:")
-        print(matrix)
-        print("\nDistortion coefficients:")
-        print(distortion)
+        logging.info("Camera matrix:\n%s", matrix)
+        logging.info("Distortion coefficients:\n%s", distortion)
 
         output_file = "camera_calibration.npz"
         np.savez(output_file, camera_matrix=matrix, dist_coeffs=distortion)
-        print(f"\nCalibration saved to {output_file}")
+        logging.info("Calibration saved to %s", output_file)
 
     except RuntimeError as e:
-        print(f"Calibration failed: {e}")
+        logging.error("Calibration failed: %s", e)
 
 
 if __name__ == "__main__":

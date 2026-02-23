@@ -14,7 +14,7 @@ maps/
 map_state.json
 *.svg
 *.png
-
+*.FCBak
 light_map.log
 
 # LaTeX artifacts

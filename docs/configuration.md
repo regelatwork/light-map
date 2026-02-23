@@ -138,6 +138,12 @@ You can override a global marker definition for a specific map (e.g., if a playe
         "name": "Polymorphed Wizard (Sheep)",
         "type": "PC",
         "profile": "small"
+      },
+      "15": {
+        "name": "Huge Golem",
+        "type": "NPC",
+        "size": 3,
+        "height_mm": 75.0
       }
     },
     "...": "..."

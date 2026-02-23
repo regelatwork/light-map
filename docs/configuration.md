@@ -24,50 +24,51 @@ Configures `pytest` for running tests.
 ## Vision & Calibration
 
 ### `camera_calibration.npz`
+
 Stores the camera's intrinsic parameters, obtained during camera calibration.
+
 - **`mtx`**: The camera matrix (focal lengths and optical center).
 - **`dist`**: Lens distortion coefficients.
 
-### `camera_calibration.log`
-Log output from the `calibrate.py` script.
-
 ### `camera_extrinsics.npz`
+
 Stores the camera's extrinsic parameters (pose relative to the tabletop).
+
 - **`rvec`**: Rotation vector.
 - **`tvec`**: Translation vector.
 
 ### `projector_calibration.npz`
+
 Stores the registration between the camera and the projector.
+
 - **`homography`**: The 3x3 homography matrix.
 - **`pts_src`**: Source points in projector space.
 - **`pts_dst`**: Corresponding points in camera space.
 
-### `projector_calibration.log`
-Log output from the `projector_calibration.py` script.
-
 ## Application State
 
 ### `map_state.json`
+
 Persistent configuration for the map system and global application settings. Managed by `MapConfigManager` in `src/light_map/map_config.py`.
 
 - **`global`**:
-    - `projector_ppi`: Pixels per inch of the projector on the table.
-    - `flash_intensity`: Brightness used for token detection.
-    - `last_used_map`: Path to the last opened SVG map.
-    - `detection_algorithm`: Algorithm used for token tracking (e.g., `FLASH`, `STRUCTURED_LIGHT`).
-    - `token_profiles`: Definitions of token sizes (small, medium, large, huge) and their physical heights.
-    - `aruco_defaults`: Global default names and profiles for ArUco marker IDs.
-    - `enable_hand_masking`: Toggle for hand-tracking-based projection masking.
+  - `projector_ppi`: Pixels per inch of the projector on the table.
+  - `flash_intensity`: Brightness used for token detection.
+  - `last_used_map`: Path to the last opened SVG map.
+  - `detection_algorithm`: Algorithm used for token tracking (e.g., `FLASH`, `STRUCTURED_LIGHT`).
+  - `token_profiles`: Definitions of token sizes (small, medium, large, huge) and their physical heights.
+  - `aruco_defaults`: Global default names and profiles for ArUco marker IDs.
+  - `enable_hand_masking`: Toggle for hand-tracking-based projection masking.
 - **`maps`**: A dictionary keyed by SVG map paths, storing map-specific data:
-    - `viewport`: Last used pan, zoom, and rotation.
-    - `grid_spacing_svg`: Physical grid spacing in SVG units.
-    - `grid_origin_svg_x/y`: Origin of the coordinate system on the map.
-    - `physical_unit_inches`: Physical size of a grid square (usually 1.0).
-    - `aruco_overrides`: Map-specific overrides for ArUco marker IDs.
+  - `viewport`: Last used pan, zoom, and rotation.
+  - `grid_spacing_svg`: Physical grid spacing in SVG units.
+  - `grid_origin_svg_x/y`: Origin of the coordinate system on the map.
+  - `physical_unit_inches`: Physical size of a grid square (usually 1.0).
+  - `aruco_overrides`: Map-specific overrides for ArUco marker IDs.
 
 ### `light_map.log`
-Log output from the main `hand_tracker.py` application. Uses `RotatingFileHandler` with 10MB max size and 5 backups.
 
+Log output from all Light Map applications (`hand_tracker.py`, `calibrate.py`, `projector_calibration.py`). Uses `RotatingFileHandler` with 10MB max size and 5 backups. Entries are attributed to their originating file and line number (e.g., `[hand_tracker.py:123]`).
 
 ### `session.json`
 

@@ -20,7 +20,7 @@ def setup_logging(level=logging.INFO, log_file="light_map.log"):
         root_logger.removeHandler(handler)
 
     formatter = logging.Formatter(
-        "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+        "%(asctime)s - %(levelname)s - [%(filename)s:%(lineno)d] - %(message)s"
     )
 
     root_logger.setLevel(level)

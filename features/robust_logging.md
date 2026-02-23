@@ -21,7 +21,7 @@ Currently, the project uses `print()` statements for debugging, error reporting,
 
 ### 1. Centralized Initialization
 
-A new utility function `setup_logging` will be added to `src/light_map/display_utils.py` or a new `src/light_map/utils.py`.
+A new utility function `setup_logging` is located in `src/light_map/display_utils.py`. It provides a unified entry point for all Light Map applications (`hand_tracker.py`, `calibrate.py`, `projector_calibration.py`).
 
 ```python
 import logging
@@ -30,32 +30,34 @@ from logging.handlers import RotatingFileHandler
 
 def setup_logging(level=logging.INFO, log_file="light_map.log"):
     """Configures the root logger with console and file handlers."""
+    # Format: 2026-02-23 02:23:03,009 - INFO - [hand_tracker.py:123] - Message
     formatter = logging.Formatter(
-        '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+        "%(asctime)s - %(levelname)s - [%(filename)s:%(lineno)d] - %(message)s"
     )
 
     root_logger = logging.getLogger()
     root_logger.setLevel(level)
 
-    # Console Handler
-    console_handler = logging.StreamHandler(sys.stdout)
+    # Console Handler (Stderr for cleaner pipe usage)
+    console_handler = logging.StreamHandler(sys.stderr)
     console_handler.setFormatter(formatter)
     root_logger.addHandler(console_handler)
 
-    # File Handler (with rotation)
+    # File Handler (Consolidated light_map.log with rotation)
     file_handler = RotatingFileHandler(
         log_file, maxBytes=10*1024*1024, backupCount=5
     )
     file_handler.setFormatter(formatter)
     root_logger.addHandler(file_handler)
-    
-    logging.info("Logging initialized at level %s", logging.getLevelName(level))
 ```
 
-### 2. Integration with `AppConfig` and `hand_tracker.py`
+### 2. Consolidated Attribution
 
-- **`AppConfig`**: Add `log_level` and `log_file` fields.
-- **`hand_tracker.py`**: Add `--log-level` (DEBUG, INFO, WARNING, ERROR) and `--log-file` arguments. Call `setup_logging` at the start of `main()`.
+To ensure clear debugging across multiple scripts, all entry points use **named loggers** (`logging.getLogger(__name__)`) and the formatter explicitly includes the **filename and line number**. This prevents all entries from appearing as "root" and allows developers to quickly trace logs back to their source.
+
+### 3. Application Integration
+- **`hand_tracker.py`**: Uses `--log-level` and `--log-file` arguments.
+- **`calibrate.py` & `projector_calibration.py`**: Automatically initialize logging to the shared `light_map.log` at the start of `main()`.
 
 ### 3. Systematic Replacement of `print()`
 

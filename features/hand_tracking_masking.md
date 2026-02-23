@@ -41,34 +41,27 @@ To prevent accidental interactions, we will allow the user to define "Safe Zones
 
 ### 1. GM-Location Based Masking
 
-The system will support a configurable "GM Position" that automatically masks out the sides of the table where players are likely to be.
-
-**GM Positions and Masked Sides:**
-
-| GM Position | Unmasked Sides (Active) | Masked Sides (Ignored) |
-| :--- | :--- | :--- |
-| `NONE` | All | None |
-| `NORTH` | North | South, East, West |
-| `SOUTH` | South | North, East, West |
-| `EAST` | East | North, South, West |
-| `WEST` | West | North, South, East |
-| `NORTH_WEST`| North, West | South, East |
-| `NORTH_EAST`| North, East | South, West |
-| `SOUTH_WEST`| South, West | North, East |
-| `SOUTH_EAST`| South, East | North, West |
+The system supports a configurable "GM Position" to filter out accidental hand detections from players or environment noise outside the active map area.
 
 **Logic**:
 
-- The "Interactive Area" is defined by the projector's homography quad in camera space.
-- A "Side Mask" is a region extending from the edge of the homography quad outwards (or a portion of the quad itself if we want to be strict).
-- Actually, the most robust way is to define the "Unmasked Region" as a subset of the camera frame.
-- If `gm_position` is `NORTH`, the unmasked region is the top half (or top third) of the projector area? No, players reach *into* the map.
-- Better: If a hand landmark (index tip) enters from a masked side and stays near the edge, it is ignored.
-- Even better: Any hand detection whose *origin* or *majority of landmarks* are in a masked quadrant are ignored.
-- **Simplified Requirement**: The user wants to "Mask out areas outside of the map". If the camera sees the whole table, we only care about hands that are "over the map" and "coming from the GM side".
-- Actually, if the GM is at NORTH, we only accept hands that enter the map from the NORTH edge? That might be too restrictive.
-- Let's stick to the simplest interpretation: **Reject any hand whose index finger tip (in camera space) is outside the unmasked region.**
-- The "Unmasked Region" will be the homography quad, potentially clipped by the GM position.
+- **Interior Protection**: Any hand detection with its index tip **inside** the projector's active area (the map/UI region) is **always allowed**. This ensures that once a hand is over the interactive surface, it remains usable regardless of which side it entered from.
+- **Exterior Filtering**: Hands detected **outside** the projector's active area are **masked (ignored)** by default.
+- **GM Side Exemption**: If a `gm_position` is set (e.g., `NORTH`), hands detected on that specific side of the exterior are **unmasked**. This allows the GM to perform "Summon" gestures or prepare interactions from their seated position even before their hand enters the projected map area.
+
+**GM Positions and Allowed Exterior Sides:**
+
+| GM Position | Allowed Exterior Sides |
+| :--- | :--- |
+| `NONE` | None (All exterior masked) |
+| `NORTH` | North (y < 0) |
+| `SOUTH` | South (y >= height) |
+| `EAST` | East (x >= width) |
+| `WEST` | West (x < 0) |
+| `NORTH_WEST`| North, West |
+| `NORTH_EAST`| North, East |
+| `SOUTH_WEST`| South, West |
+| `SOUTH_EAST`| South, East |
 
 ### 2. Digital Shadow (Projection Masking) Details
 
@@ -101,7 +94,8 @@ The system will support a configurable "GM Position" that automatically masks ou
 
 ## Success Criteria
 
-- [ ] Hand tracking remains stable even when hovering over bright white map regions.
-- [ ] The "digital shadow" follows the hand with minimal perceptible lag.
-- [ ] Accidental hand movements from the "masked" sides of the table do not trigger UI actions.
-- [ ] The mask is correctly aligned with the physical hand on the table.
+- [x] Hand tracking remains stable even when hovering over bright white map regions.
+- [x] The "digital shadow" follows the hand with minimal perceptible lag.
+- [x] Accidental hand movements from non-GM sides of the table (outside the map) do not trigger UI actions.
+- [x] The menu and map remain fully interactive regardless of GM position (interior is never masked).
+- [x] The mask is correctly aligned with the physical hand on the table.

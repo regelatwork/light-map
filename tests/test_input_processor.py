@@ -38,17 +38,19 @@ def test_convert_mediapipe_to_inputs_filtering(config):
 
     ip.detect_gesture = MagicMock(return_value=GestureType.OPEN_PALM)
 
-    # 1. No filtering
+    # 1. No filtering (None)
     inputs = processor.convert_mediapipe_to_inputs(results, (1000, 1000, 3))
     assert len(inputs) == 1
 
-    # 2. Filter North (should mask South, i.e., y > 500)
-    # 800, 800 is South.
+    # 2. Filter North (should NOT mask interior points even if they are in the "South" half)
+    # 800, 800 is inside the projector area.
     config.gm_position = GmPosition.NORTH
     inputs = processor.convert_mediapipe_to_inputs(results, (1000, 1000, 3))
-    assert len(inputs) == 0
-
-    # 3. Filter South (should NOT mask South, i.e., y > 500 is unmasked)
-    config.gm_position = GmPosition.SOUTH
-    inputs = processor.convert_mediapipe_to_inputs(results, (1000, 1000, 3))
     assert len(inputs) == 1
+
+    # 3. Filter North with OUTSIDE point (should mask if not on GM side)
+    # Mock tip at (500, 1100) -> South of projector
+    landmark.x = 0.5
+    landmark.y = 1.1
+    inputs = processor.convert_mediapipe_to_inputs(results, (1000, 1000, 3))
+    assert len(inputs) == 0

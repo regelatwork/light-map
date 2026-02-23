@@ -3,42 +3,56 @@ from light_map.vision.hand_masker import HandMasker
 from light_map.common_types import GmPosition
 
 
-def test_is_point_masked_none():
+def test_is_point_masked_inside_always_allowed():
     masker = HandMasker()
-    # If GmPosition.NONE, nothing should be masked
-    assert not masker.is_point_masked(100, 100, GmPosition.NONE, (1000, 1000))
+    resolution = (1000, 1000)
+    
+    # All interior points should be False (not masked) regardless of GmPosition
+    positions = [
+        GmPosition.NONE, 
+        GmPosition.NORTH, 
+        GmPosition.SOUTH, 
+        GmPosition.NORTH_WEST, 
+        GmPosition.SOUTH_EAST
+    ]
+    
+    for pos in positions:
+        # Center
+        assert not masker.is_point_masked(500, 500, pos, resolution)
+        # Corners
+        assert not masker.is_point_masked(0, 0, pos, resolution)
+        assert not masker.is_point_masked(999, 999, pos, resolution)
 
 
-def test_is_point_masked_north():
+def test_is_point_masked_outside_none():
+    masker = HandMasker()
+    resolution = (1000, 1000)
+    # If NONE, everything outside is masked
+    assert masker.is_point_masked(-10, 500, GmPosition.NONE, resolution)
+    assert masker.is_point_masked(1010, 500, GmPosition.NONE, resolution)
+    assert masker.is_point_masked(500, -10, GmPosition.NONE, resolution)
+    assert masker.is_point_masked(500, 1010, GmPosition.NONE, resolution)
+
+
+def test_is_point_masked_outside_smart():
     masker = HandMasker()
     resolution = (1000, 1000)
 
-    # North: Unmasked if y < 500
-    assert not masker.is_point_masked(500, 200, GmPosition.NORTH, resolution)
-    assert masker.is_point_masked(500, 800, GmPosition.NORTH, resolution)
+    # NORTH allows points with y < 0
+    assert not masker.is_point_masked(500, -10, GmPosition.NORTH, resolution)
+    assert masker.is_point_masked(500, 1010, GmPosition.NORTH, resolution)
+    assert masker.is_point_masked(-10, 500, GmPosition.NORTH, resolution)
 
-    # South: Unmasked if y > 500
-    assert not masker.is_point_masked(500, 800, GmPosition.SOUTH, resolution)
-    assert masker.is_point_masked(500, 200, GmPosition.SOUTH, resolution)
+    # SOUTH allows points with y >= 1000
+    assert not masker.is_point_masked(500, 1010, GmPosition.SOUTH, resolution)
+    assert masker.is_point_masked(500, -10, GmPosition.SOUTH, resolution)
 
-    # West: Unmasked if x < 500
-    assert not masker.is_point_masked(200, 500, GmPosition.WEST, resolution)
-    assert masker.is_point_masked(800, 500, GmPosition.WEST, resolution)
-
-    # East: Unmasked if x > 500
-    assert not masker.is_point_masked(800, 500, GmPosition.EAST, resolution)
-    assert masker.is_point_masked(200, 500, GmPosition.EAST, resolution)
-
-
-def test_is_point_masked_diagonal():
-    masker = HandMasker()
-    resolution = (1000, 1000)
-
-    # North West: Unmasked if x < 500 AND y < 500
-    assert not masker.is_point_masked(200, 200, GmPosition.NORTH_WEST, resolution)
-    assert masker.is_point_masked(800, 200, GmPosition.NORTH_WEST, resolution)
-    assert masker.is_point_masked(200, 800, GmPosition.NORTH_WEST, resolution)
-    assert masker.is_point_masked(800, 800, GmPosition.NORTH_WEST, resolution)
+    # NORTH_WEST allows points with y < 0 OR x < 0
+    assert not masker.is_point_masked(-10, 500, GmPosition.NORTH_WEST, resolution)
+    assert not masker.is_point_masked(500, -10, GmPosition.NORTH_WEST, resolution)
+    assert not masker.is_point_masked(-10, -10, GmPosition.NORTH_WEST, resolution)
+    assert masker.is_point_masked(1010, 500, GmPosition.NORTH_WEST, resolution)
+    assert masker.is_point_masked(500, 1010, GmPosition.NORTH_WEST, resolution)
 
 
 def test_generate_mask_image():

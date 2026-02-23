@@ -88,3 +88,59 @@ Contains constants and configuration for the gesture-controlled menu system:
 - **UI Styling**: Item width, max visible items, font scaling, and padding.
 - **Gesture Mappings**: Maps specific `GestureType`s to actions like Select, Summon, Zoom, and Pan.
 - **Colors**: BGR color tuples for various menu states (Normal, Hover, Selected, Confirm, etc.).
+
+## Manual Configuration Examples
+
+While some settings are managed via the UI and calibration scripts, others (like ArUco token definitions) are currently best managed by manually editing `map_state.json`.
+
+### Defining Token Size Profiles
+
+Profiles define standard physical dimensions for different types of tokens. These are used globally in the `global.token_profiles` section.
+
+```json
+"token_profiles": {
+  "small": { "size": 1, "height_mm": 15.0 },
+  "medium": { "size": 1, "height_mm": 25.0 },
+  "large": { "size": 2, "height_mm": 40.0 },
+  "huge": { "size": 3, "height_mm": 60.0 }
+}
+```
+
+### Global ArUco Marker Defaults
+
+Assign names, types, and profiles to ArUco marker IDs globally. These apply across all maps unless overridden.
+
+```json
+"aruco_defaults": {
+  "42": {
+    "name": "Wizard PC",
+    "type": "PC",
+    "profile": "small"
+  },
+  "10": {
+    "name": "Dragon Boss",
+    "type": "NPC",
+    "size": 3,
+    "height_mm": 80.0
+  }
+}
+```
+
+### Map-Specific ArUco Overrides
+
+You can override a global marker definition for a specific map (e.g., if a player changes characters or a marker represents a different NPC on a specific map). This is stored within the entry for that map in the `maps` dictionary.
+
+```json
+"maps": {
+  "/home/user/light_map/maps/dungeon.svg": {
+    "aruco_overrides": {
+      "42": {
+        "name": "Polymorphed Wizard (Sheep)",
+        "type": "PC",
+        "profile": "small"
+      }
+    },
+    "...": "..."
+  }
+}
+```

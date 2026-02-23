@@ -52,13 +52,14 @@ Stores the registration between the camera and the projector.
 Persistent configuration for the map system and global application settings. Managed by `MapConfigManager` in `src/light_map/map_config.py`.
 
 - **`global`**:
-  - `projector_ppi`: Pixels per inch of the projector on the table.
-  - `flash_intensity`: Brightness used for token detection.
+  - `projector_ppi`: Pixels per inch of the projector on the table. (Calibrate via **Main Menu > Calibration > 3. Physical PPI**)
+  - `flash_intensity`: Brightness used for token detection. (Calibrate via **Main Menu > Session > Calibrate Flash**)
   - `last_used_map`: Path to the last opened SVG map.
-  - `detection_algorithm`: Algorithm used for token tracking (e.g., `FLASH`, `STRUCTURED_LIGHT`).
+  - `detection_algorithm`: Algorithm used for token tracking. (Toggle via **Main Menu > Session > Algorithm**)
   - `token_profiles`: Definitions of token sizes (small, medium, large, huge) and their physical heights.
   - `aruco_defaults`: Global default names and profiles for ArUco marker IDs.
-  - `enable_hand_masking`: Toggle for hand-tracking-based projection masking.
+  - `enable_hand_masking`: Toggle for projection masking. (Toggle via **Main Menu > Options > Masking > Projection Masking**)
+  - `gm_position`: Direction where the GM is sitting. (Set via **Main Menu > Options > Masking > GM Position**)
 - **`maps`**: A dictionary keyed by SVG map paths, storing map-specific data:
   - `viewport`: Last used pan, zoom, and rotation.
   - `grid_spacing_svg`: Physical grid spacing in SVG units.

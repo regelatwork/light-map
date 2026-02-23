@@ -35,7 +35,7 @@ Standard camera lenses (especially wide-angle) have barrel or pincushion distort
 ### Usage
 
 1. **Prepare Target**: Use a standard 13x18 (or similar) chessboard pattern.
-1. **Launch Scene**: Open the menu and select **Settings > Calibrate Camera**.
+1. **Launch Scene**: Open the menu and select **Calibration > 1. Camera Intrinsics**.
 1. **Capture Images**: Hold the chessboard in front of the camera in various positions and orientations. Use the **Closed Fist** gesture to capture a frame. Capture at least 15-20 images for good results.
 1. **Process**: The system will automatically compute the camera matrix and distortion coefficients and save them to `camera_calibration.npz`.
 
@@ -54,7 +54,7 @@ The system uses `cv2.findHomography` to compute this mapping by projecting a kno
 ### Usage
 
 1. Ensure `camera_calibration.npz` exists.
-1. Select **Settings > Calibrate Projector** from the menu (or run `python projector_calibration.py`).
+1. Select **Calibration > 2. Projector Homography** from the menu (or run `python projector_calibration.py`).
 1. The system will project a fullscreen pattern. Ensure the camera has a clear view of the entire pattern.
 1. The resulting matrix and raw calibration points are saved to `projector_calibration.npz`.
 
@@ -68,7 +68,7 @@ PPI calibration tells the system how many projector pixels represent one physica
 
 1. **Print Target**: Run `python generate_calibration_target.py` and print the resulting `calibration_target.svg` at 100% scale.
 1. **Place Markers**: Place the printed target on the table. It contains two ArUco markers (IDs 0 and 1) exactly 100mm apart.
-1. **Detect**: Select **Map Settings > Calibrate PPI**. The system will detect the markers and calculate the PPI.
+1. **Detect**: Select **Calibration > 3. Physical PPI** (or **Map Settings > Calibrate PPI**). The system will detect the markers and calculate the PPI.
 1. **Confirm**: A 1-inch grid will be projected. Verify its accuracy and use the **Victory** gesture to save.
 
 ______________________________________________________________________
@@ -85,7 +85,7 @@ To correct this, we use `cv2.solvePnP` to find the camera's pose. By knowing the
 ### Usage
 
 1. **Prepare Tokens**: Use at least 3-5 tokens with known ArUco IDs (configured in `global_settings.aruco_defaults`).
-1. **Placement**: Select **Settings > Calibrate Extrinsics**. Place tokens on the projected target zones.
+1. **Placement**: Select **Calibration > 4. Camera Extrinsics**. Place tokens on the projected target zones.
 1. **Validation**: The system will show a **Validation HUD** with the RMS Reprojection Error.
    - **Green (< 2.0px)**: Excellent.
    - **Yellow (2.0 - 5.0px)**: Acceptable.
@@ -100,7 +100,7 @@ Aligns a digital map's grid with the physical 1-inch tabletop grid.
 
 ### Usage
 
-1. Load a map and select **Map Settings > Set Scale**.
+1. Load a map and select **Map Settings > Set Scale** (or **Maps > [Map Name] > Calibrate Scale**).
 1. A 1-inch grid with crosshairs will be projected.
 1. Use **Pan** (Fist) and **Zoom** (Two-Hand Pointing) gestures to align the map's grid lines with the projected crosses.
 1. **Victory** to save the alignment for that specific map.

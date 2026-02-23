@@ -30,7 +30,9 @@ To visualize hand tracking, gestures, and system stats (FPS), run the tracker wi
 python hand_tracker.py --debug
 ```
 
-This will display an overlay with:
+You can also toggle debug mode at runtime via **Main Menu > Options > Toggle Debug**.
+
+When active, the system displays an overlay with:
 
 - FPS counter
 - Hand count

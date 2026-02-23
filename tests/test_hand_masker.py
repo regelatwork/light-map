@@ -6,16 +6,16 @@ from light_map.common_types import GmPosition
 def test_is_point_masked_inside_always_allowed():
     masker = HandMasker()
     resolution = (1000, 1000)
-    
+
     # All interior points should be False (not masked) regardless of GmPosition
     positions = [
-        GmPosition.NONE, 
-        GmPosition.NORTH, 
-        GmPosition.SOUTH, 
-        GmPosition.NORTH_WEST, 
-        GmPosition.SOUTH_EAST
+        GmPosition.NONE,
+        GmPosition.NORTH,
+        GmPosition.SOUTH,
+        GmPosition.NORTH_WEST,
+        GmPosition.SOUTH_EAST,
     ]
-    
+
     for pos in positions:
         # Center
         assert not masker.is_point_masked(500, 500, pos, resolution)

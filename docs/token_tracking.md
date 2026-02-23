@@ -57,7 +57,7 @@ ______________________________________________________________________
 
 ## 3. Structured Light Detection
 
-A secondary non-ArUco method that is robust to dark-colored tokens or low-contrast environments.
+A secondary non-ArUco method that is robust to dark-colored tokens or low-contrast environments. To use this, set the detection algorithm to `STRUCTURED_LIGHT` in **Session > Algorithm**.
 
 ### How it works
 
@@ -74,7 +74,7 @@ The renderer provides real-time feedback on the tracking state:
 - **Locked Token**: A solid circle (cyan for NPCs, green for PCs) indicates a successfully tracked token.
 - **Unknown Marker**: A **dashed outline** or question mark indicates a detected ArUco ID that is not in the configuration.
 - **Duplicate IDs**: If the same ArUco ID is detected in multiple locations, the system selects the most stable (largest area) detection. Duplicates are ignored to prevent "flickering" between positions.
-- **Ghost Tokens**: When loading a session, cyan outlines show the *saved* positions of tokens, helping you place physical minis back where they were.
+- **Ghost Tokens**: When loading a session, cyan outlines show the *saved* positions of tokens, helping you place physical minis back where they were. Toggle their visibility with the **Shaka** gesture.
 
 ______________________________________________________________________
 
@@ -84,13 +84,13 @@ ______________________________________________________________________
 
 Select **Session > Scan & Save**. The system will:
 
-1. Perform a Flash or Structured Light scan.
+1. Perform a scan using the current algorithm (selected via **Session > Algorithm**).
 1. Save token IDs, $(X, Y)$ positions, and the current map viewport to a session file in `sessions/`.
 1. Link the session to the specific map file (using a unique hash).
 
 ### Loading a Session
 
-Select **Load Session** from the Maps menu. This restores the viewport and displays **Ghost Tokens** for manual alignment.
+Select **Load Session** from the **Maps > [Map Name]** sub-menu or use **Session > Load Last Session**. This restores the viewport and displays **Ghost Tokens** for manual alignment.
 
 ______________________________________________________________________
 

@@ -18,26 +18,26 @@ class HandMasker:
         """
         Checks if a point (in projector space) should be masked (ignored)
         based on the GM's position.
-        
+
         New Approach:
         1. Points INSIDE the projector area (0,0 to w,h) are NEVER masked.
         2. Points OUTSIDE are masked, unless they are on the GM's side.
         """
         w, h = resolution
-        
+
         # 1. Inside is always interactive
         if 0 <= x < w and 0 <= y < h:
             return False
-            
+
         # 2. Outside masking
         if gm_position == GmPosition.NONE:
-            return True # Mask everything outside if no GM position set
-            
+            return True  # Mask everything outside if no GM position set
+
         is_north = y < 0
         is_south = y >= h
         is_west = x < 0
         is_east = x >= w
-        
+
         # Check if the point is on an allowed side based on GM position
         if gm_position == GmPosition.NORTH:
             return not is_north
@@ -47,7 +47,7 @@ class HandMasker:
             return not is_west
         if gm_position == GmPosition.EAST:
             return not is_east
-            
+
         if gm_position == GmPosition.NORTH_WEST:
             return not (is_north or is_west)
         if gm_position == GmPosition.NORTH_EAST:

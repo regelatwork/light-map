@@ -66,9 +66,7 @@ def main():
         try:
             with np.load(calibration_file) as data:
                 if "projector_matrix" not in data:
-                    logger.error(
-                        "Invalid calibration file (missing projector_matrix)."
-                    )
+                    logger.error("Invalid calibration file (missing projector_matrix).")
                     return None, 2304, 1296, None
                 matrix = data["projector_matrix"]
                 if "resolution" in data:

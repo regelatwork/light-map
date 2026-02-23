@@ -342,6 +342,8 @@ class InteractiveApp:
                 frame, self.fps, self.current_scene.__class__.__name__, inputs
             )
 
+        return frame
+
     def _draw_ghost_tokens(self, image: np.ndarray):
         """Delegate to OverlayRenderer for test compatibility."""
         self.overlay_renderer.draw_ghost_tokens(image, self.time_provider)

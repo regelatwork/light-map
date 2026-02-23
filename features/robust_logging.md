@@ -3,6 +3,7 @@
 ## Problem Analysis
 
 Currently, the project uses `print()` statements for debugging, error reporting, and informational messages. This approach has several limitations:
+
 - **No Persistence**: Logs are lost once the console is cleared or the application is restarted.
 - **Inconsistent Filtering**: There is no easy way to toggle between different levels of verbosity (e.g., DEBUG vs. INFO vs. ERROR).
 - **Difficult Post-Mortem**: Without a persistent log file, diagnosing crashes that occur "in the wild" is challenging.
@@ -11,10 +12,10 @@ Currently, the project uses `print()` statements for debugging, error reporting,
 ## Goals
 
 1. **Standardize Logging**: Replace `print()` statements with a structured `logging` module.
-2. **Persistent Storage**: Save logs to a file (e.g., `light_map.log`) with rotation to prevent disk exhaustion.
-3. **Configurable Verbosity**: Allow users to set the logging level via CLI arguments.
-4. **Crash Reporting**: Ensure unhandled exceptions are logged before the application exits.
-5. **Real-time Monitoring**: Maintain console output for immediate feedback during development.
+1. **Persistent Storage**: Save logs to a file (e.g., `light_map.log`) with rotation to prevent disk exhaustion.
+1. **Configurable Verbosity**: Allow users to set the logging level via CLI arguments.
+1. **Crash Reporting**: Ensure unhandled exceptions are logged before the application exits.
+1. **Real-time Monitoring**: Maintain console output for immediate feedback during development.
 
 ## Proposed Design
 
@@ -59,6 +60,7 @@ def setup_logging(level=logging.INFO, log_file="light_map.log"):
 ### 3. Systematic Replacement of `print()`
 
 All existing `print()` calls in `src/light_map/` will be replaced with appropriate `logging` calls:
+
 - **Errors/Exceptions**: `logging.error("Message: %s", e, exc_info=True)`
 - **Warnings**: `logging.warning("Resource mismatch: ...")`
 - **General Events**: `logging.info("Map loaded: %s", map_path)`
@@ -80,24 +82,29 @@ finally:
 ## Implementation Phases
 
 ### Phase 1: Infrastructure (Inquiry light_map-40s.3)
+
 - Create `setup_logging` utility.
 - Add CLI arguments to `hand_tracker.py`.
 - Initialize logging at startup.
 
 ### Phase 2: Core Systems Migration (Inquiry light_map-40s.5.2)
+
 - Update `InteractiveApp`, `Camera`, `Renderer`, and `MapSystem` to use logging.
 
 ### Phase 3: Vision & Scene Migration (Inquiry light_map-40s.5.2)
+
 - Update `TrackingCoordinator`, `InputProcessor`, and all `Scene` subclasses.
 
 ## Verification Plan
 
 ### Automated Tests
+
 - **`tests/test_logging.py`**:
-    - Verify `setup_logging` creates the log file.
-    - Verify log rotation works.
-    - Verify different levels are captured correctly by a `ListHandler` or similar.
+  - Verify `setup_logging` creates the log file.
+  - Verify log rotation works.
+  - Verify different levels are captured correctly by a `ListHandler` or similar.
 
 ### Manual Verification
+
 - Run with `--log-level DEBUG` and verify console output.
 - Induce a fake error (e.g., missing map file) and verify it appears in `light_map.log` with a stack trace.

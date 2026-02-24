@@ -126,9 +126,22 @@ class MapScene(Scene):
         # Process map interactions
         # Use adapter to force zoom around screen center
         adapter = ScreenCenteredMapAdapter(self.context.map_system)
+        was_interacting = self.is_interacting
         self.is_interacting = self.interaction_controller.process_gestures(
             inputs, adapter
         )
+
+        # Save viewport when interaction ends
+        if was_interacting and not self.is_interacting:
+            map_system = self.context.map_system
+            if map_system.svg_loader:
+                self.context.map_config_manager.save_map_viewport(
+                    map_system.svg_loader.filename,
+                    map_system.state.x,
+                    map_system.state.y,
+                    map_system.state.zoom,
+                    map_system.state.rotation,
+                )
 
         return None
 

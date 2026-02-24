@@ -352,11 +352,22 @@ def main():
                     elif key == ord("d"):
                         app.set_debug_mode(not app.debug_mode)
 
-            finally:
-                if pipeline:
-                    pipeline.stop()
-
-    except Exception as e:
+                finally:
+                    if pipeline:
+                        pipeline.stop()
+                    
+                    # Save viewport before exiting
+                    if 'app' in locals() and app.map_system.svg_loader:
+                        app.map_config.save_map_viewport(
+                            app.map_system.svg_loader.filename,
+                            app.map_system.state.x,
+                            app.map_system.state.y,
+                            app.map_system.state.zoom,
+                            app.map_system.state.rotation,
+                        )
+            
+                except Exception as e:
+            
         logger.critical(
             "An unhandled error occurred in the main loop: %s", e, exc_info=True
         )

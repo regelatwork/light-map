@@ -149,14 +149,30 @@ class MenuScene(Scene):
                 pass
         elif action == MenuActions.ROTATE_CW:
             self.context.map_system.rotate(90)
+            self._save_viewport()
         elif action == MenuActions.ROTATE_CCW:
             self.context.map_system.rotate(-90)
+            self._save_viewport()
         elif action == MenuActions.RESET_VIEW:
             self.context.map_system.reset_view_to_base()
+            self._save_viewport()
         elif action == MenuActions.RESET_ZOOM:
             self.context.map_system.reset_zoom_to_base()
+            self._save_viewport()
 
         return None
+
+    def _save_viewport(self):
+        """Helper to persist current viewport to config."""
+        map_system = self.context.map_system
+        if map_system.svg_loader:
+            self.context.map_config_manager.save_map_viewport(
+                map_system.svg_loader.filename,
+                map_system.state.x,
+                map_system.state.y,
+                map_system.state.zoom,
+                map_system.state.rotation,
+            )
 
     def render(self, frame: np.ndarray) -> np.ndarray:
         # Menu is always rendered on a black background, hiding the map

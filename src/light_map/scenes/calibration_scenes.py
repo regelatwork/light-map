@@ -327,12 +327,14 @@ class ExtrinsicsCalibrationScene(Scene):
     def __init__(self, context: AppContext):
         super().__init__(context)
         self._stage = "PLACEMENT"  # PLACEMENT | CAPTURE | VERIFY | DONE | ERROR
-        self._target_zones: List[Tuple[int, int, int]] = []  # x, y, id
+        self._target_zones: List[Tuple[int, int, int]] = []  # x, y, suggested_id
         self._detected_ids: Dict[int, Tuple[float, float]] = {}  # id -> (u, v) cam
+        self._known_targets: Dict[int, Tuple[float, float]] = {}  # id -> (px, py) proj
         self._ppi = 0.0
         self._rvec: Optional[np.ndarray] = None
         self._tvec: Optional[np.ndarray] = None
         self._token_heights: Dict[int, float] = {}
+        self._token_sizes: Dict[int, int] = {}
         self._ground_points_cam: Optional[np.ndarray] = None
         self._ground_points_proj: Optional[np.ndarray] = None
         self._reprojection_error: float = 0.0
@@ -352,6 +354,7 @@ class ExtrinsicsCalibrationScene(Scene):
         self._img_points = None
         self._retry_gesture_start_time = 0.0
         self._current_time = 0.0
+        self._known_targets = {}
 
         # Load ground points (Z=0) from projector calibration
         try:
@@ -368,9 +371,10 @@ class ExtrinsicsCalibrationScene(Scene):
             self._ground_points_cam = None
             self._ground_points_proj = None
 
-        # Load token heights and names from global config
+        # Load token heights, names, and sizes from global config
         self._token_heights = {}
         self._token_names = {}
+        self._token_sizes = {}
         for (
             aid,
             defn,
@@ -380,6 +384,7 @@ class ExtrinsicsCalibrationScene(Scene):
             resolved = self.context.map_config_manager.resolve_token_profile(aid)
             self._token_heights[aid] = resolved.height_mm
             self._token_names[aid] = resolved.name
+            self._token_sizes[aid] = resolved.size
 
         # Define 5 Target Zones (in projector pixels)
         # Use a safe margin from edges
@@ -402,10 +407,7 @@ class ExtrinsicsCalibrationScene(Scene):
     ) -> Optional[SceneTransition]:
         self._current_time = current_time
         if self._stage == "PLACEMENT":
-            # Continuous detection (simulated via last_camera_frame in render)
-            # Actually update logic should be here.
-
-            # Detect markers
+            # Continuous detection
             frame = self.context.last_camera_frame
             if frame is not None:
                 gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
@@ -414,17 +416,18 @@ class ExtrinsicsCalibrationScene(Scene):
                 detector = cv2.aruco.ArucoDetector(aruco_dict, parameters)
                 corners, ids, rejected = detector.detectMarkers(gray)
 
-                # Reset status and detected IDs
+                # Reset status, detected IDs, and known targets for this frame
                 self._target_status = ["IDLE"] * len(self._target_zones)
                 self._target_info = [{} for _ in range(len(self._target_zones))]
                 self._detected_ids = {}
+                self._known_targets = {}
 
                 if ids is not None:
                     ids = ids.flatten()
                     for i, aid in enumerate(ids):
                         c_cam = np.mean(corners[i][0], axis=0)
 
-                        # Project to projector space for target matching
+                        # Project to projector space for target matching (Z=0 assumption for matching)
                         pts_cam = np.array([c_cam], dtype=np.float32).reshape(-1, 1, 2)
                         pts_proj = cv2.perspectiveTransform(
                             pts_cam, self.context.projector_matrix
@@ -432,7 +435,7 @@ class ExtrinsicsCalibrationScene(Scene):
                         px, py = pts_proj[0]
 
                         # Find nearest target zone
-                        best_dist = 100.0  # Threshold in projector pixels
+                        best_dist = 150.0  # Threshold in projector pixels
                         best_idx = -1
                         for idx, (tx, ty, _) in enumerate(self._target_zones):
                             dist = math.sqrt((px - tx) ** 2 + (py - ty) ** 2)
@@ -445,6 +448,7 @@ class ExtrinsicsCalibrationScene(Scene):
                             if aid in self._token_heights:
                                 self._target_status[best_idx] = "VALID"
                                 info["height"] = self._token_heights[aid]
+                                info["size"] = self._token_sizes.get(aid, 1)
                                 info["name"] = self._token_names.get(
                                     aid, f"Token {aid}"
                                 )
@@ -452,10 +456,12 @@ class ExtrinsicsCalibrationScene(Scene):
                                 if best_idx not in self._animation_start_times:
                                     self._animation_start_times[best_idx] = current_time
                                 # Capture coordinates for solvePnP
+                                # CRITICAL: Map the marker to the center of the target zone it's on
+                                tx, ty, _ = self._target_zones[best_idx]
                                 self._detected_ids[aid] = (c_cam[0], c_cam[1])
+                                self._known_targets[aid] = (float(tx), float(ty))
                             else:
                                 self._target_status[best_idx] = "UNKNOWN"
-                                # Reset animation if it was VALID before but now UNKNOWN
                                 if best_idx in self._animation_start_times:
                                     del self._animation_start_times[best_idx]
                             self._target_info[best_idx] = info
@@ -488,6 +494,8 @@ class ExtrinsicsCalibrationScene(Scene):
                 self._stage = "ERROR"
                 return None
 
+            # CRITICAL: Pass known_targets so calibrate_extrinsics uses (tx, ty, h)
+            # instead of estimating (X, Y) from a potentially parallax-distorted homography.
             result = calibrate_extrinsics(
                 self.context.last_camera_frame,
                 self.context.projector_matrix,
@@ -497,7 +505,7 @@ class ExtrinsicsCalibrationScene(Scene):
                 self._ppi,
                 ground_points_cam=self._ground_points_cam,
                 ground_points_proj=self._ground_points_proj,
-                known_targets=None,  # For now, let H find the (X, Y) as in design
+                known_targets=self._known_targets,
             )
 
             if result:
@@ -551,13 +559,19 @@ class ExtrinsicsCalibrationScene(Scene):
         h, w = frame.shape[:2]
         canvas = np.full((h, w, 3), 200, dtype=np.uint8)  # Light gray "Arena"
         current_time = self._current_time
+        ppi = self._ppi if self._ppi > 0 else 96.0
 
         # Draw Target Zones
         for idx, (tx, ty, tid) in enumerate(self._target_zones):
             status = self._target_status[idx]
             info = self._target_info[idx]
 
-            # Default IDLE: White circle
+            # Default size is 1x1 inch
+            token_size = info.get("size", 1)
+            rect_size = int(token_size * ppi)
+            half_size = rect_size // 2
+
+            # Default IDLE: White rectangle
             color = (255, 255, 255)
             thickness = 2
             label = "Target"
@@ -573,42 +587,59 @@ class ExtrinsicsCalibrationScene(Scene):
                 cv2.putText(
                     canvas,
                     f"{label}: {height}mm",
-                    (tx - 60, ty - 60),
+                    (tx - half_size, ty - half_size - 10),
                     cv2.FONT_HERSHEY_SIMPLEX,
-                    0.6,
+                    0.5,
                     (0, 100, 0),
-                    2,
+                    1,
                 )
 
-                # Lock Animation
+                # Lock Animation (Expanding border)
                 if idx in self._animation_start_times:
                     elapsed = current_time - self._animation_start_times[idx]
                     if elapsed < 0.5:
-                        radius = int(50 + 40 * (1.0 - elapsed / 0.5))
-                        cv2.circle(canvas, (tx, ty), radius, (0, 255, 0), 2)
+                        growth = int(20 * (1.0 - elapsed / 0.5))
+                        cv2.rectangle(
+                            canvas,
+                            (tx - half_size - growth, ty - half_size - growth),
+                            (tx + half_size + growth, ty + half_size + growth),
+                            (0, 255, 0),
+                            2,
+                        )
 
             elif status == "UNKNOWN":
-                color = (200, 200, 200)  # Gray
+                color = (150, 150, 150)  # Gray
                 aid = info.get("aid", "???")
                 label = f"Unknown ID {aid}"
-                draw_dashed_circle(canvas, (tx, ty), 50, color, 2)
-                cv2.putText(
+                # Dashed rectangle simulation
+                thickness = 1
+            
+            # Draw the main target rectangle
+            if thickness == -1:
+                cv2.rectangle(
                     canvas,
-                    "?",
-                    (tx - 12, ty + 15),
-                    cv2.FONT_HERSHEY_SIMPLEX,
-                    1.2,
+                    (tx - half_size, ty - half_size),
+                    (tx + half_size, ty + half_size),
                     color,
-                    2,
+                    thickness,
                 )
             else:
-                cv2.circle(canvas, (tx, ty), 50, color, thickness)
+                cv2.rectangle(
+                    canvas,
+                    (tx - half_size, ty - half_size),
+                    (tx + half_size, ty + half_size),
+                    color,
+                    thickness,
+                )
+
+            # Center dot
+            cv2.circle(canvas, (tx, ty), 3, (0, 0, 0), -1)
 
             # Label below
             cv2.putText(
                 canvas,
                 label,
-                (tx - 40, ty + 70),
+                (tx - half_size, ty + half_size + 20),
                 cv2.FONT_HERSHEY_SIMPLEX,
                 0.5,
                 color if thickness > 0 else (0, 100, 0),
@@ -662,7 +693,7 @@ class ExtrinsicsCalibrationScene(Scene):
                 pt1 = (int(p_det[0]), int(p_det[1]))
                 pt2 = (int(p_rep[0]), int(p_rep[1]))
 
-                # Line
+                # Line representing error vector
                 cv2.line(canvas, pt1, pt2, color, 2)
 
                 # Detected: Green Cross

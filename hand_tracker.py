@@ -190,11 +190,6 @@ def main():
                 )
                 logger.critical(msg)
 
-                # Optional: We could try to auto-scale the matrix here, but it's risky
-                # float_scale_x = cam_w / calib_w
-                # float_scale_y = cam_h / calib_h
-                # But homography isn't just a scale.
-
             # Initialize Pipeline
             pipeline = CameraPipeline(cam, hands)
             pipeline.start()
@@ -340,9 +335,6 @@ def main():
 
                     else:
                         # No new data: Just handle UI events (keyboard) and sleep
-                        # If we wanted high FPS UI independent of Camera, we would call app.render() here
-                        # But app.process_frame does logic AND render.
-                        # We could split them, but for now, just waiting is fine.
                         time.sleep(0.001)
 
                     # F. Handle Keyboard Interrupts (Check every loop iteration)
@@ -352,32 +344,31 @@ def main():
                     elif key == ord("d"):
                         app.set_debug_mode(not app.debug_mode)
 
-                finally:
-                    if pipeline:
-                        pipeline.stop()
-                    
-                    # Save viewport before exiting
-                    if 'app' in locals() and app.map_system.svg_loader:
-                        app.map_config.save_map_viewport(
-                            app.map_system.svg_loader.filename,
-                            app.map_system.state.x,
-                            app.map_system.state.y,
-                            app.map_system.state.zoom,
-                            app.map_system.state.rotation,
-                        )
-            
-                except Exception as e:
-            
+            except Exception as e:
+                logger.critical(
+                    "An unhandled error occurred in the main loop: %s", e, exc_info=True
+                )
+            finally:
+                if pipeline:
+                    pipeline.stop()
+                
+                # Save viewport before exiting
+                if app.map_system.svg_loader:
+                    app.map_config.save_map_viewport(
+                        app.map_system.svg_loader.filename,
+                        app.map_system.state.x,
+                        app.map_system.state.y,
+                        app.map_system.state.zoom,
+                        app.map_system.state.rotation,
+                    )
+
+    except Exception as e:
         logger.critical(
-            "An unhandled error occurred in the main loop: %s", e, exc_info=True
+            "An unhandled error occurred during camera setup: %s", e, exc_info=True
         )
     finally:
         hands.close()
         cv2.destroyAllWindows()
-
-
-if __name__ == "__main__":
-    main()
 
 
 if __name__ == "__main__":

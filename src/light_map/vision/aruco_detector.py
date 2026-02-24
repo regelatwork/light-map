@@ -55,7 +55,7 @@ class ArucoTokenDetector:
     def set_calibration(self, camera_matrix: np.ndarray, dist_coeffs: np.ndarray):
         self.camera_matrix = camera_matrix
         self.dist_coeffs = dist_coeffs
-        logging.info("ArucoDetector: Camera intrinsics updated.")
+        logging.debug("ArucoDetector: Camera intrinsics updated.")
 
     def set_extrinsics(self, rvec: np.ndarray, tvec: np.ndarray):
         self.rvec = rvec
@@ -63,7 +63,7 @@ class ArucoTokenDetector:
         self.R, _ = cv2.Rodrigues(self.rvec)
         # Camera center in world coordinates: C = -R^T * t
         self.camera_center_world = -self.R.T @ self.tvec.flatten()
-        logging.info("ArucoDetector: Camera extrinsics updated.")
+        logging.debug("ArucoDetector: Camera extrinsics updated.")
 
     def detect(
         self,
@@ -169,6 +169,9 @@ class ArucoTokenDetector:
         Intersects the ray from camera through (u, v) with the plane z = h.
         Returns (X, Y) in world space.
         """
+        if self.camera_matrix is None or self.R is None:
+            return 0.0, 0.0
+
         # 1. Back-project to ray in camera space
         # [u, v, 1] in pixels -> ray in camera space
         # Ray direction: inv(K) * [u, v, 1]^T

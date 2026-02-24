@@ -199,9 +199,37 @@ def calibrate_extrinsics(
     img_points = np.array(img_points_list, dtype=np.float32)
 
     # Solve PnP
-    ret, rvec, tvec = cv2.solvePnP(obj_points, img_points, camera_matrix, dist_coeffs)
+    # Use an initial guess for a camera looking DOWN at the table from above.
+    # A 180-degree rotation around X (rvec = [pi, 0, 0]) is a good starting point.
+    rvec_guess = np.array([np.pi, 0, 0], dtype=np.float32).reshape(3, 1)
+    tvec_guess = np.array([0, 0, 1000], dtype=np.float32).reshape(3, 1)
+
+    ret, rvec, tvec = cv2.solvePnP(
+        obj_points,
+        img_points,
+        camera_matrix,
+        dist_coeffs,
+        rvec=rvec_guess,
+        tvec=tvec_guess,
+        useExtrinsicGuess=True,
+        flags=cv2.SOLVEPNP_ITERATIVE,
+    )
 
     if ret:
+        # Physical plausibility check: tz MUST be positive for the table to be in front of the camera
+        if tvec[2] < 0:
+            logging.warning("Extrinsics: solvePnP returned inverted solution (tz < 0). Attempting flip.")
+            # Flip the solution
+            R, _ = cv2.Rodrigues(rvec)
+            C = -R.T @ tvec
+            
+            R_flip = np.array([[1, 0, 0], [0, -1, 0], [0, 0, -1]], dtype=np.float32)
+            R_new = R_flip @ R
+            rvec_new, _ = cv2.Rodrigues(R_new)
+            tvec_new = -R_new @ C
+            
+            rvec, tvec = rvec_new, tvec_new
+
         return rvec, tvec, obj_points, img_points
 
     return None

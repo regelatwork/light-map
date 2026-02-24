@@ -1,7 +1,7 @@
 import pytest
 import numpy as np
 from unittest.mock import MagicMock, patch
-from light_map.calibration_logic import run_calibration_sequence
+from light_map.calibration_logic import run_calibration_sequence, calibrate_extrinsics
 from light_map.camera import Camera
 
 
@@ -82,3 +82,40 @@ def test_run_calibration_sequence_exception(
     # Verify
     assert result is None
     mock_cv2.destroyWindow.assert_called_once()  # Ensure cleanup
+
+
+def test_calibrate_extrinsics_flip_inverted(mock_cv2):
+    # Setup mock for solvePnP to return tz < 0
+    mock_cv2.solvePnP.return_value = (True, np.zeros((3, 1)), np.array([[0.0], [0.0], [-1000.0]], dtype=np.float32))
+    
+    # Mock Rodrigues for flip logic
+    mock_cv2.Rodrigues.side_effect = lambda x: (np.eye(3), None) if x.ndim == 2 else (np.eye(3), None)
+    
+    # Mock ArUco detector
+    mock_detector = MagicMock()
+    mock_detector.detectMarkers.return_value = ([], None, [])
+    mock_cv2.aruco.ArucoDetector.return_value = mock_detector
+    
+    frame = np.zeros((100, 100, 3), dtype=np.uint8)
+    proj_matrix = np.eye(3)
+    cam_matrix = np.eye(3)
+    dist_coeffs = np.zeros(5)
+    
+    # Run
+    result = calibrate_extrinsics(
+        frame, proj_matrix, cam_matrix, dist_coeffs, 
+        token_heights={1: 5.0}, ppi=100.0,
+        ground_points_cam=np.array([[50, 50], [60, 60], [70, 70], [80, 80]]),
+        ground_points_proj=np.array([[100, 100], [120, 120], [140, 140], [160, 160]])
+    )
+    
+    assert result is not None
+    rvec, tvec, obj_pts, img_pts = result
+    
+    # Verify tz is now positive
+    assert tvec[2] > 0
+    # Check it called solvePnP with useExtrinsicGuess
+    args, kwargs = mock_cv2.solvePnP.call_args
+    assert kwargs["useExtrinsicGuess"] is True
+    assert kwargs["rvec"] is not None
+    assert kwargs["tvec"] is not None

@@ -105,8 +105,12 @@ class ViewportState:
 @dataclass
 class Token:
     id: int
-    world_x: float  # SVG coordinates
+    world_x: float  # SVG coordinates (Vertical projection to Z=0)
     world_y: float
+    world_z: float = 0.0  # Height of the base on the map (typically 0.0)
+    marker_x: Optional[float] = None  # SVG coordinates of the physical marker (at height Z=h)
+    marker_y: Optional[float] = None
+    marker_z: float = 0.0  # Height of the marker in mm (h)
     grid_x: Optional[int] = None
     grid_y: Optional[int] = None
     confidence: float = 1.0

@@ -68,6 +68,7 @@ class TrackingCoordinator:
             ppi=map_config.get_ppi(),
             algorithm=TokenDetectionAlgorithm.ARUCO,
             token_configs=token_configs,
+            default_height_mm=5.0, # Default for ArUco tokens
             distortion_model=config.distortion_model,
         )
 

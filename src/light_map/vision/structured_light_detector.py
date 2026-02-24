@@ -37,6 +37,23 @@ class StructuredLightTokenDetector:
 
     def __init__(self, debug_mode: bool = False):
         self.debug_mode = debug_mode
+        self.camera_matrix = None
+        self.dist_coeffs = None
+        self.rvec = None
+        self.tvec = None
+        self.R = None
+        self.camera_center_world = None
+
+    def set_calibration(self, camera_matrix: np.ndarray, dist_coeffs: np.ndarray):
+        self.camera_matrix = camera_matrix
+        self.dist_coeffs = dist_coeffs
+
+    def set_extrinsics(self, rvec: np.ndarray, tvec: np.ndarray):
+        self.rvec = rvec
+        self.tvec = tvec
+        if self.rvec is not None and self.tvec is not None:
+            self.R, _ = cv2.Rodrigues(self.rvec)
+            self.camera_center_world = -self.R.T @ self.tvec.flatten()
 
     def get_scan_pattern(
         self, width: int, height: int, ppi: float
@@ -91,6 +108,8 @@ class StructuredLightTokenDetector:
         grid_origin_x: float,
         grid_origin_y: float,
         mask_rois: Optional[List[Tuple[int, int, int, int]]],
+        ppi: float = 96.0,
+        default_height_mm: float = 0.0,
         distortion_model: Optional["ProjectorDistortionModel"] = None,
     ) -> List[Token]:
         h, w = frame_pattern.shape[:2]
@@ -146,11 +165,33 @@ class StructuredLightTokenDetector:
         if not observed_points_cam:
             return []
 
-        src_pts = np.array(observed_points_cam, dtype=np.float32).reshape(-1, 1, 2)
-        if distortion_model:
-            dst_pts = distortion_model.apply_correction(src_pts)
-        else:
-            dst_pts = cv2.perspectiveTransform(src_pts, projector_matrix)
+        # 5. Project to Projector Space (with parallax correction)
+        observed_points_proj = []
+        ppi_mm = ppi / 25.4
+        
+        # We need a list for debug logging later that matches the old format (N, 1, 2)
+        dst_pts_list = []
+
+        for u, v in observed_points_cam:
+            if self.camera_matrix is not None and self.R is not None:
+                # Use 3D projection
+                wx_mm, wy_mm = self._parallax_correction(u, v, default_height_mm)
+                px = wx_mm * ppi_mm
+                py = wy_mm * ppi_mm
+            else:
+                # Fallback to homography
+                pt = np.array([u, v], dtype=np.float32).reshape(1, 1, 2)
+                p_proj = cv2.perspectiveTransform(pt, projector_matrix)[0][0]
+                px, py = p_proj[0], p_proj[1]
+
+            if distortion_model:
+                px, py = distortion_model.correct_theoretical_point(px, py)
+
+            dst_pts_list.append([[px, py]])
+            if 0 <= px <= w_proj and 0 <= py <= h_proj:
+                observed_points_proj.append((px, py))
+
+        dst_pts = np.array(dst_pts_list, dtype=np.float32)
 
         if self.debug_mode:
             self._log_sl_debug_data(
@@ -166,12 +207,6 @@ class StructuredLightTokenDetector:
                 w_proj,
                 h_proj,
             )
-
-        observed_points_proj = []
-        for p in dst_pts:
-            px, py = p[0]
-            if 0 <= px <= w_proj and 0 <= py <= h_proj:
-                observed_points_proj.append((px, py))
 
         expected_arr = np.array(expected_points)
         if not observed_points_proj:
@@ -285,11 +320,17 @@ class StructuredLightTokenDetector:
                     # Ensure no two tokens snap to the exact same cell
                     if (gx, gy) not in occupied_cells:
                         occupied_cells.add((gx, gy))
+                        wx = grid_origin_x + (gx + 0.5) * grid_spacing_svg
+                        wy = grid_origin_y + (gy + 0.5) * grid_spacing_svg
                         tokens.append(
                             Token(
                                 id=token_id,
-                                world_x=grid_origin_x + (gx + 0.5) * grid_spacing_svg,
-                                world_y=grid_origin_y + (gy + 0.5) * grid_spacing_svg,
+                                world_x=wx,
+                                world_y=wy,
+                                world_z=0.0,
+                                marker_x=wx,
+                                marker_y=wy,
+                                marker_z=default_height_mm,
                                 grid_x=gx,
                                 grid_y=gy,
                                 confidence=min(1.0, count / self.CONFIDENCE_SCALING),
@@ -321,6 +362,10 @@ class StructuredLightTokenDetector:
                             id=token_id,
                             world_x=wx,
                             world_y=wy,
+                            world_z=0.0,
+                            marker_x=wx,
+                            marker_y=wy,
+                            marker_z=default_height_mm,
                             confidence=min(1.0, len(cluster) / self.CONFIDENCE_SCALING),
                         )
                     )
@@ -482,3 +527,34 @@ class StructuredLightTokenDetector:
 
         DebugVisualizer.draw_tokens(debug_img, tokens, map_system)
         DebugVisualizer.save_debug_image("debug_token_detection_sl", debug_img)
+
+    def _parallax_correction(self, u: float, v: float, h: float) -> Tuple[float, float]:
+        """
+        Intersects the ray from camera through (u, v) with the plane z = h.
+        Returns (X, Y) in world space.
+        """
+        if self.camera_matrix is None or self.R is None:
+            # Fallback if no 3D pose is available
+            return 0.0, 0.0
+
+        # 1. Back-project to ray in camera space
+        p_pixel = np.array([u, v, 1.0]).reshape(3, 1)
+        ray_cam = np.linalg.inv(self.camera_matrix) @ p_pixel
+
+        # 2. Transform ray to world space
+        v_world = self.R.T @ ray_cam
+        v_world = v_world.flatten()
+
+        # 3. Intersect with plane z = h
+        cz = self.camera_center_world[2]
+        vz = v_world[2]
+
+        if abs(vz) < 1e-6:
+            return 0.0, 0.0
+
+        s = (h - cz) / vz
+        if s < 0:
+            return 0.0, 0.0
+
+        p_world = self.camera_center_world + s * v_world
+        return p_world[0], p_world[1]

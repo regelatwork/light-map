@@ -130,7 +130,7 @@ class ArucoTokenDetector:
 
                 wx_mm, wy_mm = self._parallax_correction(u, v, height_mm)
 
-                # Map to projector pixels
+                # Map to projector pixels (Z=0 vertical projection)
                 px = wx_mm * ppi_mm
                 py = wy_mm * ppi_mm
 
@@ -153,6 +153,10 @@ class ArucoTokenDetector:
                         id=marker_id,
                         world_x=wx_svg,
                         world_y=wy_svg,
+                        world_z=0.0,
+                        marker_x=wx_svg,
+                        marker_y=wy_svg,
+                        marker_z=height_mm,
                         confidence=1.0,
                         is_duplicate=(i > 0),
                     )

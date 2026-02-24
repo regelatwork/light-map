@@ -88,6 +88,7 @@ class FlashCalibrationScene(Scene):
                     frame_white=self.context.last_camera_frame,
                     projector_matrix=self.context.projector_matrix,
                     map_system=self.context.map_system,
+                    default_height_mm=0.0, # Calibrate against table surface
                 )
                 self._results[intensity] = len(tokens)
                 logging.info(

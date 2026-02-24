@@ -70,8 +70,8 @@ def test_flash_calibration_scene_state_machine(mock_app_context):
                     frame_white=mock_app_context.last_camera_frame,
                     projector_matrix=mock_app_context.projector_matrix,
                     map_system=mock_app_context.map_system,
+                    default_height_mm=0.0,
                 )
-
                 # Capture frame should be reset after render
                 assert scene._capture_frame is False
 

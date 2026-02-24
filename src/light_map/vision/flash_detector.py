@@ -26,6 +26,23 @@ class FlashTokenDetector:
 
     def __init__(self, debug_mode: bool = False):
         self.debug_mode = debug_mode
+        self.camera_matrix = None
+        self.dist_coeffs = None
+        self.rvec = None
+        self.tvec = None
+        self.R = None
+        self.camera_center_world = None
+
+    def set_calibration(self, camera_matrix: np.ndarray, dist_coeffs: np.ndarray):
+        self.camera_matrix = camera_matrix
+        self.dist_coeffs = dist_coeffs
+
+    def set_extrinsics(self, rvec: np.ndarray, tvec: np.ndarray):
+        self.rvec = rvec
+        self.tvec = tvec
+        if self.rvec is not None and self.tvec is not None:
+            self.R, _ = cv2.Rodrigues(self.rvec)
+            self.camera_center_world = -self.R.T @ self.tvec.flatten()
 
     def detect(
         self,
@@ -36,6 +53,8 @@ class FlashTokenDetector:
         grid_origin_x: float,
         grid_origin_y: float,
         mask_rois: Optional[List[Tuple[int, int, int, int]]],
+        ppi: float = 96.0,
+        default_height_mm: float = 0.0,
         distortion_model: Optional["ProjectorDistortionModel"] = None,
     ) -> List[Token]:
         warped_image, markers = self._preprocess_and_find_markers(
@@ -48,10 +67,13 @@ class FlashTokenDetector:
         tokens = self._extract_tokens_from_markers(
             warped_image,
             markers,
+            projector_matrix,
             map_system,
             grid_spacing_svg,
             grid_origin_x,
             grid_origin_y,
+            ppi=ppi,
+            default_height_mm=default_height_mm,
             distortion_model=distortion_model,
         )
         if self.debug_mode:
@@ -108,10 +130,13 @@ class FlashTokenDetector:
         self,
         warped_image,
         markers,
+        projector_matrix,
         map_system,
         grid_spacing_svg,
         grid_origin_x,
         grid_origin_y,
+        ppi=96.0,
+        default_height_mm=0.0,
         distortion_model=None,
     ):
         tokens = []
@@ -135,12 +160,20 @@ class FlashTokenDetector:
                     tokens,
                     found_cells,
                     id_counter,
-                    distortion_model,
+                    default_height_mm=default_height_mm,
+                    distortion_model=distortion_model,
                 )
                 id_counter = len(tokens) + 1
             else:
                 self._process_blob_with_centroid(
-                    blob_mask, map_system, tokens, id_counter, distortion_model
+                    blob_mask,
+                    projector_matrix,
+                    map_system,
+                    tokens,
+                    id_counter,
+                    ppi=ppi,
+                    default_height_mm=default_height_mm,
+                    distortion_model=distortion_model,
                 )
                 id_counter += 1
         return tokens
@@ -155,6 +188,7 @@ class FlashTokenDetector:
         tokens,
         found_cells,
         id_start,
+        default_height_mm=0.0,
         distortion_model=None,
     ):
         x, y, w, h = cv2.boundingRect(blob_mask)
@@ -198,11 +232,17 @@ class FlashTokenDetector:
                     and cv2.countNonZero(cv2.bitwise_and(bbox_mask, c_mask)) / c_area
                     > self.GRID_OVERLAP_THRESHOLD
                 ):
+                    wx = ox + (gx + 0.5) * spacing
+                    wy = oy + (gy + 0.5) * spacing
                     tokens.append(
                         Token(
                             id=id_start + len(tokens),
-                            world_x=ox + (gx + 0.5) * spacing,
-                            world_y=oy + (gy + 0.5) * spacing,
+                            world_x=wx,
+                            world_y=wy,
+                            world_z=0.0,
+                            marker_x=wx,
+                            marker_y=wy,
+                            marker_z=default_height_mm,
                             grid_x=gx,
                             grid_y=gy,
                             confidence=1.0,
@@ -211,17 +251,56 @@ class FlashTokenDetector:
                     found_cells.add((gx, gy))
 
     def _process_blob_with_centroid(
-        self, blob_mask, map_system, tokens, id_counter, distortion_model=None
+        self,
+        blob_mask,
+        projector_matrix,
+        map_system,
+        tokens,
+        id_counter,
+        ppi=96.0,
+        default_height_mm=0.0,
+        distortion_model=None,
     ):
         M = cv2.moments(blob_mask)
         if M["m00"] > 0:
-            cx, cy = M["m10"] / M["m00"], M["m01"] / M["m00"]
-            if distortion_model:
-                cx, cy = distortion_model.correct_theoretical_point(cx, cy)
-            wx, wy = map_system.screen_to_world(cx, cy)
+            sx, sy = M["m10"] / M["m00"], M["m01"] / M["m00"]
+            
+            if self.camera_matrix is not None and self.R is not None:
+                # 3D projection: Un-warp from projector to camera space
+                # sx, sy are in Projector pixels (warped frame)
+                # Use inverse homography to find camera (u, v)
+                inv_h = np.linalg.inv(projector_matrix)
+                p_proj = np.array([sx, sy], dtype=np.float32).reshape(1, 1, 2)
+                p_cam = cv2.perspectiveTransform(p_proj, inv_h)[0][0]
+                u, v = p_cam[0], p_cam[1]
+                
+                # Apply vertical projection
+                wx_mm, wy_mm = self._parallax_correction(u, v, default_height_mm)
+                
+                ppi_mm = ppi / 25.4
+                px = wx_mm * ppi_mm
+                py = wy_mm * ppi_mm
+                
+                if distortion_model:
+                    px, py = distortion_model.correct_theoretical_point(px, py)
+                
+                wx, wy = map_system.screen_to_world(px, py)
+            else:
+                # Fallback to simple 2D projection
+                if distortion_model:
+                    sx, sy = distortion_model.correct_theoretical_point(sx, sy)
+                wx, wy = map_system.screen_to_world(sx, sy)
+
             tokens.append(
                 Token(
-                    id=id_counter + len(tokens), world_x=wx, world_y=wy, confidence=1.0
+                    id=id_counter + len(tokens),
+                    world_x=wx,
+                    world_y=wy,
+                    world_z=0.0,
+                    marker_x=wx,
+                    marker_y=wy,
+                    marker_z=default_height_mm,
+                    confidence=1.0,
                 )
             )
 
@@ -260,3 +339,34 @@ class FlashTokenDetector:
 
         DebugVisualizer.draw_tokens(debug_img, tokens, map_system)
         DebugVisualizer.save_debug_image("debug_token_detection_flash", debug_img)
+
+    def _parallax_correction(self, u: float, v: float, h: float) -> Tuple[float, float]:
+        """
+        Intersects the ray from camera through (u, v) with the plane z = h.
+        Returns (X, Y) in world space.
+        """
+        if self.camera_matrix is None or self.R is None:
+            # Fallback if no 3D pose is available
+            return 0.0, 0.0
+
+        # 1. Back-project to ray in camera space
+        p_pixel = np.array([u, v, 1.0]).reshape(3, 1)
+        ray_cam = np.linalg.inv(self.camera_matrix) @ p_pixel
+
+        # 2. Transform ray to world space
+        v_world = self.R.T @ ray_cam
+        v_world = v_world.flatten()
+
+        # 3. Intersect with plane z = h
+        cz = self.camera_center_world[2]
+        vz = v_world[2]
+
+        if abs(vz) < 1e-6:
+            return 0.0, 0.0
+
+        s = (h - cz) / vz
+        if s < 0:
+            return 0.0, 0.0
+
+        p_world = self.camera_center_world + s * v_world
+        return p_world[0], p_world[1]

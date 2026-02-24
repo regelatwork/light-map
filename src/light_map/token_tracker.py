@@ -55,8 +55,12 @@ class TokenTracker:
     ):
         if camera_matrix is not None and dist_coeffs is not None:
             self._aruco_detector.set_calibration(camera_matrix, dist_coeffs)
+            self._flash_detector.set_calibration(camera_matrix, dist_coeffs)
+            self._sl_detector.set_calibration(camera_matrix, dist_coeffs)
         if rvec is not None and tvec is not None:
             self._aruco_detector.set_extrinsics(rvec, tvec)
+            self._flash_detector.set_extrinsics(rvec, tvec)
+            self._sl_detector.set_extrinsics(rvec, tvec)
 
     def detect_tokens(
         self,
@@ -72,6 +76,7 @@ class TokenTracker:
         ppi: float = 96.0,
         algorithm: TokenDetectionAlgorithm = TokenDetectionAlgorithm.FLASH,
         token_configs: Optional[Dict[int, Dict]] = None,
+        default_height_mm: float = 0.0,
         distortion_model: Optional["ProjectorDistortionModel"] = None,
     ) -> List[Token]:
         # Handle case where only one frame is passed (default to frame_pattern for SL or frame_white for Flash)
@@ -89,6 +94,7 @@ class TokenTracker:
                 map_system,
                 token_configs=token_configs,
                 ppi=ppi,
+                default_height_mm=default_height_mm,
                 distortion_model=distortion_model,
             )
 
@@ -110,6 +116,8 @@ class TokenTracker:
                 grid_origin_x,
                 grid_origin_y,
                 mask_rois,
+                ppi=ppi,
+                default_height_mm=default_height_mm,
                 distortion_model=distortion_model,
             )
         else:
@@ -121,5 +129,7 @@ class TokenTracker:
                 grid_origin_x,
                 grid_origin_y,
                 mask_rois,
+                ppi=ppi,
+                default_height_mm=default_height_mm,
                 distortion_model=distortion_model,
             )

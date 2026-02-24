@@ -261,6 +261,7 @@ class ScanningScene(Scene):
             ppi=ppi,
             algorithm=algorithm,
             token_configs=token_configs,
+            default_height_mm=25.0, # Default for minis
             distortion_model=self.context.distortion_model,
         )
 

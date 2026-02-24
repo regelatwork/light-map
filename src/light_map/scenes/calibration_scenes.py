@@ -388,15 +388,16 @@ class ExtrinsicsCalibrationScene(Scene):
             self._token_sizes[aid] = resolved.size
 
         # Define 5 Target Zones (in projector pixels)
-        # Use a safe margin from edges
+        # Shifted slightly to break symmetry and avoid ambiguities
         w, h = self.context.app_config.width, self.context.app_config.height
-        margin = 200
+        margin_x = 220
+        margin_y = 180
         self._target_zones = [
-            (margin, margin, 10),  # TL
-            (w - margin, margin, 11),  # TR
-            (margin, h - margin, 12),  # BL
-            (w - margin, h - margin, 13),  # BR
-            (w // 2, h // 2, 14),  # C
+            (margin_x, margin_y, 10),              # TL (Slightly shifted)
+            (w - margin_x + 30, margin_y - 20, 11), # TR (Asymmetric shift)
+            (margin_x - 40, h - margin_y + 15, 12), # BL (Asymmetric shift)
+            (w - margin_x - 15, h - margin_y - 35, 13), # BR (Asymmetric shift)
+            (w // 2 + 25, h // 2 - 10, 14),        # C (Slightly off-center)
         ]
         self._target_status = ["IDLE"] * len(self._target_zones)
         self._target_info = [{} for _ in range(len(self._target_zones))]

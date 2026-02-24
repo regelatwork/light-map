@@ -114,8 +114,7 @@ def test_calibrate_extrinsics_flip_inverted(mock_cv2):
     
     # Verify tz is now positive
     assert tvec[2] > 0
-    # Check it called solvePnP with useExtrinsicGuess
+    # Check it called solvePnP with useExtrinsicGuess and SQPNP
     args, kwargs = mock_cv2.solvePnP.call_args
     assert kwargs["useExtrinsicGuess"] is True
-    assert kwargs["rvec"] is not None
-    assert kwargs["tvec"] is not None
+    assert kwargs["flags"] == mock_cv2.SOLVEPNP_SQPNP

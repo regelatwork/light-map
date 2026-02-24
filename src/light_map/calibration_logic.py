@@ -198,9 +198,11 @@ def calibrate_extrinsics(
     obj_points = np.array(obj_points_list, dtype=np.float32)
     img_points = np.array(img_points_list, dtype=np.float32)
 
+    logging.info(f"Extrinsics: Solving for {len(obj_points)} points ({len(obj_points_list) - (0 if ids is None else len(ids))} ground, {(0 if ids is None else len(ids))} tokens).")
+
     # Solve PnP
-    # Use an initial guess for a camera looking DOWN at the table from above.
-    # A 180-degree rotation around X (rvec = [pi, 0, 0]) is a good starting point.
+    # SQPNP is highly robust to both planar and non-planar configurations.
+    # We still provide an initial guess to help it converge to the "looking down" solution.
     rvec_guess = np.array([np.pi, 0, 0], dtype=np.float32).reshape(3, 1)
     tvec_guess = np.array([0, 0, 1000], dtype=np.float32).reshape(3, 1)
 
@@ -212,7 +214,7 @@ def calibrate_extrinsics(
         rvec=rvec_guess,
         tvec=tvec_guess,
         useExtrinsicGuess=True,
-        flags=cv2.SOLVEPNP_ITERATIVE,
+        flags=cv2.SOLVEPNP_SQPNP,
     )
 
     if ret:

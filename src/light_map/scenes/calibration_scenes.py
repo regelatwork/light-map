@@ -742,62 +742,33 @@ class PpiCalibrationScene(Scene):
 
     def render(self, frame: np.ndarray) -> np.ndarray:
         h, w = frame.shape[:2]
-        canvas = np.full((h, w, 3), 255, dtype=np.uint8)  # White background
+        canvas = np.full((h, w, 3), 0, dtype=np.uint8)  # Black background to avoid glare
 
-        # ArUco markers 0 and 1
-        aruco_dict = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_4X4_50)
-        marker0 = cv2.aruco.generateImageMarker(aruco_dict, 0, 100)
-        marker1 = cv2.aruco.generateImageMarker(aruco_dict, 1, 100)
-
-        # Convert to BGR
-        marker0 = cv2.cvtColor(marker0, cv2.COLOR_GRAY2BGR)
-        marker1 = cv2.cvtColor(marker1, cv2.COLOR_GRAY2BGR)
-
-        # Place at centers, 100mm apart?
-        # If we don't know PPI, we can't place them exactly 100mm apart.
-        # Design doc says: "Ask the user to place two physical ArUco markers... at a known distance (e.g. 100mm)".
-        # Wait, if the markers are projected, we know their distance in PROJECTOR PIXELS.
-        # If we project them at px=200 and px=600, dist = 400px.
-        # If the user places physical tokens on them, and we know tokens are 100mm apart.
-        # Then PPI = 400px / (100mm / 25.4) = 101.6 PPI.
-
-        # Let's project them at a fixed pixel distance.
-        dist_px = 500
         cx, cy = w // 2, h // 2
-
-        x0, y0 = cx - dist_px // 2, cy
-        x1, y1 = cx + dist_px // 2, cy
-
-        # Draw on canvas (with bounds check)
-        for x, y, marker in [(x0, y0, marker0), (x1, y1, marker1)]:
-            y1_idx, y2_idx = max(0, y - 50), min(h, y + 50)
-            x1_idx, x2_idx = max(0, x - 50), min(w, x + 50)
-
-            # Sub-marker crop if at edges
-            m_y1 = 50 - (y - y1_idx)
-            m_y2 = m_y1 + (y2_idx - y1_idx)
-            m_x1 = 50 - (x - x1_idx)
-            m_x2 = m_x1 + (x2_idx - x1_idx)
-
-            if y2_idx > y1_idx and x2_idx > x1_idx:
-                canvas[y1_idx:y2_idx, x1_idx:x2_idx] = marker[m_y1:m_y2, m_x1:m_x2]
 
         # Text instructions
         cv2.putText(
             canvas,
-            "Place markers 100mm apart on targets.",
-            (cx - 200, cy + 100),
+            "Place physical PPI target (100mm) on table.",
+            (cx - 280, cy),
             cv2.FONT_HERSHEY_SIMPLEX,
-            0.7,
-            (0, 0, 0),
+            0.8,
+            (255, 255, 255),
             2,
+        )
+
+        cv2.putText(
+            canvas,
+            "Target contains markers ID 0 and 1.",
+            (cx - 200, cy + 40),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.6,
+            (200, 200, 200),
+            1,
         )
 
         if self._stage == "DETECTING":
             if self.context.last_camera_frame is not None:
-                # We need to tell calculate_ppi_from_frame that the PROJECTOR distance is dist_px
-                # Wait, calculate_ppi_from_frame assumes it knows the PHYSICAL distance (100mm)
-                # and finds the PROJECTOR distance by detection.
                 ppi = calculate_ppi_from_frame(
                     self.context.last_camera_frame,
                     self.context.projector_matrix,
@@ -814,19 +785,19 @@ class PpiCalibrationScene(Scene):
             cv2.putText(
                 canvas,
                 f"Detected PPI: {self._candidate_ppi:.2f}",
-                (cx - 150, cy - 100),
+                (cx - 150, cy - 80),
                 cv2.FONT_HERSHEY_SIMPLEX,
                 1.0,
-                (0, 150, 0),
+                (0, 255, 0),
                 2,
             )
             cv2.putText(
                 canvas,
                 "VICTORY to save, PALM to retry",
-                (cx - 150, cy + 150),
+                (cx - 200, cy + 120),
                 cv2.FONT_HERSHEY_SIMPLEX,
-                0.7,
-                (0, 0, 0),
+                0.8,
+                (255, 255, 255),
                 2,
             )
 

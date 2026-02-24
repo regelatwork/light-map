@@ -279,8 +279,15 @@ class MapConfigManager:
         """
         found_maps = set()
 
-        # 1. Expand Globs
-        for pattern in patterns:
+        # 1. Expand Globs and handle comma-separated strings
+        expanded_patterns = []
+        for p in patterns:
+            if "," in p:
+                expanded_patterns.extend([part.strip() for part in p.split(",")])
+            else:
+                expanded_patterns.append(p)
+
+        for pattern in expanded_patterns:
             # Handle user expansion like ~
             expanded_pattern = os.path.expanduser(pattern)
             matched_files = glob.glob(expanded_pattern, recursive=True)

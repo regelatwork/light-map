@@ -103,7 +103,13 @@ def main():
     logger.info("Calibration loaded. Camera Resolution: %dx%d", cam_res_w, cam_res_h)
 
     # Register Maps
-    map_sources = args.maps
+    map_sources = []
+    for pattern in args.maps:
+        if "," in pattern:
+            map_sources.extend([p.strip() for p in pattern.split(",")])
+        else:
+            map_sources.append(pattern)
+
     if args.map:
         map_sources.append(args.map)
 

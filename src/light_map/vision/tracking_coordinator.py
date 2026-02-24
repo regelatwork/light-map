@@ -1,8 +1,10 @@
 from __future__ import annotations
 import numpy as np
-from typing import TYPE_CHECKING
+import logging
+from typing import TYPE_CHECKING, Optional
 
 from light_map.common_types import TokenDetectionAlgorithm
+from light_map.vision.token_filter import TokenFilter
 from light_map.vision.token_filter import TokenFilter
 from light_map.token_tracker import TokenTracker
 
@@ -26,10 +28,31 @@ class TrackingCoordinator:
         config: AppConfig,
         map_system: MapSystem,
         map_config: MapConfigManager,
+        camera_matrix: Optional[np.ndarray] = None,
+        dist_coeffs: Optional[np.ndarray] = None,
+        rvec: Optional[np.ndarray] = None,
+        tvec: Optional[np.ndarray] = None,
+        debug_mode: bool = False,
     ):
         """Performs background ArUco tracking and updates the map system tokens."""
         if map_config.get_detection_algorithm() != TokenDetectionAlgorithm.ARUCO:
             return
+
+        # Synchronize calibration and debug mode
+        self.token_tracker.debug_mode = debug_mode
+        if camera_matrix is not None:
+            self.token_tracker.set_aruco_calibration(
+                camera_matrix=camera_matrix, 
+                dist_coeffs=dist_coeffs,
+                rvec=rvec,
+                tvec=tvec
+            )
+        
+        # We also need extrinsics. For now, let ArucoDetector load from disk if not set,
+        # but ideally we should pass it. 
+        # Actually, let's load it here if needed or trust the detector.
+        # But wait! ArucoDetector loads them in __init__.
+        # If we want to support dynamic updates, we should pass them.
 
         map_file = map_system.svg_loader.filename if map_system.svg_loader else None
         current_time = self.time_provider()
@@ -47,6 +70,11 @@ class TrackingCoordinator:
             token_configs=token_configs,
             distortion_model=config.distortion_model,
         )
+
+        if detections:
+            logging.debug(f"TrackingCoord: Detected {len(detections)} tokens raw.")
+            for d in detections:
+                logging.debug(f"  ID {d.id}: world=({d.world_x:.1f}, {d.world_y:.1f})")
 
         # Grid parameters
         grid_spacing = 0.0
@@ -68,6 +96,11 @@ class TrackingCoordinator:
             grid_origin_y=grid_origin_y,
             token_configs=token_configs,
         )
+
+        if tokens:
+            logging.debug(f"TrackingCoord: Filtered {len(tokens)} tokens.")
+            for t in tokens:
+                logging.debug(f"  ID {t.id}: world=({t.world_x:.1f}, {t.world_y:.1f}) snap=({t.grid_x}, {t.grid_y})")
 
         # Update map system
         map_system.ghost_tokens = tokens

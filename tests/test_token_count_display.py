@@ -64,6 +64,11 @@ def app(app_config):
         patch("light_map.interactive_app.FlashCalibrationScene"),
         patch("light_map.interactive_app.MapGridCalibrationScene"),
         patch("light_map.interactive_app.PpiCalibrationScene"),
+        patch(
+            "light_map.interactive_app.InteractiveApp._load_camera_calibration",
+            return_value=(None, None, None, None),
+        ),
+        patch("light_map.vision.tracking_coordinator.TrackingCoordinator.process_aruco_tracking"),
     ):
         _app = InteractiveApp(_app_config)
 
@@ -73,6 +78,9 @@ def app(app_config):
 
 
 def test_token_count_display_no_tokens(app):
+    # Mock tracking to prevent clearing tokens
+    app.tracking_coordinator.process_aruco_tracking = MagicMock()
+    
     # Set the scene to one that shows tokens
     app.current_scene = app.scenes[SceneId.VIEWING]
     app.app_context.show_tokens = True
@@ -89,6 +97,7 @@ def test_token_count_display_no_tokens(app):
 
 
 def test_token_count_display_with_tokens(app):
+    app.tracking_coordinator.process_aruco_tracking = MagicMock()
     app.current_scene = app.scenes[SceneId.VIEWING]
     app.app_context.show_tokens = True
     app.map_system.ghost_tokens = [Token(1, 10, 10), Token(2, 20, 20)]
@@ -114,6 +123,7 @@ def test_token_count_display_with_tokens(app):
 
 @patch("light_map.interactive_app.InteractiveApp._draw_ghost_tokens")
 def test_token_count_hidden_when_toggled_off(mock_draw_tokens, app):
+    app.tracking_coordinator.process_aruco_tracking = MagicMock()
     app.current_scene = app.scenes[SceneId.VIEWING]
     app.app_context.show_tokens = False
     app.map_system.ghost_tokens = [Token(1, 10, 10)]
@@ -142,6 +152,7 @@ def test_token_count_hidden_when_toggled_off(mock_draw_tokens, app):
 
 def test_token_count_hidden_in_menu(app):
     """Verify that tokens are not shown in MenuScene."""
+    app.tracking_coordinator.process_aruco_tracking = MagicMock()
     app.current_scene = app.scenes[SceneId.MENU]
     app.app_context.show_tokens = True
     app.map_system.ghost_tokens = [Token(1, 10, 10)]

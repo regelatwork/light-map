@@ -67,6 +67,8 @@ class MapSystem:
         Sets the zoom level and adjusts pan (x, y) so that the given world coordinate (wx, wy)
         maps to the given screen coordinate (sx, sy).
         """
+        if new_zoom <= 0:
+            new_zoom = 0.001
         self.state.zoom = new_zoom
 
         cx, cy = self.width / 2, self.height / 2

@@ -13,9 +13,13 @@ def app():
         width=100, height=100, projector_matrix=matrix, map_search_patterns=[]
     )
     # Patch all scenes to avoid complex initialization
-    with patch(
-        "light_map.interactive_app.InteractiveApp._initialize_scenes"
-    ) as mock_init:
+    with (
+        patch("light_map.interactive_app.InteractiveApp._initialize_scenes") as mock_init,
+        patch(
+            "light_map.interactive_app.InteractiveApp._load_camera_calibration",
+            return_value=(None, None, None, None),
+        ),
+    ):
         # Create mock scenes for all SceneIds
         scenes = {sid: MagicMock() for sid in SceneId}
         mock_init.return_value = scenes

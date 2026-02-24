@@ -57,14 +57,14 @@ class InteractiveApp:
         self.hand_masker = HandMasker()
 
         # Load Camera Calibration
-        camera_matrix, dist_coeffs = self._load_camera_calibration()
+        camera_matrix, dist_coeffs, rvec, tvec = self._load_camera_calibration()
 
         # Scan for maps if provided
         if config.map_search_patterns:
             self.map_config.scan_for_maps(config.map_search_patterns)
 
         # AppContext (shared state for scenes)
-        self.app_context = self._create_app_context(camera_matrix, dist_coeffs)
+        self.app_context = self._create_app_context(camera_matrix, dist_coeffs, rvec, tvec)
         self.overlay_renderer = OverlayRenderer(self.app_context)
 
         # Scene Management
@@ -74,15 +74,28 @@ class InteractiveApp:
 
     def _load_camera_calibration(
         self,
-    ) -> Tuple[Optional[np.ndarray], Optional[np.ndarray]]:
+    ) -> Tuple[Optional[np.ndarray], Optional[np.ndarray], Optional[np.ndarray], Optional[np.ndarray]]:
+        camera_matrix = None
+        dist_coeffs = None
+        rvec = None
+        tvec = None
+
         if os.path.exists("camera_calibration.npz"):
             calib = np.load("camera_calibration.npz")
+            camera_matrix = calib["camera_matrix"]
+            dist_coeffs = calib["dist_coeffs"]
             logging.info("Loaded camera intrinsics.")
-            return calib["camera_matrix"], calib["dist_coeffs"]
-        return None, None
+
+        if os.path.exists("camera_extrinsics.npz"):
+            ext = np.load("camera_extrinsics.npz")
+            rvec = ext["rvec"]
+            tvec = ext["tvec"]
+            logging.info("Loaded camera extrinsics.")
+
+        return camera_matrix, dist_coeffs, rvec, tvec
 
     def _create_app_context(
-        self, camera_matrix, dist_coeffs, debug_mode=False, show_tokens=True
+        self, camera_matrix, dist_coeffs, rvec=None, tvec=None, debug_mode=False, show_tokens=True
     ) -> AppContext:
         return AppContext(
             app_config=self.config,
@@ -94,6 +107,8 @@ class InteractiveApp:
             distortion_model=self.config.distortion_model,
             camera_matrix=camera_matrix,
             dist_coeffs=dist_coeffs,
+            camera_rvec=rvec,
+            camera_tvec=tvec,
             debug_mode=debug_mode,
             show_tokens=show_tokens,
         )
@@ -133,11 +148,13 @@ class InteractiveApp:
         self.map_system.width = self.config.width
         self.map_system.height = self.config.height
 
-        camera_matrix, dist_coeffs = self._load_camera_calibration()
+        camera_matrix, dist_coeffs, rvec, tvec = self._load_camera_calibration()
 
         self.app_context = self._create_app_context(
             camera_matrix,
             dist_coeffs,
+            rvec,
+            tvec,
             debug_mode=self.app_context.debug_mode,
             show_tokens=self.app_context.show_tokens,
         )
@@ -175,7 +192,15 @@ class InteractiveApp:
 
         # 3. ArUco Background Tracking
         self.tracking_coordinator.process_aruco_tracking(
-            frame, self.config, self.map_system, self.map_config
+            frame, 
+            self.config, 
+            self.map_system, 
+            self.map_config,
+            camera_matrix=self.app_context.camera_matrix,
+            dist_coeffs=self.app_context.dist_coeffs,
+            rvec=self.app_context.camera_rvec,
+            tvec=self.app_context.camera_tvec,
+            debug_mode=self.app_context.debug_mode
         )
 
         # 4. Scene Update

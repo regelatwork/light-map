@@ -26,6 +26,8 @@ class AppContext:
     notifications: NotificationManager
     camera_matrix: Optional[np.ndarray] = None
     dist_coeffs: Optional[np.ndarray] = None
+    camera_rvec: Optional[np.ndarray] = None
+    camera_tvec: Optional[np.ndarray] = None
     distortion_model: Optional[ProjectorDistortionModel] = None
     show_tokens: bool = True
     debug_mode: bool = False

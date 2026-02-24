@@ -46,6 +46,18 @@ class TokenTracker:
         """
         return self._sl_detector.get_scan_pattern(width, height, ppi)
 
+    def set_aruco_calibration(
+        self,
+        camera_matrix: Optional[np.ndarray] = None,
+        dist_coeffs: Optional[np.ndarray] = None,
+        rvec: Optional[np.ndarray] = None,
+        tvec: Optional[np.ndarray] = None,
+    ):
+        if camera_matrix is not None and dist_coeffs is not None:
+            self._aruco_detector.set_calibration(camera_matrix, dist_coeffs)
+        if rvec is not None and tvec is not None:
+            self._aruco_detector.set_extrinsics(rvec, tvec)
+
     def detect_tokens(
         self,
         frame_white: Optional[np.ndarray] = None,

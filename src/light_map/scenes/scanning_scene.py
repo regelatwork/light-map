@@ -241,6 +241,14 @@ class ScanningScene(Scene):
         ppi = map_config.get_ppi()
         token_configs = map_config.get_aruco_configs(map_file)
 
+        # Sync calibration
+        self.token_tracker.set_aruco_calibration(
+            camera_matrix=self.context.camera_matrix,
+            dist_coeffs=self.context.dist_coeffs,
+            rvec=self.context.camera_rvec,
+            tvec=self.context.camera_tvec
+        )
+
         tokens = self.token_tracker.detect_tokens(
             frame_white=frame_white,
             frame_pattern=self._pattern_frame,
@@ -253,6 +261,7 @@ class ScanningScene(Scene):
             ppi=ppi,
             algorithm=algorithm,
             token_configs=token_configs,
+            distortion_model=self.context.distortion_model,
         )
 
         self._last_scan_result_count = len(tokens)

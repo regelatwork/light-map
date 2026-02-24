@@ -1,6 +1,7 @@
 import cv2
 import numpy as np
 import os
+import logging
 from typing import List, Tuple, Optional, Dict, TYPE_CHECKING
 from light_map.common_types import Token
 from light_map.map_system import MapSystem
@@ -30,6 +31,9 @@ class ArucoTokenDetector:
             data = np.load(calibration_file)
             self.camera_matrix = data["camera_matrix"]
             self.dist_coeffs = data["dist_coeffs"]
+            logging.info("ArucoDetector: Loaded camera calibration.")
+        else:
+            logging.warning("ArucoDetector: Camera calibration file not found.")
 
         # Load extrinsics
         if os.path.exists(extrinsics_file):
@@ -39,11 +43,27 @@ class ArucoTokenDetector:
             self.R, _ = cv2.Rodrigues(self.rvec)
             # Camera center in world coordinates: C = -R^T * t
             self.camera_center_world = -self.R.T @ self.tvec.flatten()
+            logging.info("ArucoDetector: Loaded camera extrinsics.")
+        else:
+            logging.warning("ArucoDetector: Camera extrinsics file not found.")
 
         # Initialize ArUco detector
         dictionary = cv2.aruco.getPredefinedDictionary(dictionary_type)
         parameters = cv2.aruco.DetectorParameters()
         self.detector = cv2.aruco.ArucoDetector(dictionary, parameters)
+
+    def set_calibration(self, camera_matrix: np.ndarray, dist_coeffs: np.ndarray):
+        self.camera_matrix = camera_matrix
+        self.dist_coeffs = dist_coeffs
+        logging.info("ArucoDetector: Camera intrinsics updated.")
+
+    def set_extrinsics(self, rvec: np.ndarray, tvec: np.ndarray):
+        self.rvec = rvec
+        self.tvec = tvec
+        self.R, _ = cv2.Rodrigues(self.rvec)
+        # Camera center in world coordinates: C = -R^T * t
+        self.camera_center_world = -self.R.T @ self.tvec.flatten()
+        logging.info("ArucoDetector: Camera extrinsics updated.")
 
     def detect(
         self,
@@ -84,7 +104,12 @@ class ArucoTokenDetector:
             )
 
         tokens = []
-        ppi_mm = ppi / 25.4
+        if ppi <= 0:
+            if self.debug_mode:
+                logging.warning(f"ArucoDetector: PPI is {ppi}, detection will be at (0,0)")
+            ppi_mm = 0.0
+        else:
+            ppi_mm = ppi / 25.4
 
         for marker_id, detections in detections_by_id.items():
             # Sort by area descending
@@ -110,10 +135,18 @@ class ArucoTokenDetector:
                 py = wy_mm * ppi_mm
 
                 if distortion_model:
+                    px_orig, py_orig = px, py
                     px, py = distortion_model.correct_theoretical_point(px, py)
+                    if self.debug_mode:
+                        logging.debug(f"Distortion Correct: ({px_orig:.1f}, {py_orig:.1f}) -> ({px:.1f}, {py:.1f})")
 
                 # Map to SVG units
                 wx_svg, wy_svg = map_system.screen_to_world(px, py)
+
+                if self.debug_mode:
+                    logging.debug(
+                        f"Aruco ID {marker_id}: cam=({u:.1f}, {v:.1f}) -> world_mm=({wx_mm:.1f}, {wy_mm:.1f}) -> proj=({px:.1f}, {py:.1f}) -> svg=({wx_svg:.1f}, {wy_svg:.1f})"
+                    )
 
                 tokens.append(
                     Token(
@@ -152,9 +185,21 @@ class ArucoTokenDetector:
         vz = v_world[2]
 
         if abs(vz) < 1e-6:
+            if self.debug_mode:
+                logging.debug(f"Parallax: vz={vz:.6f} too small, returning (0,0)")
             return 0.0, 0.0  # Should not happen if camera is above table
 
         s = (h - cz) / vz
+        if s < 0:
+            if self.debug_mode:
+                logging.debug(f"Parallax: s={s:.1f} is negative (impossible ray), returning (0,0)")
+            return 0.0, 0.0
+
         p_world = self.camera_center_world + s * v_world
+
+        if self.debug_mode:
+            logging.debug(
+                f"Parallax: u,v=({u:.1f}, {v:.1f}) h={h:.1f} s={s:.1f} cz={cz:.1f} vz={vz:.3f} p_world=({p_world[0]:.1f}, {p_world[1]:.1f}, {p_world[2]:.1f})"
+            )
 
         return p_world[0], p_world[1]

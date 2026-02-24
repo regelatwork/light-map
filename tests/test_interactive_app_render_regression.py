@@ -12,15 +12,15 @@ def app_with_real_scenes():
         width=100, height=100, projector_matrix=matrix, map_search_patterns=[]
     )
 
-    with patch(
-        "light_map.interactive_app.InteractiveApp._load_camera_calibration",
-        return_value=(None, None),
+    with (
+        patch(
+            "light_map.interactive_app.InteractiveApp._load_camera_calibration",
+            return_value=(None, None, None, None),
+        ),
+        patch("light_map.map_config.MapConfigManager._load", return_value=MagicMock()),
     ):
-        with patch(
-            "light_map.map_config.MapConfigManager._load", return_value=MagicMock()
-        ):
-            _app = InteractiveApp(config)
-            return _app
+        _app = InteractiveApp(config)
+        return _app
 
 
 def test_process_frame_returns_valid_image(app_with_real_scenes):

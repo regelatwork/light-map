@@ -25,6 +25,8 @@ def mock_app_context():
     mock_context.map_config_manager.data.maps.get.return_value = None
     mock_context.map_config_manager.get_ppi.return_value = 96.0
     mock_context.notifications = MagicMock()
+    mock_context.camera_rvec = np.zeros(3)
+    mock_context.camera_tvec = np.zeros(3)
 
     return mock_context
 

@@ -2,7 +2,7 @@ import pytest
 import numpy as np
 import cv2
 import os
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 from light_map.vision.aruco_detector import ArucoTokenDetector
 from light_map.map_system import MapSystem
 

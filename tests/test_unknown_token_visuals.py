@@ -148,3 +148,39 @@ def test_draw_ghost_tokens_duplicate(app):
                 assert args[2][1] > 300  # Should be below the center
                 break
         assert found_dup_text, "'DUPLICATE' label not found for duplicate token"
+
+
+def test_token_name_position(app):
+    app.current_scene = app.scenes[SceneId.VIEWING]
+    app.app_context.show_tokens = True
+
+    # Setup a ghost token at (500, 500)
+    app.map_system.ghost_tokens = [
+        Token(id=1, world_x=500, world_y=500),
+    ]
+    app.map_system.world_to_screen = MagicMock(return_value=(500, 500))
+    app.app_context.map_config_manager.get_ppi.return_value = 100.0
+
+    # Resolved token info (size 1 inch = 100 pixels, so radius = 50)
+    app.app_context.map_config_manager.resolve_token_profile.return_value = (
+        ResolvedToken(
+            name="Test Hero", type="PC", size=1, height_mm=25.0, is_known=True
+        )
+    )
+
+    frame = np.zeros((1000, 1000, 3), dtype=np.uint8)
+
+    with patch("cv2.putText") as mock_putText:
+        app._draw_ghost_tokens(frame)
+
+        # Check for the name "Test Hero"
+        found_name = False
+        for call in mock_putText.call_args_list:
+            args, _ = call
+            if args[1] == "Test Hero":
+                found_name = True
+                # Position is at args[2]. Center sy is 500, radius is 50.
+                # Should be sy + radius + 20 = 570
+                assert args[2][1] == 570
+                break
+        assert found_name, "Token name label not found"

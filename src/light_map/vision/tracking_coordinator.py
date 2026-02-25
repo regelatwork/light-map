@@ -5,7 +5,6 @@ from typing import TYPE_CHECKING, Optional
 
 from light_map.common_types import TokenDetectionAlgorithm
 from light_map.vision.token_filter import TokenFilter
-from light_map.vision.token_filter import TokenFilter
 from light_map.token_tracker import TokenTracker
 
 if TYPE_CHECKING:

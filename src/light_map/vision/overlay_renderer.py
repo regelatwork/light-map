@@ -80,7 +80,7 @@ class OverlayRenderer:
             cv2.putText(
                 image,
                 resolved.name,
-                (int(sx) - radius, int(sy) - radius - 10),
+                (int(sx) - radius, int(sy) + radius + 20),
                 cv2.FONT_HERSHEY_SIMPLEX,
                 0.5,
                 color,

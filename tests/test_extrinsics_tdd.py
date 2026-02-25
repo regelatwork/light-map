@@ -1,6 +1,5 @@
 import pytest
 import numpy as np
-import math
 from unittest.mock import MagicMock, patch
 from light_map.scenes.calibration_scenes import ExtrinsicsCalibrationScene
 from light_map.core.scene import HandInput

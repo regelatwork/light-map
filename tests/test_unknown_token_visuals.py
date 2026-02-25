@@ -7,7 +7,9 @@ from light_map.map_config import MapConfigManager, ResolvedToken
 
 
 @pytest.fixture
-def app_config():
+def app_config(tmp_path):
+    from light_map.core.storage import StorageManager
+    storage = StorageManager(base_dir=str(tmp_path))
     matrix = np.eye(3, dtype=np.float32)
     mock_map_config = MagicMock(spec=MapConfigManager)
     mock_map_config.data = MagicMock()
@@ -20,7 +22,11 @@ def app_config():
     mock_map_config.get_map_viewport.return_value = MagicMock()
 
     config = AppConfig(
-        width=1000, height=1000, projector_matrix=matrix, map_search_patterns=[]
+        width=1000,
+        height=1000,
+        projector_matrix=matrix,
+        map_search_patterns=[],
+        storage_manager=storage,
     )
     return config, mock_map_config
 

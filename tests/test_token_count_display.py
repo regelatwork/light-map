@@ -35,7 +35,9 @@ class MockResults:
 
 
 @pytest.fixture
-def app_config():
+def app_config(tmp_path):
+    from light_map.core.storage import StorageManager
+    storage = StorageManager(base_dir=str(tmp_path))
     matrix = np.eye(3, dtype=np.float32)
     # Create a mock MapConfigManager for building the menu
     mock_map_config = MagicMock(spec=MapConfigManager)
@@ -49,7 +51,11 @@ def app_config():
     mock_map_config.get_map_viewport.return_value = MagicMock()  # Mock get_map_viewport
 
     config = AppConfig(
-        width=100, height=100, projector_matrix=matrix, map_search_patterns=[]
+        width=100,
+        height=100,
+        projector_matrix=matrix,
+        map_search_patterns=[],
+        storage_manager=storage,
     )
     return config, mock_map_config
 

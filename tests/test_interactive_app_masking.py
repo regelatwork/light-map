@@ -5,7 +5,9 @@ from light_map.interactive_app import InteractiveApp, AppConfig
 
 
 @pytest.fixture
-def app():
+def app(tmp_path):
+    from light_map.core.storage import StorageManager
+    storage = StorageManager(base_dir=str(tmp_path))
     config = AppConfig(
         width=100,
         height=100,
@@ -13,6 +15,7 @@ def app():
         enable_hand_masking=True,
         hand_mask_padding=0,
         hand_mask_blur=0,
+        storage_manager=storage,
     )
     return InteractiveApp(config)
 

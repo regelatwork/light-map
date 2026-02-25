@@ -5,11 +5,17 @@ from light_map.interactive_app import InteractiveApp, AppConfig
 
 
 @pytest.fixture
-def app_with_real_scenes():
+def app_with_real_scenes(tmp_path):
     """App with real scenes but mocked peripherals."""
+    from light_map.core.storage import StorageManager
+    storage = StorageManager(base_dir=str(tmp_path))
     matrix = np.eye(3, dtype=np.float32)
     config = AppConfig(
-        width=100, height=100, projector_matrix=matrix, map_search_patterns=[]
+        width=100,
+        height=100,
+        projector_matrix=matrix,
+        map_search_patterns=[],
+        storage_manager=storage,
     )
 
     with (

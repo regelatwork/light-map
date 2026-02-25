@@ -7,10 +7,16 @@ from light_map.core.scene import SceneTransition
 
 
 @pytest.fixture
-def app():
+def app(tmp_path):
+    from light_map.core.storage import StorageManager
+    storage = StorageManager(base_dir=str(tmp_path))
     matrix = np.eye(3, dtype=np.float32)
     config = AppConfig(
-        width=100, height=100, projector_matrix=matrix, map_search_patterns=[]
+        width=100,
+        height=100,
+        projector_matrix=matrix,
+        map_search_patterns=[],
+        storage_manager=storage,
     )
     # Patch all scenes to avoid complex initialization
     with (

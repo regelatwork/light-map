@@ -10,9 +10,11 @@ from light_map.common_types import (
     ViewportState,
     TokenDetectionAlgorithm,
     GmPosition,
+    NamingStyle,
 )
 from light_map.session_manager import SessionManager
 from light_map.core.storage import StorageManager
+from light_map.token_naming import generate_token_name
 
 _DEFAULT_STORAGE = StorageManager()
 STATE_FILE = _DEFAULT_STORAGE.get_config_path("map_state.json")
@@ -76,6 +78,7 @@ class GlobalMapConfig:
     hand_mask_padding: int = 30
     hand_mask_blur: int = 15
     gm_position: GmPosition = GmPosition.NONE
+    naming_style: NamingStyle = NamingStyle.SCI_FI
 
 
 @dataclass
@@ -147,6 +150,9 @@ class MapConfigManager:
                 hand_mask_padding=global_data.get("hand_mask_padding", 30),
                 hand_mask_blur=global_data.get("hand_mask_blur", 15),
                 gm_position=GmPosition(global_data.get("gm_position", "None")),
+                naming_style=NamingStyle(
+                    global_data.get("naming_style", NamingStyle.SCI_FI)
+                ),
             )
 
             # Deserialize Maps
@@ -227,6 +233,13 @@ class MapConfigManager:
 
     def set_flash_intensity(self, intensity: int):
         self.data.global_settings.flash_intensity = max(0, min(255, intensity))
+        self.save()
+
+    def get_naming_style(self) -> NamingStyle:
+        return self.data.global_settings.naming_style
+
+    def set_naming_style(self, style: NamingStyle):
+        self.data.global_settings.naming_style = style
         self.save()
 
     def get_detection_algorithm(self) -> TokenDetectionAlgorithm:
@@ -399,8 +412,13 @@ class MapConfigManager:
 
         # 3. Fallback Generic if still not found
         if not definition:
+            name = generate_token_name(
+                aruco_id,
+                map_name=map_name or "",
+                style=self.data.global_settings.naming_style,
+            )
             return ResolvedToken(
-                name=f"Unknown Token #{aruco_id}",
+                name=name,
                 type="NPC",
                 size=1,
                 height_mm=10.0,

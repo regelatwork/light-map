@@ -24,6 +24,13 @@ class TokenDetectionAlgorithm(StrEnum):
     ARUCO = "ARUCO"
 
 
+class NamingStyle(StrEnum):
+    NUMBERED = "NUMBERED"
+    AMERICAN = "AMERICAN"
+    SCI_FI = "SCI_FI"
+    FANTASY = "FANTASY"
+
+
 class MenuActions(StrEnum):
     TOGGLE_DEBUG_MODE = "TOGGLE_DEBUG_MODE"
     TOGGLE_DEBUG = "TOGGLE_DEBUG"

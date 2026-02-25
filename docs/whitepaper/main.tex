@@ -38,7 +38,7 @@ This paper focuses on the first two challenges, describing the mathematical foun
 
 The core of our tracking system relies on standard computer vision models. The camera is modeled as a pinhole device, where a 3D point $(X, Y, Z)$ is projected onto the 2D image plane $(u, v)$ through the intrinsic camera matrix $K$ and extrinsic parameters $[R|t]$ representing rotation and translation.
 
-The projector in our system is mathematically treated as an inverse camera, projecting a 2D digital image onto a physical surface. To map points between the camera's image plane and the projector's output plane on a flat tabletop surface, we utilize homographies. A homography $H$ is a $3 	imes 3$ matrix that relates two planes such that $p_{proj} = H \cdot p_{cam}$, allowing the system to correctly position digital overlays relative to physical objects viewed by the camera. Furthermore, our system implements parallax correction by intersecting camera rays with a 3D plane at a known height ($z=h$), mapping 2D marker detections back to real-world 3D coordinates.
+The projector in our system is mathematically treated as an inverse camera, projecting a 2D digital image onto a physical surface. To map points between the camera's image plane and the projector's output plane on a flat tabletop surface, we utilize homographies. A homography $H$ is a $3 \times 3$ matrix that relates two planes such that $p_{proj} = H \cdot p_{cam}$, allowing the system to correctly position digital overlays relative to physical objects viewed by the camera. Furthermore, our system implements parallax correction by intersecting camera rays with a 3D plane at a known height ($z=h$), mapping 2D marker detections back to real-world 3D coordinates.
 
 \section{Calibration Workflow}
 
@@ -55,15 +55,15 @@ Achieving precision requires a robust calibration pipeline, which is divided int
 Tokens are tracked using two distinct methods to provide flexibility and robustness.
 
 \subsection{ArUco-based Tracking}
-For marked tokens, we employ ArUco markers. The detection algorithm identifies the square contours of the markers, extracts the internal binary code to determine the ID, and estimates the 2D pose using the calibrated camera parameters. When multiple detections of the same ID occur, the system resolves duplicates by selecting the detection with the largest area. To account for marker height, we apply parallax correction by projecting rays through the camera center to intersect the $z=h$ plane, yielding accurate physical coordinates mapping back to the $z=0$ table surface.
+For marked tokens, we employ ArUco markers. The detection algorithm identifies the square contours of the markers, extracts the internal binary code to determine the ID, and estimates the 2D pose using the calibrated camera parameters. When multiple detections of the same ID occur, the system resolves duplicates by designating the detection with the largest area as the primary token, while flagging others as duplicates for visual rendering. To account for marker height, we apply parallax correction by projecting rays through the camera center to intersect the $z=h$ plane, yielding accurate physical coordinates mapping back to the $z=0$ table surface.
 
 \subsection{Structured Light/Flash Detection}
 For unmarked, physical objects, we utilize a structured light approach. The projector emits a jittered staggered (hexagonal) dot grid pattern, and the camera captures the surface. By converting the captured frame to grayscale and applying dynamic thresholding, the system isolates physical objects that occlude or distort the projection. It identifies dots that have shifted significantly from their expected positions or are missing entirely, adding these observations to the set of token candidate points. These candidate points are mapped through the projector transformation with global drift correction to cluster and identify tokens.
 
 \subsection{Noise Mitigation}
-To ensure stable tracking, we apply filtering algorithms and confidence scoring. The tokens snap to the grid using continuous rectangle placement and mean-shift clustering if grid alignment is enabled, preventing duplicate assignments to a single cell and ensuring smooth overlays.
+To ensure stable tracking, we apply temporal filtering, occlusion buffering, and confidence scoring. For structured light detection, token candidates are clustered using continuous rectangle placement and mean-shift clustering. When grid alignment is enabled, all tracked tokens snap to the virtual grid, preventing duplicate assignments to a single cell and ensuring smooth overlays.
 
-\sectionsection{Implementation}
+\section{Implementation}
 
 The software architecture is built on Python, utilizing OpenCV for core computer vision tasks, MediaPipe for hand-masking, and GStreamer for low-latency camera capture pipelines. The system handles processing using dedicated multithreaded pipelines (e.g., \texttt{CameraPipeline}) that safely manage shared state via threading locks. Tracking logic, vision processing, and rendering are separated into distinct modules to facilitate testing and robust execution.
 

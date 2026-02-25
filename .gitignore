@@ -16,3 +16,11 @@ map_state.json
 *.png
 
 light_map.log
+
+# LaTeX artifacts
+docs/whitepaper/*.aux
+docs/whitepaper/*.log
+docs/whitepaper/*.out
+docs/whitepaper/*.pdf
+docs/whitepaper/*.gz
+docs/whitepaper/*.toc

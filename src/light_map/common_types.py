@@ -90,7 +90,7 @@ class AppConfig:
     distortion_model: Optional[Any] = None
     storage_manager: Optional[Any] = None
     log_level: str = "INFO"
-    log_file: str = _DEFAULT_STORAGE.get_data_path("light_map.log")
+    log_file: str = _DEFAULT_STORAGE.get_state_path("light_map.log")
 
     # Masking settings
     enable_hand_masking: bool = False

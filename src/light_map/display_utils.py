@@ -2,6 +2,7 @@ import cv2
 import tkinter as tk
 import logging
 import sys
+import os
 from logging.handlers import RotatingFileHandler
 from typing import Tuple, Optional
 from light_map.core.storage import StorageManager
@@ -15,10 +16,10 @@ def setup_logging(level=logging.INFO, log_file: Optional[str] = None):
 
     Args:
         level: Logging level (e.g., logging.INFO).
-        log_file: Path to the log file. Defaults to XDG-compliant path if None.
+        log_file: Path to the log file. Defaults to XDG-compliant state path if None.
     """
     if log_file is None:
-        log_file = _DEFAULT_STORAGE.get_data_path("light_map.log")
+        log_file = _DEFAULT_STORAGE.get_state_path("light_map.log")
 
     # Clear existing handlers to avoid duplicates if called multiple times
     root_logger = logging.getLogger()
@@ -38,6 +39,10 @@ def setup_logging(level=logging.INFO, log_file: Optional[str] = None):
 
     # File Handler (with rotation)
     try:
+        log_dir = os.path.dirname(log_file)
+        if log_dir:
+            os.makedirs(log_dir, exist_ok=True)
+
         file_handler = RotatingFileHandler(
             log_file, maxBytes=10 * 1024 * 1024, backupCount=5
         )

@@ -66,9 +66,9 @@ def main():
     log_level = getattr(logging, args.log_level.upper())
     log_file = args.log_file
     if log_file and not os.path.isabs(log_file):
-        log_file = storage.get_data_path(log_file)
+        log_file = storage.get_state_path(log_file)
     elif not log_file:
-        log_file = storage.get_data_path("light_map.log")
+        log_file = storage.get_state_path("light_map.log")
 
     setup_logging(level=log_level, log_file=log_file)
     logger = logging.getLogger(__name__)

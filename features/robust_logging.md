@@ -28,8 +28,11 @@ import logging
 import sys
 from logging.handlers import RotatingFileHandler
 
-def setup_logging(level=logging.INFO, log_file="light_map.log"):
+def setup_logging(level=logging.INFO, log_file=None):
     """Configures the root logger with console and file handlers."""
+    if log_file is None:
+        log_file = _DEFAULT_STORAGE.get_state_path("light_map.log")
+
     # Format: 2026-02-23 02:23:03,009 - INFO - [hand_tracker.py:123] - Message
     formatter = logging.Formatter(
         "%(asctime)s - %(levelname)s - [%(filename)s:%(lineno)d] - %(message)s"
@@ -44,11 +47,17 @@ def setup_logging(level=logging.INFO, log_file="light_map.log"):
     root_logger.addHandler(console_handler)
 
     # File Handler (Consolidated light_map.log with rotation)
-    file_handler = RotatingFileHandler(
-        log_file, maxBytes=10*1024*1024, backupCount=5
-    )
-    file_handler.setFormatter(formatter)
-    root_logger.addHandler(file_handler)
+    try:
+        log_dir = os.path.dirname(log_file)
+        if log_dir:
+            os.makedirs(log_dir, exist_ok=True)
+        file_handler = RotatingFileHandler(
+            log_file, maxBytes=10*1024*1024, backupCount=5
+        )
+        file_handler.setFormatter(formatter)
+        root_logger.addHandler(file_handler)
+    except Exception as e:
+        print(f"Warning: Failed to initialize file logging: {e}")
 ```
 
 ### 2. Consolidated Attribution

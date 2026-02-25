@@ -69,7 +69,7 @@ Persistent configuration for the map system and global application settings. Man
 
 ### `light_map.log`
 
-Log output from all Light Map applications (`hand_tracker.py`, `calibrate.py`, `projector_calibration.py`). Uses `RotatingFileHandler` with 10MB max size and 5 backups. Entries are attributed to their originating file and line number (e.g., `[hand_tracker.py:123]`).
+Log output from all Light Map applications (`hand_tracker.py`, `calibrate.py`, `projector_calibration.py`). Stored in the XDG-compliant state directory (usually `~/.local/state/light_map/`). Uses `RotatingFileHandler` with 10MB max size and 5 backups. Entries are attributed to their originating file and line number (e.g., `[hand_tracker.py:123]`).
 
 ### `session.json`
 

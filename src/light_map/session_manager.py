@@ -6,15 +6,18 @@ import logging
 from dataclasses import asdict
 from typing import Optional
 from light_map.common_types import SessionData, Token, ViewportState
+from light_map.core.storage import StorageManager
 
-SESSION_DIR = "sessions"
+_DEFAULT_STORAGE = StorageManager()
+SESSION_DIR = os.path.join(_DEFAULT_STORAGE.get_data_dir(), "sessions")
 
 
 class SessionManager:
     @staticmethod
-    def _ensure_session_dir():
-        if not os.path.exists(SESSION_DIR):
-            os.makedirs(SESSION_DIR)
+    def _ensure_session_dir(session_dir: Optional[str] = None):
+        target = session_dir or SESSION_DIR
+        if not os.path.exists(target):
+            os.makedirs(target, exist_ok=True)
 
     @staticmethod
     def get_session_path(map_path: str, session_dir: Optional[str] = None) -> str:
@@ -35,10 +38,7 @@ class SessionManager:
     def save_for_map(
         map_path: str, data: SessionData, session_dir: Optional[str] = None
     ) -> bool:
-        if session_dir:
-            os.makedirs(session_dir, exist_ok=True)
-        else:
-            SessionManager._ensure_session_dir()
+        SessionManager._ensure_session_dir(session_dir)
         path = SessionManager.get_session_path(map_path, session_dir)
         # Ensure data stores correct map file path
         data.map_file = map_path

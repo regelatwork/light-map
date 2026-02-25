@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import time
 import logging
+import os
 from enum import Enum, auto
 from typing import TYPE_CHECKING, List, Optional
 
@@ -294,7 +295,11 @@ class ScanningScene(Scene):
                 ),
                 tokens=tokens,
             )
-            SessionManager.save_for_map(map_file, session)  # Helper uses hash
+            storage = self.context.app_config.storage_manager
+            session_dir = None
+            if storage:
+                session_dir = os.path.join(storage.get_data_dir(), "sessions")
+            SessionManager.save_for_map(map_file, session, session_dir=session_dir)
             logging.info("Session saved for %s", map_file)
         else:
             logging.info("No map loaded, session not saved to disk (memory only).")

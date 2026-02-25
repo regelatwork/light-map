@@ -12,8 +12,10 @@ from light_map.common_types import (
     GmPosition,
 )
 from light_map.session_manager import SessionManager
+from light_map.core.storage import StorageManager
 
-STATE_FILE = "map_state.json"
+_DEFAULT_STORAGE = StorageManager()
+STATE_FILE = _DEFAULT_STORAGE.get_config_path("map_state.json")
 
 
 @dataclass
@@ -84,13 +86,11 @@ class MapConfigData:
 
 class MapConfigManager:
     def __init__(self, filename: Optional[str] = None, storage: Optional[Any] = None):
-        self.storage = storage
+        self.storage = storage or _DEFAULT_STORAGE
         if filename:
             self.filename = filename
-        elif storage:
-            self.filename = storage.get_config_path("map_state.json")
         else:
-            self.filename = STATE_FILE
+            self.filename = self.storage.get_config_path("map_state.json")
         self.data = self._load()
 
     def _load(self) -> MapConfigData:

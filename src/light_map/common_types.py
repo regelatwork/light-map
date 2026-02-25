@@ -3,6 +3,7 @@ from dataclasses import dataclass, field
 from typing import Any, List, Optional, Tuple
 
 import numpy as np
+from light_map.core.storage import StorageManager
 
 
 class GestureType(StrEnum):
@@ -76,6 +77,9 @@ class GmPosition(StrEnum):
     SOUTH_EAST = "South East"
 
 
+_DEFAULT_STORAGE = StorageManager()
+
+
 @dataclass
 class AppConfig:
     width: int
@@ -86,7 +90,7 @@ class AppConfig:
     distortion_model: Optional[Any] = None
     storage_manager: Optional[Any] = None
     log_level: str = "INFO"
-    log_file: str = "light_map.log"
+    log_file: str = _DEFAULT_STORAGE.get_data_path("light_map.log")
 
     # Masking settings
     enable_hand_masking: bool = False

@@ -62,7 +62,7 @@ If the map's grid size is unknown or the map is an image, you can manually calib
 
 To achieve 1:1 mapping (1 inch on map = 1 inch in real life), you must calibrate the **Projector Pixels Per Inch (PPI)**.
 
-1. **Generate Target**: Run `python generate_calibration_target.py` to create `calibration_target.svg`.
+1. **Generate Target**: Run `python scripts/generate_calibration_target.py` to create `calibration_target.svg`.
 1. **Print**: Print the target at 100% scale. It contains two **ArUco markers (ID 0 and 1)** exactly 100mm apart.
 1. **Calibrate**: Select **Main Menu > Calibration > 3. Physical PPI** (or **Map Settings > Calibrate PPI**).
 1. **Detect**: Place the printed target on the surface. The system will detect the markers and calculate the PPI.

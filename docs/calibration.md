@@ -66,7 +66,7 @@ PPI calibration tells the system how many projector pixels represent one physica
 
 ### Usage
 
-1. **Print Target**: Run `python generate_calibration_target.py` and print the resulting `calibration_target.svg` at 100% scale.
+1. **Print Target**: Run `python scripts/generate_calibration_target.py` and print the resulting `calibration_target.svg` at 100% scale.
 1. **Place Markers**: Place the printed target on the table. It contains two ArUco markers (IDs 0 and 1) exactly 100mm apart.
 1. **Detect**: Select **Calibration > 3. Physical PPI** (or **Map Settings > Calibrate PPI**). The system will detect the markers and calculate the PPI.
 1. **Confirm**: A 1-inch grid will be projected. Verify its accuracy and use the **Victory** gesture to save.

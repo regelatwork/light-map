@@ -3,11 +3,57 @@ import tkinter as tk
 import logging
 import sys
 import os
+import numpy as np
 from logging.handlers import RotatingFileHandler
 from typing import Tuple, Optional
 from light_map.core.storage import StorageManager
 
 _DEFAULT_STORAGE = StorageManager()
+
+
+def draw_text_with_background(
+    img: np.ndarray,
+    text: str,
+    pos: Tuple[int, int],
+    font=cv2.FONT_HERSHEY_SIMPLEX,
+    scale=0.5,
+    color=(255, 255, 255),
+    thickness=1,
+    bg_color=(0, 0, 0),
+    alpha=0.6,
+    padding=5,
+):
+    """Draws text with a semi-transparent rectangular background."""
+    text = str(text)
+    (text_width, text_height), baseline = cv2.getTextSize(text, font, scale, thickness)
+    x, y = pos
+
+    # Background rectangle
+    bg_rect_x1 = x - padding
+    bg_rect_y1 = y - text_height - padding
+    bg_rect_x2 = x + text_width + padding
+    bg_rect_y2 = y + baseline + padding
+
+    # Clip to image boundaries
+    h, w = img.shape[:2]
+    bg_rect_x1 = max(0, bg_rect_x1)
+    bg_rect_y1 = max(0, bg_rect_y1)
+    bg_rect_x2 = min(w, bg_rect_x2)
+    bg_rect_y2 = min(h, bg_rect_y2)
+
+    if bg_rect_x2 <= bg_rect_x1 or bg_rect_y2 <= bg_rect_y1:
+        # Rectangle is outside or has zero area
+        cv2.putText(img, text, (x, y), font, scale, color, thickness)
+        return
+
+    # Draw background with alpha blending
+    sub_img = img[bg_rect_y1:bg_rect_y2, bg_rect_x1:bg_rect_x2]
+    rect = np.full(sub_img.shape, bg_color, dtype=np.uint8)
+    res = cv2.addWeighted(sub_img, 1 - alpha, rect, alpha, 0)
+    img[bg_rect_y1:bg_rect_y2, bg_rect_x1:bg_rect_x2] = res
+
+    # Draw text
+    cv2.putText(img, text, (x, y), font, scale, color, thickness)
 
 
 def setup_logging(level=logging.INFO, log_file: Optional[str] = None):

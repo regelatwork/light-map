@@ -36,6 +36,7 @@ from light_map.vision.tracking_coordinator import TrackingCoordinator
 from light_map.vision.input_processor import InputProcessor
 from light_map.vision.overlay_renderer import OverlayRenderer
 from light_map.vision.hand_masker import HandMasker
+from light_map.display_utils import draw_text_with_background
 
 
 class InteractiveApp:
@@ -407,7 +408,7 @@ class InteractiveApp:
             # Draw Token Count
             count = len(self.map_system.ghost_tokens)
             status = "" if self.app_context.show_tokens else " (Hidden)"
-            cv2.putText(
+            draw_text_with_background(
                 frame,
                 f"Tokens: {count}{status}",
                 (50, self.config.height - 140),

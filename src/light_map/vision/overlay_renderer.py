@@ -4,7 +4,7 @@ import math
 import numpy as np
 from typing import List, TYPE_CHECKING
 
-from light_map.display_utils import draw_dashed_circle
+from light_map.display_utils import draw_dashed_circle, draw_text_with_background
 
 if TYPE_CHECKING:
     from light_map.core.app_context import AppContext
@@ -52,7 +52,7 @@ class OverlayRenderer:
 
             if t.is_duplicate:
                 draw_dashed_circle(image, (int(sx), int(sy)), radius, color, 2)
-                cv2.putText(
+                draw_text_with_background(
                     image,
                     "DUPLICATE",
                     (int(sx) - radius, int(sy) + radius + 20),
@@ -77,7 +77,7 @@ class OverlayRenderer:
                 cv2.circle(image, (int(sx), int(sy)), radius, color, 2)
 
             # Draw name
-            cv2.putText(
+            draw_text_with_background(
                 image,
                 resolved.name,
                 (int(sx) - radius, int(sy) + radius + 20),
@@ -94,7 +94,7 @@ class OverlayRenderer:
         current_scene_name: str,
         inputs: List[HandInput],
     ):
-        cv2.putText(
+        draw_text_with_background(
             image,
             f"FPS: {int(fps)} | Scene: {current_scene_name}",
             (50, 50),
@@ -106,7 +106,7 @@ class OverlayRenderer:
         for hand_input in inputs:
             px, py = hand_input.proj_pos
             label = hand_input.gesture.name
-            cv2.putText(
+            draw_text_with_background(
                 image,
                 label,
                 (px, py - 40),
@@ -119,7 +119,7 @@ class OverlayRenderer:
 
     def draw_notifications(self, image: np.ndarray):
         for i, msg in enumerate(self.context.notifications.get_active_notifications()):
-            cv2.putText(
+            draw_text_with_background(
                 image,
                 msg,
                 (50, 100 + i * 40),

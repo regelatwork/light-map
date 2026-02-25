@@ -9,6 +9,7 @@ import numpy as np
 import os
 from collections import Counter
 import cv2
+from light_map.display_utils import draw_text_with_background
 
 from light_map.core.scene import Scene, SceneTransition
 from light_map.core.map_interaction import MapInteractionController
@@ -213,22 +214,22 @@ class IntrinsicsCalibrationScene(Scene):
         # Overlay instructions or status based on stage
         if self._stage == "CAPTURE":
             text = f"Capture {len(self._captured_images)}/{self._required_images} images (Fist)"
-            cv2.putText(
+            draw_text_with_background(
                 frame, text, (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2
             )
         elif self._stage == "PROCESSING":
             text = "Processing..."
-            cv2.putText(
+            draw_text_with_background(
                 frame, text, (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 255), 2
             )
         elif self._stage == "DONE":
             text = "Calibration Complete! Returning to Menu."
-            cv2.putText(
+            draw_text_with_background(
                 frame, text, (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2
             )
         elif self._stage == "ERROR":
             text = "Calibration Failed! Returning to Menu."
-            cv2.putText(
+            draw_text_with_background(
                 frame, text, (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2
             )
 
@@ -606,7 +607,7 @@ class ExtrinsicsCalibrationScene(Scene):
                 # Metadata
                 height = info.get("height", 0.0)
                 aid = info.get("aid", 0)
-                cv2.putText(
+                draw_text_with_background(
                     canvas,
                     f"{label}: {height}mm",
                     (tx - half_size, ty - half_size - 10),
@@ -658,7 +659,7 @@ class ExtrinsicsCalibrationScene(Scene):
             cv2.circle(canvas, (tx, ty), 3, (0, 0, 0), -1)
 
             # Label below
-            cv2.putText(
+            draw_text_with_background(
                 canvas,
                 label,
                 (tx - half_size, ty + half_size + 20),
@@ -740,10 +741,7 @@ class ExtrinsicsCalibrationScene(Scene):
             )
             status_text = "GOOD" if rms < 2.0 else "FAIR" if rms < 5.0 else "POOR"
 
-            cv2.rectangle(
-                canvas, (w // 2 - 150, 20), (w // 2 + 150, 80), (50, 50, 50), -1
-            )
-            cv2.putText(
+            draw_text_with_background(
                 canvas,
                 f"Error: {rms:.2f} px ({status_text})",
                 (w // 2 - 130, 60),
@@ -751,6 +749,7 @@ class ExtrinsicsCalibrationScene(Scene):
                 0.8,
                 status_color,
                 2,
+                bg_color=(50, 50, 50),
             )
 
         # Instructions
@@ -759,7 +758,7 @@ class ExtrinsicsCalibrationScene(Scene):
         )
         if self._stage == "VALIDATION":
             instr = "VICTORY to Accept, FIST (hold 2s) to Retry"
-        cv2.putText(
+        draw_text_with_background(
             canvas, instr, (50, h - 50), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 0, 0), 2
         )
 

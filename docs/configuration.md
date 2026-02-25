@@ -56,8 +56,6 @@ Persistent configuration for the map system and global application settings. Man
   - `flash_intensity`: Brightness used for token detection. (Calibrate via **Main Menu > Session > Calibrate Flash**)
   - `last_used_map`: Path to the last opened SVG map.
   - `detection_algorithm`: Algorithm used for token tracking. (Toggle via **Main Menu > Session > Algorithm**)
-  - `token_profiles`: Definitions of token sizes (small, medium, large, huge) and their physical heights.
-  - `aruco_defaults`: Global default names and profiles for ArUco marker IDs.
   - `enable_hand_masking`: Toggle for projection masking. (Toggle via **Main Menu > Options > Masking > Projection Masking**)
   - `gm_position`: Direction where the GM is sitting. (Set via **Main Menu > Options > Masking > GM Position**)
 - **`maps`**: A dictionary keyed by SVG map paths, storing map-specific data:
@@ -66,6 +64,13 @@ Persistent configuration for the map system and global application settings. Man
   - `grid_origin_svg_x/y`: Origin of the coordinate system on the map.
   - `physical_unit_inches`: Physical size of a grid square (usually 1.0).
   - `aruco_overrides`: Map-specific overrides for ArUco marker IDs.
+
+### `tokens.json`
+
+Stores global token definitions, including size profiles and default ArUco marker assignments. Managed by `MapConfigManager`. This file is separate to allow for easier sharing and management of token libraries.
+
+- **`token_profiles`**: Definitions of token sizes (small, medium, large, huge) and their physical heights.
+- **`aruco_defaults`**: Global default names and profiles for ArUco marker IDs.
 
 ### `light_map.log`
 
@@ -96,11 +101,11 @@ Contains constants and configuration for the gesture-controlled menu system:
 
 ## Manual Configuration Examples
 
-While some settings are managed via the UI and calibration scripts, others (like ArUco token definitions) are currently best managed by manually editing `map_state.json`.
+While some settings are managed via the UI and calibration scripts, others (like ArUco token definitions) are currently best managed by manually editing the configuration files.
 
-### Defining Token Size Profiles
+### Defining Token Size Profiles (in `tokens.json`)
 
-Profiles define standard physical dimensions for different types of tokens. These are used globally in the `global.token_profiles` section.
+Profiles define standard physical dimensions for different types of tokens. These are used globally in the `token_profiles` section of `tokens.json`.
 
 ```json
 "token_profiles": {
@@ -111,7 +116,7 @@ Profiles define standard physical dimensions for different types of tokens. Thes
 }
 ```
 
-### Global ArUco Marker Defaults
+### Global ArUco Marker Defaults (in `tokens.json`)
 
 Assign names, types, and profiles to ArUco marker IDs globally. These apply across all maps unless overridden.
 

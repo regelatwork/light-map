@@ -91,22 +91,42 @@ class MapConfigManager:
         self.storage = storage or _DEFAULT_STORAGE
         if filename:
             self.filename = filename
+            if not storage:
+                # If only filename is provided, assume tokens.json should be in the same dir
+                self.tokens_filename = os.path.join(
+                    os.path.dirname(filename), "tokens.json"
+                )
+            else:
+                self.tokens_filename = self.storage.get_config_path("tokens.json")
         else:
             self.filename = self.storage.get_config_path("map_state.json")
+            self.tokens_filename = self.storage.get_config_path("tokens.json")
+
         self.store = ConfigStore(self.filename)
+        self.tokens_store = ConfigStore(self.tokens_filename)
+        self._migration_performed = False
         self.data = self._load()
+        if self._migration_performed:
+            self.save()
 
     def _load(self) -> MapConfigData:
         try:
             raw = self.store.load(dict)
-            if not raw:
+            tokens_raw = self.tokens_store.load(dict)
+
+            if not raw and not tokens_raw:
                 return MapConfigData()
 
             # Deserialize Global Settings
             global_data = raw.get("global", {})
 
-            # Load Token Profiles
-            raw_profiles = global_data.get("token_profiles", {})
+            # Load Token Profiles: Prefer tokens.json, fallback to map_state.json for migration
+            raw_profiles = tokens_raw.get("token_profiles")
+            if raw_profiles is None:
+                raw_profiles = global_data.get("token_profiles", {})
+                if raw_profiles:
+                    self._migration_performed = True
+
             token_profiles = {
                 k: SizeProfile(v.get("size", 1), v.get("height_mm", 10.0))
                 for k, v in raw_profiles.items()
@@ -119,8 +139,13 @@ class MapConfigManager:
                     "huge": SizeProfile(3, 60.0),
                 }
 
-            # Load ArUco Defaults
-            raw_aruco = global_data.get("aruco_defaults", {})
+            # Load ArUco Defaults: Prefer tokens.json, fallback to map_state.json for migration
+            raw_aruco = tokens_raw.get("aruco_defaults")
+            if raw_aruco is None:
+                raw_aruco = global_data.get("aruco_defaults", {})
+                if raw_aruco:
+                    self._migration_performed = True
+
             aruco_defaults = {}
             for k, v in raw_aruco.items():
                 try:
@@ -134,6 +159,11 @@ class MapConfigManager:
                     )
                 except ValueError:
                     pass
+
+            if self._migration_performed:
+                logging.info(
+                    "Detected legacy token configuration. Migrating to tokens.json"
+                )
 
             global_settings = GlobalMapConfig(
                 projector_ppi=global_data.get("projector_ppi", 96.0),
@@ -201,12 +231,31 @@ class MapConfigManager:
 
     def save(self):
         try:
-            # Serialize
+            # Serialize Map State (excluding tokens)
+            global_dict = asdict(self.data.global_settings)
+            if "token_profiles" in global_dict:
+                del global_dict["token_profiles"]
+            if "aruco_defaults" in global_dict:
+                del global_dict["aruco_defaults"]
+
             data_dict = {
-                "global": asdict(self.data.global_settings),
+                "global": global_dict,
                 "maps": {k: asdict(v) for k, v in self.data.maps.items()},
             }
             self.store.save(data_dict)
+
+            # Serialize Tokens
+            tokens_dict = {
+                "token_profiles": {
+                    k: asdict(v)
+                    for k, v in self.data.global_settings.token_profiles.items()
+                },
+                "aruco_defaults": {
+                    str(k): asdict(v)
+                    for k, v in self.data.global_settings.aruco_defaults.items()
+                },
+            }
+            self.tokens_store.save(tokens_dict)
         except Exception as e:
             logging.error("Error saving map config: %s", e)
 

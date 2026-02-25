@@ -4,11 +4,78 @@ import logging
 import sys
 import os
 import numpy as np
+from PIL import Image, ImageTk
 from logging.handlers import RotatingFileHandler
 from typing import Tuple, Optional
 from light_map.core.storage import StorageManager
 
 _DEFAULT_STORAGE = StorageManager()
+
+
+class ProjectorWindow:
+    def __init__(self, name: str, width: int, height: int):
+        self.name = name
+        self.width = width
+        self.height = height
+        self.root = tk.Tk()
+        self.root.title(name)
+        self.root.attributes("-fullscreen", True)
+        self.root.config(cursor="none")
+        self.root.configure(background="black")
+
+        self.canvas = tk.Canvas(
+            self.root,
+            width=width,
+            height=height,
+            highlightthickness=0,
+            background="black",
+        )
+        self.canvas.pack(fill="both", expand=True)
+
+        self.photo = None
+        self.image_id = None
+        self.closed = False
+        self.pending_keys = []
+
+        self.root.protocol("WM_DELETE_WINDOW", self.close)
+        self.root.bind("<Key>", self._on_key)
+
+    def _on_key(self, event):
+        if event.char:
+            self.pending_keys.append(ord(event.char))
+        elif event.keysym == "Escape":
+            self.close()
+
+    def get_key(self) -> int:
+        if self.pending_keys:
+            return self.pending_keys.pop(0)
+        return -1
+
+    def update_image(self, bgr_frame: np.ndarray):
+        if self.closed:
+            return
+
+        # Convert BGR to RGB
+        rgb_frame = cv2.cvtColor(bgr_frame, cv2.COLOR_BGR2RGB)
+        img = Image.fromarray(rgb_frame)
+        self.photo = ImageTk.PhotoImage(image=img)
+
+        if self.image_id is None:
+            self.image_id = self.canvas.create_image(
+                self.width // 2, self.height // 2, image=self.photo
+            )
+        else:
+            self.canvas.itemconfig(self.image_id, image=self.photo)
+
+        self.root.update_idletasks()
+        self.root.update()
+
+    def close(self):
+        self.closed = True
+        self.root.destroy()
+
+    def is_closed(self) -> bool:
+        return self.closed
 
 
 def draw_text_with_background(

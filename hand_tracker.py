@@ -15,7 +15,11 @@ from light_map.common_types import MenuActions, SceneId, TokenDetectionAlgorithm
 from light_map.interactive_app import InteractiveApp, AppConfig
 from light_map.map_config import MapConfigManager
 from light_map.calibration_logic import run_calibration_sequence
-from light_map.display_utils import get_screen_resolution, setup_logging
+from light_map.display_utils import (
+    get_screen_resolution,
+    setup_logging,
+    ProjectorWindow,
+)
 from light_map.camera_pipeline import CameraPipeline
 from light_map.core.storage import StorageManager
 
@@ -182,10 +186,9 @@ def main():
         max_num_hands=2, min_detection_confidence=0.7, min_tracking_confidence=0.5
     )
 
-    # 4. Setup Projector Window
+    # 4. Setup Projector Window (using tkinter to hide cursor)
     window_name = "projection"
-    cv2.namedWindow(window_name, cv2.WND_PROP_FULLSCREEN)
-    cv2.setWindowProperty(window_name, cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
+    app_win = ProjectorWindow(window_name, native_screen_w, native_screen_h)
 
     # 5. Main Loop
     last_processed_id = -1
@@ -286,7 +289,7 @@ def main():
                             )
 
                         # D. Update Hardware Output
-                        cv2.imshow(window_name, output_image)
+                        app_win.update_image(output_image)
 
                         # Process Actions
                         should_break = False
@@ -299,6 +302,9 @@ def main():
                                 logger.info("Starting Calibration...")
                                 # STOP Pipeline to free camera
                                 pipeline.stop()
+
+                                # Hide main window while calibrating
+                                app_win.root.withdraw()
 
                                 new_matrix = run_calibration_sequence(
                                     cam,
@@ -338,12 +344,7 @@ def main():
                                     logger.warning("Calibration failed or cancelled.")
 
                                 # Restore Window
-                                cv2.namedWindow(window_name, cv2.WND_PROP_FULLSCREEN)
-                                cv2.setWindowProperty(
-                                    window_name,
-                                    cv2.WND_PROP_FULLSCREEN,
-                                    cv2.WINDOW_FULLSCREEN,
-                                )
+                                app_win.root.deiconify()
 
                                 # RESTART Pipeline
                                 pipeline.start()
@@ -356,14 +357,24 @@ def main():
 
                     else:
                         # No new data: Just handle UI events (keyboard) and sleep
+                        app_win.root.update()
                         time.sleep(0.001)
 
                     # F. Handle Keyboard Interrupts (Check every loop iteration)
-                    key = cv2.waitKey(1) & 0xFF
+                    key = app_win.get_key()
+                    if key == -1:
+                        # Fallback to OpenCV waitKey for debug windows if any
+                        key = cv2.waitKey(1) & 0xFF
+                        if key == 0xFF:
+                            key = -1
+
                     if key == ord("q"):
                         break
                     elif key == ord("d"):
                         app.set_debug_mode(not app.debug_mode)
+
+                    if app_win.is_closed():
+                        break
 
             except Exception as e:
                 logger.critical(

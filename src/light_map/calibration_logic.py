@@ -1,10 +1,12 @@
 import cv2
 import numpy as np
 import logging
+import time
 from typing import Optional, Tuple, Dict
 
 from .camera import Camera
 from .projector import generate_calibration_pattern, compute_projector_homography
+from .display_utils import ProjectorWindow
 
 
 def run_calibration_sequence(
@@ -18,10 +20,8 @@ def run_calibration_sequence(
     Runs the projector calibration sequence using an existing camera instance.
     Returns (matrix, cam_pts, proj_pts) or None.
     """
-    # Setup Fullscreen Window
-    window_name = "calibration_pattern"
-    cv2.namedWindow(window_name, cv2.WND_PROP_FULLSCREEN)
-    cv2.setWindowProperty(window_name, cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
+    # Setup Projector Window (using tkinter to hide cursor)
+    win = ProjectorWindow("calibration_pattern", projector_width, projector_height)
 
     try:
         # Generate Pattern
@@ -29,13 +29,14 @@ def run_calibration_sequence(
             projector_width, projector_height, rows, cols, border_size=30
         )
 
-        cv2.imshow(window_name, pattern_img)
+        win.update_image(pattern_img)
         logging.info(
             "Displaying pattern. Waiting 2 seconds for projector/camera to settle..."
         )
 
         for _ in range(20):
-            cv2.waitKey(100)
+            win.update_image(pattern_img)
+            time.sleep(0.1)
 
         logging.info("Capturing image...")
         for _ in range(5):
@@ -56,7 +57,7 @@ def run_calibration_sequence(
         logging.error("Error computing homography: %s", e)
         return None
     finally:
-        cv2.destroyWindow(window_name)
+        win.close()
 
 
 def calculate_ppi_from_frame(

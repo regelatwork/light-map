@@ -32,8 +32,19 @@ def mock_projector_utils():
         yield mock_gen, mock_compute
 
 
-def test_run_calibration_sequence_success(mock_cv2, mock_camera, mock_projector_utils):
+@pytest.fixture
+def mock_projector_window():
+    with patch("light_map.calibration_logic.ProjectorWindow") as mock:
+        instance = mock.return_value
+        instance.is_closed.return_value = False
+        yield mock
+
+
+def test_run_calibration_sequence_success(
+    mock_cv2, mock_camera, mock_projector_utils, mock_projector_window
+):
     mock_gen, mock_compute = mock_projector_utils
+    mock_win = mock_projector_window.return_value
 
     # Run
     result = run_calibration_sequence(
@@ -45,21 +56,21 @@ def test_run_calibration_sequence_success(mock_cv2, mock_camera, mock_projector_
     assert np.array_equal(result, np.eye(3))
 
     # Interactions
-    mock_cv2.namedWindow.assert_called_once()
-    mock_cv2.imshow.assert_called_once()
-    assert mock_cv2.waitKey.call_count >= 20  # Pump loop
+    mock_projector_window.assert_called_once()
+    assert mock_win.update_image.call_count >= 21  # 1 initial + 20 in loop
     # We expect read() to be called: 5 flush + 1 capture
     assert mock_camera.read.call_count >= 6
     mock_cv2.imwrite.assert_called_once()
     mock_compute.assert_called_once()
-    mock_cv2.destroyWindow.assert_called_once()
+    mock_win.close.assert_called_once()
 
 
 def test_run_calibration_sequence_capture_failure(
-    mock_cv2, mock_camera, mock_projector_utils
+    mock_cv2, mock_camera, mock_projector_utils, mock_projector_window
 ):
     mock_gen, mock_compute = mock_projector_utils
     mock_camera.read.return_value = None  # Fail capture
+    mock_win = mock_projector_window.return_value
 
     # Run
     result = run_calibration_sequence(mock_camera)
@@ -67,21 +78,22 @@ def test_run_calibration_sequence_capture_failure(
     # Verify
     assert result is None
     mock_compute.assert_not_called()
-    mock_cv2.destroyWindow.assert_called_once()  # Ensure cleanup
+    mock_win.close.assert_called_once()  # Ensure cleanup
 
 
 def test_run_calibration_sequence_exception(
-    mock_cv2, mock_camera, mock_projector_utils
+    mock_cv2, mock_camera, mock_projector_utils, mock_projector_window
 ):
     mock_gen, mock_compute = mock_projector_utils
     mock_compute.side_effect = ValueError("Calculation error")
+    mock_win = mock_projector_window.return_value
 
     # Run
     result = run_calibration_sequence(mock_camera)
 
     # Verify
     assert result is None
-    mock_cv2.destroyWindow.assert_called_once()  # Ensure cleanup
+    mock_win.close.assert_called_once()  # Ensure cleanup
 
 
 def test_calibrate_extrinsics_flip_inverted(mock_cv2):

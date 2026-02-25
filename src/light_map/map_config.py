@@ -104,10 +104,7 @@ class MapConfigManager:
 
         self.store = ConfigStore(self.filename)
         self.tokens_store = ConfigStore(self.tokens_filename)
-        self._migration_performed = False
         self.data = self._load()
-        if self._migration_performed:
-            self.save()
 
     def _load(self) -> MapConfigData:
         try:
@@ -120,13 +117,8 @@ class MapConfigManager:
             # Deserialize Global Settings
             global_data = raw.get("global", {})
 
-            # Load Token Profiles: Prefer tokens.json, fallback to map_state.json for migration
-            raw_profiles = tokens_raw.get("token_profiles")
-            if raw_profiles is None:
-                raw_profiles = global_data.get("token_profiles", {})
-                if raw_profiles:
-                    self._migration_performed = True
-
+            # Load Token Profiles
+            raw_profiles = tokens_raw.get("token_profiles", {})
             token_profiles = {
                 k: SizeProfile(v.get("size", 1), v.get("height_mm", 10.0))
                 for k, v in raw_profiles.items()
@@ -139,13 +131,8 @@ class MapConfigManager:
                     "huge": SizeProfile(3, 60.0),
                 }
 
-            # Load ArUco Defaults: Prefer tokens.json, fallback to map_state.json for migration
-            raw_aruco = tokens_raw.get("aruco_defaults")
-            if raw_aruco is None:
-                raw_aruco = global_data.get("aruco_defaults", {})
-                if raw_aruco:
-                    self._migration_performed = True
-
+            # Load ArUco Defaults
+            raw_aruco = tokens_raw.get("aruco_defaults", {})
             aruco_defaults = {}
             for k, v in raw_aruco.items():
                 try:
@@ -159,11 +146,6 @@ class MapConfigManager:
                     )
                 except ValueError:
                     pass
-
-            if self._migration_performed:
-                logging.info(
-                    "Detected legacy token configuration. Migrating to tokens.json"
-                )
 
             global_settings = GlobalMapConfig(
                 projector_ppi=global_data.get("projector_ppi", 96.0),

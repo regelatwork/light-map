@@ -362,6 +362,32 @@ class InteractiveApp:
                 self.current_scene = target_scene
                 self.current_scene.on_enter()
 
+    def save_session(self):
+        """Saves the current session (tokens and viewport)."""
+        if not self.map_system.is_map_loaded():
+            return
+
+        map_file = self.map_system.svg_loader.filename
+        session_dir = None
+        if self.config.storage_manager:
+            session_dir = os.path.join(
+                self.config.storage_manager.get_data_dir(), "sessions"
+            )
+
+        from light_map.common_types import SessionData, ViewportState
+
+        session = SessionData(
+            map_file=map_file,
+            viewport=ViewportState(
+                x=self.map_system.state.x,
+                y=self.map_system.state.y,
+                zoom=self.map_system.state.zoom,
+                rotation=self.map_system.state.rotation,
+            ),
+            tokens=self.map_system.ghost_tokens,
+        )
+        SessionManager.save_for_map(map_file, session, session_dir=session_dir)
+
     def _render_global_overlays(
         self, frame: np.ndarray, inputs: List[HandInput]
     ) -> np.ndarray:

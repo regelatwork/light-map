@@ -131,12 +131,38 @@ class MapScene(Scene):
             inputs, adapter
         )
 
-        # Save viewport when interaction ends
+        # Save session when interaction ends
         if was_interacting and not self.is_interacting:
             map_system = self.context.map_system
             if map_system.svg_loader:
+                # Use SessionManager directly to save both viewport and tokens
+                from light_map.session_manager import SessionManager
+                from light_map.common_types import SessionData, ViewportState
+                import os
+
+                map_file = map_system.svg_loader.filename
+                session_dir = None
+                if self.context.app_config.storage_manager:
+                    session_dir = os.path.join(
+                        self.context.app_config.storage_manager.get_data_dir(),
+                        "sessions",
+                    )
+
+                session = SessionData(
+                    map_file=map_file,
+                    viewport=ViewportState(
+                        x=map_system.state.x,
+                        y=map_system.state.y,
+                        zoom=map_system.state.zoom,
+                        rotation=map_system.state.rotation,
+                    ),
+                    tokens=map_system.ghost_tokens,
+                )
+                SessionManager.save_for_map(map_file, session, session_dir=session_dir)
+
+                # Also update the global last_used_map and viewport in config
                 self.context.map_config_manager.save_map_viewport(
-                    map_system.svg_loader.filename,
+                    map_file,
                     map_system.state.x,
                     map_system.state.y,
                     map_system.state.zoom,

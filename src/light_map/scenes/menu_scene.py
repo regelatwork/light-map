@@ -76,7 +76,9 @@ class MenuScene(Scene):
         if action == MenuActions.CLOSE_MENU:
             return SceneTransition(SceneId.VIEWING)
         if action == "LOAD_MAP":
-            return SceneTransition(SceneId.VIEWING, payload={"map_file": payload})
+            return SceneTransition(
+                SceneId.VIEWING, payload={"map_file": payload, "load_session": True}
+            )
         if action == "LOAD_SESSION":
             return SceneTransition(
                 SceneId.VIEWING, payload={"map_file": payload, "load_session": True}
@@ -149,25 +151,48 @@ class MenuScene(Scene):
                 pass
         elif action == MenuActions.ROTATE_CW:
             self.context.map_system.rotate(90)
-            self._save_viewport()
+            self._save_session()
         elif action == MenuActions.ROTATE_CCW:
             self.context.map_system.rotate(-90)
-            self._save_viewport()
+            self._save_session()
         elif action == MenuActions.RESET_VIEW:
             self.context.map_system.reset_view_to_base()
-            self._save_viewport()
+            self._save_session()
         elif action == MenuActions.RESET_ZOOM:
             self.context.map_system.reset_zoom_to_base()
-            self._save_viewport()
+            self._save_session()
 
         return None
 
-    def _save_viewport(self):
-        """Helper to persist current viewport to config."""
+    def _save_session(self):
+        """Helper to persist current session to disk."""
         map_system = self.context.map_system
         if map_system.svg_loader:
+            from light_map.session_manager import SessionManager
+            from light_map.common_types import SessionData, ViewportState
+            import os
+
+            map_file = map_system.svg_loader.filename
+            session_dir = None
+            if self.context.app_config.storage_manager:
+                session_dir = os.path.join(
+                    self.context.app_config.storage_manager.get_data_dir(), "sessions"
+                )
+
+            session = SessionData(
+                map_file=map_file,
+                viewport=ViewportState(
+                    x=map_system.state.x,
+                    y=map_system.state.y,
+                    zoom=map_system.state.zoom,
+                    rotation=map_system.state.rotation,
+                ),
+                tokens=map_system.ghost_tokens,
+            )
+            SessionManager.save_for_map(map_file, session, session_dir=session_dir)
+
             self.context.map_config_manager.save_map_viewport(
-                map_system.svg_loader.filename,
+                map_file,
                 map_system.state.x,
                 map_system.state.y,
                 map_system.state.zoom,

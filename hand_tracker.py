@@ -172,7 +172,7 @@ def main():
     if map_to_load:
         if os.path.exists(map_to_load):
             logger.info("Loading map: %s", map_to_load)
-            app.load_map(map_to_load)
+            app.load_map(map_to_load, load_session=True)
         else:
             logger.error("Error: Map file not found: %s", map_to_load)
 
@@ -373,15 +373,9 @@ def main():
                 if pipeline:
                     pipeline.stop()
 
-                # Save viewport before exiting
-                if app.map_system.svg_loader:
-                    app.map_config.save_map_viewport(
-                        app.map_system.svg_loader.filename,
-                        app.map_system.state.x,
-                        app.map_system.state.y,
-                        app.map_system.state.zoom,
-                        app.map_system.state.rotation,
-                    )
+                # Save session (tokens and viewport) before exiting
+                if app.map_system.is_map_loaded():
+                    app.save_session()
 
     except Exception as e:
         logger.critical(

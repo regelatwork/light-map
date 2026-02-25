@@ -42,6 +42,7 @@ def mock_app_context():
     mock_context.map_system.is_map_loaded.return_value = True
     mock_context.map_system.svg_loader = MagicMock()
     mock_context.map_system.svg_loader.filename = "test.svg"
+    mock_context.map_system.ghost_tokens = []
     mock_context.map_system.state = MagicMock()
     mock_context.map_system.state.x = 0.0
     mock_context.map_system.state.y = 0.0
@@ -74,7 +75,7 @@ def test_menu_scene_handles_load_map_action(mock_app_context):
     # Assert
     assert isinstance(transition, SceneTransition)
     assert transition.target_scene == SceneId.VIEWING
-    assert transition.payload == {"map_file": "test.svg"}
+    assert transition.payload == {"map_file": "test.svg", "load_session": True}
 
 
 def test_menu_scene_handles_map_controls_action(mock_app_context):

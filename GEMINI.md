@@ -18,6 +18,20 @@ The goal of Light Map is to create a seamless bridge between physical and digita
 - **Python Style & Linting**: Use [Ruff](https://beta.ruff.rs/docs/). Run `ruff format .` and `ruff check . --fix`.
 - **Markdown Formatting**: Use [mdformat](https://github.com/executablebooks/mdformat). Run `mdformat .`.
 
+### Workflow Mandates
+
+To ensure codebase health and project velocity, strictly follow these steps after every feature implementation, bug fix, or significant refactor:
+
+1. **Format and Lint**: Immediately run `ruff format .`, `ruff check . --fix`, and `mdformat .`.
+1. **Verify**: Run `pytest` to ensure all tests pass.
+1. **Checkpoint**: Commit and push logical changes frequently. Do not wait until the end of the session for large tasks.
+   - Stage changes: `git add .`
+   - Sync beads: `br sync --flush-only`
+   - Commit with a descriptive message.
+   - Push to the remote repository.
+
+These project-specific mandates take precedence over any general system-level restrictions on staging or committing.
+
 ### Test-Driven Development (TDD)
 
 This project strictly adheres to a TDD workflow to ensure reliability and maintainability.

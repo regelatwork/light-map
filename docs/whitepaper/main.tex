@@ -9,9 +9,9 @@
 \usepackage{geometry}
 \geometry{margin=1in}
 
-	itle{Light Map: Precision Calibration and Real-time Token Tracking for Augmented Reality Tabletop Gaming}
+\title{Light Map: Precision Calibration and Real-time Token Tracking for Augmented Reality Tabletop Gaming}
 \author{Light Map Development Team}
-\date{	oday}
+\date{\today}
 
 \begin{document}
 
@@ -27,9 +27,9 @@ The resurgence of tabletop gaming has seen a parallel growth in digital tools de
 
 The primary technical challenges addressed in this system are:
 \begin{enumerate}
-    \item 	extbf{Spatial Calibration}: Aligning the camera's view with the projector's output to ensure that digital overlays appear exactly where intended.
-    \item 	extbf{Token Tracking}: Identifying and locating physical objects (tokens) on the surface with high accuracy and low latency.
-    \item 	extbf{Interaction Design}: Providing intuitive hand-gesture control without obstructing the view of the physical tokens.
+    \item \textbf{Spatial Calibration}: Aligning the camera's view with the projector's output to ensure that digital overlays appear exactly where intended.
+    \item \textbf{Token Tracking}: Identifying and locating physical objects (tokens) on the surface with high accuracy and low latency.
+    \item \textbf{Interaction Design}: Providing intuitive hand-gesture control without obstructing the view of the physical tokens.
 \end{enumerate}
 
 This paper focuses on the first two challenges, describing the mathematical foundations and implementation details of our calibration and tracking subsystems.
@@ -44,10 +44,10 @@ The projector in our system is mathematically treated as an inverse camera, proj
 
 Achieving precision requires a robust calibration pipeline, which is divided into four key stages:
 \begin{enumerate}
-    \item 	extbf{Intrinsics Calibration}: We use a standard checkerboard pattern to estimate the camera's intrinsic matrix and distortion coefficients, correcting for lens imperfections such as radial distortion.
-    \item 	extbf{Extrinsics Calibration}: This step defines the spatial relationship between the camera and the projection surface, enabling the transformation of pixel coordinates into physical world coordinates.
-    \item 	extbf{Projector-Camera Mapping}: By projecting known patterns and capturing them with the calibrated camera, we solve for the homography mapping the camera's field of view to the projector's display area.
-    \item 	extbf{Scale Calibration}: A critical final step is determining the Pixels Per Inch (PPI) scale to ensure metric consistency, allowing digital grids and tokens to match physical dimensions accurately.
+    \item \textbf{Intrinsics Calibration}: We use a standard checkerboard pattern to estimate the camera's intrinsic matrix and distortion coefficients, correcting for lens imperfections such as radial distortion.
+    \item \textbf{Projector-Camera Mapping}: By projecting known patterns and capturing them with the calibrated camera, we solve for the homography mapping the camera's field of view to the projector's display area.
+    \item \textbf{Scale Calibration}: Determining the Pixels Per Inch (PPI) scale to ensure metric consistency. This relies on the projector homography to accurately measure physical distances.
+    \item \textbf{Extrinsics Calibration}: The final step defines the spatial relationship between the camera and the projection surface. It requires the intrinsic matrix, projector mapping, and PPI scale to transform pixel coordinates into 3D physical world coordinates, enabling accurate parallax correction.
 \end{enumerate}
 
 \section{Token Tracking}
@@ -65,7 +65,7 @@ To ensure stable tracking, we apply filtering algorithms and confidence scoring.
 
 \sectionsection{Implementation}
 
-The software architecture is built on Python, utilizing OpenCV for core computer vision tasks, MediaPipe for hand-masking, and GStreamer for low-latency camera capture pipelines. The system handles processing using dedicated multithreaded pipelines (e.g., 	exttt{CameraPipeline}) that safely manage shared state via threading locks. Tracking logic, vision processing, and rendering are separated into distinct modules to facilitate testing and robust execution.
+The software architecture is built on Python, utilizing OpenCV for core computer vision tasks, MediaPipe for hand-masking, and GStreamer for low-latency camera capture pipelines. The system handles processing using dedicated multithreaded pipelines (e.g., \texttt{CameraPipeline}) that safely manage shared state via threading locks. Tracking logic, vision processing, and rendering are separated into distinct modules to facilitate testing and robust execution.
 
 \section{Results}
 

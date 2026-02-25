@@ -15,9 +15,9 @@ Brief summary of the Augmented Reality tabletop platform and the technical chall
 
 ## 4. Calibration Workflow
 * **Intrinsics**: Camera matrix and distortion coefficients.
-* **Extrinsics**: Spatial relationship between camera and projection surface.
 * **Projector-Camera Mapping**: Solving the mapping from image space to projection space.
 * **Scale Calibration**: PPI (Pixels Per Inch) and metric consistency.
+* **Extrinsics**: Spatial relationship between camera and projection surface.
 
 ## 5. Token Tracking
 * **Aruco-based Tracking**: Detection, ID management, and pose estimation.

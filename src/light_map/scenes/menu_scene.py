@@ -66,6 +66,11 @@ class MenuScene(Scene):
             return None
 
         action_raw = self._menu_state.just_triggered_action
+
+        # Log the selection
+        if self.context.analytics:
+            self.context.analytics.log_menu_selection(action_raw)
+
         action, payload = (
             action_raw.split("|", 1) if "|" in action_raw else (action_raw, None)
         )

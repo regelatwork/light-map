@@ -5,6 +5,8 @@ from typing import TYPE_CHECKING, Optional
 
 import numpy as np
 
+from light_map.core.analytics import AnalyticsManager
+
 if TYPE_CHECKING:
     from light_map.map_config import MapConfigManager
     from light_map.map_system import MapSystem
@@ -24,6 +26,7 @@ class AppContext:
     map_config_manager: MapConfigManager
     projector_matrix: np.ndarray
     notifications: NotificationManager
+    analytics: AnalyticsManager
     camera_matrix: Optional[np.ndarray] = None
     dist_coeffs: Optional[np.ndarray] = None
     camera_rvec: Optional[np.ndarray] = None

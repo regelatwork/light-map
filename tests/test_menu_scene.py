@@ -37,6 +37,7 @@ def mock_app_context():
         map_config_manager=mock_map_config,
         projector_matrix=np.eye(3),
         notifications=MagicMock(spec=NotificationManager),
+        analytics=MagicMock(),
     )
     # Mock the return value for is_map_loaded
     mock_context.map_system.is_map_loaded.return_value = True

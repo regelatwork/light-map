@@ -17,6 +17,7 @@ from light_map.map_config import MapConfigManager
 from light_map.session_manager import SessionManager
 
 from light_map.core.app_context import AppContext
+from light_map.core.analytics import AnalyticsManager
 from light_map.core.notification import NotificationManager
 from light_map.core.scene import Scene, HandInput
 from light_map.scenes.menu_scene import MenuScene
@@ -137,6 +138,7 @@ class InteractiveApp:
             camera_tvec=tvec,
             debug_mode=debug_mode,
             show_tokens=show_tokens,
+            analytics=AnalyticsManager(self.config.storage_manager),
         )
 
     def _initialize_scenes(self) -> Dict[SceneId, Scene]:

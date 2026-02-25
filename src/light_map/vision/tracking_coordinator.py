@@ -41,14 +41,14 @@ class TrackingCoordinator:
         self.token_tracker.debug_mode = debug_mode
         if camera_matrix is not None:
             self.token_tracker.set_aruco_calibration(
-                camera_matrix=camera_matrix, 
+                camera_matrix=camera_matrix,
                 dist_coeffs=dist_coeffs,
                 rvec=rvec,
-                tvec=tvec
+                tvec=tvec,
             )
-        
+
         # We also need extrinsics. For now, let ArucoDetector load from disk if not set,
-        # but ideally we should pass it. 
+        # but ideally we should pass it.
         # Actually, let's load it here if needed or trust the detector.
         # But wait! ArucoDetector loads them in __init__.
         # If we want to support dynamic updates, we should pass them.
@@ -67,7 +67,7 @@ class TrackingCoordinator:
             ppi=map_config.get_ppi(),
             algorithm=TokenDetectionAlgorithm.ARUCO,
             token_configs=token_configs,
-            default_height_mm=5.0, # Default for ArUco tokens
+            default_height_mm=5.0,  # Default for ArUco tokens
             distortion_model=config.distortion_model,
         )
 
@@ -100,7 +100,9 @@ class TrackingCoordinator:
         if tokens:
             logging.debug(f"TrackingCoord: Filtered {len(tokens)} tokens.")
             for t in tokens:
-                logging.debug(f"  ID {t.id}: world=({t.world_x:.1f}, {t.world_y:.1f}) snap=({t.grid_x}, {t.grid_y})")
+                logging.debug(
+                    f"  ID {t.id}: world=({t.world_x:.1f}, {t.world_y:.1f}) snap=({t.grid_x}, {t.grid_y})"
+                )
 
         # Update map system
         map_system.ghost_tokens = tokens

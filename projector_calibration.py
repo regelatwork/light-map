@@ -2,6 +2,7 @@ import sys
 import os
 import numpy as np
 import logging
+import argparse
 
 # Ensure we can import the local package
 sys.path.insert(0, os.path.abspath("src"))
@@ -9,9 +10,22 @@ sys.path.insert(0, os.path.abspath("src"))
 from light_map.camera import Camera
 from light_map.calibration_logic import run_calibration_sequence
 from light_map.display_utils import get_screen_resolution, setup_logging
+from light_map.core.storage import StorageManager
 
 
 def main():
+    parser = argparse.ArgumentParser(description="Projector Calibration")
+    parser.add_argument(
+        "--base-dir",
+        type=str,
+        help="Override base directory for config and data",
+        default=None,
+    )
+    args = parser.parse_args()
+
+    storage = StorageManager(base_dir=args.base_dir)
+    storage.ensure_dirs()
+
     setup_logging()
     logger = logging.getLogger(__name__)
     proj_width, proj_height = get_screen_resolution()
@@ -28,7 +42,7 @@ def main():
         matrix, cam_pts, proj_pts = result
         logger.info("Transformation matrix:\n%s", matrix)
 
-        output_file = "projector_calibration.npz"
+        output_file = storage.get_data_path("projector_calibration.npz")
         logger.info("Saving calibration to %s...", output_file)
         np.savez(
             output_file,

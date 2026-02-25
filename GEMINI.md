@@ -38,10 +38,9 @@ This project strictly adheres to a TDD workflow to ensure reliability and mainta
   - Use mocks and stubs (via `unittest.mock` or `pytest-mock`) for hardware-dependent components like the camera, projector, and GStreamer pipelines to ensure tests are fast and deterministic.
   - Leverage `pytest` fixtures for common setup/teardown logic.
 
-
 <!-- br-agent-instructions-v1 -->
 
----
+______________________________________________________________________
 
 ## Beads Workflow Integration
 
@@ -72,10 +71,10 @@ br sync --status      # Check sync status
 ### Workflow Pattern
 
 1. **Start**: Run `br ready` to find actionable work
-2. **Claim**: Use `br update <id> --status=in_progress`
-3. **Work**: Implement the task
-4. **Complete**: Use `br close <id>`
-5. **Sync**: Always run `br sync --flush-only` at session end
+1. **Claim**: Use `br update <id> --status=in_progress`
+1. **Work**: Implement the task
+1. **Complete**: Use `br close <id>`
+1. **Sync**: Always run `br sync --flush-only` at session end
 
 ### Key Concepts
 

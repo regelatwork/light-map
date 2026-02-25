@@ -106,7 +106,9 @@ class ArucoTokenDetector:
         tokens = []
         if ppi <= 0:
             if self.debug_mode:
-                logging.warning(f"ArucoDetector: PPI is {ppi}, detection will be at (0,0)")
+                logging.warning(
+                    f"ArucoDetector: PPI is {ppi}, detection will be at (0,0)"
+                )
             ppi_mm = 0.0
         else:
             ppi_mm = ppi / 25.4
@@ -138,7 +140,9 @@ class ArucoTokenDetector:
                     px_orig, py_orig = px, py
                     px, py = distortion_model.correct_theoretical_point(px, py)
                     if self.debug_mode:
-                        logging.debug(f"Distortion Correct: ({px_orig:.1f}, {py_orig:.1f}) -> ({px:.1f}, {py:.1f})")
+                        logging.debug(
+                            f"Distortion Correct: ({px_orig:.1f}, {py_orig:.1f}) -> ({px:.1f}, {py:.1f})"
+                        )
 
                 # Map to SVG units
                 wx_svg, wy_svg = map_system.screen_to_world(px, py)
@@ -199,7 +203,9 @@ class ArucoTokenDetector:
         s = (h - cz) / vz
         if s < 0:
             if self.debug_mode:
-                logging.debug(f"Parallax: s={s:.1f} is negative (impossible ray), returning (0,0)")
+                logging.debug(
+                    f"Parallax: s={s:.1f} is negative (impossible ray), returning (0,0)"
+                )
             return 0.0, 0.0
 
         p_world = self.camera_center_world + s * v_world

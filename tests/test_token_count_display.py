@@ -68,7 +68,9 @@ def app(app_config):
             "light_map.interactive_app.InteractiveApp._load_camera_calibration",
             return_value=(None, None, None, None),
         ),
-        patch("light_map.vision.tracking_coordinator.TrackingCoordinator.process_aruco_tracking"),
+        patch(
+            "light_map.vision.tracking_coordinator.TrackingCoordinator.process_aruco_tracking"
+        ),
     ):
         _app = InteractiveApp(_app_config)
 
@@ -80,7 +82,7 @@ def app(app_config):
 def test_token_count_display_no_tokens(app):
     # Mock tracking to prevent clearing tokens
     app.tracking_coordinator.process_aruco_tracking = MagicMock()
-    
+
     # Set the scene to one that shows tokens
     app.current_scene = app.scenes[SceneId.VIEWING]
     app.app_context.show_tokens = True

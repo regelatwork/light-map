@@ -5,7 +5,7 @@ import datetime
 import logging
 import numpy as np
 from dataclasses import asdict, dataclass, field
-from typing import Dict, Optional, List
+from typing import Dict, Optional, List, Any
 from light_map.common_types import (
     ViewportState,
     TokenDetectionAlgorithm,
@@ -83,8 +83,14 @@ class MapConfigData:
 
 
 class MapConfigManager:
-    def __init__(self, filename: str = STATE_FILE):
-        self.filename = filename
+    def __init__(self, filename: Optional[str] = None, storage: Optional[Any] = None):
+        self.storage = storage
+        if filename:
+            self.filename = filename
+        elif storage:
+            self.filename = storage.get_config_path("map_state.json")
+        else:
+            self.filename = STATE_FILE
         self.data = self._load()
 
     def _load(self) -> MapConfigData:
@@ -341,7 +347,10 @@ class MapConfigManager:
             return {"calibrated": False, "has_session": False}
 
         calibrated = entry.grid_spacing_svg > 0
-        has_session = SessionManager.has_session(filename)
+        session_dir = None
+        if self.storage:
+            session_dir = os.path.join(self.storage.get_data_dir(), "sessions")
+        has_session = SessionManager.has_session(filename, session_dir=session_dir)
 
         return {"calibrated": calibrated, "has_session": has_session}
 

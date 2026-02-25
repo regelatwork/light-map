@@ -17,12 +17,13 @@ from light_map.map_config import MapConfigManager
 from light_map.calibration_logic import run_calibration_sequence
 from light_map.display_utils import get_screen_resolution, setup_logging
 from light_map.camera_pipeline import CameraPipeline
+from light_map.core.storage import StorageManager
 
 from light_map.projector import ProjectorDistortionModel
 
 
 def main():
-    # ... (args setup)
+    # 0. Basic Args setup
     parser = argparse.ArgumentParser(description="Hand Tracker & Menu System")
     parser.add_argument(
         "--debug", action="store_true", help="Enable debug overlay", default=False
@@ -37,6 +38,12 @@ def main():
         "--action", type=str, help="MenuAction to execute on startup", default=None
     )
     parser.add_argument(
+        "--base-dir",
+        type=str,
+        help="Override base directory for config and data",
+        default=None,
+    )
+    parser.add_argument(
         "--log-level",
         type=str,
         choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
@@ -44,17 +51,30 @@ def main():
         help="Set the logging level",
     )
     parser.add_argument(
-        "--log-file", type=str, default="light_map.log", help="Path to log file"
+        "--log-file",
+        type=str,
+        default=None,
+        help="Path to log file (relative to data dir if not absolute)",
     )
     args = parser.parse_args()
 
+    # Initialize Storage
+    storage = StorageManager(base_dir=args.base_dir)
+    storage.ensure_dirs()
+
     # Initialize logging
     log_level = getattr(logging, args.log_level.upper())
-    setup_logging(level=log_level, log_file=args.log_file)
+    log_file = args.log_file
+    if log_file and not os.path.isabs(log_file):
+        log_file = storage.get_data_path(log_file)
+    elif not log_file:
+        log_file = storage.get_data_path("light_map.log")
+
+    setup_logging(level=log_level, log_file=log_file)
     logger = logging.getLogger(__name__)
 
     # 1. Load Calibration
-    calibration_file = "projector_calibration.npz"
+    calibration_file = storage.get_data_path("projector_calibration.npz")
 
     # Helper to load calibration
     def load_calib(default_screen_w, default_screen_h):
@@ -114,7 +134,7 @@ def main():
         map_sources.append(args.map)
 
     # Initialize MapConfigManager early to get last_used_map
-    map_config_manager = MapConfigManager()
+    map_config_manager = MapConfigManager(storage=storage)
     gs = map_config_manager.data.global_settings
 
     # 2. Setup App
@@ -125,8 +145,9 @@ def main():
         projector_matrix_resolution=(cam_res_w, cam_res_h),
         map_search_patterns=map_sources,
         distortion_model=dist_model,
+        storage_manager=storage,
         log_level=args.log_level,
-        log_file=args.log_file,
+        log_file=log_file,
         enable_hand_masking=gs.enable_hand_masking,
         hand_mask_padding=gs.hand_mask_padding,
         hand_mask_blur=gs.hand_mask_blur,
@@ -351,7 +372,7 @@ def main():
             finally:
                 if pipeline:
                     pipeline.stop()
-                
+
                 # Save viewport before exiting
                 if app.map_system.svg_loader:
                     app.map_config.save_map_viewport(

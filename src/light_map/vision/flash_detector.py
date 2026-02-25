@@ -264,7 +264,7 @@ class FlashTokenDetector:
         M = cv2.moments(blob_mask)
         if M["m00"] > 0:
             sx, sy = M["m10"] / M["m00"], M["m01"] / M["m00"]
-            
+
             if self.camera_matrix is not None and self.R is not None:
                 # 3D projection: Un-warp from projector to camera space
                 # sx, sy are in Projector pixels (warped frame)
@@ -273,17 +273,17 @@ class FlashTokenDetector:
                 p_proj = np.array([sx, sy], dtype=np.float32).reshape(1, 1, 2)
                 p_cam = cv2.perspectiveTransform(p_proj, inv_h)[0][0]
                 u, v = p_cam[0], p_cam[1]
-                
+
                 # Apply vertical projection
                 wx_mm, wy_mm = self._parallax_correction(u, v, default_height_mm)
-                
+
                 ppi_mm = ppi / 25.4
                 px = wx_mm * ppi_mm
                 py = wy_mm * ppi_mm
-                
+
                 if distortion_model:
                     px, py = distortion_model.correct_theoretical_point(px, py)
-                
+
                 wx, wy = map_system.screen_to_world(px, py)
             else:
                 # Fallback to simple 2D projection

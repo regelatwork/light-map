@@ -246,7 +246,7 @@ class ScanningScene(Scene):
             camera_matrix=self.context.camera_matrix,
             dist_coeffs=self.context.dist_coeffs,
             rvec=self.context.camera_rvec,
-            tvec=self.context.camera_tvec
+            tvec=self.context.camera_tvec,
         )
 
         tokens = self.token_tracker.detect_tokens(
@@ -261,7 +261,7 @@ class ScanningScene(Scene):
             ppi=ppi,
             algorithm=algorithm,
             token_configs=token_configs,
-            default_height_mm=25.0, # Default for minis
+            default_height_mm=25.0,  # Default for minis
             distortion_model=self.context.distortion_model,
         )
 

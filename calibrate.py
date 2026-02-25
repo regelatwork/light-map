@@ -5,15 +5,38 @@ import os
 sys.path.insert(0, os.path.abspath("src"))
 
 import logging
-from light_map.calibration import load_calibration_images, calibrate_camera_from_images
+import argparse
+from light_map.calibration import (
+    load_calibration_images,
+    calibrate_camera_from_images,
+    save_camera_calibration,
+)
 from light_map.display_utils import setup_logging
-import numpy as np
+from light_map.core.storage import StorageManager
 
 
 def main():
+    parser = argparse.ArgumentParser(description="Camera Intrinsics Calibration")
+    parser.add_argument(
+        "--base-dir",
+        type=str,
+        help="Override base directory for config and data",
+        default=None,
+    )
+    parser.add_argument(
+        "--image-dir",
+        type=str,
+        help="Directory containing calibration images",
+        default="./images",
+    )
+    args = parser.parse_args()
+
+    storage = StorageManager(base_dir=args.base_dir)
+    storage.ensure_dirs()
+
     setup_logging()
     logger = logging.getLogger(__name__)
-    image_dir = "./images"
+    image_dir = args.image_dir
     logger.info("Looking for images in %s...", image_dir)
 
     images = load_calibration_images(image_dir)
@@ -32,8 +55,8 @@ def main():
         logger.info("Camera matrix:\n%s", matrix)
         logger.info("Distortion coefficients:\n%s", distortion)
 
-        output_file = "camera_calibration.npz"
-        np.savez(output_file, camera_matrix=matrix, dist_coeffs=distortion)
+        output_file = storage.get_data_path("camera_calibration.npz")
+        save_camera_calibration(matrix, distortion, output_file=output_file)
         logger.info("Calibration saved to %s", output_file)
 
     except RuntimeError as e:

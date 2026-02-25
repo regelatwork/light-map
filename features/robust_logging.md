@@ -56,6 +56,7 @@ def setup_logging(level=logging.INFO, log_file="light_map.log"):
 To ensure clear debugging across multiple scripts, all entry points use **named loggers** (`logging.getLogger(__name__)`) and the formatter explicitly includes the **filename and line number**. This prevents all entries from appearing as "root" and allows developers to quickly trace logs back to their source.
 
 ### 3. Application Integration
+
 - **`hand_tracker.py`**: Uses `--log-level` and `--log-file` arguments.
 - **`calibrate.py` & `projector_calibration.py`**: Automatically initialize logging to the shared `light_map.log` at the start of `main()`.
 

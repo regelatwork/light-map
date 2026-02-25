@@ -198,7 +198,9 @@ def calibrate_extrinsics(
     obj_points = np.array(obj_points_list, dtype=np.float32)
     img_points = np.array(img_points_list, dtype=np.float32)
 
-    logging.info(f"Extrinsics: Solving for {len(obj_points)} points ({len(obj_points_list) - (0 if ids is None else len(ids))} ground, {(0 if ids is None else len(ids))} tokens).")
+    logging.info(
+        f"Extrinsics: Solving for {len(obj_points)} points ({len(obj_points_list) - (0 if ids is None else len(ids))} ground, {(0 if ids is None else len(ids))} tokens)."
+    )
 
     # Solve PnP
     # SQPNP is highly robust to both planar and non-planar configurations.
@@ -220,16 +222,18 @@ def calibrate_extrinsics(
     if ret:
         # Physical plausibility check: tz MUST be positive for the table to be in front of the camera
         if tvec[2] < 0:
-            logging.warning("Extrinsics: solvePnP returned inverted solution (tz < 0). Attempting flip.")
+            logging.warning(
+                "Extrinsics: solvePnP returned inverted solution (tz < 0). Attempting flip."
+            )
             # Flip the solution
             R, _ = cv2.Rodrigues(rvec)
             C = -R.T @ tvec
-            
+
             R_flip = np.array([[1, 0, 0], [0, -1, 0], [0, 0, -1]], dtype=np.float32)
             R_new = R_flip @ R
             rvec_new, _ = cv2.Rodrigues(R_new)
             tvec_new = -R_new @ C
-            
+
             rvec, tvec = rvec_new, tvec_new
 
         return rvec, tvec, obj_points, img_points

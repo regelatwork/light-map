@@ -168,7 +168,7 @@ class StructuredLightTokenDetector:
         # 5. Project to Projector Space (with parallax correction)
         observed_points_proj = []
         ppi_mm = ppi / 25.4
-        
+
         # We need a list for debug logging later that matches the old format (N, 1, 2)
         dst_pts_list = []
 

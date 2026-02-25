@@ -48,7 +48,7 @@ class InteractiveApp:
         # Core Systems
         self.renderer = Renderer(config.width, config.height)
         self.map_system = MapSystem(config.width, config.height)
-        self.map_config = MapConfigManager()
+        self.map_config = MapConfigManager(storage=config.storage_manager)
         self.notifications = NotificationManager()
 
         # New Modular Coordinators
@@ -64,7 +64,9 @@ class InteractiveApp:
             self.map_config.scan_for_maps(config.map_search_patterns)
 
         # AppContext (shared state for scenes)
-        self.app_context = self._create_app_context(camera_matrix, dist_coeffs, rvec, tvec)
+        self.app_context = self._create_app_context(
+            camera_matrix, dist_coeffs, rvec, tvec
+        )
         self.overlay_renderer = OverlayRenderer(self.app_context)
 
         # Scene Management
@@ -74,28 +76,51 @@ class InteractiveApp:
 
     def _load_camera_calibration(
         self,
-    ) -> Tuple[Optional[np.ndarray], Optional[np.ndarray], Optional[np.ndarray], Optional[np.ndarray]]:
+    ) -> Tuple[
+        Optional[np.ndarray],
+        Optional[np.ndarray],
+        Optional[np.ndarray],
+        Optional[np.ndarray],
+    ]:
         camera_matrix = None
         dist_coeffs = None
         rvec = None
         tvec = None
 
-        if os.path.exists("camera_calibration.npz"):
-            calib = np.load("camera_calibration.npz")
+        storage = self.config.storage_manager
+        intrinsics_path = (
+            storage.get_data_path("camera_calibration.npz")
+            if storage
+            else "camera_calibration.npz"
+        )
+        extrinsics_path = (
+            storage.get_data_path("camera_extrinsics.npz")
+            if storage
+            else "camera_extrinsics.npz"
+        )
+
+        if os.path.exists(intrinsics_path):
+            calib = np.load(intrinsics_path)
             camera_matrix = calib["camera_matrix"]
             dist_coeffs = calib["dist_coeffs"]
-            logging.info("Loaded camera intrinsics.")
+            logging.info("Loaded camera intrinsics from %s.", intrinsics_path)
 
-        if os.path.exists("camera_extrinsics.npz"):
-            ext = np.load("camera_extrinsics.npz")
+        if os.path.exists(extrinsics_path):
+            ext = np.load(extrinsics_path)
             rvec = ext["rvec"]
             tvec = ext["tvec"]
-            logging.info("Loaded camera extrinsics.")
+            logging.info("Loaded camera extrinsics from %s.", extrinsics_path)
 
         return camera_matrix, dist_coeffs, rvec, tvec
 
     def _create_app_context(
-        self, camera_matrix, dist_coeffs, rvec=None, tvec=None, debug_mode=False, show_tokens=True
+        self,
+        camera_matrix,
+        dist_coeffs,
+        rvec=None,
+        tvec=None,
+        debug_mode=False,
+        show_tokens=True,
     ) -> AppContext:
         return AppContext(
             app_config=self.config,
@@ -192,15 +217,15 @@ class InteractiveApp:
 
         # 3. ArUco Background Tracking
         self.tracking_coordinator.process_aruco_tracking(
-            frame, 
-            self.config, 
-            self.map_system, 
+            frame,
+            self.config,
+            self.map_system,
             self.map_config,
             camera_matrix=self.app_context.camera_matrix,
             dist_coeffs=self.app_context.dist_coeffs,
             rvec=self.app_context.camera_rvec,
             tvec=self.app_context.camera_tvec,
-            debug_mode=self.app_context.debug_mode
+            debug_mode=self.app_context.debug_mode,
         )
 
         # 4. Scene Update
@@ -301,7 +326,12 @@ class InteractiveApp:
         entry = self.map_config.data.maps.get(filename)
 
         if load_session:
-            session = SessionManager.load_for_map(filename)
+            session_dir = None
+            if self.config.storage_manager:
+                session_dir = os.path.join(
+                    self.config.storage_manager.get_data_dir(), "sessions"
+                )
+            session = SessionManager.load_for_map(filename, session_dir=session_dir)
             if session:
                 self.map_system.ghost_tokens = session.tokens
                 if session.viewport:

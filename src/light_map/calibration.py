@@ -98,15 +98,20 @@ def process_chessboard_images(
     return None
 
 
-def save_camera_calibration(camera_matrix: np.ndarray, dist_coeffs: np.ndarray):
+def save_camera_calibration(
+    camera_matrix: np.ndarray,
+    dist_coeffs: np.ndarray,
+    output_file: str = CALIBRATION_FILE,
+):
     """Saves the camera matrix and distortion coefficients to a file."""
-    np.savez(CALIBRATION_FILE, camera_matrix=camera_matrix, dist_coeffs=dist_coeffs)
-    logging.info("Camera calibration saved to %s", CALIBRATION_FILE)
+    np.savez(output_file, camera_matrix=camera_matrix, dist_coeffs=dist_coeffs)
+    logging.info("Camera calibration saved to %s", output_file)
 
 
-def save_camera_extrinsics(rvec: np.ndarray, tvec: np.ndarray):
+def save_camera_extrinsics(
+    rvec: np.ndarray, tvec: np.ndarray, output_file: str = "camera_extrinsics.npz"
+):
     """Saves the camera extrinsic parameters (R, t) to a file."""
-    output_file = "camera_extrinsics.npz"
     np.savez(output_file, rvec=rvec, tvec=tvec)
     logging.info("Camera extrinsics saved to %s", output_file)
 

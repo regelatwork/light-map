@@ -14,7 +14,9 @@ def app():
     )
     # Patch all scenes to avoid complex initialization
     with (
-        patch("light_map.interactive_app.InteractiveApp._initialize_scenes") as mock_init,
+        patch(
+            "light_map.interactive_app.InteractiveApp._initialize_scenes"
+        ) as mock_init,
         patch(
             "light_map.interactive_app.InteractiveApp._load_camera_calibration",
             return_value=(None, None, None, None),

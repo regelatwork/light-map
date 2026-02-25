@@ -87,7 +87,7 @@ class FlashCalibrationScene(Scene):
                     frame_white=self.context.last_camera_frame,
                     projector_matrix=self.context.projector_matrix,
                     map_system=self.context.map_system,
-                    default_height_mm=0.0, # Calibrate against table surface
+                    default_height_mm=0.0,  # Calibrate against table surface
                 )
                 self._results[intensity] = len(tokens)
                 logging.info(
@@ -183,7 +183,15 @@ class IntrinsicsCalibrationScene(Scene):
 
             if calibration_result:
                 (camera_matrix, dist_coeffs), _ = calibration_result
-                save_camera_calibration(camera_matrix, dist_coeffs)
+                storage = self.context.app_config.storage_manager
+                output_file = (
+                    storage.get_data_path("camera_calibration.npz")
+                    if storage
+                    else "camera_calibration.npz"
+                )
+                save_camera_calibration(
+                    camera_matrix, dist_coeffs, output_file=output_file
+                )
                 self.context.notifications.add_notification(
                     "Camera calibrated successfully."
                 )
@@ -276,7 +284,12 @@ class ProjectorCalibrationScene(Scene):
                     )
 
                     # Save results
-                    output_file = "projector_calibration.npz"
+                    storage = self.context.app_config.storage_manager
+                    output_file = (
+                        storage.get_data_path("projector_calibration.npz")
+                        if storage
+                        else "projector_calibration.npz"
+                    )
                     np.savez(
                         output_file,
                         projector_matrix=matrix,
@@ -392,11 +405,11 @@ class ExtrinsicsCalibrationScene(Scene):
         margin_x = 220
         margin_y = 180
         self._target_zones = [
-            (margin_x, margin_y, 10),              # TL (Slightly shifted)
-            (w - margin_x + 30, margin_y - 20, 11), # TR (Asymmetric shift)
-            (margin_x - 40, h - margin_y + 15, 12), # BL (Asymmetric shift)
-            (w - margin_x - 15, h - margin_y - 35, 13), # BR (Asymmetric shift)
-            (w // 2 + 25, h // 2 - 10, 14),        # C (Slightly off-center)
+            (margin_x, margin_y, 10),  # TL (Slightly shifted)
+            (w - margin_x + 30, margin_y - 20, 11),  # TR (Asymmetric shift)
+            (margin_x - 40, h - margin_y + 15, 12),  # BL (Asymmetric shift)
+            (w - margin_x - 15, h - margin_y - 35, 13),  # BR (Asymmetric shift)
+            (w // 2 + 25, h // 2 - 10, 14),  # C (Slightly off-center)
         ]
         self._target_status = ["IDLE"] * len(self._target_zones)
         self._target_info = [{} for _ in range(len(self._target_zones))]
@@ -537,7 +550,15 @@ class ExtrinsicsCalibrationScene(Scene):
             # Accept
             if inputs and inputs[0].gesture == GestureType.VICTORY:
                 if self._rvec is not None and self._tvec is not None:
-                    save_camera_extrinsics(self._rvec, self._tvec)
+                    storage = self.context.app_config.storage_manager
+                    output_file = (
+                        storage.get_data_path("camera_extrinsics.npz")
+                        if storage
+                        else "camera_extrinsics.npz"
+                    )
+                    save_camera_extrinsics(
+                        self._rvec, self._tvec, output_file=output_file
+                    )
                     self.context.notifications.add_notification("Extrinsics saved.")
                 return SceneTransition(SceneId.MENU)
 
@@ -614,7 +635,7 @@ class ExtrinsicsCalibrationScene(Scene):
                 label = f"Unknown ID {aid}"
                 # Dashed rectangle simulation
                 thickness = 1
-            
+
             # Draw the main target rectangle
             if thickness == -1:
                 cv2.rectangle(
@@ -774,7 +795,9 @@ class PpiCalibrationScene(Scene):
 
     def render(self, frame: np.ndarray) -> np.ndarray:
         h, w = frame.shape[:2]
-        canvas = np.full((h, w, 3), 0, dtype=np.uint8)  # Black background to avoid glare
+        canvas = np.full(
+            (h, w, 3), 0, dtype=np.uint8
+        )  # Black background to avoid glare
 
         cx, cy = w // 2, h // 2
 

@@ -1,4 +1,3 @@
-import json
 import os
 import datetime
 import hashlib
@@ -7,6 +6,7 @@ from dataclasses import asdict
 from typing import Optional
 from light_map.common_types import SessionData, Token, ViewportState
 from light_map.core.storage import StorageManager
+from light_map.core.config_store import ConfigStore
 
 _DEFAULT_STORAGE = StorageManager()
 SESSION_DIR = os.path.join(_DEFAULT_STORAGE.get_data_dir(), "sessions")
@@ -61,25 +61,25 @@ class SessionManager:
             # Serialize
             data_dict = asdict(data)
 
-            with open(filepath, "w") as f:
-                json.dump(data_dict, f, indent=2)
-
-            logging.info("Session saved to %s", filepath)
-            return True
+            store = ConfigStore(filepath)
+            success = store.save(data_dict)
+            if success:
+                logging.info("Session saved to %s", filepath)
+            return success
         except Exception as e:
             logging.error("Error saving session: %s", e)
             return False
 
     @staticmethod
     def load_session(filepath: str) -> Optional[SessionData]:
-        if not os.path.exists(filepath):
-            logging.info("Session file not found: %s", filepath)
+        store = ConfigStore(filepath)
+        raw = store.load(dict)
+
+        if not raw:
+            logging.info("Session file not found or empty: %s", filepath)
             return None
 
         try:
-            with open(filepath, "r") as f:
-                raw = json.load(f)
-
             # Deserialize Viewport
             vp_data = raw.get("viewport", {})
             viewport = ViewportState(

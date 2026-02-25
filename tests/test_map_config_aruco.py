@@ -42,6 +42,7 @@ def test_map_config_manager_aruco_defaults():
 
     # 6. Check unknown ID
     from light_map.common_types import NamingStyle
+
     manager.data.global_settings.naming_style = NamingStyle.NUMBERED
     unknown = manager.resolve_token_profile(99)
     assert "Unknown Token #99" == unknown.name

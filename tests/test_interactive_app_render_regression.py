@@ -8,6 +8,7 @@ from light_map.interactive_app import InteractiveApp, AppConfig
 def app_with_real_scenes(tmp_path):
     """App with real scenes but mocked peripherals."""
     from light_map.core.storage import StorageManager
+
     storage = StorageManager(base_dir=str(tmp_path))
     matrix = np.eye(3, dtype=np.float32)
     config = AppConfig(

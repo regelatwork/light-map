@@ -37,6 +37,7 @@ class MockResults:
 @pytest.fixture
 def app_config(tmp_path):
     from light_map.core.storage import StorageManager
+
     storage = StorageManager(base_dir=str(tmp_path))
     matrix = np.eye(3, dtype=np.float32)
     # Create a mock MapConfigManager for building the menu

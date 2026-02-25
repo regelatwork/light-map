@@ -7,6 +7,7 @@ from light_map.interactive_app import InteractiveApp, AppConfig
 @pytest.fixture
 def app(tmp_path):
     from light_map.core.storage import StorageManager
+
     storage = StorageManager(base_dir=str(tmp_path))
     config = AppConfig(
         width=100,

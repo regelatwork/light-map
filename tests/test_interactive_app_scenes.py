@@ -9,6 +9,7 @@ from light_map.core.scene import SceneTransition
 @pytest.fixture
 def app(tmp_path):
     from light_map.core.storage import StorageManager
+
     storage = StorageManager(base_dir=str(tmp_path))
     matrix = np.eye(3, dtype=np.float32)
     config = AppConfig(

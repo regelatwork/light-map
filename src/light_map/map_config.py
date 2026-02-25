@@ -1,9 +1,7 @@
-import json
 import os
 import glob
 import datetime
 import logging
-import numpy as np
 from dataclasses import asdict, dataclass, field
 from typing import Dict, Optional, List, Any
 from light_map.common_types import (
@@ -14,6 +12,7 @@ from light_map.common_types import (
 )
 from light_map.session_manager import SessionManager
 from light_map.core.storage import StorageManager
+from light_map.core.config_store import ConfigStore
 from light_map.token_naming import generate_token_name
 
 _DEFAULT_STORAGE = StorageManager()
@@ -94,15 +93,14 @@ class MapConfigManager:
             self.filename = filename
         else:
             self.filename = self.storage.get_config_path("map_state.json")
+        self.store = ConfigStore(self.filename)
         self.data = self._load()
 
     def _load(self) -> MapConfigData:
-        if not os.path.exists(self.filename):
-            return MapConfigData()
-
         try:
-            with open(self.filename, "r") as f:
-                raw = json.load(f)
+            raw = self.store.load(dict)
+            if not raw:
+                return MapConfigData()
 
             # Deserialize Global Settings
             global_data = raw.get("global", {})
@@ -208,16 +206,7 @@ class MapConfigManager:
                 "global": asdict(self.data.global_settings),
                 "maps": {k: asdict(v) for k, v in self.data.maps.items()},
             }
-
-            def default(obj):
-                if isinstance(obj, (np.integer, np.floating, np.bool_)):
-                    return obj.item()
-                elif isinstance(obj, np.ndarray):
-                    return obj.tolist()
-                return str(obj)
-
-            with open(self.filename, "w") as f:
-                json.dump(data_dict, f, indent=2, default=default)
+            self.store.save(data_dict)
         except Exception as e:
             logging.error("Error saving map config: %s", e)
 

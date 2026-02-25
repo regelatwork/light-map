@@ -1,8 +1,12 @@
 import os
-import pytest
 from light_map.map_config import MapConfigManager
 from light_map.common_types import NamingStyle
-from light_map.token_naming import generate_token_name, NAMES_SCI_FI, NAMES_FANTASY, NAMES_AMERICAN
+from light_map.token_naming import (
+    generate_token_name,
+    NAMES_SCI_FI,
+    NAMES_FANTASY,
+    NAMES_AMERICAN,
+)
 
 
 def test_generate_token_name_stability():
@@ -53,25 +57,25 @@ def test_map_config_manager_naming_integration():
         os.remove(test_file)
 
     manager = MapConfigManager(filename=test_file)
-    
+
     # Default should be SCI_FI
     assert manager.data.global_settings.naming_style == NamingStyle.SCI_FI
-    
+
     aruco_id = 10
     map_name = "test.svg"
-    
+
     # Resolve unknown token
     resolved = manager.resolve_token_profile(aruco_id, map_name)
     base_name = resolved.name.split(" (")[0]
     assert base_name in NAMES_SCI_FI
     assert f"({aruco_id})" in resolved.name
-    
+
     # Change style to FANTASY
     manager.data.global_settings.naming_style = NamingStyle.FANTASY
     resolved = manager.resolve_token_profile(aruco_id, map_name)
     base_name = resolved.name.split(" (")[0]
     assert base_name in NAMES_FANTASY
-    
+
     # Change style to NUMBERED
     manager.data.global_settings.naming_style = NamingStyle.NUMBERED
     resolved = manager.resolve_token_profile(aruco_id, map_name)
@@ -89,7 +93,7 @@ def test_map_config_manager_naming_serialization():
 
     manager = MapConfigManager(filename=test_file)
     manager.set_naming_style(NamingStyle.FANTASY)
-    
+
     # Reload from file
     manager2 = MapConfigManager(filename=test_file)
     assert manager2.get_naming_style() == NamingStyle.FANTASY

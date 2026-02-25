@@ -24,9 +24,12 @@ def test_svg_loader_path_normalization(tmp_path):
 
 def test_interactive_app_resolution_sync(tmp_path):
     from light_map.core.storage import StorageManager
+
     storage = StorageManager(base_dir=str(tmp_path))
     m = np.eye(3, dtype=np.float32)
-    config = AppConfig(width=640, height=480, projector_matrix=m, storage_manager=storage)
+    config = AppConfig(
+        width=640, height=480, projector_matrix=m, storage_manager=storage
+    )
     app = InteractiveApp(config)
 
     assert app.map_system.width == 640
@@ -53,11 +56,14 @@ def test_token_tracker_determinism():
 def test_interactive_app_load_map_normalization(tmp_path):
     from light_map.map_config import MapEntry
     from light_map.core.storage import StorageManager
+
     storage = StorageManager(base_dir=str(tmp_path))
 
     # Setup
     m = np.eye(3, dtype=np.float32)
-    config = AppConfig(width=100, height=100, projector_matrix=m, storage_manager=storage)
+    config = AppConfig(
+        width=100, height=100, projector_matrix=m, storage_manager=storage
+    )
     app = InteractiveApp(config)
 
     # Create fake map

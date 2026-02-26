@@ -287,7 +287,8 @@ class InteractiveApp:
                 blur=self.config.hand_mask_blur,
             )
             # Apply mask
-            frame[mask > 127] = 0
+            _, binary_mask = cv2.threshold(mask, 127, 255, cv2.THRESH_BINARY_INV)
+            frame = cv2.bitwise_and(frame, frame, mask=binary_mask)
 
         return frame
 

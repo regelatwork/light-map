@@ -23,6 +23,8 @@ class MapSystem:
         self.svg_loader: Optional[SVGLoader] = None
         self.base_scale: float = 1.0
         self.ghost_tokens: List[Token] = []
+        self._cached_matrix: Optional[svgelements.Matrix] = None
+        self._cached_state_tuple: Optional[Tuple[float, float, float, float]] = None
 
     def is_map_loaded(self) -> bool:
         """Returns True if an SVG map is currently loaded."""
@@ -126,11 +128,26 @@ class MapSystem:
 
     def _get_matrix(self) -> svgelements.Matrix:
         """Reconstructs the full transformation matrix used by SVGLoader."""
+        current_state = (
+            self.state.x,
+            self.state.y,
+            self.state.zoom,
+            self.state.rotation,
+        )
+        if (
+            self._cached_matrix is not None
+            and self._cached_state_tuple == current_state
+        ):
+            return self._cached_matrix
+
         cx, cy = self.width / 2, self.height / 2
         m = svgelements.Matrix()
         m.post_scale(self.state.zoom, self.state.zoom)
         m.post_rotate(math.radians(self.state.rotation), cx, cy)
         m.post_translate(self.state.x, self.state.y)
+
+        self._cached_matrix = m
+        self._cached_state_tuple = current_state
         return m
 
     def screen_to_world(self, sx: float, sy: float) -> Tuple[float, float]:

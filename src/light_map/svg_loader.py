@@ -474,18 +474,34 @@ class SVGLoader:
                     transformed_path = path * final_vp_matrix
                     transformed_path.reify()
 
-                    subpaths = []
+                    closed_subpaths = []
+                    open_subpaths = []
                     current_points = []
+                    is_current_closed = False
+
+                    # Elements that are intrinsically closed
+                    element_naturally_closed = isinstance(
+                        element,
+                        (
+                            svgelements.Rect,
+                            svgelements.Circle,
+                            svgelements.Ellipse,
+                            svgelements.Polygon,
+                        ),
+                    )
 
                     for segment in transformed_path:
                         if isinstance(segment, svgelements.Move):
                             if current_points:
-                                subpaths.append(
-                                    np.array(current_points, dtype=np.int32).reshape(
-                                        (-1, 1, 2)
-                                    )
-                                )
+                                subpath_array = np.array(
+                                    current_points, dtype=np.int32
+                                ).reshape((-1, 1, 2))
+                                if is_current_closed or element_naturally_closed:
+                                    closed_subpaths.append(subpath_array)
+                                else:
+                                    open_subpaths.append(subpath_array)
                                 current_points = []
+                            is_current_closed = False
                             continue
 
                         if not current_points:
@@ -493,10 +509,12 @@ class SVGLoader:
                                 (int(segment.start.x), int(segment.start.y))
                             )
 
-                        if isinstance(segment, (svgelements.Line, svgelements.Close)):
+                        if isinstance(segment, svgelements.Line):
                             current_points.append(
                                 (int(segment.end.x), int(segment.end.y))
                             )
+                        elif isinstance(segment, svgelements.Close):
+                            is_current_closed = True
                         elif isinstance(
                             segment,
                             (
@@ -512,18 +530,23 @@ class SVGLoader:
                                 current_points.append((int(p.x), int(p.y)))
 
                     if current_points:
-                        subpaths.append(
-                            np.array(current_points, dtype=np.int32).reshape((-1, 1, 2))
-                        )
+                        subpath_array = np.array(
+                            current_points, dtype=np.int32
+                        ).reshape((-1, 1, 2))
+                        if is_current_closed or element_naturally_closed:
+                            closed_subpaths.append(subpath_array)
+                        else:
+                            open_subpaths.append(subpath_array)
 
-                    if not subpaths:
+                    all_subpaths = closed_subpaths + open_subpaths
+                    if not all_subpaths:
                         continue
 
                     # Fill
                     if element.fill is not None and element.fill.value is not None:
                         c = element.fill
                         fill_color = (c.blue, c.green, c.red)
-                        cv2.fillPoly(image, subpaths, fill_color)
+                        cv2.fillPoly(image, all_subpaths, fill_color)
 
                     # Stroke
                     if element.stroke is not None and element.stroke.value is not None:
@@ -541,19 +564,12 @@ class SVGLoader:
                             ) / 2
                             thickness = max(1, int(element.stroke_width * avg_scale))
 
-                        is_closed = False
-                        if isinstance(
-                            element,
-                            (
-                                svgelements.Rect,
-                                svgelements.Circle,
-                                svgelements.Ellipse,
-                                svgelements.Polygon,
-                            ),
-                        ):
-                            is_closed = True
-
-                        cv2.polylines(image, subpaths, is_closed, color, thickness)
+                        if closed_subpaths:
+                            cv2.polylines(
+                                image, closed_subpaths, True, color, thickness
+                            )
+                        if open_subpaths:
+                            cv2.polylines(image, open_subpaths, False, color, thickness)
 
             except Exception:
                 continue

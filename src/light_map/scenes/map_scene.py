@@ -124,11 +124,25 @@ class MapScene(Scene):
             self.summon_gesture_start_time = 0.0
 
         # Process map interactions
+        # Calculate screen-space grid size for panning snap
+        grid_size = None
+        map_system = self.context.map_system
+        svg_loader = getattr(map_system, "svg_loader", None)
+        if svg_loader:
+            import os
+
+            filename = svg_loader.filename
+            entry = self.context.map_config_manager.data.maps.get(
+                os.path.abspath(filename)
+            )
+            if entry and entry.grid_spacing_svg > 0:
+                grid_size = entry.grid_spacing_svg * map_system.state.zoom
+
         # Use adapter to force zoom around screen center
-        adapter = ScreenCenteredMapAdapter(self.context.map_system)
+        adapter = ScreenCenteredMapAdapter(map_system)
         was_interacting = self.is_interacting
         self.is_interacting = self.interaction_controller.process_gestures(
-            inputs, adapter
+            inputs, adapter, grid_size=grid_size
         )
 
         # Save session when interaction ends

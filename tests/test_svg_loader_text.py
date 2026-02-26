@@ -2,6 +2,7 @@ import pytest
 import numpy as np
 from light_map.svg_loader import SVGLoader
 
+
 @pytest.fixture
 def svg_with_text(tmp_path):
     # SVG with text
@@ -14,6 +15,7 @@ def svg_with_text(tmp_path):
     p.write_text(content)
     return str(p)
 
+
 def test_render_text(svg_with_text):
     loader = SVGLoader(svg_with_text)
     img = loader.render(100, 100)
@@ -21,6 +23,7 @@ def test_render_text(svg_with_text):
     # Check for white pixels (BGR: 255, 255, 255)
     # If text is not rendered, image will be all black.
     assert np.count_nonzero(img) > 0
+
 
 def test_render_colored_text(tmp_path):
     content = """
@@ -30,7 +33,7 @@ def test_render_colored_text(tmp_path):
     """
     p = tmp_path / "colored_text.svg"
     p.write_text(content)
-    
+
     loader = SVGLoader(str(p))
     img = loader.render(100, 100)
 

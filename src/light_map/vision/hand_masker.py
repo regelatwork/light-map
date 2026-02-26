@@ -11,6 +11,9 @@ class HandMasker:
         self.persistence_frames = persistence_frames
         self.last_hulls: List[np.ndarray] = []
         self.frames_since_detection = 0
+        self._cached_mask: Any = None
+        self._cached_hulls_hash: int = -1
+        self._cached_params: Tuple[int, int, int, int] = (-1, -1, -1, -1)
 
     def is_point_masked(
         self, x: int, y: int, gm_position: GmPosition, resolution: Tuple[int, int]
@@ -90,6 +93,11 @@ class HandMasker:
             )
             hull_pts = proj_pts[hull_indices.flatten()].astype(np.int32)
 
+            # Approximate hull to reduce points
+            epsilon = 0.005 * cv2.arcLength(hull_pts, True)
+            approx_hull = cv2.approxPolyDP(hull_pts, epsilon, True)
+            hull_pts = approx_hull.reshape(-1, 2)
+
             # Apply padding (simple scaling or offsetting?)
             # For now, let's just use the hull as is, or maybe dilate later in the mask.
             # Dilation in mask space is easier and more robust.
@@ -97,6 +105,15 @@ class HandMasker:
 
         self.last_hulls = hulls
         return hulls
+
+    def _hash_hulls(self, hulls: List[np.ndarray]) -> int:
+        if not hulls:
+            return 0
+        # Fast hash using array bytes
+        h_val = 0
+        for hull in hulls:
+            h_val ^= hash(hull.tobytes())
+        return h_val
 
     def generate_mask_image(
         self,
@@ -107,9 +124,22 @@ class HandMasker:
         blur: int = 0,
     ) -> np.ndarray:
         """Generates a binary mask image (255 for masked areas)."""
+        current_hash = self._hash_hulls(hulls)
+        current_params = (width, height, padding, blur)
+
+        if (
+            self._cached_mask is not None
+            and self._cached_hulls_hash == current_hash
+            and self._cached_params == current_params
+        ):
+            return self._cached_mask
+
         mask = np.zeros((height, width), dtype=np.uint8)
 
         if not hulls:
+            self._cached_mask = mask
+            self._cached_hulls_hash = current_hash
+            self._cached_params = current_params
             return mask
 
         cv2.fillPoly(mask, hulls, 255)
@@ -125,4 +155,7 @@ class HandMasker:
             b = blur if blur % 2 == 1 else blur + 1
             mask = cv2.GaussianBlur(mask, (b, b), 0)
 
+        self._cached_mask = mask
+        self._cached_hulls_hash = current_hash
+        self._cached_params = current_params
         return mask

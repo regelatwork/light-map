@@ -447,7 +447,7 @@ class SVGLoader:
                     # Approximate scale:
                     svg_font_size = element.font_size or 12
                     avg_scale = (abs(final_vp_matrix.a) + abs(final_vp_matrix.d)) / 2
-                    
+
                     # OpenCV Hershey fonts: scale 1.0 is roughly 20-30 pixels high.
                     # We want svg_font_size * avg_scale pixels high.
                     cv_scale = (svg_font_size * avg_scale) / 25.0

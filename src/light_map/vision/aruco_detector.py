@@ -73,6 +73,7 @@ class ArucoTokenDetector:
         ppi: float = 96.0,
         default_height_mm: float = 5.0,
         distortion_model: Optional["ProjectorDistortionModel"] = None,
+        projector_matrix: Optional[np.ndarray] = None,
     ) -> List[Token]:
         """
         Detects ArUco tokens in the frame and applies parallax correction.
@@ -82,6 +83,26 @@ class ArucoTokenDetector:
             return []
 
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+
+        # 1. Mask Out Areas Outside Projector FOV if projector_matrix is provided
+        if projector_matrix is not None:
+            w_proj = map_system.width
+            h_proj = map_system.height
+            try:
+                # projector_matrix maps from projector to camera coordinates
+                proj_corners = np.array(
+                    [[0, 0], [w_proj, 0], [w_proj, h_proj], [0, h_proj]],
+                    dtype=np.float32,
+                ).reshape(-1, 1, 2)
+                cam_corners = cv2.perspectiveTransform(proj_corners, projector_matrix)
+                cam_corners = cam_corners.astype(np.int32)
+
+                mask = np.zeros_like(gray)
+                cv2.fillConvexPoly(mask, cam_corners, 255)
+                gray = cv2.bitwise_and(gray, mask)
+            except Exception:
+                pass
+
         corners, ids, rejected = self.detector.detectMarkers(gray)
 
         if ids is None:

@@ -1,5 +1,5 @@
 import math
-from typing import Dict, List
+from typing import Dict, List, Optional, Tuple
 from light_map.common_types import Token
 
 
@@ -22,14 +22,37 @@ class TokenFilter:
         grid_origin_x: float = 0.0,
         grid_origin_y: float = 0.0,
         token_configs: Dict[int, Dict] = None,
+        map_bounds: Optional[Tuple[float, float, float, float]] = None,
     ) -> List[Token]:
         """
         Updates the filter with new detections and returns the filtered tokens.
+
+        Args:
+            detected_tokens: Raw detections from the current frame.
+            current_time: Current timestamp in seconds.
+            grid_spacing: Spacing for grid snapping.
+            grid_origin_x: Origin X for grid snapping.
+            grid_origin_y: Origin Y for grid snapping.
+            token_configs: Optional dictionary mapping token IDs to their configurations.
+            map_bounds: Optional (min_x, min_y, max_x, max_y) in world coordinates.
+                       Tokens outside these bounds will be ignored.
         """
         new_seen_ids = set()
 
         # 1. Process new detections
         for dt in detected_tokens:
+            # Masking check: filter out tokens outside map boundaries if provided
+            if map_bounds is not None:
+                min_x, min_y, max_x, max_y = map_bounds
+                if not (min_x <= dt.world_x <= max_x and min_y <= dt.world_y <= max_y):
+                    # If this token was previously tracked, purge it immediately
+                    # as it is now in a "forbidden" zone.
+                    if dt.id in self.last_seen_tokens:
+                        del self.last_seen_tokens[dt.id]
+                    if dt.id in self.last_seen_times:
+                        del self.last_seen_times[dt.id]
+                    continue
+
             new_seen_ids.add(dt.id)
 
             # Smoothing

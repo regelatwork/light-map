@@ -80,12 +80,33 @@ class TrackingCoordinator:
         grid_spacing = 0.0
         grid_origin_x = 0.0
         grid_origin_y = 0.0
+        map_bounds = None
+
         if map_file:
             entry = map_config.data.maps.get(map_file)
             if entry:
                 grid_spacing = entry.grid_spacing_svg
                 grid_origin_x = entry.grid_origin_svg_x
                 grid_origin_y = entry.grid_origin_svg_y
+
+            # Calculate map bounds from SVG document
+            if map_system.svg_loader and map_system.svg_loader.svg:
+                try:
+                    svg = map_system.svg_loader.svg
+                    # Prefer viewbox if available as it defines the active coordinate range
+                    if hasattr(svg, "viewbox") and svg.viewbox:
+                        vb = svg.viewbox
+                        map_bounds = (
+                            float(vb.x),
+                            float(vb.y),
+                            float(vb.x + vb.width),
+                            float(vb.y + vb.height),
+                        )
+                    else:
+                        # Fallback to width/height starting from origin
+                        map_bounds = (0.0, 0.0, float(svg.width), float(svg.height))
+                except (TypeError, ValueError, AttributeError):
+                    pass
 
         # Temporal Filtering and Grid Snapping
         tokens = self.token_filter.update(
@@ -95,6 +116,7 @@ class TrackingCoordinator:
             grid_origin_x=grid_origin_x,
             grid_origin_y=grid_origin_y,
             token_configs=token_configs,
+            map_bounds=map_bounds,
         )
 
         if tokens:

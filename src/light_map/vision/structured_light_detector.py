@@ -126,17 +126,17 @@ class StructuredLightTokenDetector:
         h_proj = map_system.height
 
         try:
-            inv_proj_matrix = np.linalg.inv(projector_matrix)
+            # projector_matrix maps from projector to camera coordinates
             proj_corners = np.array(
                 [[0, 0], [w_proj, 0], [w_proj, h_proj], [0, h_proj]], dtype=np.float32
             ).reshape(-1, 1, 2)
-            cam_corners = cv2.perspectiveTransform(proj_corners, inv_proj_matrix)
+            cam_corners = cv2.perspectiveTransform(proj_corners, projector_matrix)
             cam_corners = cam_corners.astype(np.int32)
 
             mask = np.zeros_like(gray)
             cv2.fillConvexPoly(mask, cam_corners, 255)
             gray = cv2.bitwise_and(gray, mask)
-        except np.linalg.LinAlgError:
+        except Exception:
             pass
 
         # 3. Dynamic Thresholding

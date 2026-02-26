@@ -96,6 +96,7 @@ class TokenTracker:
                 ppi=ppi,
                 default_height_mm=default_height_mm,
                 distortion_model=distortion_model,
+                projector_matrix=projector_matrix,
             )
 
         if (

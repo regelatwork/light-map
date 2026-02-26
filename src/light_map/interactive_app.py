@@ -218,20 +218,7 @@ class InteractiveApp:
         # 2. Standardize Input
         inputs = self.input_processor.convert_mediapipe_to_inputs(results, frame.shape)
 
-        # 3. ArUco Background Tracking
-        self.tracking_coordinator.process_aruco_tracking(
-            frame,
-            self.config,
-            self.map_system,
-            self.map_config,
-            camera_matrix=self.app_context.camera_matrix,
-            dist_coeffs=self.app_context.dist_coeffs,
-            rvec=self.app_context.camera_rvec,
-            tvec=self.app_context.camera_tvec,
-            debug_mode=self.app_context.debug_mode,
-        )
-
-        # 4. Scene Update
+        # 3. Scene Update
         transition = self.current_scene.update(inputs, current_time)
         if transition:
             self._handle_payloads(transition.payload)

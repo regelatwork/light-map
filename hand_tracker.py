@@ -192,13 +192,12 @@ def main():
 
     # 5. Main Loop
     last_processed_id = -1
+    startup_action_executed = False
     pipeline = None
 
     try:
         with Camera() as cam:
             # --- Resolution Mismatch Check ---
-            # Verify that runtime camera resolution matches calibration resolution
-            # to prevent coordinate expansion/shrinkage issues.
             cam_w, cam_h = cam.width, cam.height
             calib_w, calib_h = app.config.projector_matrix_resolution
 
@@ -214,156 +213,139 @@ def main():
                 )
                 logger.critical(msg)
 
-            # Initialize Pipeline
-            pipeline = CameraPipeline(cam, hands)
+            # Initialize Pipeline with background tracking support
+            pipeline = CameraPipeline(
+                cam,
+                hands,
+                tracking_coordinator=app.tracking_coordinator,
+                app_config=app.config,
+                map_system=app.map_system,
+                map_config=app.map_config,
+            )
             pipeline.start()
 
             try:
                 while True:
-                    # A. Get Latest Data
+                    # A. Get Latest Vision Data
                     data = pipeline.get_latest()
 
                     if data is None:
                         # Waiting for first frame
+                        app_win.root.update()
                         time.sleep(0.01)
                         continue
 
-                    # B. Check if new
-                    if data.frame_id > last_processed_id:
-                        last_processed_id = data.frame_id
+                    # B. Handle Startup Actions (Execute once when first data arrives)
+                    if args.action and not startup_action_executed:
+                        logger.info("Executing Startup Action: %s", args.action)
+                        startup_action_executed = True
 
-                        if args.action and last_processed_id == 0:
-                            logger.info("Executing Startup Action: %s", args.action)
+                        if args.action == MenuActions.SCAN_SESSION:
+                            if app.map_system.is_map_loaded():
+                                logger.info("Map Loaded. Starting Scan Sequence.")
+                                app.current_scene.on_exit()
+                                app.current_scene = app.scenes[SceneId.SCANNING]
+                                app.current_scene.on_enter()
+                            else:
+                                logger.error("Error: Cannot start scan. No map loaded.")
 
-                            # Manually Handle Actions (since process_frame doesn't ingest them)
-                            if args.action == MenuActions.SCAN_SESSION:
-                                if app.map_system.is_map_loaded():
-                                    logger.info("Map Loaded. Starting Scan Sequence.")
-                                    app.current_scene.on_exit()
-                                    app.current_scene = app.scenes[SceneId.SCANNING]
-                                    app.current_scene.on_enter()
-                                else:
-                                    logger.error(
-                                        "Error: Cannot start scan. No map loaded."
-                                    )
-
-                            elif args.action == MenuActions.SCAN_ALGORITHM:
-                                current = app.map_config.get_detection_algorithm()
-                                new_algo = (
-                                    TokenDetectionAlgorithm.STRUCTURED_LIGHT
-                                    if current == TokenDetectionAlgorithm.FLASH
-                                    else TokenDetectionAlgorithm.FLASH
-                                )
-                                logger.info(
-                                    "Toggling Scan Algorithm: %s -> %s",
-                                    current,
-                                    new_algo,
-                                )
-                                app.map_config.set_detection_algorithm(new_algo)
-                                # Force reload menu to update UI text if needed (though visual only)
-                                if app.current_scene == app.scenes[SceneId.MENU]:
-                                    app.current_scene.on_enter()
-
-                            # Process the frame normally
-                            output_image, actions = app.process_frame(
-                                data.frame, data.landmarks
+                        elif args.action == MenuActions.SCAN_ALGORITHM:
+                            current = app.map_config.get_detection_algorithm()
+                            new_algo = (
+                                TokenDetectionAlgorithm.STRUCTURED_LIGHT
+                                if current == TokenDetectionAlgorithm.FLASH
+                                else TokenDetectionAlgorithm.FLASH
                             )
-                        else:
-                            output_image, actions = app.process_frame(
-                                data.frame, data.landmarks
+                            logger.info(
+                                "Toggling Scan Algorithm: %s -> %s", current, new_algo
                             )
+                            app.map_config.set_detection_algorithm(new_algo)
+                            if app.current_scene == app.scenes[SceneId.MENU]:
+                                app.current_scene.on_enter()
 
-                        # Update Debug View if requested
-                        should_hide_overlays = getattr(
-                            app.current_scene, "should_hide_overlays", False
+                    # C. Process and Render
+                    # We process every loop to keep UI responsive.
+                    # InteractiveApp/SVGLoader handles caching.
+                    output_image, actions = app.process_frame(
+                        data.frame, data.landmarks
+                    )
+
+                    # Update Debug View if requested
+                    should_hide_overlays = getattr(
+                        app.current_scene, "should_hide_overlays", False
+                    )
+                    if app.debug_mode and not should_hide_overlays:
+                        cv2.putText(
+                            output_image,
+                            f"Pipe FPS: {data.fps:.1f}",
+                            (10, native_screen_h - 60),
+                            cv2.FONT_HERSHEY_SIMPLEX,
+                            1,
+                            (0, 255, 255),
+                            2,
                         )
-                        if app.debug_mode and not should_hide_overlays:
-                            cv2.putText(
-                                output_image,
-                                f"Pipe FPS: {data.fps:.1f}",
-                                (10, native_screen_h - 60),
-                                cv2.FONT_HERSHEY_SIMPLEX,
-                                1,
-                                (0, 255, 255),
-                                2,
+
+                    # D. Update Hardware Output
+                    app_win.update_image(output_image)
+
+                    # E. Process Actions
+                    should_break = False
+                    for action in actions:
+                        logger.info("Executing Action: %s", action)
+                        if action == MenuActions.EXIT:
+                            logger.info("Exiting...")
+                            should_break = True
+                        elif action == MenuActions.CALIBRATE:
+                            logger.info("Starting Calibration...")
+                            pipeline.stop()
+                            app_win.root.withdraw()
+
+                            new_matrix = run_calibration_sequence(
+                                cam,
+                                projector_width=native_screen_w,
+                                projector_height=native_screen_h,
                             )
 
-                        # D. Update Hardware Output
-                        app_win.update_image(output_image)
-
-                        # Process Actions
-                        should_break = False
-                        for action in actions:
-                            logger.info("Executing Action: %s", action)
-                            if action == MenuActions.EXIT:
-                                logger.info("Exiting...")
-                                should_break = True
-                            elif action == MenuActions.CALIBRATE:
-                                logger.info("Starting Calibration...")
-                                # STOP Pipeline to free camera
-                                pipeline.stop()
-
-                                # Hide main window while calibrating
-                                app_win.root.withdraw()
-
-                                new_matrix = run_calibration_sequence(
-                                    cam,
-                                    projector_width=native_screen_w,
-                                    projector_height=native_screen_h,
+                            if new_matrix is not None:
+                                logger.info("Calibration successful! Saving...")
+                                np.savez(
+                                    calibration_file,
+                                    projector_matrix=new_matrix,
+                                    resolution=np.array([cam.width, cam.height]),
+                                    camera_resolution=np.array([cam.width, cam.height]),
+                                    projector_resolution=np.array(
+                                        [native_screen_w, native_screen_h]
+                                    ),
                                 )
+                                logger.info("Reloading application configuration...")
+                                new_config = AppConfig(
+                                    width=native_screen_w,
+                                    height=native_screen_h,
+                                    projector_matrix=new_matrix,
+                                    projector_matrix_resolution=(
+                                        cam.width,
+                                        cam.height,
+                                    ),
+                                    log_level=args.log_level,
+                                    log_file=args.log_file,
+                                )
+                                app.reload_config(new_config)
+                            else:
+                                logger.warning("Calibration failed or cancelled.")
 
-                                if new_matrix is not None:
-                                    logger.info("Calibration successful! Saving...")
-                                    np.savez(
-                                        calibration_file,
-                                        projector_matrix=new_matrix,
-                                        resolution=np.array([cam.width, cam.height]),
-                                        camera_resolution=np.array(
-                                            [cam.width, cam.height]
-                                        ),
-                                        projector_resolution=np.array(
-                                            [native_screen_w, native_screen_h]
-                                        ),
-                                    )
-                                    logger.info(
-                                        "Reloading application configuration..."
-                                    )
-                                    new_config = AppConfig(
-                                        width=native_screen_w,
-                                        height=native_screen_h,
-                                        projector_matrix=new_matrix,
-                                        projector_matrix_resolution=(
-                                            cam.width,
-                                            cam.height,
-                                        ),
-                                        log_level=args.log_level,
-                                        log_file=args.log_file,
-                                    )
-                                    app.reload_config(new_config)
-                                else:
-                                    logger.warning("Calibration failed or cancelled.")
+                            app_win.root.deiconify()
+                            pipeline.start()
 
-                                # Restore Window
-                                app_win.root.deiconify()
+                        elif action == MenuActions.TOGGLE_DEBUG:
+                            app.set_debug_mode(not app.debug_mode)
 
-                                # RESTART Pipeline
-                                pipeline.start()
+                    if should_break:
+                        break
 
-                            elif action == MenuActions.TOGGLE_DEBUG:
-                                app.set_debug_mode(not app.debug_mode)
-
-                        if should_break:
-                            break
-
-                    else:
-                        # No new data: Just handle UI events (keyboard) and sleep
-                        app_win.root.update()
-                        time.sleep(0.001)
-
-                    # F. Handle Keyboard Interrupts (Check every loop iteration)
+                    # F. Handle UI and Keyboard
+                    app_win.root.update()
                     key = app_win.get_key()
                     if key == -1:
-                        # Fallback to OpenCV waitKey for debug windows if any
                         key = cv2.waitKey(1) & 0xFF
                         if key == 0xFF:
                             key = -1
@@ -384,7 +366,6 @@ def main():
                 if pipeline:
                     pipeline.stop()
 
-                # Save session (tokens and viewport) before exiting
                 if app.map_system.is_map_loaded():
                     app.save_session()
 

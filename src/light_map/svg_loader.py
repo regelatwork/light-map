@@ -418,7 +418,53 @@ class SVGLoader:
 
                     continue
 
-                # --- 2. Handle Shapes (Paths, Rects, etc.) ---
+                # --- 2. Handle Text ---
+                if isinstance(element, svgelements.Text):
+                    # svgelements.Text has .text, .x, .y, .font_size, etc.
+                    text_str = element.text
+                    if not text_str:
+                        continue
+
+                    # Get position in SVG coordinates
+                    # svgelements text position (x, y) is the baseline
+                    tx = element.x or 0
+                    ty = element.y or 0
+
+                    # Apply Viewport Transform to the position
+                    # We can use the final_vp_matrix to transform the point
+                    p = final_vp_matrix.point_in_matrix_space((tx, ty))
+                    render_x, render_y = int(p.x), int(p.y)
+
+                    # Color
+                    color = (255, 255, 255)  # Default white
+                    if element.fill is not None and element.fill.value is not None:
+                        c = element.fill
+                        color = (c.blue, c.green, c.red)
+
+                    # Font Scale
+                    # OpenCV font scale is a multiplier.
+                    # SVG font-size is in units.
+                    # Approximate scale:
+                    svg_font_size = element.font_size or 12
+                    avg_scale = (abs(final_vp_matrix.a) + abs(final_vp_matrix.d)) / 2
+                    
+                    # OpenCV Hershey fonts: scale 1.0 is roughly 20-30 pixels high.
+                    # We want svg_font_size * avg_scale pixels high.
+                    cv_scale = (svg_font_size * avg_scale) / 25.0
+
+                    cv2.putText(
+                        image,
+                        text_str,
+                        (render_x, render_y),
+                        cv2.FONT_HERSHEY_SIMPLEX,
+                        cv_scale,
+                        color,
+                        thickness=max(1, int(avg_scale)),
+                        lineType=cv2.LINE_AA,
+                    )
+                    continue
+
+                # --- 3. Handle Shapes (Paths, Rects, etc.) ---
                 if isinstance(element, svgelements.Shape):
                     # Apply Viewport Transform
                     # We copy the path and apply matrix

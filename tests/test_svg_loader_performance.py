@@ -107,6 +107,12 @@ class TestSVGLoaderPerformance(unittest.TestCase):
             self.loader.render(100, 100, quality=2.0)
             self.assertFalse(mock_resize.called)
 
+    def test_pan_quantization(self):
+        """Verify that slight float variations in pan hit the same cache entry."""
+        img1 = self.loader.render(100, 100, offset_x=10.1, offset_y=20.2)
+        img2 = self.loader.render(100, 100, offset_x=10.3, offset_y=20.4)
+        self.assertIs(img1, img2, "Pan quantization should hit cache")
+
 
 if __name__ == "__main__":
     unittest.main()

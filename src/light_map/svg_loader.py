@@ -287,10 +287,12 @@ class SVGLoader:
         q_scale = round(scale_factor, 4)
         q_rot = round(rotation, 2)
         q_quality = round(max(0.1, min(1.0, quality)), 2)
+        q_offset_x = int(round(offset_x))
+        q_offset_y = int(round(offset_y))
 
         # Call cached internal renderer
         return self._render_internal(
-            width, height, q_scale, offset_x, offset_y, q_rot, q_quality
+            width, height, q_scale, q_offset_x, q_offset_y, q_rot, q_quality
         )
 
     @functools.lru_cache(maxsize=32)

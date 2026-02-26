@@ -44,6 +44,9 @@ class CameraPipeline:
         self.map_system = map_system
         self.map_config = map_config
 
+        # Performance optimization: Resize for MediaPipe if camera resolution is high
+        self.target_width = 1920
+
         self._stop_event = threading.Event()
         self._thread: Optional[threading.Thread] = None
         self._lock = threading.Lock()
@@ -92,8 +95,15 @@ class CameraPipeline:
             # CRITICAL: Copy frame immediately if the source reuses buffers.
             safe_frame = frame.copy()
 
-            # 2. MediaPipe (Process Raw Frame)
-            frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            # 2. MediaPipe (Process Resized Frame)
+            h_orig, w_orig = frame.shape[:2]
+            if w_orig > self.target_width:
+                scale = self.target_width / w_orig
+                frame_small = cv2.resize(frame, (0, 0), fx=scale, fy=scale)
+                frame_rgb = cv2.cvtColor(frame_small, cv2.COLOR_BGR2RGB)
+            else:
+                frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+
             results = self.hands.process(frame_rgb)
 
             # 3. ArUco Background Tracking (if enabled)
@@ -105,6 +115,7 @@ class CameraPipeline:
                 and self.map_config
             ):
                 # ArUco tracking updates map_system.ghost_tokens directly currently.
+                # ArucoTokenDetector handles its own resizing and scaling back.
                 self.tracking_coordinator.process_aruco_tracking(
                     safe_frame,
                     self.app_config,

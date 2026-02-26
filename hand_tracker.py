@@ -191,7 +191,6 @@ def main():
     app_win = ProjectorWindow(window_name, native_screen_w, native_screen_h)
 
     # 5. Main Loop
-    last_processed_id = -1
     startup_action_executed = False
     pipeline = None
 
@@ -224,8 +223,13 @@ def main():
             )
             pipeline.start()
 
+            TARGET_FPS = 30
+            FRAME_TIME = 1.0 / TARGET_FPS
+
             try:
                 while True:
+                    loop_start = time.time()
+
                     # A. Get Latest Vision Data
                     data = pipeline.get_latest()
 
@@ -357,6 +361,11 @@ def main():
 
                     if app_win.is_closed():
                         break
+
+                    # G. Limit Frame Rate
+                    elapsed = time.time() - loop_start
+                    sleep_time = max(0.001, FRAME_TIME - elapsed)
+                    time.sleep(sleep_time)
 
             except Exception as e:
                 logger.critical(

@@ -1,5 +1,5 @@
 import unittest
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 import numpy as np
 import time
 import sys
@@ -8,7 +8,7 @@ import os
 # Ensure we can import the local package
 sys.path.insert(0, os.path.abspath("src"))
 
-from light_map.camera_pipeline import CameraPipeline, VisionData
+from light_map.camera_pipeline import CameraPipeline
 from light_map.common_types import Token, AppConfig
 
 
@@ -22,9 +22,11 @@ class TestVisionParallelization(unittest.TestCase):
         self.mock_hands.process.return_value = MagicMock()
 
         self.mock_tracking_coordinator = MagicMock()
+
         # Mock TrackingCoordinator to update map_system.ghost_tokens
         def mock_process(frame, config, map_system, map_config, **kwargs):
             map_system.ghost_tokens = [Token(id=1, world_x=10.0, world_y=20.0)]
+
         self.mock_tracking_coordinator.process_aruco_tracking.side_effect = mock_process
 
         self.mock_app_config = MagicMock(spec=AppConfig)
@@ -83,7 +85,10 @@ class TestVisionParallelization(unittest.TestCase):
         # Change tokens in coordinator for next frame
         def mock_process_v2(frame, config, map_system, map_config, **kwargs):
             map_system.ghost_tokens = [Token(id=2, world_x=30.0, world_y=40.0)]
-        self.mock_tracking_coordinator.process_aruco_tracking.side_effect = mock_process_v2
+
+        self.mock_tracking_coordinator.process_aruco_tracking.side_effect = (
+            mock_process_v2
+        )
 
         # Wait for next data
         start = time.time()

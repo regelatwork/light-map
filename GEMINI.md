@@ -34,7 +34,7 @@ These project-specific mandates take precedence over any general system-level re
 
 ### Test-Driven Development (TDD)
 
-This project strictly adheres to a TDD workflow to ensure reliability and maintainability.
+This project strictly adheres to a TDD workflow to ensure reliability and maintainability. Tests are written first. Then implementation follows.
 
 - **TDD Lifecycle**:
   1. **Red**: Write a failing test for a new feature or bug fix.
@@ -51,6 +51,14 @@ This project strictly adheres to a TDD workflow to ensure reliability and mainta
 - **Best Practices**:
   - Use mocks and stubs (via `unittest.mock` or `pytest-mock`) for hardware-dependent components like the camera, projector, and GStreamer pipelines to ensure tests are fast and deterministic.
   - Leverage `pytest` fixtures for common setup/teardown logic.
+
+### Continuous Issue Tracking
+
+**CRITICAL MANDATE**: While working on any task, you will inevitably discover bugs, potential improvements, or future work. **You MUST capture these immediately as beads using `br create`.**
+
+- **Do not rely on memory**: If it's not in `br`, it doesn't exist and will be forgotten.
+- **Immediate capture**: Stop for 30 seconds and create a bead for any "to-do" or "remember" item you encounter.
+- **Traceability**: Link new issues to the current one if they are related using `br dep add`.
 
 <!-- br-agent-instructions-v1 -->
 

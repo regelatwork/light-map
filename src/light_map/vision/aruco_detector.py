@@ -26,6 +26,11 @@ class ArucoTokenDetector:
         self.R = None
         self.camera_center_world = None
 
+        # Performance optimization
+        self.target_width = 1920
+        self._fov_mask = None
+        self._fov_mask_params = None
+
         # Load calibration
         if os.path.exists(calibration_file):
             data = np.load(calibration_file)
@@ -82,26 +87,27 @@ class ArucoTokenDetector:
         if self.camera_matrix is None or self.R is None:
             return []
 
-        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        h_orig, w_orig = frame.shape[:2]
+
+        # 0. Resize for detection speed if needed
+        if w_orig > self.target_width:
+            scale = self.target_width / w_orig
+            frame_small = cv2.resize(frame, (0, 0), fx=scale, fy=scale)
+            gray = cv2.cvtColor(frame_small, cv2.COLOR_BGR2GRAY)
+        else:
+            scale = 1.0
+            gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 
         # 1. Mask Out Areas Outside Projector FOV if projector_matrix is provided
         if projector_matrix is not None:
-            w_proj = map_system.width
-            h_proj = map_system.height
-            try:
-                # projector_matrix maps from projector to camera coordinates
-                proj_corners = np.array(
-                    [[0, 0], [w_proj, 0], [w_proj, h_proj], [0, h_proj]],
-                    dtype=np.float32,
-                ).reshape(-1, 1, 2)
-                cam_corners = cv2.perspectiveTransform(proj_corners, projector_matrix)
-                cam_corners = cam_corners.astype(np.int32)
-
-                mask = np.zeros_like(gray)
-                cv2.fillConvexPoly(mask, cam_corners, 255)
+            mask = self._get_fov_mask(
+                gray.shape,
+                scale,
+                projector_matrix,
+                (map_system.width, map_system.height),
+            )
+            if mask is not None:
                 gray = cv2.bitwise_and(gray, mask)
-            except Exception:
-                pass
 
         corners, ids, rejected = self.detector.detectMarkers(gray)
 
@@ -113,6 +119,10 @@ class ArucoTokenDetector:
         for i, marker_id_arr in enumerate(ids):
             marker_id = int(marker_id_arr[0])
             marker_corners = corners[i][0]
+
+            # Scale back to original resolution if we resized
+            if scale != 1.0:
+                marker_corners = marker_corners / scale
 
             # Area of the marker in camera pixels
             area = cv2.contourArea(marker_corners)
@@ -188,6 +198,43 @@ class ArucoTokenDetector:
                 )
 
         return tokens
+
+    def _get_fov_mask(
+        self,
+        gray_shape: Tuple[int, int],
+        scale: float,
+        projector_matrix: np.ndarray,
+        map_dims: Tuple[int, int],
+    ) -> Optional[np.ndarray]:
+        """Caches and returns the projector FOV mask."""
+        h, w = gray_shape
+        params = (h, w, scale, hash(projector_matrix.tobytes()), map_dims)
+
+        if self._fov_mask is not None and self._fov_mask_params == params:
+            return self._fov_mask
+
+        w_proj, h_proj = map_dims
+        try:
+            # projector_matrix maps from projector to camera coordinates
+            proj_corners = np.array(
+                [[0, 0], [w_proj, 0], [w_proj, h_proj], [0, h_proj]],
+                dtype=np.float32,
+            ).reshape(-1, 1, 2)
+            cam_corners = cv2.perspectiveTransform(proj_corners, projector_matrix)
+
+            # Adjust corners for scaled detection frame
+            if scale != 1.0:
+                cam_corners *= scale
+
+            cam_corners = cam_corners.astype(np.int32)
+
+            mask = np.zeros(gray_shape, dtype=np.uint8)
+            cv2.fillConvexPoly(mask, cam_corners, 255)
+            self._fov_mask = mask
+            self._fov_mask_params = params
+            return mask
+        except Exception:
+            return None
 
     def _parallax_correction(self, u: float, v: float, h: float) -> Tuple[float, float]:
         """

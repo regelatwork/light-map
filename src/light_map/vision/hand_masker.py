@@ -142,13 +142,10 @@ class HandMasker:
             self._cached_params = current_params
             return mask
 
-        cv2.fillPoly(mask, hulls, 255)
-
         if padding > 0:
-            kernel = cv2.getStructuringElement(
-                cv2.MORPH_ELLIPSE, (padding * 2 + 1, padding * 2 + 1)
-            )
-            mask = cv2.dilate(mask, kernel)
+            # Draw thick boundaries to simulate dilation (much faster than cv2.dilate on large images)
+            cv2.drawContours(mask, hulls, -1, 255, thickness=padding * 2)
+        cv2.fillPoly(mask, hulls, 255)
 
         if blur > 0:
             # Ensure blur is odd

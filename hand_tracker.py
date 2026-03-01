@@ -89,6 +89,25 @@ def main():
     setup_logging(level=log_level, log_file=log_file)
     logger = logging.getLogger(__name__)
 
+    # Ensure all unhandled exceptions are logged
+    def handle_exception(exc_type, exc_value, exc_traceback):
+        if issubclass(exc_type, KeyboardInterrupt):
+            sys.__excepthook__(exc_type, exc_value, exc_traceback)
+            return
+        logger.critical(
+            "Unhandled exception", exc_info=(exc_type, exc_value, exc_traceback)
+        )
+
+    sys.excepthook = handle_exception
+
+    def handle_thread_exception(args):
+        logger.critical(
+            "Unhandled exception in thread",
+            exc_info=(args.exc_type, args.exc_value, args.exc_traceback),
+        )
+
+    threading.excepthook = handle_thread_exception
+
     # 1. Load Calibration
     calibration_file = storage.get_data_path("projector_calibration.npz")
 

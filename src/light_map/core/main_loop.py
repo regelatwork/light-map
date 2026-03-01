@@ -95,7 +95,6 @@ class MainLoopController:
             if current_time - self._last_report_time > 5.0:
                 report = self.instrument.get_report()
                 if report:
-                    import json
 
                     logging.info(
                         f"Performance Report (P95 ms): { {k: v['p95_ms'] for k, v in report.items() if isinstance(v, dict) and 'p95_ms' in v} }"
@@ -173,6 +172,7 @@ class MainLoopController:
         except KeyboardInterrupt:
             logging.info("Interrupted by user.")
         finally:
+            logging.info("Main loop finished loop execution.")
             self.stop()
 
     def stop(self):

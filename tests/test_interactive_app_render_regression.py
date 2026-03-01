@@ -3,6 +3,7 @@ import numpy as np
 from unittest.mock import MagicMock, patch
 from light_map.interactive_app import InteractiveApp, AppConfig
 from light_map.core.world_state import WorldState
+from light_map.common_types import SceneId
 
 
 @pytest.fixture
@@ -53,3 +54,38 @@ def test_process_state_returns_valid_image(app_with_real_scenes):
     assert isinstance(output_image, np.ndarray)
     assert output_image.shape == (100, 100, 3)
     assert output_image.dtype == np.uint8
+
+
+def test_map_render_caching(app_with_real_scenes):
+    """Verifies that the map is only re-rendered when state actually changes."""
+    # 1. Setup Map
+    mock_loader = MagicMock()
+    mock_loader.render.return_value = np.zeros((100, 100, 3), dtype=np.uint8)
+    app_with_real_scenes.map_system.svg_loader = mock_loader
+
+    # Switch to ViewingScene so base layer is rendered
+    app_with_real_scenes.current_scene = app_with_real_scenes.scenes[SceneId.VIEWING]
+
+    # 2. Mock state and inputs
+    state = WorldState()
+    state.background = np.zeros((100, 100, 3), dtype=np.uint8)
+    app_with_real_scenes.input_processor.convert_mediapipe_to_inputs = MagicMock(
+        return_value=[]
+    )
+
+    # 3. First render (should call svg_loader.render)
+    app_with_real_scenes.process_state(state, [])
+    assert mock_loader.render.call_count == 1
+
+    # 4. Second render with same state (should NOT call svg_loader.render)
+    app_with_real_scenes.process_state(state, [])
+    assert mock_loader.render.call_count == 1
+
+    # 5. Change Map State (Pan)
+    app_with_real_scenes.map_system.pan(10, 0)
+    app_with_real_scenes.process_state(state, [])
+    assert mock_loader.render.call_count == 2
+
+    # 6. Same state again
+    app_with_real_scenes.process_state(state, [])
+    assert mock_loader.render.call_count == 2

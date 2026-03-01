@@ -81,6 +81,10 @@ class InteractiveApp:
         self.current_scene: Scene = self.scenes[SceneId.MENU]
         self.current_scene.on_enter()
 
+        # Map Rendering Cache
+        self._cached_map_image: Optional[np.ndarray] = None
+        self._last_render_params: Dict[str, Any] = {}
+
     def _load_camera_calibration(
         self,
     ) -> Tuple[
@@ -221,6 +225,10 @@ class InteractiveApp:
         )
         self.overlay_renderer = OverlayRenderer(self.app_context)
 
+        # Reset map cache
+        self._cached_map_image = None
+        self._last_render_params = {}
+
         # Re-initialize scenes with new context
         self.scenes = self._initialize_scenes()
         self.current_scene = self.scenes[SceneId.MENU]
@@ -305,20 +313,38 @@ class InteractiveApp:
             self._handle_payloads(transition.payload)
             self._switch_scene(transition)
 
+        t_start = time.perf_counter_ns()
         # Render Base Layer
         if state.background is not None:
             base_frame = self._render_base_layer(state.background)
         else:
             base_frame = np.zeros(frame_shape, dtype=np.uint8)
+        t_base = time.perf_counter_ns()
 
         # Scene Render
-        scene_frame = self.current_scene.render(base_frame)
+        # We MUST pass a copy because the scenes might draw directly onto the frame,
+        # and we don't want to pollute the cached base layer.
+        scene_frame = self.current_scene.render(base_frame.copy())
+        t_scene = time.perf_counter_ns()
 
         # Hand Masking
         masked_frame = self._apply_hand_masking(scene_frame, results)
+        t_mask = time.perf_counter_ns()
 
         # Global Overlays
         final_frame = self._render_global_overlays(masked_frame, inputs)
+        t_overlays = time.perf_counter_ns()
+
+        # Log breakdown if total exceeds threshold (e.g., 50ms)
+        total_ms = (t_overlays - t_start) / 1_000_000.0
+        if total_ms > 50.0:
+            logging.info(
+                f"RENDER BREAKDOWN ({total_ms:.1f}ms): "
+                f"base={(t_base - t_start) / 1_000_000.0:.1f}ms, "
+                f"scene={(t_scene - t_base) / 1_000_000.0:.1f}ms, "
+                f"mask={(t_mask - t_scene) / 1_000_000.0:.1f}ms, "
+                f"overlays={(t_overlays - t_mask) / 1_000_000.0:.1f}ms"
+            )
 
         return final_frame, []
 
@@ -374,17 +400,34 @@ class InteractiveApp:
                 else False
             )
             quality = 0.25 if is_interacting else 1.0
-            map_image = self.map_system.svg_loader.render(
-                self.config.width,
-                self.config.height,
-                quality=quality,
-                **self.map_system.get_render_params(),
-            )
+            params = self.map_system.get_render_params()
+            params["quality"] = quality
+
+            # Check if we can reuse the cached map image
+            if (
+                self._cached_map_image is not None
+                and params == self._last_render_params
+            ):
+                map_image = self._cached_map_image
+            else:
+                # Cache miss: render and store
+                logging.info(
+                    f"Map Cache Miss! New params: {params}, Old params: {self._last_render_params}"
+                )
+                map_image = self.map_system.svg_loader.render(
+                    self.config.width,
+                    self.config.height,
+                    quality=quality,
+                    **self.map_system.get_render_params(),
+                )
+                self._cached_map_image = map_image
+                self._last_render_params = params.copy()
+
             map_opacity = 0.5 if is_interacting else 1.0
 
-            if map_opacity < 1.0:
-                return cv2.convertScaleAbs(map_image, alpha=map_opacity, beta=0)
-            return map_image.copy()
+            if map_opacity >= 1.0:
+                return map_image
+            return cv2.convertScaleAbs(map_image, alpha=map_opacity, beta=0)
 
         return np.zeros((self.config.height, self.config.width, 3), dtype=np.uint8)
 
@@ -397,6 +440,10 @@ class InteractiveApp:
         """Loads an SVG map file and restores its state."""
         filename = os.path.abspath(filename)
         self.map_system.svg_loader = SVGLoader(filename)
+
+        # Reset map cache
+        self._cached_map_image = None
+        self._last_render_params = {}
 
         entry = self.map_config.data.maps.get(filename)
 

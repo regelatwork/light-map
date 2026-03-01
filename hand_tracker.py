@@ -337,12 +337,11 @@ def main():
                         app.set_debug_mode(not app.debug_mode)
 
                 if should_break:
+                    logger.info(f"Stopping main loop due to action: {action_str}")
                     main_loop.stop()
 
-                # F. Handle UI and Keyboard
-                app_win.root.update()
-
                 if app_win.is_closed():
+                    logger.info("Stopping main loop because window is closed.")
                     main_loop.stop()
 
             try:

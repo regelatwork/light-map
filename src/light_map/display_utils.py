@@ -4,7 +4,6 @@ import logging
 import sys
 import os
 import numpy as np
-from PIL import Image, ImageTk
 from logging.handlers import RotatingFileHandler
 from typing import Tuple, Optional
 from light_map.core.storage import StorageManager
@@ -17,64 +16,58 @@ class ProjectorWindow:
         self.name = name
         self.width = width
         self.height = height
-        self.root = tk.Tk()
-        self.root.title(name)
-        self.root.attributes("-fullscreen", True)
-        self.root.config(cursor="none")
-        self.root.configure(background="black")
-
-        self.canvas = tk.Canvas(
-            self.root,
-            width=width,
-            height=height,
-            highlightthickness=0,
-            background="black",
-        )
-        self.canvas.pack(fill="both", expand=True)
-
-        self.photo = None
-        self.image_id = None
         self.closed = False
-        self.pending_keys = []
+        self._frames_shown = 0
 
-        self.root.protocol("WM_DELETE_WINDOW", self.close)
-        self.root.bind("<Key>", self._on_key)
-
-    def _on_key(self, event):
-        if event.char:
-            self.pending_keys.append(ord(event.char))
-        elif event.keysym == "Escape":
-            self.close()
+        # Create window and set to fullscreen
+        cv2.namedWindow(self.name, cv2.WINDOW_NORMAL)
+        cv2.setWindowProperty(self.name, cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
+        # Briefly pump the loop to help initialization
+        cv2.waitKey(1)
 
     def get_key(self) -> int:
-        if self.pending_keys:
-            return self.pending_keys.pop(0)
+        # In the current architecture, keys are handled by MainLoopController via waitKey(1)
         return -1
 
     def update_image(self, bgr_frame: np.ndarray):
         if self.closed:
             return
 
-        # Convert BGR to RGB
-        rgb_frame = cv2.cvtColor(bgr_frame, cv2.COLOR_BGR2RGB)
-        img = Image.fromarray(rgb_frame)
-        self.photo = ImageTk.PhotoImage(image=img)
-
-        if self.image_id is None:
-            self.image_id = self.canvas.create_image(
-                self.width // 2, self.height // 2, image=self.photo
-            )
-        else:
-            self.canvas.itemconfig(self.image_id, image=self.photo)
-
-        self.root.update_idletasks()
-        self.root.update()
+        cv2.imshow(self.name, bgr_frame)
+        self._frames_shown += 1
+        # Note: We rely on MainLoopController.tick() calling cv2.waitKey(1)
+        # to pump the event loop and update the window.
 
     def close(self):
-        self.closed = True
-        self.root.destroy()
+        if not self.closed:
+            self.closed = True
+            try:
+                cv2.destroyWindow(self.name)
+            except Exception:
+                pass
 
     def is_closed(self) -> bool:
+        if self.closed:
+            return True
+
+        # Only check window properties after a few frames have been shown
+        if self._frames_shown < 100:
+            return False
+
+        try:
+            # getWindowProperty returns 0 if the window is invisible or closed.
+            # It sometimes returns -1 if the property is not yet available or during transients.
+            prop = cv2.getWindowProperty(self.name, cv2.WND_PROP_VISIBLE)
+            if prop == 0:
+                logging.info(
+                    f"Window closure detected via getWindowProperty (prop={prop})"
+                )
+                self.closed = True
+        except Exception as e:
+            # Only treat exceptions as closure if they persist or indicate invalid window handle
+            logging.info(f"Ignored exception in getWindowProperty: {e}")
+            pass
+
         return self.closed
 
 

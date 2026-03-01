@@ -72,6 +72,25 @@ class SceneId(StrEnum):
     CALIBRATE_EXTRINSICS = "CALIBRATE_EXTRINSICS"
 
 
+class ResultType(StrEnum):
+    ARUCO = "ARUCO"
+    HANDS = "HANDS"
+    GESTURE = "GESTURE"
+
+
+class Action(StrEnum):
+    SELECT = "SELECT"
+    BACK = "BACK"
+    MOVE = "MOVE"
+
+
+@dataclass
+class DetectionResult:
+    timestamp: int
+    type: ResultType
+    data: Any
+
+
 class GmPosition(StrEnum):
     NONE = "None"
     NORTH = "North"

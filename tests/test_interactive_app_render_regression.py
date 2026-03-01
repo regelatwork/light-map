@@ -2,6 +2,7 @@ import pytest
 import numpy as np
 from unittest.mock import MagicMock, patch
 from light_map.interactive_app import InteractiveApp, AppConfig
+from light_map.core.world_state import WorldState
 
 
 @pytest.fixture
@@ -30,11 +31,12 @@ def app_with_real_scenes(tmp_path):
         return _app
 
 
-def test_process_frame_returns_valid_image(app_with_real_scenes):
+def test_process_state_returns_valid_image(app_with_real_scenes):
     # Setup
     frame = np.zeros((100, 100, 3), dtype=np.uint8)
-    results = MagicMock()
-    results.multi_hand_landmarks = None
+    state = WorldState()
+    state.background = frame
+    state.last_frame_timestamp = 1
 
     # Mock input processor to return empty inputs
     app_with_real_scenes.input_processor.convert_mediapipe_to_inputs = MagicMock(
@@ -42,11 +44,11 @@ def test_process_frame_returns_valid_image(app_with_real_scenes):
     )
 
     # Execute
-    output_image, actions = app_with_real_scenes.process_frame(frame, results)
+    output_image, actions = app_with_real_scenes.process_state(state, [])
 
     # Verify
     assert output_image is not None, (
-        "process_frame returned None, which causes cv2.imshow to fail."
+        "process_state returned None, which causes cv2.imshow to fail."
     )
     assert isinstance(output_image, np.ndarray)
     assert output_image.shape == (100, 100, 3)

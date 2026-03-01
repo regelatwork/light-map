@@ -36,6 +36,7 @@ class TemporalEventManager:
             except Exception as e:
                 # Log but don't stop the main loop
                 import logging
+
                 logging.error(f"Error executing temporal event: {e}")
 
     def clear(self):

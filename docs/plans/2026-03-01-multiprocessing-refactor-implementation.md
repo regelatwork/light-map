@@ -8,11 +8,12 @@
 
 **Tech Stack:** Python `multiprocessing`, `multiprocessing.shared_memory`, `numpy` (views/sharing), `OpenCV` (ROI extraction/rendering).
 
----
+______________________________________________________________________
 
 ### Task 1: Define IPC Types and DetectionResult
 
 **Files:**
+
 - Modify: `src/light_map/common_types.py`
 - Test: `tests/test_common_types_ipc.py`
 
@@ -67,11 +68,12 @@ git add src/light_map/common_types.py tests/test_common_types_ipc.py
 git commit -m "feat: add IPC and Action types to common_types"
 ```
 
----
+______________________________________________________________________
 
 ### Task 2: Implement CameraOperator (The Producer)
 
 **Files:**
+
 - Create: `src/light_map/vision/camera_operator.py`
 - Test: `tests/test_camera_operator.py`
 
@@ -86,6 +88,7 @@ git commit -m "feat: add IPC and Action types to common_types"
 
 **Step 3: Write minimal implementation**
 Implement `CameraOperator` following `docs/plans/2026-03-01-multiprocessing-ipc-design.md`.
+
 - Handles `multiprocessing.shared_memory` allocation.
 - Implements `_write_frame(frame, timestamp)` with ref-count checking.
 
@@ -93,11 +96,12 @@ Implement `CameraOperator` following `docs/plans/2026-03-01-multiprocessing-ipc-
 
 **Step 5: Commit**
 
----
+______________________________________________________________________
 
 ### Task 3: Implement FrameProducer (The Consumer)
 
 **Files:**
+
 - Create: `src/light_map/vision/frame_producer.py`
 - Test: `tests/test_frame_producer.py`
 
@@ -113,11 +117,12 @@ Implement `FrameProducer` with `Acquire -> Process -> Release` logic.
 
 **Step 5: Commit**
 
----
+______________________________________________________________________
 
 ### Task 4: Refactor WorldState with Functional Injection
 
 **Files:**
+
 - Modify: `src/light_map/core/app_context.py` (or where WorldState lives)
 - Test: `tests/test_world_state_ipc.py`
 
@@ -127,6 +132,7 @@ Verify `update_from_frame(shm_view, timestamp)` calls the injected processor and
 **Step 2: Run test to verify it fails**
 
 **Step 3: Write minimal implementation**
+
 - Add `frame_processor` to `__init__`.
 - Implement `update_from_frame` and `apply(DetectionResult)`.
 - Add granular `dirty_*` flags.
@@ -135,11 +141,12 @@ Verify `update_from_frame(shm_view, timestamp)` calls the injected processor and
 
 **Step 5: Commit**
 
----
+______________________________________________________________________
 
 ### Task 5: Implement VisionProcessManager (The Supervisor)
 
 **Files:**
+
 - Create: `src/light_map/vision/process_manager.py`
 - Test: `tests/test_process_manager.py`
 
@@ -155,11 +162,12 @@ Implement `VisionProcessManager` with process health monitoring and cleanup.
 
 **Step 5: Commit**
 
----
+______________________________________________________________________
 
 ### Task 6: Refactor InputManager for Action Mapping
 
 **Files:**
+
 - Modify: `src/light_map/input_manager.py`
 - Test: `tests/test_input_manager_actions.py`
 
@@ -169,6 +177,7 @@ Verify `get_actions()` returns semantic actions from combined hardware/gesture i
 **Step 2: Run test to verify it fails**
 
 **Step 3: Write minimal implementation**
+
 - Add `cv2.waitKey` polling.
 - Add gesture polling from `WorldState`.
 - Map to `Action` enum.
@@ -177,11 +186,12 @@ Verify `get_actions()` returns semantic actions from combined hardware/gesture i
 
 **Step 5: Commit**
 
----
+______________________________________________________________________
 
 ### Task 7: Implement MainLoopController and Integration
 
 **Files:**
+
 - Create: `src/light_map/core/main_loop.py`
 - Modify: `src/light_map/interactive_app.py`
 - Test: `tests/test_main_loop_integration.py`
@@ -198,7 +208,7 @@ Implement the high-frequency polling loop aggregating queues, updating state, an
 
 **Step 5: Commit**
 
----
+______________________________________________________________________
 
 ### Task 8: Cleanup and Latency Verification
 

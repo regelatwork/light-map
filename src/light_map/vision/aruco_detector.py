@@ -70,7 +70,12 @@ class ArucoTokenDetector:
         self.camera_center_world = -self.R.T @ self.tvec.flatten()
         logging.debug("ArucoDetector: Camera extrinsics updated.")
 
-    def detect_raw(self, frame: np.ndarray, projector_matrix: Optional[np.ndarray] = None, map_dims: Optional[Tuple[int, int]] = None) -> Tuple[List[np.ndarray], List[int]]:
+    def detect_raw(
+        self,
+        frame: np.ndarray,
+        projector_matrix: Optional[np.ndarray] = None,
+        map_dims: Optional[Tuple[int, int]] = None,
+    ) -> Tuple[List[np.ndarray], List[int]]:
         """
         Detects ArUco markers, handles resizing, FOV masking, and duplicate resolution.
         Returns (corners, ids) as lists.
@@ -109,14 +114,17 @@ class ArucoTokenDetector:
             marker_corners = corners[i][0]
             if scale != 1.0:
                 marker_corners = marker_corners / scale
-            
+
             area = cv2.contourArea(marker_corners)
-            if marker_id not in detections_by_id or area > detections_by_id[marker_id]["area"]:
+            if (
+                marker_id not in detections_by_id
+                or area > detections_by_id[marker_id]["area"]
+            ):
                 detections_by_id[marker_id] = {"corners": marker_corners, "area": area}
 
         final_corners = [v["corners"] for v in detections_by_id.values()]
         final_ids = [k for k in detections_by_id.keys()]
-        
+
         return final_corners, final_ids
 
     def map_to_tokens(
@@ -150,9 +158,7 @@ class ArucoTokenDetector:
             # Apply parallax correction
             height_mm = default_height_mm
             if token_configs and marker_id in token_configs:
-                height_mm = token_configs[marker_id].get(
-                    "height_mm", default_height_mm
-                )
+                height_mm = token_configs[marker_id].get("height_mm", default_height_mm)
 
             wx_mm, wy_mm = self._parallax_correction(u, v, height_mm)
 
@@ -196,9 +202,9 @@ class ArucoTokenDetector:
         Legacy/Combined method for single-threaded use.
         """
         corners, ids = self.detect_raw(
-            frame, 
-            projector_matrix=projector_matrix, 
-            map_dims=(map_system.width, map_system.height)
+            frame,
+            projector_matrix=projector_matrix,
+            map_dims=(map_system.width, map_system.height),
         )
         return self.map_to_tokens(
             {"corners": corners, "ids": ids},

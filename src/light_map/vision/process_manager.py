@@ -13,9 +13,9 @@ class VisionProcessManager:
     """
 
     def __init__(
-        self, 
-        width: int = 1920, 
-        height: int = 1080, 
+        self,
+        width: int = 1920,
+        height: int = 1080,
         num_consumers: int = 2,
         projector_matrix: Optional[np.ndarray] = None,
         map_dims: Optional[Tuple[int, int]] = None,

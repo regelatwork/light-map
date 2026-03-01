@@ -64,17 +64,12 @@ def aruco_worker(
 
             # Perform detection outside the lease
             corners, ids = detector.detect_raw(
-                frame_copy, 
-                projector_matrix=projector_matrix, 
-                map_dims=map_dims
+                frame_copy, projector_matrix=projector_matrix, map_dims=map_dims
             )
 
             # Serialize results
             # corners are already a list of numpy arrays, convert to lists of lists
-            data = {
-                "corners": [c.tolist() for c in corners],
-                "ids": ids
-            }
+            data = {"corners": [c.tolist() for c in corners], "ids": ids}
 
             result = DetectionResult(
                 timestamp=ts_to_process, type=ResultType.ARUCO, data=data

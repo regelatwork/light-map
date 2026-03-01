@@ -37,9 +37,7 @@ def test_world_state_apply_results():
 
     # Apply ArUco result (Raw from worker)
     raw_data = {"corners": [[[0, 0], [1, 0], [1, 1], [0, 1]]], "ids": [42]}
-    result_raw = DetectionResult(
-        timestamp=2050, type=ResultType.ARUCO, data=raw_data
-    )
+    result_raw = DetectionResult(timestamp=2050, type=ResultType.ARUCO, data=raw_data)
     state.apply(result_raw)
     assert state.raw_aruco["ids"] == [42]
     assert state.dirty_tokens is True

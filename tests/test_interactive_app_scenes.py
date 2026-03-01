@@ -4,6 +4,7 @@ from unittest.mock import MagicMock, patch
 from light_map.interactive_app import InteractiveApp, AppConfig
 from light_map.common_types import SceneId
 from light_map.core.scene import SceneTransition
+from light_map.core.world_state import WorldState
 
 
 @pytest.fixture
@@ -77,7 +78,7 @@ def test_switch_scene_invalid_id(app):
     assert app.current_scene == initial_scene
 
 
-def test_process_frame_triggers_switch(app):
+def test_process_state_triggers_switch(app):
     app.current_scene = app.scenes[SceneId.MENU]
 
     # Setup transition to be returned by update
@@ -95,7 +96,10 @@ def test_process_frame_triggers_switch(app):
     app.current_scene.render.return_value = np.zeros((100, 100, 3), dtype=np.uint8)
 
     frame = np.zeros((100, 100, 3), dtype=np.uint8)
-    app.process_frame(frame, None)
+    state = WorldState()
+    state.background = frame
+    state.last_frame_timestamp = 1
+    app.process_state(state, [])
 
     # Verify _switch_scene was called
     app._switch_scene.assert_called_once_with(transition)

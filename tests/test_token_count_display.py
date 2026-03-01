@@ -4,6 +4,7 @@ from unittest.mock import MagicMock, patch
 from light_map.interactive_app import InteractiveApp, AppConfig
 from light_map.common_types import Token, SceneId
 from light_map.map_config import MapConfigManager
+from light_map.core.world_state import WorldState
 
 
 # Reuse Mock classes from test_viewing_mode
@@ -96,12 +97,16 @@ def test_token_count_display_no_tokens(app):
     app.map_system.ghost_tokens = []
 
     frame = np.zeros((100, 100, 3), dtype=np.uint8)
-    results = MockResults()  # No hands
+    MockResults()  # No hands
 
     # Since rendering is now more complex, let's mock the overlay method
     # and check that the token drawing sub-method isn't called.
+    state = WorldState()
+    state.background = frame
+    state.last_frame_timestamp = 1
+
     with patch.object(app, "_draw_ghost_tokens") as mock_draw_tokens:
-        app.process_frame(frame, results)
+        app.process_state(state, [])
         mock_draw_tokens.assert_not_called()
 
 
@@ -112,13 +117,18 @@ def test_token_count_display_with_tokens(app):
     app.map_system.ghost_tokens = [Token(1, 10, 10), Token(2, 20, 20)]
 
     frame = np.zeros((100, 100, 3), dtype=np.uint8)
-    results = MockResults()  # No hands
+    MockResults()  # No hands
 
     # Mock the scene's render method to return a valid frame
     app.current_scene.render = MagicMock(return_value=frame)
 
+    state = WorldState()
+    state.background = frame
+    state.last_frame_timestamp = 1
+    state.tokens = app.map_system.ghost_tokens
+
     with patch("cv2.putText") as mock_putText:
-        app.process_frame(frame, results)
+        app.process_state(state, [])
 
         # Check if "Tokens: 2" was drawn
         found = False
@@ -138,13 +148,18 @@ def test_token_count_hidden_when_toggled_off(mock_draw_tokens, app):
     app.map_system.ghost_tokens = [Token(1, 10, 10)]
 
     frame = np.zeros((100, 100, 3), dtype=np.uint8)
-    results = MockResults()
+    MockResults()
 
     # Mock the scene's render method to return a valid frame
     app.current_scene.render = MagicMock(return_value=frame)
 
+    state = WorldState()
+    state.background = frame
+    state.last_frame_timestamp = 1
+    state.tokens = app.map_system.ghost_tokens
+
     with patch("cv2.putText") as mock_putText:
-        app.process_frame(frame, results)
+        app.process_state(state, [])
 
         # Assert that the ghost tokens are not drawn
         mock_draw_tokens.assert_not_called()
@@ -167,16 +182,21 @@ def test_token_count_hidden_in_menu(app):
     app.map_system.ghost_tokens = [Token(1, 10, 10)]
 
     frame = np.zeros((100, 100, 3), dtype=np.uint8)
-    results = MockResults()
+    MockResults()
 
     # Mock the scene's render method
     app.current_scene.render.return_value = frame
+
+    state = WorldState()
+    state.background = frame
+    state.last_frame_timestamp = 1
+    state.tokens = app.map_system.ghost_tokens
 
     with (
         patch("cv2.putText") as mock_putText,
         patch.object(app, "_draw_ghost_tokens") as mock_draw_tokens,
     ):
-        app.process_frame(frame, results)
+        app.process_state(state, [])
 
         # Assert tokens NOT drawn
         mock_draw_tokens.assert_not_called()

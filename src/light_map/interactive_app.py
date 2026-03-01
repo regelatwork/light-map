@@ -44,6 +44,7 @@ if TYPE_CHECKING:
     from light_map.core.world_state import WorldState
     from light_map.common_types import Action, Token
 
+
 class InteractiveApp:
     def __init__(self, config: AppConfig, time_provider=time.monotonic):
         self.config = config
@@ -163,12 +164,14 @@ class InteractiveApp:
                 raw_data,
                 self.map_system,
                 token_configs=self.map_config.get_aruco_configs(
-                    self.map_system.svg_loader.filename 
-                    if self.map_system.svg_loader else None
+                    self.map_system.svg_loader.filename
+                    if self.map_system.svg_loader
+                    else None
                 ),
                 ppi=self.map_config.get_ppi(),
-                distortion_model=self.config.distortion_model
+                distortion_model=self.config.distortion_model,
             )
+
         return mapper
 
     def _initialize_scenes(self) -> Dict[SceneId, Scene]:
@@ -300,42 +303,6 @@ class InteractiveApp:
         masked_frame = self._apply_hand_masking(scene_frame, results)
 
         # Global Overlays
-        final_frame = self._render_global_overlays(masked_frame, inputs)
-
-        return final_frame, []
-
-    def process_frame(
-        self, frame: np.ndarray, results: Any
-    ) -> Tuple[np.ndarray, List[str]]:
-        self.app_context.last_camera_frame = frame
-        current_time = self.time_provider()
-
-        # 1. Update FPS
-        if self.last_fps_time != 0:
-            dt = current_time - self.last_fps_time
-            if dt > 0:
-                self.fps = 1.0 / dt
-        self.last_fps_time = current_time
-
-        # 2. Standardize Input
-        inputs = self.input_processor.convert_mediapipe_to_inputs(results, frame.shape)
-
-        # 3. Scene Update
-        transition = self.current_scene.update(inputs, current_time)
-        if transition:
-            self._handle_payloads(transition.payload)
-            self._switch_scene(transition)
-
-        # 4. Base Render (Map Background)
-        base_frame = self._render_base_layer(frame)
-
-        # 5. Scene Render
-        scene_frame = self.current_scene.render(base_frame)
-
-        # 6. Hand Masking (Digital Shadow)
-        masked_frame = self._apply_hand_masking(scene_frame, results)
-
-        # 7. Global Overlays
         final_frame = self._render_global_overlays(masked_frame, inputs)
 
         return final_frame, []

@@ -1,6 +1,7 @@
 import multiprocessing as mp
 import logging
-from typing import List, Optional
+import numpy as np
+from typing import List, Optional, Tuple
 from light_map.vision.camera_operator import CameraOperator
 from light_map.vision.workers import aruco_worker, hand_worker
 
@@ -11,10 +12,19 @@ class VisionProcessManager:
     and the Shared Memory infrastructure.
     """
 
-    def __init__(self, width: int = 1920, height: int = 1080, num_consumers: int = 2):
+    def __init__(
+        self, 
+        width: int = 1920, 
+        height: int = 1080, 
+        num_consumers: int = 2,
+        projector_matrix: Optional[np.ndarray] = None,
+        map_dims: Optional[Tuple[int, int]] = None,
+    ):
         self.width = width
         self.height = height
         self.num_consumers = num_consumers
+        self.projector_matrix = projector_matrix
+        self.map_dims = map_dims
 
         self.operator: Optional[CameraOperator] = None
         self.shm_name: Optional[str] = None
@@ -52,6 +62,8 @@ class VisionProcessManager:
                 "width": self.width,
                 "height": self.height,
                 "num_consumers": self.num_consumers,
+                "projector_matrix": self.projector_matrix,
+                "map_dims": self.map_dims,
             },
             name="ArucoWorker",
         )

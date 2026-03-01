@@ -25,7 +25,7 @@ def test_world_state_roi_injection():
 def test_world_state_apply_results():
     state = WorldState()
 
-    # Apply ArUco result
+    # Apply ArUco result (Legacy/Pre-mapped)
     tokens = [Token(id=1, world_x=10, world_y=20)]
     result = DetectionResult(
         timestamp=2000, type=ResultType.ARUCO, data={"tokens": tokens}
@@ -33,6 +33,15 @@ def test_world_state_apply_results():
 
     state.apply(result)
     assert len(state.tokens) == 1
+    assert state.dirty_tokens is True
+
+    # Apply ArUco result (Raw from worker)
+    raw_data = {"corners": [[[0, 0], [1, 0], [1, 1], [0, 1]]], "ids": [42]}
+    result_raw = DetectionResult(
+        timestamp=2050, type=ResultType.ARUCO, data=raw_data
+    )
+    state.apply(result_raw)
+    assert state.raw_aruco["ids"] == [42]
     assert state.dirty_tokens is True
 
     state.clear_dirty()

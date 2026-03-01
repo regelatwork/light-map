@@ -1,5 +1,5 @@
 import numpy as np
-from typing import List, Optional, Callable, Any
+from typing import List, Optional, Callable, Any, Dict
 from light_map.common_types import Token, DetectionResult, ResultType, ViewportState
 
 
@@ -19,6 +19,7 @@ class WorldState:
         self.last_frame_timestamp: int = 0
 
         self.tokens: List[Token] = []
+        self.raw_aruco: Dict[str, Any] = {"corners": [], "ids": []}
         self.hands: List[Any] = []
         self.gesture: Optional[str] = None
         self.viewport: ViewportState = ViewportState()
@@ -59,7 +60,13 @@ class WorldState:
             pass
 
         if result.type == ResultType.ARUCO:
-            self.tokens = result.data.get("tokens", [])
+            if "tokens" in result.data:
+                self.tokens = result.data["tokens"]
+            else:
+                self.raw_aruco = {
+                    "corners": result.data.get("corners", []),
+                    "ids": result.data.get("ids", []),
+                }
             self.dirty_tokens = True
         elif result.type == ResultType.HANDS:
             self.hands = result.data.get("landmarks", [])

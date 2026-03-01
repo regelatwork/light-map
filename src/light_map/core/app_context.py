@@ -14,6 +14,7 @@ if TYPE_CHECKING:
     from light_map.renderer import Renderer
     from light_map.common_types import AppConfig
     from light_map.projector import ProjectorDistortionModel
+    from light_map.vision.aruco_detector import ArucoTokenDetector
 
 
 @dataclass
@@ -27,6 +28,7 @@ class AppContext:
     projector_matrix: np.ndarray
     notifications: NotificationManager
     analytics: AnalyticsManager
+    aruco_detector: Optional[ArucoTokenDetector] = None
     camera_matrix: Optional[np.ndarray] = None
     dist_coeffs: Optional[np.ndarray] = None
     camera_rvec: Optional[np.ndarray] = None

@@ -4,7 +4,7 @@ import numpy as np
 import time
 import os
 import logging
-from typing import List, Tuple, Any, Dict, Optional, TYPE_CHECKING
+from typing import List, Tuple, Any, Dict, Optional, TYPE_CHECKING, Callable
 
 from light_map.common_types import (
     AppConfig,
@@ -37,11 +37,12 @@ from light_map.vision.tracking_coordinator import TrackingCoordinator
 from light_map.vision.input_processor import InputProcessor
 from light_map.vision.overlay_renderer import OverlayRenderer
 from light_map.vision.hand_masker import HandMasker
+from light_map.vision.aruco_detector import ArucoTokenDetector
 from light_map.display_utils import draw_text_with_background
 
 if TYPE_CHECKING:
     from light_map.core.world_state import WorldState
-    from light_map.common_types import Action
+    from light_map.common_types import Action, Token
 
 class InteractiveApp:
     def __init__(self, config: AppConfig, time_provider=time.monotonic):
@@ -127,6 +128,12 @@ class InteractiveApp:
         debug_mode=False,
         show_tokens=True,
     ) -> AppContext:
+        aruco_detector = ArucoTokenDetector()
+        if camera_matrix is not None:
+            aruco_detector.set_calibration(camera_matrix, dist_coeffs)
+        if rvec is not None:
+            aruco_detector.set_extrinsics(rvec, tvec)
+
         return AppContext(
             app_config=self.config,
             renderer=self.renderer,
@@ -135,6 +142,7 @@ class InteractiveApp:
             projector_matrix=self.config.projector_matrix,
             notifications=self.notifications,
             distortion_model=self.config.distortion_model,
+            aruco_detector=aruco_detector,
             camera_matrix=camera_matrix,
             dist_coeffs=dist_coeffs,
             camera_rvec=rvec,
@@ -143,6 +151,25 @@ class InteractiveApp:
             show_tokens=show_tokens,
             analytics=AnalyticsManager(self.config.storage_manager),
         )
+
+    @property
+    def aruco_mapper(self) -> Optional[Callable[[Dict[str, Any]], List[Token]]]:
+        """Provides a mapping function for the MainLoopController."""
+        if not self.app_context.aruco_detector:
+            return None
+
+        def mapper(raw_data):
+            return self.app_context.aruco_detector.map_to_tokens(
+                raw_data,
+                self.map_system,
+                token_configs=self.map_config.get_aruco_configs(
+                    self.map_system.svg_loader.filename 
+                    if self.map_system.svg_loader else None
+                ),
+                ppi=self.map_config.get_ppi(),
+                distortion_model=self.config.distortion_model
+            )
+        return mapper
 
     def _initialize_scenes(self) -> Dict[SceneId, Scene]:
         return {

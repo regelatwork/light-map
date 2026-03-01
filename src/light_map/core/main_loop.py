@@ -1,12 +1,13 @@
 import cv2
 import time
 import logging
-from typing import Optional, List
+from typing import Optional, List, Callable, Dict, Any
 from light_map.core.world_state import WorldState
+from light_map.core.temporal_event_manager import TemporalEventManager
 from light_map.vision.process_manager import VisionProcessManager
 from light_map.vision.frame_producer import FrameProducer
 from light_map.input_manager import InputManager
-from light_map.common_types import DetectionResult, Action
+from light_map.common_types import DetectionResult, Action, Token
 from light_map.core.analytics import LatencyInstrument
 
 
@@ -23,6 +24,7 @@ class MainLoopController:
         input_manager: InputManager,
         frame_producer: Optional[FrameProducer] = None,
         target_fps: int = 60,
+        aruco_mapper: Optional[Callable[[Dict[str, Any]], List[Token]]] = None,
     ):
         self.state = world_state
         self.manager = process_manager
@@ -30,9 +32,11 @@ class MainLoopController:
         self.producer = frame_producer
         self.target_fps = target_fps
         self.frame_time = 1.0 / target_fps
+        self.aruco_mapper = aruco_mapper
 
         self.is_running = False
         self.instrument = LatencyInstrument()
+        self.events = TemporalEventManager()
 
     def tick(self) -> List[Action]:
         """Performs one iteration of the main loop."""
@@ -50,11 +54,23 @@ class MainLoopController:
         # 2. Drain Vision Results from Queues
         self._drain_queues()
 
-        # 3. Poll Hardware Input
+        # 3. Map Raw ArUco if available
+        if self.aruco_mapper and self.state.raw_aruco["ids"]:
+            tokens = self.aruco_mapper(self.state.raw_aruco)
+            if tokens is not None:
+                self.state.tokens = tokens
+                self.state.dirty_tokens = True
+            # Clear raw after mapping to avoid re-mapping same result
+            self.state.raw_aruco = {"corners": [], "ids": []}
+
+        # 4. Process Temporal Events
+        self.events.check()
+
+        # 5. Poll Hardware Input
         key = cv2.waitKey(1)
         self.input.update_keyboard(key)
 
-        # 4. Get Semantic Actions
+        # 6. Get Semantic Actions
         actions = self.input.get_actions()
 
         return actions

@@ -2,7 +2,7 @@ import cv2
 import numpy as np
 import os
 import logging
-from typing import List, Tuple, Optional, Dict, TYPE_CHECKING
+from typing import List, Tuple, Optional, Dict, Any, TYPE_CHECKING
 from light_map.common_types import Token
 from light_map.map_system import MapSystem
 
@@ -70,23 +70,11 @@ class ArucoTokenDetector:
         self.camera_center_world = -self.R.T @ self.tvec.flatten()
         logging.debug("ArucoDetector: Camera extrinsics updated.")
 
-    def detect(
-        self,
-        frame: np.ndarray,
-        map_system: MapSystem,
-        token_configs: Dict[int, Dict] = None,
-        ppi: float = 96.0,
-        default_height_mm: float = 5.0,
-        distortion_model: Optional["ProjectorDistortionModel"] = None,
-        projector_matrix: Optional[np.ndarray] = None,
-    ) -> List[Token]:
+    def detect_raw(self, frame: np.ndarray, projector_matrix: Optional[np.ndarray] = None, map_dims: Optional[Tuple[int, int]] = None) -> Tuple[List[np.ndarray], List[int]]:
         """
-        Detects ArUco tokens in the frame and applies parallax correction.
-        Resolves duplicate IDs by selecting the one with the largest area.
+        Detects ArUco markers, handles resizing, FOV masking, and duplicate resolution.
+        Returns (corners, ids) as lists.
         """
-        if self.camera_matrix is None or self.R is None:
-            return []
-
         h_orig, w_orig = frame.shape[:2]
 
         # 0. Resize for detection speed if needed
@@ -98,13 +86,13 @@ class ArucoTokenDetector:
             scale = 1.0
             gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 
-        # 1. Mask Out Areas Outside Projector FOV if projector_matrix is provided
-        if projector_matrix is not None:
+        # 1. Mask Out Areas Outside Projector FOV
+        if projector_matrix is not None and map_dims is not None:
             mask = self._get_fov_mask(
                 gray.shape,
                 scale,
                 projector_matrix,
-                (map_system.width, map_system.height),
+                map_dims,
             )
             if mask is not None:
                 gray = cv2.bitwise_and(gray, mask)
@@ -112,92 +100,114 @@ class ArucoTokenDetector:
         corners, ids, rejected = self.detector.detectMarkers(gray)
 
         if ids is None:
-            return []
+            return [], []
 
-        # 1. Group detections by ID and calculate areas
+        # Group by ID and find best marker (largest area)
         detections_by_id = {}
         for i, marker_id_arr in enumerate(ids):
             marker_id = int(marker_id_arr[0])
             marker_corners = corners[i][0]
-
-            # Scale back to original resolution if we resized
             if scale != 1.0:
                 marker_corners = marker_corners / scale
-
-            # Area of the marker in camera pixels
+            
             area = cv2.contourArea(marker_corners)
+            if marker_id not in detections_by_id or area > detections_by_id[marker_id]["area"]:
+                detections_by_id[marker_id] = {"corners": marker_corners, "area": area}
 
-            if marker_id not in detections_by_id:
-                detections_by_id[marker_id] = []
+        final_corners = [v["corners"] for v in detections_by_id.values()]
+        final_ids = [k for k in detections_by_id.keys()]
+        
+        return final_corners, final_ids
 
-            detections_by_id[marker_id].append(
-                {"corners": marker_corners, "area": area}
-            )
+    def map_to_tokens(
+        self,
+        raw_data: Dict[str, Any],
+        map_system: MapSystem,
+        token_configs: Dict[int, Dict] = None,
+        ppi: float = 96.0,
+        default_height_mm: float = 5.0,
+        distortion_model: Optional["ProjectorDistortionModel"] = None,
+    ) -> List[Token]:
+        """
+        Maps raw ArUco detections (corners, ids) to Token objects in world coordinates.
+        """
+        if self.camera_matrix is None or self.R is None:
+            return []
+
+        corners = raw_data.get("corners", [])
+        ids = raw_data.get("ids", [])
+
+        if not ids:
+            return []
 
         tokens = []
-        if ppi <= 0:
-            if self.debug_mode:
-                logging.warning(
-                    f"ArucoDetector: PPI is {ppi}, detection will be at (0,0)"
-                )
-            ppi_mm = 0.0
-        else:
-            ppi_mm = ppi / 25.4
+        ppi_mm = ppi / 25.4 if ppi > 0 else 0.0
 
-        for marker_id, detections in detections_by_id.items():
-            # Sort by area descending
-            sorted_detections = sorted(
-                detections, key=lambda x: x["area"], reverse=True
+        for i, marker_id in enumerate(ids):
+            marker_corners = np.array(corners[i])
+            u, v = np.mean(marker_corners, axis=0)
+
+            # Apply parallax correction
+            height_mm = default_height_mm
+            if token_configs and marker_id in token_configs:
+                height_mm = token_configs[marker_id].get(
+                    "height_mm", default_height_mm
+                )
+
+            wx_mm, wy_mm = self._parallax_correction(u, v, height_mm)
+
+            # Map to projector pixels (Z=0 vertical projection)
+            px = wx_mm * ppi_mm
+            py = wy_mm * ppi_mm
+
+            if distortion_model:
+                px, py = distortion_model.correct_theoretical_point(px, py)
+
+            # Map to SVG units
+            wx_svg, wy_svg = map_system.screen_to_world(px, py)
+
+            tokens.append(
+                Token(
+                    id=marker_id,
+                    world_x=wx_svg,
+                    world_y=wy_svg,
+                    world_z=0.0,
+                    marker_x=wx_svg,
+                    marker_y=wy_svg,
+                    marker_z=height_mm,
+                    confidence=1.0,
+                    is_duplicate=False,  # detect_raw already resolved duplicates
+                )
             )
 
-            for i, det in enumerate(sorted_detections):
-                marker_corners = det["corners"]
-                u, v = np.mean(marker_corners, axis=0)
-
-                # Apply parallax correction
-                height_mm = default_height_mm
-                if token_configs and marker_id in token_configs:
-                    height_mm = token_configs[marker_id].get(
-                        "height_mm", default_height_mm
-                    )
-
-                wx_mm, wy_mm = self._parallax_correction(u, v, height_mm)
-
-                # Map to projector pixels (Z=0 vertical projection)
-                px = wx_mm * ppi_mm
-                py = wy_mm * ppi_mm
-
-                if distortion_model:
-                    px_orig, py_orig = px, py
-                    px, py = distortion_model.correct_theoretical_point(px, py)
-                    if self.debug_mode:
-                        logging.debug(
-                            f"Distortion Correct: ({px_orig:.1f}, {py_orig:.1f}) -> ({px:.1f}, {py:.1f})"
-                        )
-
-                # Map to SVG units
-                wx_svg, wy_svg = map_system.screen_to_world(px, py)
-
-                if self.debug_mode:
-                    logging.debug(
-                        f"Aruco ID {marker_id}: cam=({u:.1f}, {v:.1f}) -> world_mm=({wx_mm:.1f}, {wy_mm:.1f}) -> proj=({px:.1f}, {py:.1f}) -> svg=({wx_svg:.1f}, {wy_svg:.1f})"
-                    )
-
-                tokens.append(
-                    Token(
-                        id=marker_id,
-                        world_x=wx_svg,
-                        world_y=wy_svg,
-                        world_z=0.0,
-                        marker_x=wx_svg,
-                        marker_y=wy_svg,
-                        marker_z=height_mm,
-                        confidence=1.0,
-                        is_duplicate=(i > 0),
-                    )
-                )
-
         return tokens
+
+    def detect(
+        self,
+        frame: np.ndarray,
+        map_system: MapSystem,
+        token_configs: Dict[int, Dict] = None,
+        ppi: float = 96.0,
+        default_height_mm: float = 5.0,
+        distortion_model: Optional["ProjectorDistortionModel"] = None,
+        projector_matrix: Optional[np.ndarray] = None,
+    ) -> List[Token]:
+        """
+        Legacy/Combined method for single-threaded use.
+        """
+        corners, ids = self.detect_raw(
+            frame, 
+            projector_matrix=projector_matrix, 
+            map_dims=(map_system.width, map_system.height)
+        )
+        return self.map_to_tokens(
+            {"corners": corners, "ids": ids},
+            map_system,
+            token_configs=token_configs,
+            ppi=ppi,
+            default_height_mm=default_height_mm,
+            distortion_model=distortion_model,
+        )
 
     def _get_fov_mask(
         self,

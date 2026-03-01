@@ -2,8 +2,11 @@ import multiprocessing as mp
 import time
 import logging
 import cv2
+import numpy as np
+from typing import Optional, Tuple
 
 from light_map.vision.frame_producer import FrameProducer
+from light_map.vision.aruco_detector import ArucoTokenDetector
 from light_map.common_types import DetectionResult, ResultType
 
 
@@ -16,6 +19,8 @@ def aruco_worker(
     height: int = 1080,
     num_consumers: int = 2,
     aruco_dict_type: int = cv2.aruco.DICT_4X4_50,
+    projector_matrix: Optional[np.ndarray] = None,
+    map_dims: Optional[Tuple[int, int]] = None,
 ):
     """
     Worker function for ArUco detection. Consumes frames from shared memory,
@@ -28,9 +33,7 @@ def aruco_worker(
     producer.lock = lock
 
     # 2. Initialize Detector
-    dictionary = cv2.aruco.getPredefinedDictionary(aruco_dict_type)
-    parameters = cv2.aruco.DetectorParameters()
-    detector = cv2.aruco.ArucoDetector(dictionary, parameters)
+    detector = ArucoTokenDetector(dictionary_type=aruco_dict_type)
 
     logging.info(f"ArUco Worker started (SHM: {shm_name})")
     last_processed_ts = -1
@@ -52,22 +55,26 @@ def aruco_worker(
                     continue
 
                 ts_to_process = latest_ts
-                # Process: Convert to grayscale while holding lease
-                # cvtColor copies the data, making it safe to process after release
-                gray = cv2.cvtColor(frame_view, cv2.COLOR_BGR2GRAY)
+                # Process: Copy data for detection outside the lease
+                # We need to copy because detection takes time and we want to release the SHM.
+                frame_copy = frame_view.copy()
             finally:
                 # Release lease ASAP
                 producer.release()
 
             # Perform detection outside the lease
-            corners, ids, rejected = detector.detectMarkers(gray)
+            corners, ids = detector.detect_raw(
+                frame_copy, 
+                projector_matrix=projector_matrix, 
+                map_dims=map_dims
+            )
 
             # Serialize results
-            data = {"corners": [], "ids": []}
-            if ids is not None:
-                # Convert numpy arrays to lists for Queue serialization
-                data["corners"] = [c.tolist() for c in corners]
-                data["ids"] = ids.flatten().tolist()
+            # corners are already a list of numpy arrays, convert to lists of lists
+            data = {
+                "corners": [c.tolist() for c in corners],
+                "ids": ids
+            }
 
             result = DetectionResult(
                 timestamp=ts_to_process, type=ResultType.ARUCO, data=data

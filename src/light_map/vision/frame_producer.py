@@ -55,10 +55,11 @@ class FrameProducer:
 
     def get_latest_timestamp(self) -> Optional[int]:
         """Returns the timestamp of the most recently published frame."""
-        latest_id = self._latest_id[0]
-        if latest_id == -1:
-            return None
-        return int(self._timestamps[latest_id])
+        with self.lock:
+            latest_id = self._latest_id[0]
+            if latest_id == -1:
+                return None
+            return int(self._timestamps[latest_id])
 
     def get_latest_frame(self) -> Optional[np.ndarray]:
         """
@@ -68,15 +69,15 @@ class FrameProducer:
         if self._current_buffer_id is not None:
             raise RuntimeError("Must release current frame before acquiring a new one.")
 
-        latest_id = self._latest_id[0]
-        if latest_id == -1:
-            return None
-
         # Increment ref_count
         # Note: In a real multi-process environment, self.lock MUST be the SAME lock as the producer.
         # This will be handled by the VisionProcessManager which will pass a shared Lock.
         # For now, we use self.lock which works for tests using the same process or shared lock objects.
         with self.lock:
+            latest_id = self._latest_id[0]
+            if latest_id == -1:
+                return None
+
             self._ref_counts[latest_id] += 1
             self._current_buffer_id = int(latest_id)
 

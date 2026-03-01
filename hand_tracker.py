@@ -218,7 +218,13 @@ def main():
                 logger.critical(msg)
 
             # Start Process Manager
-            manager = VisionProcessManager(width=cam_w, height=cam_h, num_consumers=2)
+            manager = VisionProcessManager(
+                width=cam_w, 
+                height=cam_h, 
+                num_consumers=2,
+                projector_matrix=app.config.projector_matrix,
+                map_dims=(app.config.width, app.config.height)
+            )
             manager.start()
 
             state = WorldState()
@@ -228,7 +234,13 @@ def main():
             producer.lock = manager.lock
 
             input_manager = InputManager()
-            main_loop = MainLoopController(state, manager, input_manager, producer)
+            main_loop = MainLoopController(
+                state, 
+                manager, 
+                input_manager, 
+                producer,
+                aruco_mapper=app.aruco_mapper
+            )
 
             stop_event = threading.Event()
             cam_thread = threading.Thread(

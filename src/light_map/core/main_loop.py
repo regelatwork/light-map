@@ -37,6 +37,8 @@ class MainLoopController:
         self.is_running = False
         self.instrument = LatencyInstrument()
         self.events = TemporalEventManager()
+        self.debug_mode = False
+        self._last_report_time = 0.0
 
     def tick(self) -> List[Action]:
         """Performs one iteration of the main loop."""
@@ -86,6 +88,19 @@ class MainLoopController:
 
         # 6. Get Semantic Actions
         actions = self.input.get_actions()
+
+        # 7. Periodic Performance Reporting (when debug is active)
+        if self.debug_mode:
+            current_time = time.perf_counter()
+            if current_time - self._last_report_time > 5.0:
+                report = self.instrument.get_report()
+                if report:
+                    import json
+
+                    logging.info(
+                        f"Performance Report (P95 ms): { {k: v['p95_ms'] for k, v in report.items() if isinstance(v, dict) and 'p95_ms' in v} }"
+                    )
+                self._last_report_time = current_time
 
         return actions
 

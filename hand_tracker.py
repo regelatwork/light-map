@@ -295,6 +295,7 @@ def main():
                             app.current_scene.on_enter()
 
                 # C. Process and Render
+                main_loop.debug_mode = app.debug_mode
                 output_image, scene_actions = app.process_state(state, actions)
 
                 # Update Debug View if requested

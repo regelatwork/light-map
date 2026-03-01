@@ -332,11 +332,15 @@ def main():
                     "An unhandled error occurred in the main loop: %s", e, exc_info=True
                 )
             finally:
+                # 1. Stop Camera Producer Thread FIRST
+                stop_event.set()
+                cam_thread.join(timeout=2.0)
+
+                # 2. Save Session
                 if app.map_system.is_map_loaded():
                     app.save_session()
 
-                stop_event.set()
-                cam_thread.join(timeout=2.0)
+                # 3. Stop Main Loop and Vision Processes
                 main_loop.stop()
 
     except Exception as e:

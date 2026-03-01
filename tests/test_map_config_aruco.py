@@ -2,10 +2,9 @@ import os
 from light_map.map_config import MapConfigManager
 
 
-def test_map_config_manager_aruco_defaults():
-    test_file = "test_map_state.json"
-    if os.path.exists(test_file):
-        os.remove(test_file)
+def test_map_config_manager_aruco_defaults(tmp_path):
+    # Use a temp directory to avoid picking up root tokens.json
+    test_file = str(tmp_path / "test_map_state.json")
 
     manager = MapConfigManager(filename=test_file)
 

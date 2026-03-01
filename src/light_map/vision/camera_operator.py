@@ -61,6 +61,8 @@ class CameraOperator:
 
     def _find_free_buffer(self) -> int:
         """Finds a buffer with ref_count 0. Producer must lock control block."""
+        if not hasattr(self, "_ref_counts"):
+            return -1
         # Return first index that is 0
         indices = np.where(self._ref_counts == 0)[0]
         if len(indices) > 0:
@@ -72,6 +74,9 @@ class CameraOperator:
         Internal method to write a frame and update the control block.
         Used for testing and by the capture loop.
         """
+        if not hasattr(self, "shm") or self.shm.buf is None:
+            return -1
+
         target_id = -1
 
         with self.lock:
@@ -83,21 +88,26 @@ class CameraOperator:
             # Reserve
             self._ref_counts[target_id] = -1
 
-        # Write data (outside lock if possible, but we reserved it)
+        # Write data
         offset = self.control_block_size + (target_id * self.frame_size)
-        # We create a temporary view here, which we must ensure is released
-        shm_frame_buf = self.shm.buf[offset : offset + self.frame_size]
-        shm_frame = np.frombuffer(shm_frame_buf, dtype=np.uint8).reshape(
-            (self.height, self.width, 3)
-        )
-        np.copyto(shm_frame, frame)
+        try:
+            shm_frame_buf = self.shm.buf[offset : offset + self.frame_size]
+            shm_frame = np.frombuffer(shm_frame_buf, dtype=np.uint8).reshape(
+                (self.height, self.width, 3)
+            )
+            np.copyto(shm_frame, frame)
 
-        # Explicitly delete the local view and buffer slice to release the SHM pointer
-        del shm_frame
-        del shm_frame_buf
+            # Explicitly delete views
+            del shm_frame
+            del shm_frame_buf
+        except (BufferError, AttributeError, ValueError):
+            # SHM might be closing
+            return -1
 
         # Publish
         with self.lock:
+            if not hasattr(self, "_ref_counts"):
+                return -1
             self._timestamps[target_id] = timestamp
             self._latest_id[0] = target_id
             self._ref_counts[target_id] = 0
@@ -106,21 +116,22 @@ class CameraOperator:
 
     def cleanup(self):
         """Releases shared memory and unlinks it."""
-        if hasattr(self, "shm"):
-            # Delete any views held by this object to avoid BufferError on close
-            if hasattr(self, "_ref_counts"):
-                del self._ref_counts
-            if hasattr(self, "_timestamps"):
-                del self._timestamps
-            if hasattr(self, "_latest_id"):
-                del self._latest_id
+        with self.lock:
+            if hasattr(self, "shm"):
+                # Delete any views held by this object to avoid BufferError on close
+                if hasattr(self, "_ref_counts"):
+                    del self._ref_counts
+                if hasattr(self, "_timestamps"):
+                    del self._timestamps
+                if hasattr(self, "_latest_id"):
+                    del self._latest_id
 
-            self.shm.close()
-            try:
-                self.shm.unlink()
-            except FileNotFoundError:
-                pass
-            logging.info(f"Shared memory {self.shm_name} cleaned up.")
+                try:
+                    self.shm.close()
+                    self.shm.unlink()
+                except (FileNotFoundError, BufferError):
+                    pass
+                logging.info(f"Shared memory {self.shm_name} cleaned up.")
 
     def __del__(self):
         self.cleanup()

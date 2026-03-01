@@ -108,7 +108,11 @@ class FrameProducer:
 
     def close(self):
         """Closes access to shared memory. Does not unlink."""
-        self.release()
+        try:
+            self.release()
+        except Exception:
+            pass
+
         # Clean up control block views
         if hasattr(self, "_ref_counts"):
             del self._ref_counts
@@ -117,8 +121,16 @@ class FrameProducer:
         if hasattr(self, "_latest_id"):
             del self._latest_id
 
+        # Also clear internal frame view just in case
+        self._current_frame_view = None
+
         if hasattr(self, "shm"):
-            self.shm.close()
+            try:
+                self.shm.close()
+            except BufferError:
+                logging.warning(
+                    "BufferError while closing SHM in FrameProducer. Some pointers still exist."
+                )
 
     def __del__(self):
         try:

@@ -61,6 +61,7 @@ def aruco_worker(
             finally:
                 # Release lease ASAP
                 producer.release()
+                frame_view = None
 
             # Perform detection outside the lease
             corners, ids = detector.detect_raw(
@@ -142,6 +143,7 @@ def hand_worker(
             finally:
                 # Release lease
                 producer.release()
+                frame_view = None
 
             # Process with MediaPipe outside the lease
             # MediaPipe process returns a NamedTuple which isn't picklable,
@@ -149,18 +151,28 @@ def hand_worker(
             results = hands.process(frame_rgb)
 
             landmarks_data = []
+            handedness_data = []
             if results.multi_hand_landmarks:
-                for hand_landmarks in results.multi_hand_landmarks:
+                for i, hand_landmarks in enumerate(results.multi_hand_landmarks):
                     lm_list = [
                         {"x": lm.x, "y": lm.y, "z": lm.z}
                         for lm in hand_landmarks.landmark
                     ]
                     landmarks_data.append(lm_list)
 
+                    # Handedness info
+                    handedness = results.multi_handedness[i]
+                    handedness_data.append(
+                        {
+                            "label": handedness.classification[0].label,
+                            "score": handedness.classification[0].score,
+                        }
+                    )
+
             result = DetectionResult(
                 timestamp=ts_to_process,
                 type=ResultType.HANDS,
-                data={"landmarks": landmarks_data},
+                data={"landmarks": landmarks_data, "handedness": handedness_data},
             )
 
             try:

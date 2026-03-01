@@ -256,8 +256,10 @@ class InteractiveApp:
 
         # Build dummy results for legacy processors, or update processors
         class DummyResults:
-            def __init__(self, hands_list):
+            def __init__(self, hands_list, handedness_list):
                 self.multi_hand_landmarks = []
+                self.multi_handedness = []
+
                 for hl in hands_list:
 
                     class DummyHandLandmarks:
@@ -272,7 +274,20 @@ class InteractiveApp:
 
                     self.multi_hand_landmarks.append(DummyHandLandmarks(hl))
 
-        results = DummyResults(state.hands)
+                for h in handedness_list:
+
+                    class DummyHandedness:
+                        def __init__(self, h_dict):
+                            class DummyClassification:
+                                def __init__(self, d):
+                                    self.label = d.get("label", "Left")
+                                    self.score = d.get("score", 1.0)
+
+                            self.classification = [DummyClassification(h_dict)]
+
+                    self.multi_handedness.append(DummyHandedness(h))
+
+        results = DummyResults(state.hands, state.handedness)
 
         # Standardize Input
         inputs = self.input_processor.convert_mediapipe_to_inputs(results, frame_shape)

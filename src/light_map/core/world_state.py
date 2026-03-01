@@ -20,7 +20,8 @@ class WorldState:
 
         self.tokens: List[Token] = []
         self.raw_aruco: Dict[str, Any] = {"corners": [], "ids": []}
-        self.hands: List[Any] = []
+        self.hands: List[Any] = []  # Landmarks
+        self.handedness: List[Any] = []
         self.gesture: Optional[str] = None
         self.viewport: ViewportState = ViewportState()
 
@@ -70,6 +71,7 @@ class WorldState:
             self.dirty_tokens = True
         elif result.type == ResultType.HANDS:
             self.hands = result.data.get("landmarks", [])
+            self.handedness = result.data.get("handedness", [])
             self.dirty_hands = True
         elif result.type == ResultType.GESTURE:
             self.gesture = result.data.get("gesture")

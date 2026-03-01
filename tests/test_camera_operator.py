@@ -39,9 +39,9 @@ def test_camera_operator_write_frame():
         assert buffer_id != -1
         # Check that we can read it back from SHM (manual check)
         n = 1 + 2
-        control_size = (n * 4) + (n * 8) + 4
+        # Control size: ref_counts (n*4) + timestamps (n*8) + shm_pushed (n*8) + latest_id (4)
+        control_size = (n * 4) + (n * 8) + (n * 8) + 4
         frame_offset = control_size + (buffer_id * width * height * 3)
-
         shm_frame_buf = operator.shm.buf[
             frame_offset : frame_offset + width * height * 3
         ]

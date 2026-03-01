@@ -2,7 +2,10 @@ import json
 import logging
 import os
 import time
-from typing import Dict, Optional, List
+from typing import Dict, Optional, Any
+from collections import deque
+from contextlib import contextmanager
+import numpy as np
 
 logger = logging.getLogger(__name__)
 
@@ -49,63 +52,85 @@ class AnalyticsManager:
 
 
 class LatencyInstrument:
-    """Tracks glass-to-glass latency for performance monitoring."""
+    """Tracks glass-to-glass latency and high-level pipeline hops for performance monitoring."""
 
     def __init__(self, window_size: int = 100):
         self.window_size = window_size
+        self.history: Dict[str, deque] = {}
+
+        # Backward compatibility maps
         self.captures: Dict[int, int] = {}  # ts_capture -> ts_recorded
         self.detections: Dict[int, int] = {}  # ts_capture -> ts_detected
-        self.renders: Dict[int, int] = {}  # ts_capture -> ts_rendered
 
-        self.history: List[Dict[str, float]] = []
+    def record_interval(self, name: str, duration_ns: int):
+        """Records an arbitrary timing interval in nanoseconds."""
+        if name not in self.history:
+            self.history[name] = deque(maxlen=self.window_size)
+        self.history[name].append(duration_ns)
 
     def record_capture(self, ts_capture: int):
-        self.captures[ts_capture] = int(time.perf_counter() * 1e6)
-        # Prune old
+        """Backward compatibility for recording frame capture."""
+        # Note: ts_capture is expected to be in nanoseconds (time.perf_counter_ns())
+        self.captures[ts_capture] = time.perf_counter_ns()
         if len(self.captures) > self.window_size * 2:
             oldest = sorted(self.captures.keys())[0]
             del self.captures[oldest]
 
     def record_detection(self, ts_capture: int, ts_detected: Optional[int] = None):
+        """Backward compatibility for recording detection."""
         if ts_detected is None:
-            ts_detected = int(time.perf_counter() * 1e6)
+            ts_detected = time.perf_counter_ns()
         self.detections[ts_capture] = ts_detected
 
     def record_render(self, ts_capture: int, ts_rendered: Optional[int] = None):
+        """Backward compatibility for recording render and calculating intervals."""
         if ts_rendered is None:
-            ts_rendered = int(time.perf_counter() * 1e6)
-        self.renders[ts_capture] = ts_rendered
+            ts_rendered = time.perf_counter_ns()
 
-        # Calculate and store in history
         if ts_capture in self.captures:
-            # Use provided ts_capture as baseline if possible
             baseline = ts_capture
             detect_time = self.detections.get(ts_capture, ts_rendered)
 
-            detect_lag = (detect_time - baseline) / 1000.0
-            render_lag = (ts_rendered - detect_time) / 1000.0
-            total = (ts_rendered - baseline) / 1000.0
+            self.record_interval("capture_to_detect", detect_time - baseline)
+            self.record_interval("detect_to_render", ts_rendered - detect_time)
+            self.record_interval("total_latency", ts_rendered - baseline)
 
-            self.history.append(
-                {"detect": detect_lag, "render": render_lag, "total": total}
-            )
+    def get_report(self) -> Dict[str, Any]:
+        """Returns statistical report for all tracked intervals."""
+        report = {}
+        for name, samples in self.history.items():
+            if not samples or len(samples) == 0:
+                continue
 
-            if len(self.history) > self.window_size:
-                self.history.pop(0)
-
-    def get_report(self) -> Dict[str, float]:
-        if not self.history:
-            return {
-                "avg_total_latency_ms": 0.0,
-                "avg_detection_lag_ms": 0.0,
-                "avg_render_lag_ms": 0.0,
+            arr = np.array(list(samples)) / 1_000_000.0  # Convert to milliseconds
+            if arr.size == 0:
+                continue
+            report[name] = {
+                "mean_ms": float(np.mean(arr)),
+                "p50_ms": float(np.percentile(arr, 50)),
+                "p90_ms": float(np.percentile(arr, 90)),
+                "p95_ms": float(np.percentile(arr, 95)),
+                "samples": len(samples),
             }
 
-        return {
-            "avg_total_latency_ms": sum(h["total"] for h in self.history)
-            / len(self.history),
-            "avg_detection_lag_ms": sum(h["detect"] for h in self.history)
-            / len(self.history),
-            "avg_render_lag_ms": sum(h["render"] for h in self.history)
-            / len(self.history),
-        }
+        # Backward compatibility for flat avg_* keys
+        if "total_latency" in report:
+            report["avg_total_latency_ms"] = report["total_latency"]["mean_ms"]
+        if "capture_to_detect" in report:
+            report["avg_detection_lag_ms"] = report["capture_to_detect"]["mean_ms"]
+        if "detect_to_render" in report:
+            report["avg_render_lag_ms"] = report["detect_to_render"]["mean_ms"]
+
+        return report
+
+
+@contextmanager
+def track_wait(name: str, instrument: Optional[LatencyInstrument] = None):
+    """Context manager to measure and record duration of an operation."""
+    start_ns = time.perf_counter_ns()
+    try:
+        yield
+    finally:
+        duration_ns = time.perf_counter_ns() - start_ns
+        if instrument:
+            instrument.record_interval(name, duration_ns)

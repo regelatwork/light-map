@@ -8,7 +8,7 @@ from light_map.vision.process_manager import VisionProcessManager
 from light_map.vision.frame_producer import FrameProducer
 from light_map.input_manager import InputManager
 from light_map.common_types import DetectionResult, Action, Token
-from light_map.core.analytics import LatencyInstrument
+from light_map.core.analytics import LatencyInstrument, track_wait
 
 
 class MainLoopController:
@@ -46,13 +46,27 @@ class MainLoopController:
             ts = self.producer.get_latest_timestamp()
             if ts is not None and ts > self.state.last_frame_timestamp:
                 self.instrument.record_capture(ts)
-                shm_view = self.producer.get_latest_frame()
+
+                with track_wait("shm_wait_main", self.instrument):
+                    shm_view = self.producer.get_latest_frame()
+
                 if shm_view is not None:
+                    ts_shm_pushed = self.producer.get_shm_pushed_timestamp()
+                    if ts_shm_pushed:
+                        self.instrument.record_interval(
+                            "capture_to_shm", ts_shm_pushed - ts
+                        )
+                        self.instrument.record_interval(
+                            "shm_transit_to_main",
+                            time.perf_counter_ns() - ts_shm_pushed,
+                        )
+
                     self.state.update_from_frame(shm_view, ts)
                     self.producer.release()
 
         # 2. Drain Vision Results from Queues
-        self._drain_queues()
+        with track_wait("queue_wait_main", self.instrument):
+            self._drain_queues()
 
         # 3. Map Raw ArUco if available
         if self.aruco_mapper and self.state.raw_aruco["ids"]:
@@ -82,6 +96,34 @@ class MainLoopController:
             try:
                 res = self.manager.results_queue.get_nowait()
                 if isinstance(res, DetectionResult):
+                    # Record hops from metadata
+                    md = res.metadata
+                    ts = res.timestamp
+                    if "ts_shm_pushed" in md:
+                        self.instrument.record_interval(
+                            "capture_to_shm", md["ts_shm_pushed"] - ts
+                        )
+                    if "ts_shm_pulled" in md and "ts_shm_pushed" in md:
+                        self.instrument.record_interval(
+                            "shm_transit_to_worker",
+                            md["ts_shm_pulled"] - md["ts_shm_pushed"],
+                        )
+                    if "ts_work_done" in md and "ts_shm_pulled" in md:
+                        self.instrument.record_interval(
+                            "worker_proc_time", md["ts_work_done"] - md["ts_shm_pulled"]
+                        )
+                    if "ts_queue_pushed" in md and "ts_work_done" in md:
+                        self.instrument.record_interval(
+                            "queue_wait_worker",
+                            md["ts_queue_pushed"] - md["ts_work_done"],
+                        )
+
+                    if "ts_queue_pushed" in md:
+                        self.instrument.record_interval(
+                            "queue_transit_to_main",
+                            time.perf_counter_ns() - md["ts_queue_pushed"],
+                        )
+
                     self.state.apply(res)
                     self.instrument.record_detection(res.timestamp)
             except Exception:
@@ -102,7 +144,8 @@ class MainLoopController:
                 # 2. Trigger Render if needed
                 if self.state.is_dirty or actions:
                     ts_to_render = self.state.last_frame_timestamp
-                    render_callback(self.state, actions)
+                    with track_wait("render_time", self.instrument):
+                        render_callback(self.state, actions)
                     if ts_to_render > 0:
                         self.instrument.record_render(ts_to_render)
                     self.state.clear_dirty()

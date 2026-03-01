@@ -4,10 +4,11 @@ from light_map.core.analytics import LatencyInstrument
 def test_latency_instrument_reporting():
     instrument = LatencyInstrument()
 
-    # Simulate a frame lifecycle
-    ts_capture = 1000000
-    ts_detect = 1050000  # +50ms
-    ts_render = 1100000  # +50ms
+    # Simulate a frame lifecycle (using nanoseconds)
+    # 100ms = 100,000,000 ns
+    ts_capture = 100_000_000
+    ts_detect = 150_000_000  # +50ms
+    ts_render = 200_000_000  # +50ms
 
     instrument.record_capture(ts_capture)
     instrument.record_detection(ts_capture, ts_detect)

@@ -23,10 +23,13 @@ class FrameProducer:
         self.n = num_consumers + 2
         self.frame_size = width * height * 3
 
-        # Calculate Control Block offsets (must match CameraOperator)
+        # timestamps: n * 8 bytes (int64)
+        # shm_pushed: n * 8 bytes (int64)
+        # latest_buffer_id: 4 bytes (int32)
         self.ctrl_ref_offset = 0
         self.ctrl_ts_offset = self.n * 4
-        self.ctrl_latest_offset = self.ctrl_ts_offset + (self.n * 8)
+        self.ctrl_shm_pushed_offset = self.ctrl_ts_offset + (self.n * 8)
+        self.ctrl_latest_offset = self.ctrl_shm_pushed_offset + (self.n * 8)
         self.control_block_size = self.ctrl_latest_offset + 4
 
         # Attach to existing Shared Memory
@@ -44,7 +47,12 @@ class FrameProducer:
             self.shm.buf[self.ctrl_ref_offset : self.ctrl_ts_offset], dtype=np.int32
         )
         self._timestamps = np.frombuffer(
-            self.shm.buf[self.ctrl_ts_offset : self.ctrl_latest_offset], dtype=np.int64
+            self.shm.buf[self.ctrl_ts_offset : self.ctrl_shm_pushed_offset],
+            dtype=np.int64,
+        )
+        self._shm_pushed_ts = np.frombuffer(
+            self.shm.buf[self.ctrl_shm_pushed_offset : self.ctrl_latest_offset],
+            dtype=np.int64,
         )
         self._latest_id = np.frombuffer(
             self.shm.buf[self.ctrl_latest_offset : self.control_block_size],
@@ -60,6 +68,14 @@ class FrameProducer:
             if latest_id == -1:
                 return None
             return int(self._timestamps[latest_id])
+
+    def get_shm_pushed_timestamp(self) -> Optional[int]:
+        """Returns the timestamp of when the most recent frame was pushed to SHM."""
+        with self.lock:
+            latest_id = self._latest_id[0]
+            if latest_id == -1:
+                return None
+            return int(self._shm_pushed_ts[latest_id])
 
     def get_latest_frame(self) -> Optional[np.ndarray]:
         """
@@ -118,6 +134,8 @@ class FrameProducer:
             del self._ref_counts
         if hasattr(self, "_timestamps"):
             del self._timestamps
+        if hasattr(self, "_shm_pushed_ts"):
+            del self._shm_pushed_ts
         if hasattr(self, "_latest_id"):
             del self._latest_id
 

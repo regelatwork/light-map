@@ -1,6 +1,7 @@
 import numpy as np
 import logging
 import multiprocessing as mp
+import time
 from multiprocessing.shared_memory import SharedMemory
 
 
@@ -20,10 +21,12 @@ class CameraOperator:
         # Calculate Control Block size
         # ref_counts: n * 4 bytes (int32)
         # timestamps: n * 8 bytes (int64)
+        # shm_pushed: n * 8 bytes (int64)
         # latest_buffer_id: 4 bytes (int32)
         self.ctrl_ref_offset = 0
         self.ctrl_ts_offset = self.n * 4
-        self.ctrl_latest_offset = self.ctrl_ts_offset + (self.n * 8)
+        self.ctrl_shm_pushed_offset = self.ctrl_ts_offset + (self.n * 8)
+        self.ctrl_latest_offset = self.ctrl_shm_pushed_offset + (self.n * 8)
         self.control_block_size = self.ctrl_latest_offset + 4
 
         # Total size
@@ -39,7 +42,12 @@ class CameraOperator:
             self.shm.buf[self.ctrl_ref_offset : self.ctrl_ts_offset], dtype=np.int32
         )
         self._timestamps = np.frombuffer(
-            self.shm.buf[self.ctrl_ts_offset : self.ctrl_latest_offset], dtype=np.int64
+            self.shm.buf[self.ctrl_ts_offset : self.ctrl_shm_pushed_offset],
+            dtype=np.int64,
+        )
+        self._shm_pushed_ts = np.frombuffer(
+            self.shm.buf[self.ctrl_shm_pushed_offset : self.ctrl_latest_offset],
+            dtype=np.int64,
         )
         self._latest_id = np.frombuffer(
             self.shm.buf[self.ctrl_latest_offset : self.control_block_size],
@@ -57,6 +65,7 @@ class CameraOperator:
         with self.lock:
             self._ref_counts.fill(0)
             self._timestamps.fill(0)
+            self._shm_pushed_ts.fill(0)
             self._latest_id[0] = -1
 
     def _find_free_buffer(self) -> int:
@@ -109,6 +118,7 @@ class CameraOperator:
             if not hasattr(self, "_ref_counts"):
                 return -1
             self._timestamps[target_id] = timestamp
+            self._shm_pushed_ts[target_id] = time.perf_counter_ns()
             self._latest_id[0] = target_id
             self._ref_counts[target_id] = 0
 
@@ -123,6 +133,8 @@ class CameraOperator:
                     del self._ref_counts
                 if hasattr(self, "_timestamps"):
                     del self._timestamps
+                if hasattr(self, "_shm_pushed_ts"):
+                    del self._shm_pushed_ts
                 if hasattr(self, "_latest_id"):
                     del self._latest_id
 

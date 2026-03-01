@@ -1,6 +1,6 @@
 from enum import StrEnum
 from dataclasses import dataclass, field
-from typing import Any, List, Optional, Tuple
+from typing import Any, List, Optional, Tuple, Dict
 
 import numpy as np
 from light_map.core.storage import StorageManager
@@ -89,6 +89,7 @@ class DetectionResult:
     timestamp: int
     type: ResultType
     data: Any
+    metadata: Dict[str, int] = field(default_factory=dict)
 
 
 class GmPosition(StrEnum):

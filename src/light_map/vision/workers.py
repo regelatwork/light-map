@@ -49,12 +49,14 @@ def aruco_worker(
 
             try:
                 # Acquire lease
+                ts_shm_pulled = time.perf_counter_ns()
                 frame_view = producer.get_latest_frame()
                 if frame_view is None:
                     time.sleep(0.005)
                     continue
 
                 ts_to_process = latest_ts
+                ts_shm_pushed = producer.get_shm_pushed_timestamp()
                 # Process: Copy data for detection outside the lease
                 # We need to copy because detection takes time and we want to release the SHM.
                 frame_copy = frame_view.copy()
@@ -67,6 +69,7 @@ def aruco_worker(
             corners, ids = detector.detect_raw(
                 frame_copy, projector_matrix=projector_matrix, map_dims=map_dims
             )
+            ts_work_done = time.perf_counter_ns()
 
             # Serialize results
             # corners are already a list of numpy arrays, convert to lists of lists
@@ -75,9 +78,13 @@ def aruco_worker(
             result = DetectionResult(
                 timestamp=ts_to_process, type=ResultType.ARUCO, data=data
             )
+            result.metadata["ts_shm_pushed"] = ts_shm_pushed
+            result.metadata["ts_shm_pulled"] = ts_shm_pulled
+            result.metadata["ts_work_done"] = ts_work_done
 
             try:
                 # Push to queue without blocking
+                result.metadata["ts_queue_pushed"] = time.perf_counter_ns()
                 results_queue.put_nowait(result)
             except mp.queues.Full:
                 logging.warning("ArUco Worker: results_queue is full, dropping result.")
@@ -132,12 +139,14 @@ def hand_worker(
 
             try:
                 # Acquire lease
+                ts_shm_pulled = time.perf_counter_ns()
                 frame_view = producer.get_latest_frame()
                 if frame_view is None:
                     time.sleep(0.005)
                     continue
 
                 ts_to_process = latest_ts
+                ts_shm_pushed = producer.get_shm_pushed_timestamp()
                 # MediaPipe requires RGB images. cvtColor copies the data.
                 frame_rgb = cv2.cvtColor(frame_view, cv2.COLOR_BGR2RGB)
             finally:
@@ -149,6 +158,7 @@ def hand_worker(
             # MediaPipe process returns a NamedTuple which isn't picklable,
             # so we extract just what we need.
             results = hands.process(frame_rgb)
+            ts_work_done = time.perf_counter_ns()
 
             landmarks_data = []
             handedness_data = []
@@ -174,8 +184,12 @@ def hand_worker(
                 type=ResultType.HANDS,
                 data={"landmarks": landmarks_data, "handedness": handedness_data},
             )
+            result.metadata["ts_shm_pushed"] = ts_shm_pushed
+            result.metadata["ts_shm_pulled"] = ts_shm_pulled
+            result.metadata["ts_work_done"] = ts_work_done
 
             try:
+                result.metadata["ts_queue_pushed"] = time.perf_counter_ns()
                 results_queue.put_nowait(result)
             except mp.queues.Full:
                 logging.warning("Hand Worker: results_queue is full, dropping result.")

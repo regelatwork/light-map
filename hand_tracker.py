@@ -33,7 +33,7 @@ def camera_capture_loop(cam, operator, stop_event):
     while not stop_event.is_set():
         frame = cam.read()
         if frame is not None:
-            operator._publish_frame(frame, time.time_ns())
+            operator._publish_frame(frame, time.perf_counter_ns())
         else:
             time.sleep(0.01)
 

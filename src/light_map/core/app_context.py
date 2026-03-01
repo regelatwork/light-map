@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import TYPE_CHECKING, Optional
+from dataclasses import dataclass, field
+from typing import TYPE_CHECKING, Optional, Dict, Any
 
 import numpy as np
 
@@ -37,3 +37,6 @@ class AppContext:
     show_tokens: bool = True
     debug_mode: bool = False
     last_camera_frame: Optional[np.ndarray] = None
+    raw_aruco: Dict[str, Any] = field(
+        default_factory=lambda: {"corners": [], "ids": []}
+    )

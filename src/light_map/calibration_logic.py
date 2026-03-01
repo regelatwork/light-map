@@ -61,24 +61,29 @@ def run_calibration_sequence(
 
 
 def calculate_ppi_from_frame(
-    frame: np.ndarray, projector_matrix: np.ndarray, target_dist_mm: float = 100.0
+    frame: np.ndarray,
+    projector_matrix: np.ndarray,
+    target_dist_mm: float = 100.0,
+    aruco_corners: Optional[Tuple[np.ndarray, ...]] = None,
+    aruco_ids: Optional[np.ndarray] = None,
 ) -> Optional[float]:
     """
-    Detects two ArUco markers (ID 0 and ID 1) in the frame and calculates Projector PPI.
+    Calculates Projector PPI using pre-detected ArUco markers or internal detection from frame.
     """
-    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+    if aruco_ids is None or aruco_corners is None:
+        if frame is None:
+            return None
+        # Internal fallback detection
+        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        aruco_dict = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_4X4_50)
+        parameters = cv2.aruco.DetectorParameters()
+        detector = cv2.aruco.ArucoDetector(aruco_dict, parameters)
+        aruco_corners, aruco_ids, _ = detector.detectMarkers(gray)
 
-    # ArUco Config
-    aruco_dict = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_4X4_50)
-    parameters = cv2.aruco.DetectorParameters()
-    detector = cv2.aruco.ArucoDetector(aruco_dict, parameters)
-
-    corners, ids, rejected = detector.detectMarkers(gray)
-
-    if ids is None or len(ids) < 2:
+    if aruco_ids is None or len(aruco_ids) < 2 or aruco_corners is None:
         return None
 
-    ids = ids.flatten()
+    ids = aruco_ids.flatten()
 
     # Check for ID 0 and ID 1
     if 0 not in ids or 1 not in ids:
@@ -89,8 +94,8 @@ def calculate_ppi_from_frame(
 
     # Get centers
     # corners[i] is (1, 4, 2)
-    c0 = np.mean(corners[idx0][0], axis=0)
-    c1 = np.mean(corners[idx1][0], axis=0)
+    c0 = np.mean(aruco_corners[idx0][0], axis=0)
+    c1 = np.mean(aruco_corners[idx1][0], axis=0)
 
     p1_cam = np.array(c0, dtype=np.float32)
     p2_cam = np.array(c1, dtype=np.float32)
@@ -122,12 +127,14 @@ def calibrate_extrinsics(
     ground_points_cam: Optional[np.ndarray] = None,
     ground_points_proj: Optional[np.ndarray] = None,
     known_targets: Optional[Dict[int, Tuple[float, float]]] = None,
+    aruco_corners: Optional[Tuple[np.ndarray, ...]] = None,
+    aruco_ids: Optional[np.ndarray] = None,
 ) -> Optional[Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]]:
     """
-    Estimates Camera Extrinsics (R, t) using ArUco markers with known heights.
+    Estimates Camera Extrinsics (R, t) using pre-detected ArUco markers or internal detection.
 
     Args:
-        frame: The camera frame containing ArUco markers.
+        frame: The camera frame containing ArUco markers (fallback if corners/ids missing).
         projector_matrix: Homography (Camera -> Projector).
         camera_matrix: Camera intrinsic matrix.
         dist_coeffs: Camera distortion coefficients.
@@ -136,16 +143,19 @@ def calibrate_extrinsics(
         ground_points_cam: (N, 2) array of camera coordinates at Z=0.
         ground_points_proj: (N, 2) array of projector coordinates corresponding to ground_points_cam.
         known_targets: Optional mapping of ArUco ID to (x, y) projector coordinates.
+        aruco_corners: Pre-detected ArUco corners.
+        aruco_ids: Pre-detected ArUco IDs.
 
     Returns:
         (rvec, tvec, obj_points, img_points) or None.
     """
-    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-    aruco_dict = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_4X4_50)
-    parameters = cv2.aruco.DetectorParameters()
-    detector = cv2.aruco.ArucoDetector(aruco_dict, parameters)
-
-    corners, ids, rejected = detector.detectMarkers(gray)
+    if aruco_ids is None or aruco_corners is None:
+        if frame is not None:
+            gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+            aruco_dict = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_4X4_50)
+            parameters = cv2.aruco.DetectorParameters()
+            detector = cv2.aruco.ArucoDetector(aruco_dict, parameters)
+            aruco_corners, aruco_ids, _ = detector.detectMarkers(gray)
 
     obj_points_list = []  # 3D points in World Space (mm)
     img_points_list = []  # 2D points in Camera Space (px)
@@ -163,14 +173,14 @@ def calibrate_extrinsics(
             img_points_list.append(ground_points_cam[i])
 
     # 2. Add Token Points (Z=h)
-    if ids is not None:
-        ids = ids.flatten()
+    if aruco_ids is not None and aruco_corners is not None:
+        ids = aruco_ids.flatten()
         for i, aruco_id in enumerate(ids):
             if aruco_id not in token_heights:
                 continue
 
             h = token_heights[aruco_id]
-            c_cam = np.mean(corners[i][0], axis=0)
+            c_cam = np.mean(aruco_corners[i][0], axis=0)
 
             # Find (X, Y)
             if known_targets and aruco_id in known_targets:
@@ -199,8 +209,11 @@ def calibrate_extrinsics(
     obj_points = np.array(obj_points_list, dtype=np.float32)
     img_points = np.array(img_points_list, dtype=np.float32)
 
+    num_tokens = len(aruco_ids) if aruco_ids is not None else 0
+    num_ground = len(obj_points_list) - num_tokens
+
     logging.info(
-        f"Extrinsics: Solving for {len(obj_points)} points ({len(obj_points_list) - (0 if ids is None else len(ids))} ground, {(0 if ids is None else len(ids))} tokens)."
+        f"Extrinsics: Solving for {len(obj_points)} points ({num_ground} ground, {num_tokens} tokens)."
     )
 
     # Solve PnP

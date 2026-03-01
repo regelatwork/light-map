@@ -32,6 +32,7 @@ def mock_context():
     context.camera_matrix = np.eye(3)
     context.dist_coeffs = np.zeros(5)
     context.last_camera_frame = np.zeros((480, 640, 3), dtype=np.uint8)
+    context.raw_aruco = {"ids": [], "corners": []}
     return context
 
 
@@ -59,60 +60,49 @@ def test_extrinsics_scene_passes_known_targets(
 
     # Target zones are: (220, 180), ...
     # We'll simulate 3 markers near the first 3 targets.
+    ids = [10, 11, 12]
+    # Corners near TL (220,180), TR (w-220+30, 180-20), BL (220-40, h-180+15)
+    corners = [
+        np.array(
+            [[210, 170], [230, 170], [230, 190], [210, 190]], dtype=np.float32
+        ).reshape(1, 4, 2),
+        np.array(
+            [[1720, 150], [1740, 150], [1740, 170], [1720, 170]], dtype=np.float32
+        ).reshape(1, 4, 2),
+        np.array(
+            [[170, 905], [190, 905], [190, 925], [170, 925]], dtype=np.float32
+        ).reshape(1, 4, 2),
+    ]
+    mock_context.raw_aruco = {"ids": ids, "corners": corners}
 
-    with (
-        patch("cv2.aruco.ArucoDetector") as MockDetector,
-        patch("cv2.aruco.getPredefinedDictionary"),
-        patch("cv2.aruco.DetectorParameters"),
-    ):
-        detector_instance = MockDetector.return_value
-        ids = np.array([[10], [11], [12]], dtype=np.int32)
-        # Corners near TL (220,180), TR (w-220+30, 180-20), BL (220-40, h-180+15)
-        # Target 0: (220, 180)
-        # Target 1: (1920 - 220 + 30, 180 - 20) = (1730, 160)
-        # Target 2: (220 - 40, 1080 - 180 + 15) = (180, 915)
+    # 1. Update during PLACEMENT to detect markers
+    scene.update([], 1.0)
 
-        corners = (
-            np.array(
-                [[[210, 170], [230, 170], [230, 190], [210, 190]]], dtype=np.float32
-            ),
-            np.array(
-                [[[1720, 150], [1740, 150], [1740, 170], [1720, 170]]], dtype=np.float32
-            ),
-            np.array(
-                [[[170, 905], [190, 905], [190, 925], [170, 925]]], dtype=np.float32
-            ),
-        )
-        detector_instance.detectMarkers.return_value = (corners, ids, [])
+    assert scene._target_status[0] == "VALID"
+    assert scene._target_status[1] == "VALID"
+    assert scene._target_status[2] == "VALID"
 
-        # 1. Update during PLACEMENT to detect markers
-        scene.update([], 1.0)
+    # 2. Trigger Capture with Fist
+    inputs = [HandInput(GestureType.CLOSED_FIST, (0, 0), None)]
+    scene.update(inputs, 1.1)
 
-        assert scene._target_status[0] == "VALID"
-        assert scene._target_status[1] == "VALID"
-        assert scene._target_status[2] == "VALID"
+    # 3. Update again to run CAPTURE logic
+    scene.update(inputs, 1.2)
 
-        # 2. Trigger Capture with Fist
-        inputs = [HandInput(GestureType.CLOSED_FIST, (0, 0), None)]
-        scene.update(inputs, 1.1)
+    # 4. Verify calibrate_extrinsics call
+    assert mock_calibrate.called
+    _, kwargs = mock_calibrate.call_args
 
-        # 3. Update again to run CAPTURE logic
-        scene.update(inputs, 1.2)
+    known_targets = kwargs.get("known_targets")
+    assert known_targets is not None
+    assert len(known_targets) == 3
 
-        # 4. Verify calibrate_extrinsics call
-        assert mock_calibrate.called
-        _, kwargs = mock_calibrate.call_args
-
-        known_targets = kwargs.get("known_targets")
-        assert known_targets is not None
-        assert len(known_targets) == 3
-
-        # Target 0: (220, 180)
-        assert known_targets[10] == (220.0, 180.0)
-        # Target 1: (1730.0, 160.0)
-        assert known_targets[11] == (1730.0, 160.0)
-        # Target 2: (180.0, 915.0)
-        assert known_targets[12] == (180.0, 915.0)
+    # Target 0: (220, 180)
+    assert known_targets[10] == (220.0, 180.0)
+    # Target 1: (1730.0, 160.0)
+    assert known_targets[11] == (1730.0, 160.0)
+    # Target 2: (180.0, 915.0)
+    assert known_targets[12] == (180.0, 915.0)
 
 
 @patch("cv2.rectangle")
@@ -132,13 +122,11 @@ def test_extrinsics_scene_renders_rectangles(mock_rect, mock_context):
 
     # PPI is 100, size is 1 -> rect_size = 100, half_size = 50
     # Target 0 is at (220, 180)
-    # Expected rect: (220-50, 180-50) to (220+50, 180+50) -> (170, 130) to (270, 230)
+    # Expected rect: (170, 130) to (270, 230)
 
-    # Check if any call to cv2.rectangle matches the expected coordinates
     found_expected = False
     for call in mock_rect.call_args_list:
         args, kwargs = call
-        # args[1] is pt1, args[2] is pt2
         pt1, pt2 = args[1], args[2]
         if pt1 == (170, 130) and pt2 == (270, 230):
             found_expected = True

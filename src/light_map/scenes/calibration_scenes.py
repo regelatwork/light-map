@@ -359,6 +359,8 @@ class ExtrinsicsCalibrationScene(Scene):
         self._animation_start_times: Dict[int, float] = {}
         self._token_names: Dict[int, str] = {}
         self._current_time: float = 0.0
+        self._cached_canvas: Optional[np.ndarray] = None
+        self._last_render_params: Dict[str, Any] = {}
 
     def on_enter(self, payload: Any = None) -> None:
         self._stage = "PLACEMENT"
@@ -422,14 +424,11 @@ class ExtrinsicsCalibrationScene(Scene):
     ) -> Optional[SceneTransition]:
         self._current_time = current_time
         if self._stage == "PLACEMENT":
-            # Continuous detection
-            frame = self.context.last_camera_frame
-            if frame is not None:
-                gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-                aruco_dict = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_4X4_50)
-                parameters = cv2.aruco.DetectorParameters()
-                detector = cv2.aruco.ArucoDetector(aruco_dict, parameters)
-                corners, ids, rejected = detector.detectMarkers(gray)
+            # Continuous detection using context-provided results
+            raw = self.context.raw_aruco
+            if raw and raw.get("ids") is not None:
+                corners = raw.get("corners", [])
+                ids = raw.get("ids", [])
 
                 # Reset status, detected IDs, and known targets for this frame
                 self._target_status = ["IDLE"] * len(self._target_zones)
@@ -437,49 +436,45 @@ class ExtrinsicsCalibrationScene(Scene):
                 self._detected_ids = {}
                 self._known_targets = {}
 
-                if ids is not None:
-                    ids = ids.flatten()
-                    for i, aid in enumerate(ids):
-                        c_cam = np.mean(corners[i][0], axis=0)
+                for i, aid in enumerate(ids):
+                    marker_corners = corners[i]
+                    c_cam = np.mean(marker_corners, axis=0)
 
-                        # Project to projector space for target matching (Z=0 assumption for matching)
-                        pts_cam = np.array([c_cam], dtype=np.float32).reshape(-1, 1, 2)
-                        pts_proj = cv2.perspectiveTransform(
-                            pts_cam, self.context.projector_matrix
-                        ).reshape(-1, 2)
-                        px, py = pts_proj[0]
+                    # Project to projector space for target matching (Z=0 assumption for matching)
+                    pts_cam = np.array([c_cam], dtype=np.float32).reshape(-1, 1, 2)
+                    pts_proj = cv2.perspectiveTransform(
+                        pts_cam, self.context.projector_matrix
+                    ).reshape(-1, 2)
+                    px, py = pts_proj[0]
 
-                        # Find nearest target zone
-                        best_dist = 150.0  # Threshold in projector pixels
-                        best_idx = -1
-                        for idx, (tx, ty, _) in enumerate(self._target_zones):
-                            dist = math.sqrt((px - tx) ** 2 + (py - ty) ** 2)
-                            if dist < best_dist:
-                                best_dist = dist
-                                best_idx = idx
+                    # Find nearest target zone
+                    best_dist = 150.0  # Threshold in projector pixels
+                    best_idx = -1
+                    for idx, (tx, ty, _) in enumerate(self._target_zones):
+                        dist = math.sqrt((px - tx) ** 2 + (py - ty) ** 2)
+                        if dist < best_dist:
+                            best_dist = dist
+                            best_idx = idx
 
-                        if best_idx != -1:
-                            info = {"aid": int(aid)}
-                            if aid in self._token_heights:
-                                self._target_status[best_idx] = "VALID"
-                                info["height"] = self._token_heights[aid]
-                                info["size"] = self._token_sizes.get(aid, 1)
-                                info["name"] = self._token_names.get(
-                                    aid, f"Token {aid}"
-                                )
-                                # Trigger animation if it's the first time it becomes valid
-                                if best_idx not in self._animation_start_times:
-                                    self._animation_start_times[best_idx] = current_time
-                                # Capture coordinates for solvePnP
-                                # CRITICAL: Map the marker to the center of the target zone it's on
-                                tx, ty, _ = self._target_zones[best_idx]
-                                self._detected_ids[aid] = (c_cam[0], c_cam[1])
-                                self._known_targets[aid] = (float(tx), float(ty))
-                            else:
-                                self._target_status[best_idx] = "UNKNOWN"
-                                if best_idx in self._animation_start_times:
-                                    del self._animation_start_times[best_idx]
-                            self._target_info[best_idx] = info
+                    if best_idx != -1:
+                        info = {"aid": int(aid)}
+                        if aid in self._token_heights:
+                            self._target_status[best_idx] = "VALID"
+                            info["height"] = self._token_heights[aid]
+                            info["size"] = self._token_sizes.get(aid, 1)
+                            info["name"] = self._token_names.get(aid, f"Token {aid}")
+                            # Trigger animation if it's the first time it becomes valid
+                            if best_idx not in self._animation_start_times:
+                                self._animation_start_times[best_idx] = current_time
+                            # Capture coordinates for solvePnP
+                            tx, ty, _ = self._target_zones[best_idx]
+                            self._detected_ids[aid] = (c_cam[0], c_cam[1])
+                            self._known_targets[aid] = (float(tx), float(ty))
+                        else:
+                            self._target_status[best_idx] = "UNKNOWN"
+                            if best_idx in self._animation_start_times:
+                                del self._animation_start_times[best_idx]
+                        self._target_info[best_idx] = info
 
                 # Clean up animation timers for IDLE targets
                 for idx in range(len(self._target_status)):
@@ -509,10 +504,19 @@ class ExtrinsicsCalibrationScene(Scene):
                 self._stage = "ERROR"
                 return None
 
+            raw = self.context.raw_aruco
+            formatted_corners = None
+            formatted_ids = None
+            if raw and raw.get("ids") is not None:
+                corners = raw.get("corners", [])
+                ids = raw.get("ids", [])
+                formatted_corners = tuple(c.reshape(1, 4, 2) for c in corners)
+                formatted_ids = np.array(ids)
+
             # CRITICAL: Pass known_targets so calibrate_extrinsics uses (tx, ty, h)
             # instead of estimating (X, Y) from a potentially parallax-distorted homography.
             result = calibrate_extrinsics(
-                self.context.last_camera_frame,
+                None,
                 self.context.projector_matrix,
                 self.context.camera_matrix,
                 self.context.dist_coeffs,
@@ -521,6 +525,8 @@ class ExtrinsicsCalibrationScene(Scene):
                 ground_points_cam=self._ground_points_cam,
                 ground_points_proj=self._ground_points_proj,
                 known_targets=self._known_targets,
+                aruco_corners=formatted_corners,
+                aruco_ids=formatted_ids,
             )
 
             if result:
@@ -580,179 +586,201 @@ class ExtrinsicsCalibrationScene(Scene):
 
     def render(self, frame: np.ndarray) -> np.ndarray:
         h, w = frame.shape[:2]
-        canvas = np.full((h, w, 3), 200, dtype=np.uint8)  # Light gray "Arena"
         current_time = self._current_time
         ppi = self._ppi if self._ppi > 0 else 96.0
 
-        # Draw Target Zones
-        for idx, (tx, ty, tid) in enumerate(self._target_zones):
-            status = self._target_status[idx]
-            info = self._target_info[idx]
+        # Rendering Parameters for Cache Matching
+        render_params = {
+            "stage": self._stage,
+            "target_status": self._target_status.copy(),
+            "target_info": self._target_info.copy(),
+            "has_reprojection": self._obj_points is not None,
+            "ppi": ppi,
+        }
 
-            # Default size is 1x1 inch
-            token_size = info.get("size", 1)
-            rect_size = int(token_size * ppi)
-            half_size = rect_size // 2
+        # Check for cache hit
+        # Note: We ignore animations (expanding circles) for the base cache to avoid
+        # 60fps cache misses. Animations are drawn on top.
+        if (
+            self._cached_canvas is not None
+            and self._cached_canvas.shape[:2] == (h, w)
+            and render_params == self._last_render_params
+        ):
+            canvas = self._cached_canvas.copy()
+        else:
+            # Cache Miss: Redraw everything
+            canvas = np.full((h, w, 3), 200, dtype=np.uint8)  # Light gray "Arena"
 
-            # Default IDLE: White rectangle
-            color = (255, 255, 255)
-            thickness = 2
-            label = "Target"
+            # Draw Target Zones
+            for idx, (tx, ty, tid) in enumerate(self._target_zones):
+                status = self._target_status[idx]
+                info = self._target_info[idx]
 
-            if status == "VALID":
-                color = (0, 255, 0)  # Green
-                thickness = -1  # Filled
-                label = info.get("name", "Locked")
+                # Default size is 1x1 inch
+                token_size = info.get("size", 1)
+                rect_size = int(token_size * ppi)
+                half_size = rect_size // 2
 
-                # Metadata
-                height = info.get("height", 0.0)
-                aid = info.get("aid", 0)
+                # Default IDLE: White rectangle
+                color = (255, 255, 255)
+                thickness = 2
+                label = "Target"
+
+                if status == "VALID":
+                    color = (0, 255, 0)  # Green
+                    thickness = -1  # Filled
+                    label = info.get("name", "Locked")
+
+                    # Metadata
+                    height = info.get("height", 0.0)
+                    draw_text_with_background(
+                        canvas,
+                        f"{label}: {height}mm",
+                        (tx - half_size, ty - half_size - 10),
+                        cv2.FONT_HERSHEY_SIMPLEX,
+                        0.5,
+                        (0, 100, 0),
+                        1,
+                    )
+
+                elif status == "UNKNOWN":
+                    color = (150, 150, 150)  # Gray
+                    aid = info.get("aid", "???")
+                    label = f"Unknown ID {aid}"
+                    thickness = 1
+
+                # Draw the main target rectangle
+                cv2.rectangle(
+                    canvas,
+                    (tx - half_size, ty - half_size),
+                    (tx + half_size, ty + half_size),
+                    color,
+                    thickness,
+                )
+
+                # Center dot
+                cv2.circle(canvas, (tx, ty), 3, (0, 0, 0), -1)
+
+                # Label below
                 draw_text_with_background(
                     canvas,
-                    f"{label}: {height}mm",
-                    (tx - half_size, ty - half_size - 10),
+                    label,
+                    (tx - half_size, ty + half_size + 20),
                     cv2.FONT_HERSHEY_SIMPLEX,
                     0.5,
-                    (0, 100, 0),
-                    1,
+                    color if thickness > 0 else (0, 100, 0),
+                    1 if thickness > 0 else 2,
                 )
 
-                # Lock Animation (Expanding border)
-                if idx in self._animation_start_times:
-                    elapsed = current_time - self._animation_start_times[idx]
-                    if elapsed < 0.5:
-                        growth = int(20 * (1.0 - elapsed / 0.5))
-                        cv2.rectangle(
-                            canvas,
-                            (tx - half_size - growth, ty - half_size - growth),
-                            (tx + half_size + growth, ty + half_size + growth),
-                            (0, 255, 0),
-                            2,
-                        )
+            # Verification Overlay: Visual Feedback
+            if (
+                self._stage == "VALIDATION"
+                and self._rvec is not None
+                and self._tvec is not None
+                and self._obj_points is not None
+            ):
+                # Calculate reprojected points (Camera Space)
+                proj_pts_cam, _ = cv2.projectPoints(
+                    self._obj_points,
+                    self._rvec,
+                    self._tvec,
+                    self.context.camera_matrix,
+                    self.context.dist_coeffs,
+                )
+                proj_pts_cam = proj_pts_cam.reshape(-1, 2)
 
-            elif status == "UNKNOWN":
-                color = (150, 150, 150)  # Gray
-                aid = info.get("aid", "???")
-                label = f"Unknown ID {aid}"
-                # Dashed rectangle simulation
-                thickness = 1
+                # Transform both sets to Projector Space for rendering
+                img_pts_reshaped = self._img_points.reshape(-1, 1, 2)
+                detected_proj = cv2.perspectiveTransform(
+                    img_pts_reshaped, self.context.projector_matrix
+                ).reshape(-1, 2)
 
-            # Draw the main target rectangle
-            if thickness == -1:
-                cv2.rectangle(
+                reprojected_proj = cv2.perspectiveTransform(
+                    proj_pts_cam.reshape(-1, 1, 2), self.context.projector_matrix
+                ).reshape(-1, 2)
+
+                # Draw residuals
+                for i in range(len(detected_proj)):
+                    p_det = detected_proj[i]
+                    p_rep = reprojected_proj[i]
+                    error_px = np.linalg.norm(self._img_points[i] - proj_pts_cam[i])
+                    color = (
+                        (0, 255, 0)
+                        if error_px < 2.0
+                        else (0, 255, 255)
+                        if error_px < 5.0
+                        else (0, 0, 255)
+                    )
+                    pt1, pt2 = (
+                        (int(p_det[0]), int(p_det[1])),
+                        (
+                            int(p_rep[0]),
+                            int(p_rep[1]),
+                        ),
+                    )
+                    cv2.line(canvas, pt1, pt2, color, 2)
+                    cv2.line(
+                        canvas,
+                        (pt1[0] - 5, pt1[1]),
+                        (pt1[0] + 5, pt1[1]),
+                        (0, 255, 0),
+                        2,
+                    )
+                    cv2.line(
+                        canvas,
+                        (pt1[0], pt1[1] - 5),
+                        (pt1[0], pt1[1] + 5),
+                        (0, 255, 0),
+                        2,
+                    )
+                    cv2.circle(canvas, pt2, 5, (0, 0, 255), 2)
+
+                # HUD
+                rms = self._reprojection_error
+                status_color = (
+                    (0, 255, 0)
+                    if rms < 2.0
+                    else (0, 255, 255)
+                    if rms < 5.0
+                    else (0, 0, 255)
+                )
+                status_text = "GOOD" if rms < 2.0 else "FAIR" if rms < 5.0 else "POOR"
+                draw_text_with_background(
                     canvas,
-                    (tx - half_size, ty - half_size),
-                    (tx + half_size, ty + half_size),
-                    color,
-                    thickness,
-                )
-            else:
-                cv2.rectangle(
-                    canvas,
-                    (tx - half_size, ty - half_size),
-                    (tx + half_size, ty + half_size),
-                    color,
-                    thickness,
+                    f"Error: {rms:.2f} px ({status_text})",
+                    (w // 2 - 130, 60),
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    0.8,
+                    status_color,
+                    2,
+                    bg_color=(50, 50, 50),
                 )
 
-            # Center dot
-            cv2.circle(canvas, (tx, ty), 3, (0, 0, 0), -1)
+            # Update cache
+            self._cached_canvas = canvas.copy()
+            self._last_render_params = render_params
 
-            # Label below
-            draw_text_with_background(
-                canvas,
-                label,
-                (tx - half_size, ty + half_size + 20),
-                cv2.FONT_HERSHEY_SIMPLEX,
-                0.5,
-                color if thickness > 0 else (0, 100, 0),
-                1 if thickness > 0 else 2,
-            )
+        # Draw Animations on top of (potentially cached) canvas
+        for idx, (tx, ty, tid) in enumerate(self._target_zones):
+            if (
+                self._target_status[idx] == "VALID"
+                and idx in self._animation_start_times
+            ):
+                elapsed = current_time - self._animation_start_times[idx]
+                if elapsed < 0.5:
+                    growth = int(20 * (1.0 - elapsed / 0.5))
+                    token_size = self._target_info[idx].get("size", 1)
+                    rect_size = int(token_size * ppi)
+                    half_size = rect_size // 2
+                    cv2.rectangle(
+                        canvas,
+                        (tx - half_size - growth, ty - half_size - growth),
+                        (tx + half_size + growth, ty + half_size + growth),
+                        (0, 255, 0),
+                        2,
+                    )
 
-        # Verification Overlay: Visual Feedback
-        if (
-            self._stage == "VALIDATION"
-            and self._rvec is not None
-            and self._tvec is not None
-        ):
-            # Calculate reprojected points (Camera Space)
-            proj_pts_cam, _ = cv2.projectPoints(
-                self._obj_points,
-                self._rvec,
-                self._tvec,
-                self.context.camera_matrix,
-                self.context.dist_coeffs,
-            )
-            proj_pts_cam = proj_pts_cam.reshape(-1, 2)
-
-            # Transform both sets to Projector Space for rendering
-            # Detected (img_points) -> Projector
-            img_pts_reshaped = self._img_points.reshape(-1, 1, 2)
-            detected_proj = cv2.perspectiveTransform(
-                img_pts_reshaped, self.context.projector_matrix
-            ).reshape(-1, 2)
-
-            # Reprojected -> Projector
-            proj_pts_reshaped = proj_pts_cam.reshape(-1, 1, 2)
-            reprojected_proj = cv2.perspectiveTransform(
-                proj_pts_reshaped, self.context.projector_matrix
-            ).reshape(-1, 2)
-
-            # Draw residuals
-            for i in range(len(detected_proj)):
-                p_det = detected_proj[i]
-                p_rep = reprojected_proj[i]
-
-                # Calculate error in Camera Space (pixels) for color coding
-                error_px = np.linalg.norm(self._img_points[i] - proj_pts_cam[i])
-
-                if error_px < 2.0:
-                    color = (0, 255, 0)  # Green
-                elif error_px < 5.0:
-                    color = (0, 255, 255)  # Yellow
-                else:
-                    color = (0, 0, 255)  # Red
-
-                pt1 = (int(p_det[0]), int(p_det[1]))
-                pt2 = (int(p_rep[0]), int(p_rep[1]))
-
-                # Line representing error vector
-                cv2.line(canvas, pt1, pt2, color, 2)
-
-                # Detected: Green Cross
-                cv2.line(
-                    canvas, (pt1[0] - 5, pt1[1]), (pt1[0] + 5, pt1[1]), (0, 255, 0), 2
-                )
-                cv2.line(
-                    canvas, (pt1[0], pt1[1] - 5), (pt1[0], pt1[1] + 5), (0, 255, 0), 2
-                )
-
-                # Reprojected: Red Circle
-                cv2.circle(canvas, pt2, 5, (0, 0, 255), 2)
-
-            # HUD
-            rms = self._reprojection_error
-            status_color = (
-                (0, 255, 0)
-                if rms < 2.0
-                else (0, 255, 255)
-                if rms < 5.0
-                else (0, 0, 255)
-            )
-            status_text = "GOOD" if rms < 2.0 else "FAIR" if rms < 5.0 else "POOR"
-
-            draw_text_with_background(
-                canvas,
-                f"Error: {rms:.2f} px ({status_text})",
-                (w // 2 - 130, 60),
-                cv2.FONT_HERSHEY_SIMPLEX,
-                0.8,
-                status_color,
-                2,
-                bg_color=(50, 50, 50),
-            )
-
-        # Instructions
+        # Instructions (always on top)
         instr = (
             "Fist to calibrate (Need 3+ tokens)" if self._stage == "PLACEMENT" else ""
         )
@@ -822,11 +850,22 @@ class PpiCalibrationScene(Scene):
         )
 
         if self._stage == "DETECTING":
-            if self.context.last_camera_frame is not None:
+            raw = self.context.raw_aruco
+            if raw and raw.get("ids") is not None:
+                # ids is a list of ints, corners is a list of (4, 2) arrays
+                corners = raw.get("corners", [])
+                ids = raw.get("ids", [])
+
+                # Re-format corners to (1, 4, 2) as expected by calculate_ppi_from_frame
+                formatted_corners = tuple(c.reshape(1, 4, 2) for c in corners)
+                formatted_ids = np.array(ids)
+
                 ppi = calculate_ppi_from_frame(
-                    self.context.last_camera_frame,
+                    None,
                     self.context.projector_matrix,
                     target_dist_mm=100.0,
+                    aruco_corners=formatted_corners,
+                    aruco_ids=formatted_ids,
                 )
                 if ppi:
                     self._candidate_ppi = ppi

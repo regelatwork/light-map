@@ -125,8 +125,8 @@ def test_calibrate_extrinsics_flip_inverted(mock_cv2):
         proj_matrix,
         cam_matrix,
         dist_coeffs,
-        token_heights={1: 5.0},
-        ppi=100.0,
+        {1: 5.0},
+        100.0,
         ground_points_cam=np.array([[50, 50], [60, 60], [70, 70], [80, 80]]),
         ground_points_proj=np.array([[100, 100], [120, 120], [140, 140], [160, 160]]),
     )

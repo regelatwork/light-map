@@ -297,6 +297,10 @@ class InteractiveApp:
 
         results = DummyResults(state.hands, state.handedness)
 
+        # Update app context with latest vision results
+        self.app_context.last_camera_frame = state.background
+        self.app_context.raw_aruco = state.raw_aruco
+
         # Standardize Input
         inputs = self.input_processor.convert_mediapipe_to_inputs(results, frame_shape)
 

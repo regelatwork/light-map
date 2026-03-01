@@ -21,6 +21,10 @@ def mock_app_context():
 
 def test_ppi_calibration_scene_detecting_to_confirming(mock_app_context):
     """Verify transition from DETECTING to CONFIRMING when PPI is detected."""
+    mock_app_context.raw_aruco = {
+        "ids": np.array([0, 1]),
+        "corners": [np.zeros((1, 4, 2)), np.zeros((1, 4, 2))],
+    }
     scene = PpiCalibrationScene(mock_app_context)
     scene.on_enter()
 
@@ -31,11 +35,11 @@ def test_ppi_calibration_scene_detecting_to_confirming(mock_app_context):
     ) as mock_calc:
         frame = np.zeros((100, 100, 3), dtype=np.uint8)
         scene.render(frame)  # Call render to trigger detection
-        mock_calc.assert_called_with(
-            mock_app_context.last_camera_frame,
-            mock_app_context.projector_matrix,
-            target_dist_mm=100.0,
-        )
+        assert mock_calc.called
+        args, kwargs = mock_calc.call_args
+        # args[1] is projector_matrix
+        np.testing.assert_array_equal(args[1], mock_app_context.projector_matrix)
+        assert kwargs["target_dist_mm"] == 100.0
 
     assert scene._stage == "CONFIRMING"
     assert scene._candidate_ppi == 100.0

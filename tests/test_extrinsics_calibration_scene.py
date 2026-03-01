@@ -63,70 +63,57 @@ def test_extrinsics_scene_uses_ground_points(
     # Check if file was loaded
     mock_load.assert_called_with("projector_calibration.npz")
 
-    # Trigger Capture
-    # We need to simulate detection of markers.
-    # The scene uses cv2.aruco internally in update() for PLACEMENT stage.
-    # We can mock cv2.aruco via patch. But since the logic is inside update,
-    # we need to ensure the detection happens.
-
-    # Actually, the scene logic calls detector.detectMarkers directly.
-    # Let's patch cv2.aruco.ArucoDetector in the test function scope.
-    with (
-        patch("cv2.aruco.ArucoDetector") as MockDetector,
-        patch("cv2.aruco.getPredefinedDictionary"),
-        patch("cv2.aruco.DetectorParameters"),
-    ):
-        detector_instance = MockDetector.return_value
-
-        # Return 3 detected markers (ID 1, 2, 3) near targets TL, TR, BL
-        # Target zones: (200, 200), (1720, 200), (200, 880)
-        ids = np.array([[1], [2], [3]], dtype=np.int32)
-        corners = (
+    # Simulate detection of markers via AppContext
+    # Target zones: TL=(220, 180), TR=(1720+30, 180-20), BL=(220-40, 900+15), BR=(1720-15, 900-35), C=(960+25, 540-10)
+    # IDs 1, 2, 3 correspond to existing defaults in mock_context
+    mock_context.raw_aruco = {
+        "ids": [1, 2, 3],
+        "corners": [
             np.array(
-                [[[195, 195], [205, 195], [205, 205], [195, 205]]], dtype=np.float32
-            ),  # Near TL
+                [[195, 195], [205, 195], [205, 205], [195, 205]], dtype=np.float32
+            ),  # TL
             np.array(
-                [[[1715, 195], [1725, 195], [1725, 205], [1715, 205]]], dtype=np.float32
-            ),  # Near TR
+                [[1715, 195], [1725, 195], [1725, 205], [1715, 205]], dtype=np.float32
+            ),  # TR
             np.array(
-                [[[195, 875], [205, 875], [205, 885], [195, 885]]], dtype=np.float32
-            ),  # Near BL
-        )
-        detector_instance.detectMarkers.return_value = (corners, ids, [])
+                [[195, 875], [205, 875], [205, 885], [195, 885]], dtype=np.float32
+            ),  # BL
+        ],
+    }
 
-        # Simulate Fist gesture
-        inputs = [HandInput(GestureType.CLOSED_FIST, (0, 0), None)]
+    # Simulate Fist gesture
+    inputs = [HandInput(GestureType.CLOSED_FIST, (0, 0), None)]
 
-        # Call update to trigger detection and transition to CAPTURE (implied logic check)
-        # The update loop logic:
-        # 1. PLACEMENT: detect markers. If valid_count >= 3 and FIST -> CAPTURE.
-        scene.update(inputs, 1.0)
+    # Call update to trigger detection and transition to CAPTURE (implied logic check)
+    # The update loop logic:
+    # 1. PLACEMENT: detect markers. If valid_count >= 3 and FIST -> CAPTURE.
+    scene.update(inputs, 1.0)
 
-        # Now stage should be CAPTURE
-        assert scene._stage == "CAPTURE"
+    # Now stage should be CAPTURE
+    assert scene._stage == "CAPTURE"
 
-        # Call update again to execute CAPTURE logic
-        scene.update(inputs, 1.1)
+    # Call update again to execute CAPTURE logic
+    scene.update(inputs, 1.1)
 
-        # Verify calibrate_extrinsics was called
-        assert mock_calibrate.called
+    # Verify calibrate_extrinsics was called
+    assert mock_calibrate.called
 
-        # Verify arguments
-        args, kwargs = mock_calibrate.call_args
+    # Verify arguments
+    args, kwargs = mock_calibrate.call_args
 
-        # If passed as kwargs:
-        if "ground_points_cam" in kwargs:
-            np.testing.assert_array_equal(kwargs["ground_points_cam"], cam_pts)
-            np.testing.assert_array_equal(kwargs["ground_points_proj"], proj_pts)
+    # Check that ground points were passed (now at index 7 and 8 due to new aruco params)
+    if "ground_points_cam" in kwargs:
+        np.testing.assert_array_equal(kwargs["ground_points_cam"], cam_pts)
+        np.testing.assert_array_equal(kwargs["ground_points_proj"], proj_pts)
+    else:
+        # p_matrix(0), c_matrix(1), dist(2), heights(3), ppi(4), corners(5), ids(6), g_cam(7), g_proj(8)
+        if len(args) > 8:
+            np.testing.assert_array_equal(args[7], cam_pts)
+            np.testing.assert_array_equal(args[8], proj_pts)
         else:
-            # If passed as args, they are at index 6 and 7
-            if len(args) > 6:
-                np.testing.assert_array_equal(args[6], cam_pts)
-                np.testing.assert_array_equal(args[7], proj_pts)
-            else:
-                pytest.fail(
-                    "ground_points_cam and ground_points_proj were not passed to calibrate_extrinsics"
-                )
+            pytest.fail(
+                f"ground_points_cam and ground_points_proj were not passed to calibrate_extrinsics. Args: {len(args)}"
+            )
 
 
 @patch("light_map.scenes.calibration_scenes.calibrate_extrinsics")

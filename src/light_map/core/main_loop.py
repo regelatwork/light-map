@@ -95,7 +95,6 @@ class MainLoopController:
             if current_time - self._last_report_time > 5.0:
                 report = self.instrument.get_report()
                 if report:
-
                     logging.info(
                         f"Performance Report (P95 ms): { {k: v['p95_ms'] for k, v in report.items() if isinstance(v, dict) and 'p95_ms' in v} }"
                     )

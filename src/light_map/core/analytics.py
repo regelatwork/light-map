@@ -81,7 +81,7 @@ class LatencyInstrument:
             # Use provided ts_capture as baseline if possible
             baseline = ts_capture
             detect_time = self.detections.get(ts_capture, ts_rendered)
-            
+
             detect_lag = (detect_time - baseline) / 1000.0
             render_lag = (ts_rendered - detect_time) / 1000.0
             total = (ts_rendered - baseline) / 1000.0

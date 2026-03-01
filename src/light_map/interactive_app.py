@@ -4,7 +4,7 @@ import numpy as np
 import time
 import os
 import logging
-from typing import List, Tuple, Any, Dict, Optional
+from typing import List, Tuple, Any, Dict, Optional, TYPE_CHECKING
 
 from light_map.common_types import (
     AppConfig,
@@ -39,6 +39,9 @@ from light_map.vision.overlay_renderer import OverlayRenderer
 from light_map.vision.hand_masker import HandMasker
 from light_map.display_utils import draw_text_with_background
 
+if TYPE_CHECKING:
+    from light_map.core.world_state import WorldState
+    from light_map.common_types import Action
 
 class InteractiveApp:
     def __init__(self, config: AppConfig, time_provider=time.monotonic):
@@ -201,6 +204,78 @@ class InteractiveApp:
             self.current_scene.on_enter(transition.payload)
         else:
             logging.error("Scene '%s' not found.", target_id)
+
+    def process_state(
+        self, state: "WorldState", actions: List["Action"]
+    ) -> Tuple[np.ndarray, List[str]]:
+        current_time = self.time_provider()
+
+        # Update FPS
+        if self.last_fps_time != 0:
+            dt = current_time - self.last_fps_time
+            if dt > 0:
+                self.fps = 1.0 / dt
+        self.last_fps_time = current_time
+
+        # Update context frame if available
+        if state.background is not None:
+            self.app_context.last_camera_frame = state.background
+            frame_shape = state.background.shape
+        else:
+            frame_shape = (self.config.height, self.config.width, 3)
+
+        # Build dummy results for legacy processors, or update processors
+        class DummyResults:
+            def __init__(self, hands_list):
+                self.multi_hand_landmarks = []
+                for hl in hands_list:
+
+                    class DummyHandLandmarks:
+                        def __init__(self, lm_dicts):
+                            class DummyLandmark:
+                                def __init__(self, d):
+                                    self.x = d.get("x", 0)
+                                    self.y = d.get("y", 0)
+                                    self.z = d.get("z", 0)
+
+                            self.landmark = [DummyLandmark(d) for d in lm_dicts]
+
+                    self.multi_hand_landmarks.append(DummyHandLandmarks(hl))
+
+        results = DummyResults(state.hands)
+
+        # Standardize Input
+        inputs = self.input_processor.convert_mediapipe_to_inputs(results, frame_shape)
+
+        # Map actions to inputs if needed? We will just pass the mapped inputs for now
+        # You could also blend `actions` into `inputs` if your scene requires Action enums
+
+        # We need to update tokens in map system from state
+        if state.tokens:
+            self.map_system.ghost_tokens = state.tokens
+
+        # Scene Update
+        transition = self.current_scene.update(inputs, current_time)
+        if transition:
+            self._handle_payloads(transition.payload)
+            self._switch_scene(transition)
+
+        # Render Base Layer
+        if state.background is not None:
+            base_frame = self._render_base_layer(state.background)
+        else:
+            base_frame = np.zeros(frame_shape, dtype=np.uint8)
+
+        # Scene Render
+        scene_frame = self.current_scene.render(base_frame)
+
+        # Hand Masking
+        masked_frame = self._apply_hand_masking(scene_frame, results)
+
+        # Global Overlays
+        final_frame = self._render_global_overlays(masked_frame, inputs)
+
+        return final_frame, []
 
     def process_frame(
         self, frame: np.ndarray, results: Any

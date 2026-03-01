@@ -1,13 +1,13 @@
 import time
 from typing import List, Set, Optional
 from light_map.common_types import GestureType, Action
-import cv2
 
 
 class InputManager:
     """
     Unifies hardware (keyboard) and vision (gesture) inputs into semantic Actions.
     """
+
     def __init__(self, flicker_timeout: float = 0.5, time_provider=time.monotonic):
         self.flicker_timeout = flicker_timeout
         self.time_provider = time_provider
@@ -47,13 +47,13 @@ class InputManager:
         """Processes a raw keyboard code from cv2.waitKey()."""
         if key_code == -1:
             return
-            
+
         char = key_code & 0xFF
-        
+
         # Simple mapping
-        if char == ord('\r') or char == ord('\n') or char == ord(' '):
+        if char == ord("\r") or char == ord("\n") or char == ord(" "):
             self._pending_actions.add(Action.SELECT)
-        elif char == 27 or char == ord('b'): # ESC or 'b'
+        elif char == 27 or char == ord("b"):  # ESC or 'b'
             self._pending_actions.add(Action.BACK)
 
     def _map_gesture_to_action(self, gesture: GestureType) -> Optional[Action]:

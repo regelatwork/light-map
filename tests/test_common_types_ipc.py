@@ -1,5 +1,5 @@
-from light_map.common_types import DetectionResult, ResultType, Action
-import numpy as np
+from light_map.common_types import DetectionResult, ResultType
+
 
 def test_detection_result_serialization():
     # Verify we can create and represent the new types

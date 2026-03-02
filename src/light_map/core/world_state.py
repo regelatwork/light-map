@@ -6,7 +6,7 @@ from light_map.common_types import Token, DetectionResult, ResultType, ViewportS
 class WorldState:
     """
     Central Data Repository (The "Source of Truth") for the MainProcess.
-    Manages background frames, vision results, and dirty tracking.
+    Manages background frames, vision results, and granular timestamps for caching.
     """
 
     def __init__(
@@ -18,17 +18,23 @@ class WorldState:
         self.background: Optional[np.ndarray] = None
         self.last_frame_timestamp: int = 0
 
-        self.tokens: List[Token] = []  # Logical/Snapped tokens (Triggers dirty)
-        self.raw_tokens: List[
-            Token
-        ] = []  # Live/Unsnapped tokens (Does NOT trigger dirty)
+        self.tokens: List[Token] = []  # Logical/Snapped tokens
+        self.raw_tokens: List[Token] = []  # Live/Unsnapped tokens
         self.raw_aruco: Dict[str, Any] = {"corners": [], "ids": []}
         self.hands: List[Any] = []  # Landmarks
         self.handedness: List[Any] = []
         self.gesture: Optional[str] = None
         self.viewport: ViewportState = ViewportState()
 
-        # Granular Dirty Flags
+        # Granular Timestamps (Monotonic counters for caching)
+        self.map_timestamp: int = 0
+        self.menu_timestamp: int = 0
+        self.tokens_timestamp: int = 0
+        self.hands_timestamp: int = 0
+        self.notifications_timestamp: int = 0
+        self.viewport_timestamp: int = 0
+
+        # Granular Dirty Flags (Legacy support)
         self.dirty_background: bool = False
         self.dirty_tokens: bool = False
         self.dirty_hands: bool = False
@@ -53,6 +59,30 @@ class WorldState:
         self.last_frame_timestamp = timestamp
         self.dirty_background = True
 
+    def update_viewport(self, new_viewport: ViewportState):
+        """Updates the viewport state and increments its timestamp if changed."""
+        if (
+            self.viewport.x != new_viewport.x
+            or self.viewport.y != new_viewport.y
+            or self.viewport.zoom != new_viewport.zoom
+            or self.viewport.rotation != new_viewport.rotation
+        ):
+            self.viewport = new_viewport
+            self.viewport_timestamp += 1
+            self.dirty_viewport = True
+
+    def increment_map_timestamp(self):
+        """Manually trigger a map cache invalidation."""
+        self.map_timestamp += 1
+
+    def increment_menu_timestamp(self):
+        """Manually trigger a menu cache invalidation."""
+        self.menu_timestamp += 1
+
+    def increment_notifications_timestamp(self):
+        """Manually trigger a notification cache invalidation."""
+        self.notifications_timestamp += 1
+
     def apply(self, result: DetectionResult):
         """
         Applies a detection result from a worker process to the state.
@@ -60,7 +90,6 @@ class WorldState:
         """
         if result.timestamp < self.last_frame_timestamp - 1000000:  # 1s grace window
             # In a real system, we might be more strict.
-            # But results can be slightly behind the absolute latest frame.
             pass
 
         if result.type == ResultType.ARUCO:
@@ -70,8 +99,9 @@ class WorldState:
                 if not self._tokens_equal(self.tokens, new_tokens):
                     self.tokens = new_tokens
                     self.dirty_tokens = True
+                    self.tokens_timestamp += 1
 
-                # Update raw tokens if provided (they don't trigger dirty flag)
+                # Update raw tokens if provided
                 if "raw_tokens" in result.data:
                     self.raw_tokens = result.data["raw_tokens"]
             else:
@@ -85,14 +115,17 @@ class WorldState:
                         "ids": new_ids,
                     }
                     self.dirty_tokens = True
+                    self.tokens_timestamp += 1
 
         elif result.type == ResultType.HANDS:
             self.hands = result.data.get("landmarks", [])
             self.handedness = result.data.get("handedness", [])
             self.dirty_hands = True
+            self.hands_timestamp += 1
         elif result.type == ResultType.GESTURE:
             self.gesture = result.data.get("gesture")
-            self.dirty_hands = True  # Gestures affect hand/input state
+            self.dirty_hands = True
+            self.hands_timestamp += 1
 
     def _tokens_equal(self, list1: List[Token], list2: List[Token]) -> bool:
         """Compares two token lists for semantic equality (positions and status)."""
@@ -112,10 +145,7 @@ class WorldState:
             # Check status flags
             if t1.is_occluded != t2.is_occluded or t1.is_duplicate != t2.is_duplicate:
                 return False
-            # Check world coordinates ONLY if snapped coords didn't catch the change.
-            # We use a 0.5 epsilon which means if the centroid moved more than
-            # half a pixel/unit, we update. For SNAPPED tokens, this should
-            # only trigger when they jump to a new grid cell.
+            # Check world coordinates
             if abs(t1.world_x - t2.world_x) > 0.5 or abs(t1.world_y - t2.world_y) > 0.5:
                 return False
 
@@ -129,8 +159,6 @@ class WorldState:
         if len(self.raw_aruco["corners"]) != len(new_corners):
             return True
 
-        # For corners, we can just do a simple list equality check
-        # as they are converted to lists in the worker.
         return self.raw_aruco["corners"] != new_corners
 
     def clear_dirty(self):

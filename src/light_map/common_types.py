@@ -30,14 +30,40 @@ class ImagePatch:
 class Layer(ABC):
     """Abstract Base Class for all visual layers."""
 
-    def __init__(self, layer_mode: LayerMode = LayerMode.NORMAL):
+    def __init__(
+        self,
+        state: Optional[WorldState] = None,
+        is_static: bool = False,
+        layer_mode: LayerMode = LayerMode.NORMAL,
+    ):
+        self.state = state
+        self.is_static = is_static
         self.layer_mode = layer_mode
-        self.last_rendered_timestamp: int = 0
+        self._cached_patches: List[ImagePatch] = []
+        self._last_state_timestamp: int = -1
+
+    @property
+    @abstractmethod
+    def is_dirty(self) -> bool:
+        """True if the layer needs to re-render its patches."""
+        pass
+
+    def render(self) -> List[ImagePatch]:
+        """Handles caching and calls _generate_patches if dirty."""
+        if self.is_dirty or not self._cached_patches:
+            self._cached_patches = self._generate_patches()
+            self._update_timestamp()
+        return self._cached_patches
+
+    def _update_timestamp(self):
+        """Internal helper to sync timestamp after render."""
+        # Subclasses should override this if they use granular timestamps
+        pass
 
     @abstractmethod
-    def render(self, state: WorldState) -> List[ImagePatch]:
-        """Inspects the world state and returns patches to be drawn."""
-        raise NotImplementedError
+    def _generate_patches(self) -> List[ImagePatch]:
+        """Actual rendering logic implemented by subclasses."""
+        pass
 
 
 class GestureType(StrEnum):

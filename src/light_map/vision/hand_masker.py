@@ -80,9 +80,18 @@ class HandMasker:
         self.frames_since_detection = 0
         hulls = []
         for landmarks in multi_hand_landmarks:
-            pts = np.array(
-                [[lm.x, lm.y] for lm in landmarks.landmark], dtype=np.float32
-            )
+            if hasattr(landmarks, "landmark"):
+                # MediaPipe-style object
+                pts = np.array(
+                    [[lm.x, lm.y] for lm in landmarks.landmark], dtype=np.float32
+                )
+            elif isinstance(landmarks, list):
+                # Serialized list of dicts (IPC format)
+                pts = np.array(
+                    [[lm["x"], lm["y"]] for lm in landmarks], dtype=np.float32
+                )
+            else:
+                continue
 
             # Transform to projector space
             proj_pts = transformation_fn(pts)

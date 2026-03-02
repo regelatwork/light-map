@@ -1,0 +1,92 @@
+from typing import List, Optional
+import cv2
+import numpy as np
+from .common_types import Layer, LayerMode, ImagePatch, AppConfig
+from .core.world_state import WorldState
+from .vision.hand_masker import HandMasker
+
+
+class HandMaskLayer(Layer):
+    """
+    Renders black patches over hand regions to prevent projection on hands.
+    Uses HandMasker and timestamps for caching.
+    """
+
+    def __init__(self, config: AppConfig):
+        super().__init__(layer_mode=LayerMode.NORMAL)
+        self.config = config
+        self.hand_masker = HandMasker()
+        self._cached_patch: Optional[ImagePatch] = None
+
+    def render(self, state: WorldState) -> List[ImagePatch]:
+        if not self.config.enable_hand_masking:
+            return []
+
+        # Cache Check
+        if state.hands_timestamp <= self.last_rendered_timestamp and self._cached_patch:
+            return [self._cached_patch]
+
+        # Logic adapted from InteractiveApp._apply_hand_masking
+        if not state.hands:
+            # Still call compute_hulls with empty list for persistence if HandMasker uses it
+            hulls = self.hand_masker.compute_hulls([], None)
+        else:
+
+            def transform_pts(pts):
+                # pts is (N, 2) normalized camera coordinates
+                cam_pts = pts.reshape(-1, 1, 2).copy()
+
+                # We need the background shape to denormalize
+                # If background is missing, we use config width/height as fallback (might be wrong)
+                frame_h, frame_w = (1080, 1920)  # Defaults?
+                if state.background is not None:
+                    frame_h, frame_w = state.background.shape[:2]
+
+                cam_pts[:, :, 0] *= frame_w
+                cam_pts[:, :, 1] *= frame_h
+
+                if self.config.distortion_model:
+                    proj_pts = self.config.distortion_model.apply_correction(cam_pts)
+                else:
+                    proj_pts = cv2.perspectiveTransform(
+                        cam_pts, self.config.projector_matrix
+                    )
+                return proj_pts.reshape(-1, 2)
+
+            hulls = self.hand_masker.compute_hulls(state.hands, transform_pts)
+
+        if not hulls:
+            self._cached_patch = None
+            self.last_rendered_timestamp = state.hands_timestamp
+            return []
+
+        # Generate binary mask (white hands on black background)
+        mask = self.hand_masker.generate_mask_image(
+            hulls,
+            self.config.width,
+            self.config.height,
+            padding=self.config.hand_mask_padding,
+            blur=self.config.hand_mask_blur,
+        )
+
+        # We want to produce a patch that is BLACK where the mask is white, and transparent elsewhere.
+        # mask is grayscale (0-255).
+        # We'll use the mask itself as the Alpha channel.
+        # And the color channels will be all zeros (Black).
+
+        patch_data = np.zeros(
+            (self.config.height, self.config.width, 4), dtype=np.uint8
+        )
+        patch_data[:, :, 3] = mask  # Alpha = mask intensity
+        # RGB is already 0.
+
+        self._cached_patch = ImagePatch(
+            x=0,
+            y=0,
+            width=self.config.width,
+            height=self.config.height,
+            data=patch_data,
+        )
+        self.last_rendered_timestamp = state.hands_timestamp
+
+        return [self._cached_patch]

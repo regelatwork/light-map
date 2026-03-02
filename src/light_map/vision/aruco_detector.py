@@ -186,7 +186,9 @@ class ArucoTokenDetector:
         Maps raw ArUco detections (corners, ids) to Token objects in world coordinates.
         """
         if self.camera_matrix is None or self.R is None:
-            logging.debug(f"ArucoDetector: map_to_tokens missing calibration. camera_matrix={self.camera_matrix is not None}, R={self.R is not None}")
+            logging.debug(
+                f"ArucoDetector: map_to_tokens missing calibration. camera_matrix={self.camera_matrix is not None}, R={self.R is not None}"
+            )
             return []
 
         corners = raw_data.get("corners", [])

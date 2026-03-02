@@ -54,7 +54,7 @@ def test_overlay_renderer_uses_background_text(mock_draw_bg):
     mock_draw_bg.assert_called_with(
         img,
         "Hero",
-        (500 - 50, 500 + 50 + 20),
+        (500 - 100, 500 + 100 + 20),
         cv2.FONT_HERSHEY_SIMPLEX,
         0.5,
         (0, 255, 0),  # PC color is Green

@@ -19,9 +19,9 @@ class WorldState:
         self.last_frame_timestamp: int = 0
 
         self.tokens: List[Token] = []  # Logical/Snapped tokens (Triggers dirty)
-        self.raw_tokens: List[Token] = (
-            []
-        )  # Live/Unsnapped tokens (Does NOT trigger dirty)
+        self.raw_tokens: List[
+            Token
+        ] = []  # Live/Unsnapped tokens (Does NOT trigger dirty)
         self.raw_aruco: Dict[str, Any] = {"corners": [], "ids": []}
         self.hands: List[Any] = []  # Landmarks
         self.handedness: List[Any] = []
@@ -70,7 +70,7 @@ class WorldState:
                 if not self._tokens_equal(self.tokens, new_tokens):
                     self.tokens = new_tokens
                     self.dirty_tokens = True
-                
+
                 # Update raw tokens if provided (they don't trigger dirty flag)
                 if "raw_tokens" in result.data:
                     self.raw_tokens = result.data["raw_tokens"]

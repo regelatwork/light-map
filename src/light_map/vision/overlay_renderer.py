@@ -30,8 +30,8 @@ class OverlayRenderer:
             # Resolve properties for display
             resolved = map_config.resolve_token_profile(t.id, map_file)
 
-            # Radius based on size (1 grid cell = 1 inch = ppi pixels)
-            radius = int(ppi * resolved.size / 2) if ppi > 0 else 30
+            # Radius is always 1 inch (PPI pixels), making diameter 2 inches
+            radius = int(ppi) if ppi > 0 else 30
 
             # Draw circle
             color = (255, 255, 0)  # Cyan/Yellow

@@ -190,8 +190,8 @@ def test_token_name_position(app):
             args, _ = call
             if args[1] == "Test Hero":
                 found_name = True
-                # Position is at args[2]. Center sy is 500, radius is 50.
-                # Should be sy + radius + 20 = 570
-                assert args[2][1] == 570
+                # Position is at args[2]. Center sy is 500, radius is 100.
+                # Should be sy + radius + 20 = 620
+                assert args[2][1] == 620
                 break
         assert found_name, "Token name label not found"

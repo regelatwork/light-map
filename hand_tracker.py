@@ -10,7 +10,7 @@ import logging
 sys.path.insert(0, os.path.abspath("src"))
 
 from light_map.camera import Camera
-from light_map.common_types import MenuActions, SceneId, TokenDetectionAlgorithm
+from light_map.common_types import Action, MenuActions, SceneId, TokenDetectionAlgorithm
 from light_map.interactive_app import InteractiveApp, AppConfig
 from light_map.map_config import MapConfigManager
 from light_map.display_utils import (
@@ -343,7 +343,10 @@ def main():
                     elif action_str == MenuActions.CALIBRATE:
                         logger.info("Starting Calibration...")
                         should_break = True
-                    elif action_str == MenuActions.TOGGLE_DEBUG or action_str == Action.TOGGLE_DEBUG:
+                    elif (
+                        action_str == MenuActions.TOGGLE_DEBUG
+                        or action_str == Action.TOGGLE_DEBUG
+                    ):
                         app.set_debug_mode(not app.debug_mode)
 
                 if should_break:

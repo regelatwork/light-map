@@ -96,14 +96,19 @@ class ArucoTokenDetector:
         """
         h_orig, w_orig = frame.shape[:2]
 
-        # Use 1.0 scale if we cropped, otherwise we'd need more complex math
-        # Actually, let's just use the current logic but respect the offset.
-        scale = 1.0  # Assumes pre-cropped/pre-scaled if offset is provided
-        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        # 1. Handle Resizing
+        scale = 1.0
+        if self.target_width > 0 and w_orig > self.target_width and crop_offset is None:
+            scale = self.target_width / w_orig
+            new_h = int(h_orig * scale)
+            gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+            gray = cv2.resize(gray, (self.target_width, new_h))
+        else:
+            gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 
         offset_x, offset_y = crop_offset if crop_offset else (0, 0)
 
-        # 1. FOV Masking (if not already cropped)
+        # 2. FOV Masking (if not already cropped)
         if (
             crop_offset is None
             and projector_matrix is not None
@@ -111,7 +116,7 @@ class ArucoTokenDetector:
         ):
             mask = self._get_fov_mask(
                 gray.shape,
-                1.0,  # No scaling if crop_offset is None? No, keep it simple.
+                scale,
                 projector_matrix,
                 map_dims,
             )
@@ -123,13 +128,13 @@ class ArucoTokenDetector:
                     gray = cv2.bitwise_and(gray, mask)
                     offset_x, offset_y = x, y
 
-        # 2. Detect
+        # 3. Detect
         corners, ids, rejected = self.detector.detectMarkers(gray)
 
         if ids is None:
             return [], []
 
-        # 3. Process Detections
+        # 4. Process Detections
         # Group by ID and find best marker (largest area)
         detections_by_id = {}
         for i, marker_id_arr in enumerate(ids):
@@ -137,7 +142,7 @@ class ArucoTokenDetector:
             # corners[i] is (1, 4, 2)
             marker_corners = corners[i][0].copy()
 
-            # Add crop offset
+            # Add crop offset (in current potentially scaled space)
             if offset_x != 0 or offset_y != 0:
                 marker_corners[:, 0] += offset_x
                 marker_corners[:, 1] += offset_y

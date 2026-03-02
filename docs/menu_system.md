@@ -21,7 +21,7 @@ The root menu providing access to all system functions.
 
 - **< Close**: Closes the menu and enters **Viewing Mode**.
 - **Maps**: Opens the [Map Management](#maps-menu) sub-menu.
-- **Map Controls**: Closes the menu and enters **Map Mode** (enables Pan/Zoom gestures).
+- **Map Interaction Mode**: Closes the menu and enters **Map Mode** (enables Pan/Zoom gestures).
 - **Map Settings**: Opens the [Map Settings](#map-settings-menu) sub-menu.
 - **Calibration**: Opens the [System Calibration](#calibration-menu) sub-menu.
 - **Session**: Opens the [Session Management](#session-menu) sub-menu.

@@ -549,6 +549,9 @@ class InteractiveApp:
                 frame, self.fps, self.current_scene.__class__.__name__, inputs
             )
 
+        # Draw notifications
+        self.overlay_renderer.draw_notifications(frame)
+
         return frame
 
     def _draw_ghost_tokens(self, image: np.ndarray):

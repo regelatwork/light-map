@@ -32,7 +32,7 @@ def test_root_menu_structure(root_menu):
 
     # 3. Verify other items exist
     titles = [c.title for c in root_menu.children]
-    assert "Map Controls" in titles
+    assert "Map Interaction Mode" in titles
     assert "Map Settings" in titles
     assert "Calibration" in titles
     assert "Options" in titles

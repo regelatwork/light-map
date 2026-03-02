@@ -109,7 +109,7 @@ def build_root_menu(map_config: MapConfigManager) -> MenuItem:
             ),
             maps_menu,  # NEW
             MenuItem(
-                title="Map Controls",
+                title="Map Interaction Mode",
                 action_id=MenuActions.MAP_CONTROLS,
                 should_close_on_trigger=True,
             ),

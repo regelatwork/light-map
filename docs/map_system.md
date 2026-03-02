@@ -30,7 +30,7 @@ A dynamic "Maps" menu is available in the main menu:
 
 ## Map Interaction
 
-Switch to **Map Mode** by selecting **Main Menu > Map Controls**.
+Switch to **Map Mode** by selecting **Main Menu > Map Interaction Mode**.
 Note: When a map is loaded (or the menu is closed), the app defaults to **Viewing Mode** (read-only) to prevent accidental shifts.
 
 - **Pan**: Use the **Closed Fist** gesture and move your hand to drag the map.

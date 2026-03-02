@@ -33,6 +33,7 @@ class WorldState:
         self.menu_timestamp: int = 0
         self.tokens_timestamp: int = 0
         self.hands_timestamp: int = 0
+        self.scene_timestamp: int = 0
         self.notifications_timestamp: int = 0
         self.viewport_timestamp: int = 0
 
@@ -80,6 +81,10 @@ class WorldState:
     def increment_menu_timestamp(self):
         """Manually trigger a menu cache invalidation."""
         self.menu_timestamp += 1
+
+    def increment_scene_timestamp(self):
+        """Manually trigger a scene cache invalidation."""
+        self.scene_timestamp += 1
 
     def update_menu_state(self, new_menu_state: Optional[MenuState]):
         """Updates the menu state and increments its timestamp."""

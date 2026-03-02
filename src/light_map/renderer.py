@@ -1,4 +1,4 @@
-from typing import List, Any
+from typing import List, Any, Optional
 import numpy as np
 from .common_types import Layer, LayerMode, ImagePatch
 
@@ -14,26 +14,45 @@ class Renderer:
         self.output_buffer = np.zeros(
             (self.screen_height, self.screen_width, 3), dtype=np.uint8
         )
+        self._force_render = True
 
-    def render(self, state: Any, layers: List[Layer]) -> np.ndarray:
+    def render(self, state: Any, layers: List[Layer]) -> Optional[np.ndarray]:
         """
         Composites all provided layers into the final output buffer.
+        Returns None if no layers requested a new render and compositing was skipped.
 
         Args:
             state: The current WorldState.
             layers: A list of Layer objects, from bottom to top.
         """
-        # Clear buffer (or we could rely on a BLOCKING background layer at the bottom)
-        self.output_buffer.fill(0)
+        layer_updated = self._force_render
 
-        for layer in layers:
+        # Track timestamps before render to see if any layer generates new output
+        prev_timestamps = [layer.last_rendered_timestamp for layer in layers]
+
+        patches_to_render = []
+        for i, layer in enumerate(layers):
             patches = layer.render(state)
             if not patches:
                 continue
 
-            for patch in patches:
-                self._composite_patch(patch, layer.layer_mode)
+            patches_to_render.append((patches, layer.layer_mode))
 
+            # If the layer's timestamp increased, it performed a new render
+            if layer.last_rendered_timestamp > prev_timestamps[i]:
+                layer_updated = True
+
+        if not layer_updated:
+            return None
+
+        # Clear buffer (or we could rely on a BLOCKING background layer at the bottom)
+        self.output_buffer.fill(0)
+
+        for patches, mode in patches_to_render:
+            for patch in patches:
+                self._composite_patch(patch, mode)
+
+        self._force_render = False
         return self.output_buffer
 
     def _composite_patch(self, patch: ImagePatch, mode: LayerMode):

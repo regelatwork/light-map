@@ -38,7 +38,7 @@ def test_main_loop_iteration():
 
     # Verify state was updated
     assert state.gesture == "PINCH"
-    assert state.dirty_hands is True
+    assert state.hands_timestamp > 0
 
     # Verify input was polled
     input_mgr.update_keyboard.assert_called_once()

@@ -9,6 +9,7 @@ class MockLayer(Layer):
         self.patches = patches or []
 
     def render(self, state):
+        self.last_rendered_timestamp += 1
         return self.patches
 
 

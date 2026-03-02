@@ -308,23 +308,26 @@ def main():
                 main_loop.debug_mode = app.debug_mode
                 output_image, scene_actions = app.process_state(state, actions)
 
-                # Update Debug View if requested
-                should_hide_overlays = getattr(
-                    app.current_scene, "should_hide_overlays", False
-                )
-                if app.debug_mode and not should_hide_overlays:
-                    cv2.putText(
-                        output_image,
-                        f"FPS: {app.fps:.1f}",
-                        (10, native_screen_h - 60),
-                        cv2.FONT_HERSHEY_SIMPLEX,
-                        1,
-                        (0, 255, 255),
-                        2,
+                did_render = False
+                if output_image is not None:
+                    did_render = True
+                    # Update Debug View if requested
+                    should_hide_overlays = getattr(
+                        app.current_scene, "should_hide_overlays", False
                     )
+                    if app.debug_mode and not should_hide_overlays:
+                        cv2.putText(
+                            output_image,
+                            f"FPS: {app.fps:.1f}",
+                            (10, native_screen_h - 60),
+                            cv2.FONT_HERSHEY_SIMPLEX,
+                            1,
+                            (0, 255, 255),
+                            2,
+                        )
 
-                # D. Update Hardware Output
-                app_win.update_image(output_image)
+                    # D. Update Hardware Output
+                    app_win.update_image(output_image)
 
                 # E. Process Actions
                 should_break = False
@@ -356,6 +359,8 @@ def main():
                 if app_win.is_closed():
                     logger.info("Stopping main loop because window is closed.")
                     main_loop.stop()
+
+                return did_render
 
             try:
                 main_loop.run(render_cb)

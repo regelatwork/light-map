@@ -292,7 +292,7 @@ class InteractiveApp:
 
     def process_state(
         self, state: "WorldState", actions: List["Action"]
-    ) -> Tuple[np.ndarray, List[str]]:
+    ) -> Tuple[Optional[np.ndarray], List[str]]:
         current_time = self.time_provider()
 
         # Update FPS
@@ -359,9 +359,10 @@ class InteractiveApp:
         # 3. Perform Composite Render
         final_frame = self.renderer.render(state, self.layer_stack)
 
-        total_ms = (time.perf_counter_ns() - t_start) / 1_000_000.0
-        if total_ms > 50.0:
-            logging.info(f"RENDER TOTAL: {total_ms:.1f}ms (Layered)")
+        if final_frame is not None:
+            total_ms = (time.perf_counter_ns() - t_start) / 1_000_000.0
+            if total_ms > 50.0:
+                logging.info(f"RENDER TOTAL: {total_ms:.1f}ms (Layered)")
 
         return final_frame, []
 

@@ -42,16 +42,14 @@ def test_multiprocessing_e2e():
     def mock_render(state, actions):
         nonlocal render_count
         render_count += 1
+        return True
 
     try:
         # Run main loop manually for a few iterations
         start_time = time.time()
         while time.time() - start_time < 1.0:  # Run for 1 second
-            main_loop.tick()
-            if state.is_dirty:
-                mock_render(state, [])
-                state.clear_dirty()
-            time.sleep(0.016)
+            actions = main_loop.tick()
+            mock_render(state, actions)
 
         assert render_count > 0, "Render callback was never triggered"
         assert manager.is_healthy(), "Workers crashed during playback"

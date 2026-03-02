@@ -172,14 +172,15 @@ class MainLoopController:
                 # 1. Process State
                 actions = self.tick()
 
-                # 2. Trigger Render if needed
-                if self.state.is_dirty or actions:
-                    ts_to_render = self.state.last_frame_timestamp
-                    with track_wait("render_time", self.instrument):
-                        render_callback(self.state, actions)
+                # 2. Trigger Render (Layered Renderer handles dirty states)
+                ts_to_render = self.state.last_frame_timestamp
+                with track_wait("render_time", self.instrument):
+                    did_render = render_callback(self.state, actions)
+
+                if did_render:
                     if ts_to_render > 0:
                         self.instrument.record_render(ts_to_render)
-                    self.state.clear_dirty()
+                    self.state.clear_raw_aruco()
 
                 # 3. Handle Frame Rate
                 elapsed = time.perf_counter() - start_time

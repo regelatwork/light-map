@@ -1,9 +1,39 @@
+from __future__ import annotations
 from enum import StrEnum
 from dataclasses import dataclass, field
-from typing import Any, List, Optional, Tuple, Dict
+from typing import Any, List, Optional, Tuple, Dict, TYPE_CHECKING
+from abc import ABC, abstractmethod
 
 import numpy as np
 from light_map.core.storage import StorageManager
+
+if TYPE_CHECKING:
+    from light_map.core.world_state import WorldState
+
+
+class LayerMode(StrEnum):
+    NORMAL = "NORMAL"
+    BLOCKING = "BLOCKING"
+
+
+@dataclass
+class ImagePatch:
+    """Represents a rectangular region of pixels to be composited."""
+
+    x: int
+    y: int
+    width: int
+    height: int
+    data: np.ndarray  # RGBA
+
+
+class Layer(ABC):
+    """Abstract Base Class for all visual layers."""
+
+    @abstractmethod
+    def render(self, state: WorldState) -> List[ImagePatch]:
+        """Inspects the world state and returns patches to be drawn."""
+        raise NotImplementedError
 
 
 class GestureType(StrEnum):

@@ -49,7 +49,7 @@ def test_render_not_visible(renderer):
     )
 
     # Render the menu
-    image = renderer.render(state)
+    image = renderer.render_legacy(state)
 
     # Check that the image is black
     assert np.all(image == 0)
@@ -57,7 +57,7 @@ def test_render_not_visible(renderer):
 
 def test_render_visible_with_hover(renderer, visible_state):
     # Render the menu
-    image = renderer.render(visible_state)
+    image = renderer.render_legacy(visible_state)
 
     # Check that the image is not black
     assert not np.all(image == 0)
@@ -69,7 +69,7 @@ def test_render_with_background(renderer, visible_state):
     bg[:, :] = (0, 0, 255)  # Red in BGR
 
     # Render with background
-    image = renderer.render(visible_state, background=bg)
+    image = renderer.render_legacy(visible_state, background=bg)
 
     # Check that the background is still visible outside menu rects
     # Menu rects are at (100, 100) -> (300, 150)

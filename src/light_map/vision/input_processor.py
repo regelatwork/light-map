@@ -2,7 +2,7 @@ from __future__ import annotations
 import cv2
 import numpy as np
 import mediapipe as mp
-from typing import List, Tuple, Any, TYPE_CHECKING
+from typing import List, Tuple, Any, Dict, TYPE_CHECKING
 
 from light_map.core.scene import HandInput
 from light_map.gestures import detect_gesture
@@ -10,6 +10,45 @@ from light_map.vision.hand_masker import HandMasker
 
 if TYPE_CHECKING:
     from light_map.common_types import AppConfig
+
+
+class DummyResults:
+    """Wraps raw landmark and handedness dictionaries to mimic MediaPipe results."""
+
+    def __init__(
+        self,
+        hands_list: List[List[Dict[str, float]]],
+        handedness_list: List[Dict[str, Any]],
+    ):
+        self.multi_hand_landmarks = []
+        self.multi_handedness = []
+
+        for hl in hands_list:
+
+            class DummyHandLandmarks:
+                def __init__(self, lm_dicts):
+                    class DummyLandmark:
+                        def __init__(self, d):
+                            self.x = d.get("x", 0)
+                            self.y = d.get("y", 0)
+                            self.z = d.get("z", 0)
+
+                    self.landmark = [DummyLandmark(d) for d in lm_dicts]
+
+            self.multi_hand_landmarks.append(DummyHandLandmarks(hl))
+
+        for h in handedness_list:
+
+            class DummyHandedness:
+                def __init__(self, h_dict):
+                    class DummyClassification:
+                        def __init__(self, d):
+                            self.label = d.get("label", "Left")
+                            self.score = d.get("score", 1.0)
+
+                    self.classification = [DummyClassification(h_dict)]
+
+            self.multi_handedness.append(DummyHandedness(h))
 
 
 class InputProcessor:

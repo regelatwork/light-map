@@ -1,8 +1,5 @@
-from typing import Optional, List, Any
-import cv2
+from typing import List, Any
 import numpy as np
-from .menu_system import MenuState
-from .menu_config import MenuColors
 from .common_types import Layer, LayerMode, ImagePatch
 
 
@@ -14,7 +11,6 @@ class Renderer:
     def __init__(self, screen_width: int, screen_height: int):
         self.screen_width = screen_width
         self.screen_height = screen_height
-        self.colors = MenuColors()
         self.output_buffer = np.zeros(
             (self.screen_height, self.screen_width, 3), dtype=np.uint8
         )
@@ -70,58 +66,3 @@ class Renderer:
                 np.uint8
             )
             self.output_buffer[y1:y2, x1:x2] = blended
-
-    def render_legacy(
-        self,
-        state: Optional[MenuState],
-        background: np.ndarray = None,
-        map_opacity: float = 1.0,
-    ) -> np.ndarray:
-        """
-        Original monolithic rendering logic. Kept for transition.
-        """
-        if background is not None and map_opacity > 0.0:
-            if map_opacity < 1.0:
-                image = cv2.convertScaleAbs(background, alpha=map_opacity, beta=0)
-            else:
-                image = background.copy()
-        else:
-            image = np.zeros((self.screen_height, self.screen_width, 3), dtype=np.uint8)
-
-        if state is None or not state.is_visible:
-            return image
-
-        for i, item in enumerate(state.active_items):
-            rect = state.item_rects[i]
-            x, y, w, h = rect
-
-            border_color = self.colors.BORDER
-            border_thickness = 2
-            text_color = self.colors.TEXT
-
-            if i == state.hovered_item_index:
-                border_color = self.colors.HOVER
-                border_thickness = 4
-                text_color = self.colors.HOVER
-
-            if i == state.feedback_item_index:
-                border_color = self.colors.CONFIRM
-                border_thickness = 6
-                text_color = self.colors.CONFIRM
-
-            cv2.rectangle(image, (x, y), (x + w, y + h), border_color, border_thickness)
-            cv2.putText(
-                image,
-                item.title,
-                (x + 10, y + h - 10),
-                cv2.FONT_HERSHEY_SIMPLEX,
-                1,
-                text_color,
-                2,
-            )
-
-        return image
-
-
-# Maintain original method name for backward compatibility until integration
-Renderer.render_monolithic = Renderer.render_legacy

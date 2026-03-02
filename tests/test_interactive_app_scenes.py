@@ -90,9 +90,7 @@ def test_process_state_triggers_switch(app):
 
     # Mock other methods to avoid side effects
     app.input_processor.convert_mediapipe_to_inputs = MagicMock(return_value=[])
-    app._render_base_layer = MagicMock(
-        return_value=np.zeros((100, 100, 3), dtype=np.uint8)
-    )
+
     app.current_scene.render.return_value = np.zeros((100, 100, 3), dtype=np.uint8)
 
     frame = np.zeros((100, 100, 3), dtype=np.uint8)

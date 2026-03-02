@@ -18,8 +18,7 @@ def test_world_state_roi_injection():
 
     assert state.background.shape == (10, 10, 3)
     assert np.array_equal(state.background[0, 0], [255, 255, 255])
-    assert state.dirty_background is True
-    assert state.is_dirty is True
+    assert state.last_frame_timestamp == 1000
 
 
 def test_world_state_apply_results():
@@ -31,17 +30,18 @@ def test_world_state_apply_results():
         timestamp=2000, type=ResultType.ARUCO, data={"tokens": tokens}
     )
 
+    last_ts = state.tokens_timestamp
     state.apply(result)
     assert len(state.tokens) == 1
-    assert state.dirty_tokens is True
-    state.clear_dirty()
+    assert state.tokens_timestamp > last_ts
+    last_ts = state.tokens_timestamp
 
-    # 2. Apply SAME tokens again - should NOT be dirty
+    # 2. Apply SAME tokens again - should NOT be dirty (timestamp shouldn't increment)
     result_same = DetectionResult(
         timestamp=2010, type=ResultType.ARUCO, data={"tokens": tokens}
     )
     state.apply(result_same)
-    assert state.dirty_tokens is False
+    assert state.tokens_timestamp == last_ts
 
     # 3. Apply tokens with tiny jitter (< 0.01) - should NOT be dirty
     jitter_tokens = [Token(id=1, world_x=10.005, world_y=20.0, grid_x=0, grid_y=0)]
@@ -49,7 +49,7 @@ def test_world_state_apply_results():
         timestamp=2020, type=ResultType.ARUCO, data={"tokens": jitter_tokens}
     )
     state.apply(result_jitter)
-    assert state.dirty_tokens is False
+    assert state.tokens_timestamp == last_ts
 
     # 4. Apply tokens with significant movement - SHOULD be dirty
     moved_tokens = [Token(id=1, world_x=15.0, world_y=20.0, grid_x=0, grid_y=0)]
@@ -57,8 +57,8 @@ def test_world_state_apply_results():
         timestamp=2030, type=ResultType.ARUCO, data={"tokens": moved_tokens}
     )
     state.apply(result_moved)
-    assert state.dirty_tokens is True
-    state.clear_dirty()
+    assert state.tokens_timestamp > last_ts
+    last_ts = state.tokens_timestamp
 
     # 5. Apply tokens with grid change - SHOULD be dirty
     grid_tokens = [Token(id=1, world_x=10.0, world_y=20.0, grid_x=1, grid_y=0)]
@@ -66,25 +66,26 @@ def test_world_state_apply_results():
         timestamp=2040, type=ResultType.ARUCO, data={"tokens": grid_tokens}
     )
     state.apply(result_grid)
-    assert state.dirty_tokens is True
-    state.clear_dirty()
+    assert state.tokens_timestamp > last_ts
+    last_ts = state.tokens_timestamp
 
     # 6. Apply ArUco result (Raw corners) - SHOULD dirty tokens for calibration updates
     raw_data = {"corners": [[[0, 0], [1, 0], [1, 1], [0, 1]]], "ids": [42]}
     result_raw = DetectionResult(timestamp=2050, type=ResultType.ARUCO, data=raw_data)
     state.apply(result_raw)
     assert state.raw_aruco["ids"] == [42]
-    assert state.dirty_tokens is True
-    state.clear_dirty()
+    assert state.tokens_timestamp > last_ts
+    last_ts = state.tokens_timestamp
 
     # 7. Apply both Snapped and Raw tokens
-    # If snapped tokens are same, but raw tokens are different -> dirty_tokens should be FALSE
+    # If snapped tokens are same, but raw tokens are different -> tokens_timestamp should increment
     tokens = [Token(id=1, world_x=75.0, world_y=125.0, grid_x=1, grid_y=2)]
-    raw_tokens = [Token(id=1, world_x=73.0, world_y=122.0)]  # jittery
+    raw_tokens = [Token(id=1, world_x=73.0, world_y=122.0)]
 
     state.tokens = tokens
     state.raw_tokens = []
-    state.clear_dirty()
+    # Sync timestamp to known state
+    last_ts = state.tokens_timestamp
 
     result_both = DetectionResult(
         timestamp=2060,
@@ -94,28 +95,24 @@ def test_world_state_apply_results():
     state.apply(result_both)
 
     assert state.raw_tokens == raw_tokens
-    assert state.dirty_tokens is False  # NO DIRTY because snapped tokens didn't move
+    assert state.tokens_timestamp > last_ts  # Updated because raw_tokens changed
+    last_ts = state.tokens_timestamp
 
-    # 8. If snapped tokens DO move -> dirty_tokens should be TRUE
-    tokens_moved = [Token(id=1, world_x=125.0, world_y=125.0, grid_x=2, grid_y=2)]
-    result_moved = DetectionResult(
+    # 8. If nothing changed (both snapped and raw) -> tokens_timestamp should NOT increment
+    result_no_change = DetectionResult(
         timestamp=2070,
         type=ResultType.ARUCO,
-        data={"tokens": tokens_moved, "raw_tokens": raw_tokens},
+        data={"tokens": tokens, "raw_tokens": raw_tokens},
     )
-    state.apply(result_moved)
-    assert state.dirty_tokens is True
-
-    state.clear_dirty()
-    assert state.is_dirty is False
+    state.apply(result_no_change)
+    assert state.tokens_timestamp == last_ts
 
     # Apply Hands result
     result_hands = DetectionResult(
         timestamp=2100, type=ResultType.HANDS, data={"landmarks": [0.5, 0.5]}
     )
     state.apply(result_hands)
-    assert state.dirty_hands is True
-    assert state.is_dirty is True
+    assert state.hands_timestamp > 0
 
 
 def test_world_state_timestamp_sync():
@@ -128,4 +125,3 @@ def test_world_state_timestamp_sync():
 
     assert state.background is None
     assert state.last_frame_timestamp == 5000
-    assert state.dirty_background is False

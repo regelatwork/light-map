@@ -41,12 +41,6 @@ class WorldState:
         self.notifications_timestamp: int = 0
         self.viewport_timestamp: int = 0
 
-        # Granular Dirty Flags (Legacy support)
-        self.dirty_background: bool = False
-        self.dirty_tokens: bool = False
-        self.dirty_hands: bool = False
-        self.dirty_viewport: bool = False
-
     def update_from_frame(self, shm_view: np.ndarray, timestamp: int):
         """
         Updates the background from a shared memory view using the injected processor.
@@ -64,7 +58,6 @@ class WorldState:
             self.background = shm_view.copy()
 
         self.last_frame_timestamp = timestamp
-        self.dirty_background = True
 
     def update_viewport(self, new_viewport: ViewportState):
         """Updates the viewport state and increments its timestamp if changed."""
@@ -76,7 +69,6 @@ class WorldState:
         ):
             self.viewport = new_viewport
             self.viewport_timestamp += 1
-            self.dirty_viewport = True
 
     def increment_map_timestamp(self):
         """Manually trigger a map cache invalidation."""
@@ -126,7 +118,6 @@ class WorldState:
                 new_tokens = result.data["tokens"]
                 if not self._tokens_equal(self.tokens, new_tokens):
                     self.tokens = new_tokens
-                    self.dirty_tokens = True
                     changed = True
 
                 # Update raw tokens if provided
@@ -145,7 +136,6 @@ class WorldState:
                         "corners": new_corners,
                         "ids": new_ids,
                     }
-                    self.dirty_tokens = True
                     changed = True
 
             if changed:
@@ -160,14 +150,12 @@ class WorldState:
             ):
                 self.hands = new_landmarks
                 self.handedness = new_handedness
-                self.dirty_hands = True
                 self.hands_timestamp += 1
 
         elif result.type == ResultType.GESTURE:
             new_gesture = result.data.get("gesture")
             if self.gesture != new_gesture:
                 self.gesture = new_gesture
-                self.dirty_hands = True
                 self.hands_timestamp += 1
 
     def _hands_equal(self, h1, hn1, h2, hn2) -> bool:
@@ -220,21 +208,6 @@ class WorldState:
 
         return self.raw_aruco["corners"] != new_corners
 
-    def clear_dirty(self):
-        """Resets all dirty flags after a render cycle."""
-        self.dirty_background = False
-        self.dirty_tokens = False
-        self.dirty_hands = False
-        self.dirty_viewport = False
-        # Clear raw ArUco after it has been potentially processed by a scene
+    def clear_raw_aruco(self):
+        """Resets raw ArUco after it has been potentially processed by a scene."""
         self.raw_aruco = {"corners": [], "ids": []}
-
-    @property
-    def is_dirty(self) -> bool:
-        """Returns True if any part of the state has changed since last render."""
-        return (
-            self.dirty_background
-            or self.dirty_tokens
-            or self.dirty_hands
-            or self.dirty_viewport
-        )

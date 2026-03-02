@@ -39,9 +39,7 @@ from light_map.scenes.calibration_scenes import (
 
 
 from light_map.vision.tracking_coordinator import TrackingCoordinator
-from light_map.vision.input_processor import InputProcessor
-from light_map.vision.overlay_renderer import OverlayRenderer
-from light_map.vision.hand_masker import HandMasker
+from light_map.vision.input_processor import InputProcessor, DummyResults
 from light_map.vision.aruco_detector import ArucoTokenDetector
 
 if TYPE_CHECKING:
@@ -65,7 +63,6 @@ class InteractiveApp:
         # New Modular Coordinators
         self.tracking_coordinator = TrackingCoordinator(time_provider)
         self.input_processor = InputProcessor(config)
-        self.hand_masker = HandMasker()
 
         # Load Camera Calibration
         camera_matrix, dist_coeffs, rvec, tvec = self._load_camera_calibration()
@@ -83,7 +80,6 @@ class InteractiveApp:
         self.app_context = self._create_app_context(
             camera_matrix, dist_coeffs, rvec, tvec
         )
-        self.overlay_renderer = OverlayRenderer(self.app_context)
 
         # Initialize Layers
         self.map_layer = MapLayer(self.map_system, config.width, config.height)
@@ -105,10 +101,6 @@ class InteractiveApp:
         self.scenes = self._initialize_scenes()
         self.current_scene: Scene = self.scenes[SceneId.MENU]
         self.current_scene.on_enter()
-
-        # Map Rendering Cache
-        self._cached_map_image: Optional[np.ndarray] = None
-        self._last_render_params: Dict[str, Any] = {}
 
     def _load_camera_calibration(
         self,
@@ -283,11 +275,6 @@ class InteractiveApp:
             debug_mode=self.app_context.debug_mode,
             show_tokens=self.app_context.show_tokens,
         )
-        self.overlay_renderer = OverlayRenderer(self.app_context)
-
-        # Reset map cache
-        self._cached_map_image = None
-        self._last_render_params = {}
 
         # Re-initialize scenes with new context
         self.scenes = self._initialize_scenes()
@@ -326,39 +313,6 @@ class InteractiveApp:
             frame_shape = state.background.shape
         else:
             frame_shape = (self.config.height, self.config.width, 3)
-
-        # Build dummy results for legacy processors (to be refactored later)
-        class DummyResults:
-            def __init__(self, hands_list, handedness_list):
-                self.multi_hand_landmarks = []
-                self.multi_handedness = []
-
-                for hl in hands_list:
-
-                    class DummyHandLandmarks:
-                        def __init__(self, lm_dicts):
-                            class DummyLandmark:
-                                def __init__(self, d):
-                                    self.x = d.get("x", 0)
-                                    self.y = d.get("y", 0)
-                                    self.z = d.get("z", 0)
-
-                            self.landmark = [DummyLandmark(d) for d in lm_dicts]
-
-                    self.multi_hand_landmarks.append(DummyHandLandmarks(hl))
-
-                for h in handedness_list:
-
-                    class DummyHandedness:
-                        def __init__(self, h_dict):
-                            class DummyClassification:
-                                def __init__(self, d):
-                                    self.label = d.get("label", "Left")
-                                    self.score = d.get("score", 1.0)
-
-                            self.classification = [DummyClassification(h_dict)]
-
-                    self.multi_handedness.append(DummyHandedness(h))
 
         results = DummyResults(state.hands, state.handedness)
 
@@ -420,10 +374,6 @@ class InteractiveApp:
         """Loads an SVG map file and restores its state."""
         filename = os.path.abspath(filename)
         self.map_system.svg_loader = SVGLoader(filename)
-
-        # Reset map cache
-        self._cached_map_image = None
-        self._last_render_params = {}
 
         entry = self.map_config.data.maps.get(filename)
         if entry is None:

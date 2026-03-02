@@ -66,3 +66,19 @@ def test_flicker_timeout(input_manager, time_provider):
     # Should be gone
     assert not input_manager.is_hand_present()
     assert input_manager.get_gesture() == GestureType.NONE
+
+
+def test_keyboard_debug_and_quit(input_manager):
+    from light_map.common_types import Action
+
+    # Check 'd' and 'D'
+    for k in ["d", "D"]:
+        input_manager.update_keyboard(ord(k))
+        actions = input_manager.get_actions()
+        assert Action.TOGGLE_DEBUG in actions
+
+    # Check 'q' and 'Q'
+    for k in ["q", "Q"]:
+        input_manager.update_keyboard(ord(k))
+        actions = input_manager.get_actions()
+        assert Action.QUIT in actions

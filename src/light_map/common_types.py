@@ -82,6 +82,8 @@ class Action(StrEnum):
     SELECT = "SELECT"
     BACK = "BACK"
     MOVE = "MOVE"
+    QUIT = "QUIT"
+    TOGGLE_DEBUG = "TOGGLE_DEBUG"
 
 
 @dataclass

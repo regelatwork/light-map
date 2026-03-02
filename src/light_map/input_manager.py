@@ -55,6 +55,10 @@ class InputManager:
             self._pending_actions.add(Action.SELECT)
         elif char == 27 or char == ord("b"):  # ESC or 'b'
             self._pending_actions.add(Action.BACK)
+        elif char == ord("q") or char == ord("Q"):
+            self._pending_actions.add(Action.QUIT)
+        elif char == ord("d") or char == ord("D"):
+            self._pending_actions.add(Action.TOGGLE_DEBUG)
 
     def _map_gesture_to_action(self, gesture: GestureType) -> Optional[Action]:
         if gesture in [GestureType.VICTORY, GestureType.CLOSED_FIST]:

@@ -327,13 +327,13 @@ def main():
                     else:
                         action_str = action
 
-                    if action_str == MenuActions.EXIT:
+                    if action_str == MenuActions.EXIT or action_str == Action.QUIT:
                         logger.info("Exiting...")
                         should_break = True
                     elif action_str == MenuActions.CALIBRATE:
                         logger.info("Starting Calibration...")
                         should_break = True
-                    elif action_str == MenuActions.TOGGLE_DEBUG:
+                    elif action_str == MenuActions.TOGGLE_DEBUG or action_str == Action.TOGGLE_DEBUG:
                         app.set_debug_mode(not app.debug_mode)
 
                 if should_break:

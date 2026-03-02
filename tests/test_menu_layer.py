@@ -1,23 +1,25 @@
+import numpy as np
 from light_map.menu_layer import MenuLayer
+from light_map.common_types import MenuItem
+from light_map.menu_system import MenuState
 from light_map.core.world_state import WorldState
-from light_map.menu_system import MenuState, MenuItem
 
 
-def get_default_menu_state(**kwargs):
-    defaults = {
-        "current_menu_title": "Main",
-        "active_items": [],
-        "item_rects": [],
-        "hovered_item_index": None,
-        "feedback_item_index": None,
-        "prime_progress": 0.0,
-        "summon_progress": 0.0,
-        "just_triggered_action": None,
-        "cursor_pos": None,
-        "is_visible": True,
-    }
-    defaults.update(kwargs)
-    return MenuState(**defaults)
+def get_default_menu_state(
+    active_items=None, item_rects=None, is_visible=True, hovered=None, feedback=None
+):
+    return MenuState(
+        current_menu_title="Root",
+        active_items=active_items or [],
+        item_rects=item_rects or [],
+        is_visible=is_visible,
+        hovered_item_index=hovered,
+        feedback_item_index=feedback,
+        prime_progress=0.0,
+        summon_progress=0.0,
+        just_triggered_action=None,
+        cursor_pos=None,
+    )
 
 
 def test_menu_layer_render_visible():
@@ -28,24 +30,24 @@ def test_menu_layer_render_visible():
         get_default_menu_state(active_items=items, item_rects=rects, is_visible=True)
     )
 
-    layer = MenuLayer()
-    patches = layer.render(ws)
+    layer = MenuLayer(ws)
+    patches = layer.render()
 
     assert len(patches) == 1
-    patch = patches[0]
-    assert patch.x == 10
-    assert patch.y == 10
-    assert patch.width == 100
-    assert patch.height == 50
-    assert patch.data.shape == (50, 100, 4)
+    p = patches[0]
+    assert p.x == 10
+    assert p.y == 10
+    assert p.width == 100
+    assert p.height == 50
+    assert p.data.shape == (50, 100, 4)
 
 
 def test_menu_layer_render_hidden():
     ws = WorldState()
     ws.update_menu_state(get_default_menu_state(is_visible=False))
 
-    layer = MenuLayer()
-    patches = layer.render(ws)
+    layer = MenuLayer(ws)
+    patches = layer.render()
     assert len(patches) == 0
 
 
@@ -59,16 +61,15 @@ def test_menu_layer_caching():
         )
     )
 
-    layer = MenuLayer()
-    layer.render(ws)
-    assert layer.last_rendered_timestamp == ws.menu_timestamp
+    layer = MenuLayer(ws)
+    p1 = layer.render()
+    p2 = layer.render()
 
-    old_ts = layer.last_rendered_timestamp
-    # Render again without change
-    layer.render(ws)
-    assert layer.last_rendered_timestamp == old_ts
+    # Should be the same list object due to caching
+    assert p1 is p2
 
-    # Render after change
+    # Change timestamp
     ws.increment_menu_timestamp()
-    layer.render(ws)
-    assert layer.last_rendered_timestamp > old_ts
+    p3 = layer.render()
+    assert p3 is not p1  # New list
+    assert len(p3) == 1

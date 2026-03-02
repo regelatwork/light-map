@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional
 import cv2
 import numpy as np
 from .common_types import Layer, LayerMode, ImagePatch
@@ -13,22 +13,30 @@ class MenuLayer(Layer):
     Uses menu_timestamp for caching.
     """
 
-    def __init__(self):
-        super().__init__(layer_mode=LayerMode.NORMAL)
+    def __init__(self, state: WorldState):
+        super().__init__(state=state, is_static=False, layer_mode=LayerMode.NORMAL)
         self.colors = MenuColors()
-        self._cached_patches: List[ImagePatch] = []
 
-    def render(self, state: WorldState) -> List[ImagePatch]:
-        menu = state.menu_state
+    @property
+    def is_dirty(self) -> bool:
+        if self.state is None:
+            return True
+        
+        # We also need to check if menu exists and is visible
+        menu = self.state.menu_state
         if not menu or not menu.is_visible:
-            return []
+            return self._last_state_timestamp != -2 # Force clear if it was visible
+            
+        return self.state.menu_timestamp > self._last_state_timestamp
 
-        # Cache Check
-        if (
-            state.menu_timestamp <= self.last_rendered_timestamp
-            and self._cached_patches
-        ):
-            return self._cached_patches
+    def _generate_patches(self) -> List[ImagePatch]:
+        if self.state is None:
+            return []
+            
+        menu = self.state.menu_state
+        if not menu or not menu.is_visible:
+            self._last_state_timestamp = -2 # Special value for hidden
+            return []
 
         # Re-render all patches
         new_patches = []
@@ -38,7 +46,6 @@ class MenuLayer(Layer):
             x, y, w, h = rect
 
             # Create small patch buffer for this item
-            # Use BGRA to support transparency
             patch_data = np.zeros((h, w, 4), dtype=np.uint8)
 
             # Default Style
@@ -58,8 +65,7 @@ class MenuLayer(Layer):
                 border_thickness = 6
                 text_color = self.colors.CONFIRM
 
-            # Draw onto local patch (0,0 is top-left of patch)
-            # BGR channels
+            # Draw onto local patch
             cv2.rectangle(patch_data, (0, 0), (w, h), border_color, border_thickness)
 
             # Text
@@ -73,21 +79,14 @@ class MenuLayer(Layer):
                 2,
             )
 
-            # Set Alpha: Opaque where there is color, transparent elsewhere?
-            # Actually, for buttons with borders, the center is transparent.
-            # But wait, No Fill was the rule.
-            # We can use the presence of color as alpha?
-            # Or just make the whole button rectangle opaque?
-            # The original code just drew on the background.
-            # If we want the SAME effect (no fill), we only set alpha where we drew.
-
             # Simple approach: anywhere B+G+R > 0, set alpha to 255
-            # This makes the border and text opaque, and the background transparent.
             mask = np.any(patch_data[:, :, :3] > 0, axis=2)
             patch_data[mask, 3] = 255
 
             new_patches.append(ImagePatch(x=x, y=y, width=w, height=h, data=patch_data))
 
-        self._cached_patches = new_patches
-        self.last_rendered_timestamp = state.menu_timestamp
-        return self._cached_patches
+        return new_patches
+
+    def _update_timestamp(self):
+        if self.state:
+            self._last_state_timestamp = self.state.menu_timestamp

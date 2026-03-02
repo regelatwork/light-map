@@ -27,5 +27,7 @@ def test_layer_abstract_class():
         def render(self, state):
             return []
 
-    layer = MockLayer()
+    layer = MockLayer(layer_mode=LayerMode.BLOCKING)
+    assert layer.layer_mode == LayerMode.BLOCKING
+    assert layer.last_rendered_timestamp == 0
     assert layer.render(None) == []

@@ -30,6 +30,10 @@ class ImagePatch:
 class Layer(ABC):
     """Abstract Base Class for all visual layers."""
 
+    def __init__(self, layer_mode: LayerMode = LayerMode.NORMAL):
+        self.layer_mode = layer_mode
+        self.last_rendered_timestamp: int = 0
+
     @abstractmethod
     def render(self, state: WorldState) -> List[ImagePatch]:
         """Inspects the world state and returns patches to be drawn."""

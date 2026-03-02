@@ -59,12 +59,8 @@ class OverlayLayer(Layer):
 
             # 3. Debug Overlay
             if self.context.debug_mode:
-                # We need the scene name. Since we don't have it in state yet,
-                # we might need to add it or pass it.
-                # For now, use a dummy or get it from context if possible.
-                scene_name = "Scene"  # Placeholder
                 self.overlay_renderer.draw_debug_overlay(
-                    buffer_bgr, state.fps, scene_name, state.inputs
+                    buffer_bgr, state.fps, state.current_scene_name, state.inputs
                 )
 
             # Convert to BGRA with alpha heuristic

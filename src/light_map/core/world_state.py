@@ -30,6 +30,7 @@ class WorldState:
         self.menu_state: Optional[MenuState] = None
         self.inputs: List[HandInput] = []
         self.fps: float = 0.0
+        self.current_scene_name: str = ""
 
         # Granular Timestamps (Monotonic counters for caching)
         self.map_timestamp: int = 0

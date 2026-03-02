@@ -13,72 +13,80 @@ class OverlayLayer(Layer):
     Uses OverlayRenderer and timestamps for caching.
     """
 
-    def __init__(self, context: AppContext, time_provider=time.monotonic):
-        super().__init__(layer_mode=LayerMode.NORMAL)
+    def __init__(self, state: WorldState, context: AppContext, time_provider=time.monotonic):
+        super().__init__(state=state, is_static=False, layer_mode=LayerMode.NORMAL)
         self.context = context
         self.time_provider = time_provider
         self.overlay_renderer = OverlayRenderer(context)
-        self._cached_patch: Optional[ImagePatch] = None
 
-        # We also track internal state to force re-render if needed
+        # Cache tracking
         self._last_debug_mode = False
         self._last_show_tokens = True
 
-    def render(self, state: WorldState) -> List[ImagePatch]:
-        # Overlay layer is usually dynamic, but we can still cache if NOTHING changed.
-        # However, ghost tokens pulse (time-dependent), so they might need frequent re-render.
+    @property
+    def is_dirty(self) -> bool:
+        if self.state is None:
+            return True
+            
+        # Ghost tokens pulse (time-dependent), so they might need frequent re-render.
         # For now, let's re-render if any relevant timestamp changed or time has passed (for pulse).
-
-        # Cache check
-        needs_rerender = (
-            state.notifications_timestamp > self.last_rendered_timestamp
-            or state.tokens_timestamp > self.last_rendered_timestamp
-            or state.hands_timestamp > self.last_rendered_timestamp
+        
+        # Force re-render for pulsing tokens if visible
+        if self.context.show_tokens and self.state.tokens:
+            return True
+            
+        return (
+            self.state.notifications_timestamp > self._last_state_timestamp
+            or self.state.tokens_timestamp > self._last_state_timestamp
+            or self.state.hands_timestamp > self._last_state_timestamp
             or self.context.debug_mode != self._last_debug_mode
             or self.context.show_tokens != self._last_show_tokens
-            or self._cached_patch is None
         )
 
-        # Force re-render for pulsing tokens if visible
-        if self.context.show_tokens and state.tokens:
-            needs_rerender = True
+    def _generate_patches(self) -> List[ImagePatch]:
+        if self.state is None:
+            return []
 
-        if needs_rerender:
-            width = self.context.app_config.width
-            height = self.context.app_config.height
+        width = self.context.app_config.width
+        height = self.context.app_config.height
 
-            # Create BGR buffer
-            buffer_bgr = np.zeros((height, width, 3), dtype=np.uint8)
+        # Create BGR buffer
+        buffer_bgr = np.zeros((height, width, 3), dtype=np.uint8)
 
-            # 1. Ghost Tokens
-            if self.context.show_tokens:
-                self.overlay_renderer.draw_ghost_tokens(buffer_bgr, self.time_provider)
+        # 1. Ghost Tokens
+        if self.context.show_tokens:
+            self.overlay_renderer.draw_ghost_tokens(buffer_bgr, self.time_provider)
 
-            # 2. Notifications
-            self.overlay_renderer.draw_notifications(buffer_bgr)
+        # 2. Notifications
+        self.overlay_renderer.draw_notifications(buffer_bgr)
 
-            # 3. Debug Overlay
-            if self.context.debug_mode:
-                self.overlay_renderer.draw_debug_overlay(
-                    buffer_bgr, state.fps, state.current_scene_name, state.inputs
-                )
-
-            # Convert to BGRA with alpha heuristic
-            patch_data = np.zeros((height, width, 4), dtype=np.uint8)
-            patch_data[:, :, :3] = buffer_bgr
-
-            mask = np.any(buffer_bgr > 0, axis=2)
-            patch_data[mask, 3] = 255
-
-            self._cached_patch = ImagePatch(
-                x=0, y=0, width=width, height=height, data=patch_data
+        # 3. Debug Overlay
+        if self.context.debug_mode:
+            self.overlay_renderer.draw_debug_overlay(
+                buffer_bgr, self.state.fps, self.state.current_scene_name, self.state.inputs
             )
-            self.last_rendered_timestamp = max(
-                state.notifications_timestamp,
-                state.tokens_timestamp,
-                state.hands_timestamp,
-            )
-            self._last_debug_mode = self.context.debug_mode
-            self._last_show_tokens = self.context.show_tokens
 
-        return [self._cached_patch] if self._cached_patch else []
+        # Convert to BGRA with alpha heuristic
+        patch_data = np.zeros((height, width, 4), dtype=np.uint8)
+        patch_data[:, :, :3] = buffer_bgr
+
+        mask = np.any(buffer_bgr > 0, axis=2)
+        patch_data[mask, 3] = 255
+
+        patch = ImagePatch(
+            x=0, y=0, width=width, height=height, data=patch_data
+        )
+        
+        # Update tracking
+        self._last_debug_mode = self.context.debug_mode
+        self._last_show_tokens = self.context.show_tokens
+
+        return [patch]
+
+    def _update_timestamp(self):
+        if self.state:
+            self._last_state_timestamp = max(
+                self.state.notifications_timestamp,
+                self.state.tokens_timestamp,
+                self.state.hands_timestamp,
+            )

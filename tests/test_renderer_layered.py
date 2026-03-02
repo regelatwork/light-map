@@ -6,7 +6,13 @@ from typing import List, Optional
 
 
 class MockLayer(Layer):
-    def __init__(self, state: Optional[WorldState] = None, mode: LayerMode = LayerMode.NORMAL, patches: Optional[List[ImagePatch]] = None, is_static: bool = False):
+    def __init__(
+        self,
+        state: Optional[WorldState] = None,
+        mode: LayerMode = LayerMode.NORMAL,
+        patches: Optional[List[ImagePatch]] = None,
+        is_static: bool = False,
+    ):
         super().__init__(state=state, is_static=is_static, layer_mode=mode)
         self.patches = patches or []
         self._dirty = True
@@ -110,15 +116,15 @@ def test_renderer_skip_if_not_dirty():
     renderer = Renderer(100, 100)
     state = WorldState()
     layer = MockLayer(state=state)
-    
+
     # Initial render
     frame = renderer.render(state, [layer])
     assert frame is not None
-    
+
     # Subsequent render without changes should return None
     frame = renderer.render(state, [layer])
     assert frame is None
-    
+
     # Set dirty again
     layer._dirty = True
     frame = renderer.render(state, [layer])

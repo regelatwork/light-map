@@ -1,4 +1,3 @@
-import numpy as np
 from light_map.menu_layer import MenuLayer
 from light_map.common_types import MenuItem
 from light_map.menu_system import MenuState

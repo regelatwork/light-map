@@ -24,7 +24,6 @@ from light_map.projector import ProjectorDistortionModel
 import threading
 from light_map.vision.process_manager import VisionProcessManager
 from light_map.core.main_loop import MainLoopController
-from light_map.core.world_state import WorldState
 from light_map.vision.frame_producer import FrameProducer
 from light_map.input_manager import InputManager
 
@@ -256,7 +255,8 @@ def main():
             )
             manager.start()
 
-            state = WorldState()
+            # Use the WorldState instance from InteractiveApp
+            state = app.state
             producer = FrameProducer(
                 shm_name=manager.shm_name, width=cam_w, height=cam_h
             )

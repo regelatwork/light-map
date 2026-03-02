@@ -42,8 +42,9 @@ from light_map.vision.tracking_coordinator import TrackingCoordinator
 from light_map.vision.input_processor import InputProcessor, DummyResults
 from light_map.vision.aruco_detector import ArucoTokenDetector
 
+from light_map.core.world_state import WorldState
+
 if TYPE_CHECKING:
-    from light_map.core.world_state import WorldState
     from light_map.common_types import Action, Token
 
 
@@ -53,6 +54,9 @@ class InteractiveApp:
         self.time_provider = time_provider
         self.last_fps_time = 0.0
         self.fps = 0.0
+
+        # State management
+        self.state = WorldState()
 
         # Core Systems
         self.renderer = Renderer(config.width, config.height)
@@ -82,11 +86,15 @@ class InteractiveApp:
         )
 
         # Initialize Layers
-        self.map_layer = MapLayer(self.map_system, config.width, config.height)
-        self.scene_layer = SceneLayer(None, config.width, config.height)
-        self.hand_mask_layer = HandMaskLayer(config)
-        self.menu_layer = MenuLayer()
-        self.overlay_layer = OverlayLayer(self.app_context)
+        self.map_layer = MapLayer(
+            self.state, self.map_system, config.width, config.height
+        )
+        self.scene_layer = SceneLayer(
+            self.state, None, config.width, config.height, is_static=False
+        )
+        self.hand_mask_layer = HandMaskLayer(self.state, config)
+        self.menu_layer = MenuLayer(self.state)
+        self.overlay_layer = OverlayLayer(self.state, self.app_context)
 
         # Layer Stack (Bottom to Top)
         self.layer_stack = [
@@ -291,8 +299,19 @@ class InteractiveApp:
             logging.error("Scene '%s' not found.", target_id)
 
     def process_state(
-        self, state: "WorldState", actions: List["Action"]
+        self, state: Optional["WorldState"] = None, actions: List["Action"] = None
     ) -> Tuple[Optional[np.ndarray], List[str]]:
+        if state is None:
+            state = self.state
+        if actions is None:
+            actions = []
+
+        # Ensure layers are using the passed state if it's different
+        if state is not self.state:
+            self.state = state
+            for layer in self.layer_stack:
+                layer.state = state
+
         current_time = self.time_provider()
 
         # Update FPS
@@ -353,8 +372,14 @@ class InteractiveApp:
 
         # 2. Update SceneLayer bridge
         self.scene_layer.scene = self.current_scene
-        # Force scene re-render every frame for now as scenes are dynamic
-        state.increment_scene_timestamp()
+        # Only increment scene timestamp if scene is actually dirty
+        if self.current_scene.is_dirty:
+            state.increment_scene_timestamp()
+            # Most scenes (especially legacy) draw every frame once rendered
+            # or managing their own dirty flag.
+            # We clear it here if it's a scene that doesn't draw itself.
+            if not getattr(self.current_scene, "is_dynamic", False):
+                self.current_scene.is_dirty = False
 
         # 3. Perform Composite Render
         final_frame = self.renderer.render(state, self.layer_stack)

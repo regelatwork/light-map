@@ -40,10 +40,12 @@ class ViewingScene(Scene):
         super().__init__(context)
         self.summon_gesture_start_time = 0.0
         self.last_token_toggle_time = 0.0
+        self.is_dirty = False  # Static scene
 
     def on_enter(self, payload: dict | None = None) -> None:
         self.summon_gesture_start_time = 0.0
         self.last_token_toggle_time = 0.0
+        self.is_dirty = False
 
     def update(
         self, inputs: List[HandInput], current_time: float
@@ -92,11 +94,13 @@ class MapScene(Scene):
         self.summon_gesture_start_time = 0.0
         self.is_interacting = False
         self.last_token_toggle_time = 0.0
+        self.is_dirty = False  # Pure interaction scene
 
     def on_enter(self, payload: dict | None = None) -> None:
         self.summon_gesture_start_time = 0.0
         self.is_interacting = False
         self.last_token_toggle_time = 0.0
+        self.is_dirty = False
         self.context.notifications.add_notification(
             "Map Interaction Mode: Pan (1 hand), Zoom (2 hands)"
         )

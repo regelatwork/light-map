@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import List
 import cv2
 import numpy as np
 from .common_types import Layer, LayerMode, ImagePatch, AppConfig
@@ -16,22 +16,27 @@ class HandMaskLayer(Layer):
         super().__init__(state=state, is_static=False, layer_mode=LayerMode.NORMAL)
         self.config = config
         self.hand_masker = HandMasker()
+        self._last_enabled = config.enable_hand_masking
 
     @property
     def is_dirty(self) -> bool:
+        enabled_changed = self.config.enable_hand_masking != self._last_enabled
+        if enabled_changed:
+            return True
+
         if not self.config.enable_hand_masking:
-            return self._last_state_timestamp != -2
-            
+            return False
+
         if self.state is None:
             return True
-            
+
         return self.state.hands_timestamp > self._last_state_timestamp
 
     def _generate_patches(self) -> List[ImagePatch]:
+        self._last_enabled = self.config.enable_hand_masking
         if not self.config.enable_hand_masking:
-            self._last_state_timestamp = -2
             return []
-            
+
         if self.state is None:
             return []
 

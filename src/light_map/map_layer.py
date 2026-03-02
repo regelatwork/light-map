@@ -1,4 +1,4 @@
-from typing import List, Optional, Any, Dict
+from typing import List, Any, Dict
 import cv2
 from .common_types import Layer, LayerMode, ImagePatch
 from .core.world_state import WorldState
@@ -11,7 +11,9 @@ class MapLayer(Layer):
     Uses timestamps for efficient caching.
     """
 
-    def __init__(self, state: WorldState, map_system: MapSystem, width: int, height: int):
+    def __init__(
+        self, state: WorldState, map_system: MapSystem, width: int, height: int
+    ):
         super().__init__(state=state, is_static=True, layer_mode=LayerMode.BLOCKING)
         self.map_system = map_system
         self.width = width
@@ -35,7 +37,7 @@ class MapLayer(Layer):
 
         current_params = self.map_system.get_render_params().copy()
         current_params["quality"] = self.quality
-        
+
         return (
             self.state.map_timestamp > self._last_state_timestamp
             or self.state.viewport_timestamp > self._last_state_timestamp
@@ -66,11 +68,11 @@ class MapLayer(Layer):
         patch = ImagePatch(
             x=0, y=0, width=self.width, height=self.height, data=map_bgra
         )
-        
+
         # Update tracking
         self._last_render_params = current_params.copy()
         self._last_opacity = self.opacity
-        
+
         return [patch]
 
     def _update_timestamp(self):

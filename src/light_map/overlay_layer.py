@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import List
 import numpy as np
 import time
 from .common_types import Layer, LayerMode, ImagePatch
@@ -13,7 +13,9 @@ class OverlayLayer(Layer):
     Uses OverlayRenderer and timestamps for caching.
     """
 
-    def __init__(self, state: WorldState, context: AppContext, time_provider=time.monotonic):
+    def __init__(
+        self, state: WorldState, context: AppContext, time_provider=time.monotonic
+    ):
         super().__init__(state=state, is_static=False, layer_mode=LayerMode.NORMAL)
         self.context = context
         self.time_provider = time_provider
@@ -27,14 +29,14 @@ class OverlayLayer(Layer):
     def is_dirty(self) -> bool:
         if self.state is None:
             return True
-            
+
         # Ghost tokens pulse (time-dependent), so they might need frequent re-render.
         # For now, let's re-render if any relevant timestamp changed or time has passed (for pulse).
-        
+
         # Force re-render for pulsing tokens if visible
         if self.context.show_tokens and self.state.tokens:
             return True
-            
+
         return (
             self.state.notifications_timestamp > self._last_state_timestamp
             or self.state.tokens_timestamp > self._last_state_timestamp
@@ -63,7 +65,10 @@ class OverlayLayer(Layer):
         # 3. Debug Overlay
         if self.context.debug_mode:
             self.overlay_renderer.draw_debug_overlay(
-                buffer_bgr, self.state.fps, self.state.current_scene_name, self.state.inputs
+                buffer_bgr,
+                self.state.fps,
+                self.state.current_scene_name,
+                self.state.inputs,
             )
 
         # Convert to BGRA with alpha heuristic
@@ -73,10 +78,8 @@ class OverlayLayer(Layer):
         mask = np.any(buffer_bgr > 0, axis=2)
         patch_data[mask, 3] = 255
 
-        patch = ImagePatch(
-            x=0, y=0, width=width, height=height, data=patch_data
-        )
-        
+        patch = ImagePatch(x=0, y=0, width=width, height=height, data=patch_data)
+
         # Update tracking
         self._last_debug_mode = self.context.debug_mode
         self._last_show_tokens = self.context.show_tokens

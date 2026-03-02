@@ -40,7 +40,7 @@ class Renderer:
 
         # Poll all layers for dirty status
         layer_info = []
-        for layer in layers:
+        for i, layer in enumerate(layers):
             is_dirty = layer.is_dirty
             layer_info.append(is_dirty)
             if is_dirty:
@@ -76,9 +76,7 @@ class Renderer:
         self._force_render = False
         return self.output_buffer
 
-    def _composite_patch(
-        self, buffer: np.ndarray, patch: ImagePatch, mode: LayerMode
-    ):
+    def _composite_patch(self, buffer: np.ndarray, patch: ImagePatch, mode: LayerMode):
         """Internal helper to blend a patch onto a buffer."""
         # Bound checks
         x1, y1 = max(0, patch.x), max(0, patch.y)

@@ -1,7 +1,6 @@
 import pytest
 from unittest.mock import MagicMock
 import numpy as np
-import cv2
 from light_map.map_layer import MapLayer
 from light_map.core.world_state import WorldState
 
@@ -11,7 +10,7 @@ def mock_map_system():
     ms = MagicMock()
     ms.is_map_loaded.return_value = True
     ms.get_render_params.return_value = {"x": 0, "y": 0, "zoom": 1.0}
-    
+
     # Mock SVG Loader
     loader = MagicMock()
     # Returns a 100x100 BGR Green image
@@ -19,18 +18,18 @@ def mock_map_system():
     green_bgr[:, :, 1] = 255
     loader.render.return_value = green_bgr
     ms.svg_loader = loader
-    
+
     return ms
 
 
 def test_map_layer_render_basic(mock_map_system):
     ws = WorldState()
     layer = MapLayer(ws, mock_map_system, width=100, height=100)
-    
+
     patches = layer.render()
     assert len(patches) == 1
     patch = patches[0]
-    
+
     assert patch.x == 0
     assert patch.y == 0
     assert patch.width == 100
@@ -44,20 +43,20 @@ def test_map_layer_render_basic(mock_map_system):
 def test_map_layer_caching(mock_map_system):
     ws = WorldState()
     layer = MapLayer(ws, mock_map_system, width=100, height=100)
-    
+
     # 1. Initial render
     layer.render()
     assert mock_map_system.svg_loader.render.call_count == 1
-    
+
     # 2. Render again - should use cache
     layer.render()
     assert mock_map_system.svg_loader.render.call_count == 1
-    
+
     # 3. Change timestamp in world state
     ws.increment_map_timestamp()
     layer.render()
     assert mock_map_system.svg_loader.render.call_count == 2
-    
+
     # 4. Change params in map system
     mock_map_system.get_render_params.return_value = {"x": 10, "y": 0, "zoom": 1.0}
     layer.render()
@@ -68,6 +67,6 @@ def test_map_layer_not_loaded(mock_map_system):
     mock_map_system.is_map_loaded.return_value = False
     ws = WorldState()
     layer = MapLayer(ws, mock_map_system, width=100, height=100)
-    
+
     patches = layer.render()
     assert len(patches) == 0

@@ -13,18 +13,18 @@ def mock_app_context():
     config = MagicMock(spec=AppConfig)
     config.width = 1920
     config.height = 1080
-    
+
     ctx = MagicMock(spec=AppContext)
     ctx.app_config = config
     ctx.debug_mode = False
     ctx.show_tokens = True
-    
+
     # Nested attributes that OverlayRenderer uses
     ctx.map_config_manager = MagicMock()
     ctx.map_config_manager.get_ppi.return_value = 100.0
     ctx.notifications = MagicMock()
     ctx.notifications.get_active_notifications.return_value = []
-    
+
     return ctx
 
 
@@ -39,8 +39,9 @@ def test_overlay_layer_render_notifications(mock_app_context):
         # Side effect: draw something on buffer
         def draw_side_effect(buffer):
             buffer[0:10, 0:10] = [255, 255, 255]
+
         mock_draw.side_effect = draw_side_effect
-        
+
         # Also need to mock other methods called in _generate_patches
         with patch.object(layer.overlay_renderer, "draw_ghost_tokens"):
             patches = layer.render()
@@ -60,7 +61,7 @@ def test_overlay_layer_render_tokens(mock_app_context):
     ws.tokens_timestamp = 1
 
     layer = OverlayLayer(ws, mock_app_context)
-    
+
     with patch.object(layer.overlay_renderer, "draw_ghost_tokens") as mock_draw:
         with patch.object(layer.overlay_renderer, "draw_notifications"):
             layer.render()

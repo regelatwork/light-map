@@ -1,4 +1,4 @@
-from typing import List, Optional, Any
+from typing import List, Any
 import numpy as np
 from .common_types import Layer, LayerMode, ImagePatch
 from .core.world_state import WorldState
@@ -10,7 +10,14 @@ class SceneLayer(Layer):
     This acts as a bridge during the transition.
     """
 
-    def __init__(self, state: WorldState, scene: Any, width: int, height: int, is_static: bool = True):
+    def __init__(
+        self,
+        state: WorldState,
+        scene: Any,
+        width: int,
+        height: int,
+        is_static: bool = True,
+    ):
         super().__init__(state=state, is_static=is_static, layer_mode=LayerMode.NORMAL)
         self.scene = scene
         self.width = width
@@ -38,7 +45,7 @@ class SceneLayer(Layer):
 
         mask = np.any(result_bgr > 0, axis=2)
         result_bgra[mask, 3] = 255
-        
+
         patch = ImagePatch(
             x=0, y=0, width=self.width, height=self.height, data=result_bgra
         )

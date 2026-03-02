@@ -32,7 +32,9 @@ def test_hand_mask_layer_render_enabled(mock_config):
 
     # Mock HandMasker internals to avoid CV2 calls
     with patch.object(layer.hand_masker, "compute_hulls") as mock_hulls:
-        mock_hulls.return_value = [np.array([[0, 0], [10, 0], [10, 10]], dtype=np.int32)]
+        mock_hulls.return_value = [
+            np.array([[0, 0], [10, 0], [10, 10]], dtype=np.int32)
+        ]
         with patch.object(layer.hand_masker, "generate_mask_image") as mock_mask:
             # Return a small white square on black
             dummy_mask = np.zeros((1080, 1920), dtype=np.uint8)
@@ -83,7 +85,11 @@ def test_hand_mask_layer_caching(mock_config):
             assert mock_hulls.call_count == 1
 
             # Change timestamp
-            ws.update_inputs([])  # increments hands_timestamp
+            from light_map.core.scene import HandInput
+            from light_map.common_types import GestureType
+
+            new_input = [HandInput(GestureType.POINTING, (100, 100), None)]
+            ws.update_inputs(new_input)  # increments hands_timestamp
             p3 = layer.render()
             assert p3 is not p1
             assert mock_hulls.call_count == 2

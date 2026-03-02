@@ -83,11 +83,10 @@ class WorldState:
         self.scene_timestamp += 1
 
     def update_menu_state(self, new_menu_state: Optional[MenuState]):
-        """Updates the menu state and increments its timestamp."""
-        # Simple identity check or full comparison?
-        # For simplicity and robustness, we will assume update = change.
-        self.menu_state = new_menu_state
-        self.menu_timestamp += 1
+        """Updates the menu state and increments its timestamp if changed."""
+        if self.menu_state != new_menu_state:
+            self.menu_state = new_menu_state
+            self.menu_timestamp += 1
 
     def increment_notifications_timestamp(self):
         """Manually trigger a notification cache invalidation."""
@@ -98,9 +97,26 @@ class WorldState:
         self.fps = fps
 
     def update_inputs(self, inputs: List[HandInput]):
-        """Updates the standardized hand inputs and increments hands_timestamp."""
-        self.inputs = inputs
-        self.hands_timestamp += 1
+        """Updates the standardized hand inputs and increments hands_timestamp if changed."""
+        if not self._inputs_equal(self.inputs, inputs):
+            self.inputs = inputs
+            self.hands_timestamp += 1
+
+    def _inputs_equal(self, i1: List[HandInput], i2: List[HandInput]) -> bool:
+        """Checks for semantic equality between two lists of hand inputs."""
+        if len(i1) != len(i2):
+            return False
+        if len(i1) == 0:
+            return True
+
+        # For simplicity, if they are not empty and lengths are same,
+        # check gestures and positions
+        for h1, h2 in zip(i1, i2):
+            if h1.gesture != h2.gesture:
+                return False
+            if h1.proj_pos != h2.proj_pos:
+                return False
+        return True
 
     def apply(self, result: DetectionResult):
         """

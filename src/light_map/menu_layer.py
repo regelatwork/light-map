@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import List
 import cv2
 import numpy as np
 from .common_types import Layer, LayerMode, ImagePatch
@@ -16,26 +16,32 @@ class MenuLayer(Layer):
     def __init__(self, state: WorldState):
         super().__init__(state=state, is_static=False, layer_mode=LayerMode.NORMAL)
         self.colors = MenuColors()
+        self._last_visible = False
 
     @property
     def is_dirty(self) -> bool:
         if self.state is None:
             return True
-        
-        # We also need to check if menu exists and is visible
+
         menu = self.state.menu_state
-        if not menu or not menu.is_visible:
-            return self._last_state_timestamp != -2 # Force clear if it was visible
-            
+        visible = menu.is_visible if menu else False
+
+        if visible != self._last_visible:
+            return True
+
+        if not visible:
+            return False
+
         return self.state.menu_timestamp > self._last_state_timestamp
 
     def _generate_patches(self) -> List[ImagePatch]:
         if self.state is None:
             return []
-            
+
         menu = self.state.menu_state
-        if not menu or not menu.is_visible:
-            self._last_state_timestamp = -2 # Special value for hidden
+        self._last_visible = menu.is_visible if menu else False
+
+        if not self._last_visible:
             return []
 
         # Re-render all patches

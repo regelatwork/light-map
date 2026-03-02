@@ -35,6 +35,16 @@ class Scene(ABC):
 
     def __init__(self, context: AppContext):
         self.context = context
+        self._is_dirty = True
+
+    @property
+    def is_dirty(self) -> bool:
+        """True if the scene has visual changes since last render."""
+        return self._is_dirty
+
+    @is_dirty.setter
+    def is_dirty(self, value: bool):
+        self._is_dirty = value
 
     def on_enter(self, payload: Any = None) -> None:
         """Called once when the scene becomes active."""

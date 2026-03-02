@@ -39,7 +39,7 @@ class Layer(ABC):
         self.state = state
         self.is_static = is_static
         self.layer_mode = layer_mode
-        self._cached_patches: List[ImagePatch] = []
+        self._cached_patches: Optional[List[ImagePatch]] = None
         self._last_state_timestamp: int = -1
 
     @property
@@ -50,7 +50,7 @@ class Layer(ABC):
 
     def render(self) -> List[ImagePatch]:
         """Handles caching and calls _generate_patches if dirty."""
-        if self.is_dirty or not self._cached_patches:
+        if self.is_dirty or self._cached_patches is None:
             self._cached_patches = self._generate_patches()
             self._update_timestamp()
         return self._cached_patches

@@ -3,7 +3,6 @@ import numpy as np
 from unittest.mock import MagicMock
 from light_map.interactive_app import InteractiveApp
 from light_map.common_types import AppConfig
-from light_map.core.world_state import WorldState
 
 
 @pytest.fixture
@@ -44,8 +43,7 @@ def test_interactive_app_process_state_layered(mock_config, monkeypatch):
     )
 
     app = InteractiveApp(mock_config)
-
-    ws = WorldState()
+    ws = app.state
     ws.last_frame_timestamp = 100
 
     # We need to mock the current scene's render method to avoid errors
@@ -59,3 +57,35 @@ def test_interactive_app_process_state_layered(mock_config, monkeypatch):
     assert frame.shape == (100, 100, 3)
     # The renderer should have been called
     assert np.all(frame == 0)  # Base black frame
+
+
+def test_interactive_app_process_state_skips_render_when_not_dirty(
+    mock_config, monkeypatch
+):
+    monkeypatch.setattr(
+        InteractiveApp,
+        "_load_camera_calibration",
+        lambda self: (np.eye(3), np.zeros(5), np.zeros(3), np.zeros(3)),
+    )
+
+    app = InteractiveApp(mock_config)
+    ws = app.state
+
+    # 1. Initial render (everything is dirty)
+    app.current_scene = MagicMock()
+    app.current_scene.is_dirty = True
+    app.current_scene.update.return_value = None
+    app.current_scene.render.return_value = np.zeros((100, 100, 3), dtype=np.uint8)
+
+    frame1, _ = app.process_state(ws, [])
+    assert frame1 is not None
+
+    # 2. Subsequent render with no changes should return None
+    # We must ensure no pulsing tokens are present to allow skip
+    ws.tokens = []
+
+    # We must ensure the scene is clean
+    app.current_scene.is_dirty = False
+
+    frame2, _ = app.process_state(ws, [])
+    assert frame2 is None

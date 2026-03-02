@@ -12,22 +12,31 @@ class HandMaskLayer(Layer):
     Uses HandMasker and timestamps for caching.
     """
 
-    def __init__(self, config: AppConfig):
-        super().__init__(layer_mode=LayerMode.NORMAL)
+    def __init__(self, state: WorldState, config: AppConfig):
+        super().__init__(state=state, is_static=False, layer_mode=LayerMode.NORMAL)
         self.config = config
         self.hand_masker = HandMasker()
-        self._cached_patch: Optional[ImagePatch] = None
 
-    def render(self, state: WorldState) -> List[ImagePatch]:
+    @property
+    def is_dirty(self) -> bool:
         if not self.config.enable_hand_masking:
+            return self._last_state_timestamp != -2
+            
+        if self.state is None:
+            return True
+            
+        return self.state.hands_timestamp > self._last_state_timestamp
+
+    def _generate_patches(self) -> List[ImagePatch]:
+        if not self.config.enable_hand_masking:
+            self._last_state_timestamp = -2
+            return []
+            
+        if self.state is None:
             return []
 
-        # Cache Check
-        if state.hands_timestamp <= self.last_rendered_timestamp and self._cached_patch:
-            return [self._cached_patch]
-
         # Logic adapted from InteractiveApp._apply_hand_masking
-        if not state.hands:
+        if not self.state.hands:
             # Still call compute_hulls with empty list for persistence if HandMasker uses it
             hulls = self.hand_masker.compute_hulls([], None)
         else:
@@ -37,10 +46,9 @@ class HandMaskLayer(Layer):
                 cam_pts = pts.reshape(-1, 1, 2).copy()
 
                 # We need the background shape to denormalize
-                # If background is missing, we use config width/height as fallback (might be wrong)
                 frame_h, frame_w = (1080, 1920)  # Defaults?
-                if state.background is not None:
-                    frame_h, frame_w = state.background.shape[:2]
+                if self.state.background is not None:
+                    frame_h, frame_w = self.state.background.shape[:2]
 
                 cam_pts[:, :, 0] *= frame_w
                 cam_pts[:, :, 1] *= frame_h
@@ -53,11 +61,9 @@ class HandMaskLayer(Layer):
                     )
                 return proj_pts.reshape(-1, 2)
 
-            hulls = self.hand_masker.compute_hulls(state.hands, transform_pts)
+            hulls = self.hand_masker.compute_hulls(self.state.hands, transform_pts)
 
         if not hulls:
-            self._cached_patch = None
-            self.last_rendered_timestamp = state.hands_timestamp
             return []
 
         # Generate binary mask (white hands on black background)
@@ -69,24 +75,22 @@ class HandMaskLayer(Layer):
             blur=self.config.hand_mask_blur,
         )
 
-        # We want to produce a patch that is BLACK where the mask is white, and transparent elsewhere.
-        # mask is grayscale (0-255).
-        # We'll use the mask itself as the Alpha channel.
-        # And the color channels will be all zeros (Black).
-
         patch_data = np.zeros(
             (self.config.height, self.config.width, 4), dtype=np.uint8
         )
         patch_data[:, :, 3] = mask  # Alpha = mask intensity
         # RGB is already 0.
 
-        self._cached_patch = ImagePatch(
+        patch = ImagePatch(
             x=0,
             y=0,
             width=self.config.width,
             height=self.config.height,
             data=patch_data,
         )
-        self.last_rendered_timestamp = state.hands_timestamp
 
-        return [self._cached_patch]
+        return [patch]
+
+    def _update_timestamp(self):
+        if self.state:
+            self._last_state_timestamp = self.state.hands_timestamp

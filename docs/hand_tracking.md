@@ -1,6 +1,10 @@
 # Hand Tracking and Gestures
 
-The system continuously gets images from the camera, detects up to two hands, and projects the positions of the detected hand landmarks onto a fullscreen projector window. It utilizes a **multi-threaded pipeline** to decouple camera processing from UI rendering.
+The system continuously captures images from the camera, detects up to two hands, and projects the positions of the detected hand landmarks onto a fullscreen projector window. It utilizes a **multi-process architecture** to decouple CPU-bound vision tasks from UI rendering and camera capture.
+
+## Architecture
+
+Hand tracking is performed in a dedicated worker process that consumes frames from **Shared Memory** and pushes gesture events to the **Main Application Process** via a `multiprocessing.Queue`. This prevents the Global Interpreter Lock (GIL) from bottlenecking the system, ensuring high-frequency rendering regardless of detection complexity.
 
 ## Real-Time Feedback
 

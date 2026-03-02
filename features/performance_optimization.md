@@ -61,56 +61,8 @@ Use a "Level of Detail" approach where the map renders at lower resolution durin
   - Call `render(...)` twice with same params.
   - Verify identity of returned object.
 
-## Phase 2: Pipeline Parallelism (Threading)
+## Phase 2: Pipeline Instrumentation and Multi-Process Refactor
 
-### Concept
+The system has been refactored from a threaded architecture to a **Multi-Process Architecture** to fully utilize multi-core CPUs and bypass the Python GIL. This refactor is documented in [Multiprocessing Architecture](../docs/multiprocessing.md).
 
-Decouple Camera/AI processing from the UI rendering loop using a producer-consumer model.
-
-### Implementation Details
-
-#### 1. `src/light_map/camera_pipeline.py` (New File)
-
-- **Data Structure**:
-  ```python
-  @dataclass(frozen=True)
-  class VisionData:
-      frame_id: int
-      frame: np.ndarray  # BGR uint8
-      landmarks: Any     # MediaPipe SolutionOutputs (multi_hand_landmarks)
-      fps: float
-  ```
-- **Class**: `CameraPipeline`
-- **Interface**:
-  ```python
-  class CameraPipeline:
-      def __init__(self, camera_index, width, height, enhancer_params): ...
-      def start(self): ... # Starts thread
-      def stop(self): ... # Stops thread
-      def get_latest(self) -> Optional[VisionData]: ... # Non-blocking
-  ```
-- **Logic**:
-  - **Thread Loop**:
-    1. `cam.read()`
-    1. **CRITICAL**: `frame = frame.copy()` if using standard `VideoCapture` to ensure thread safety against buffer reuse.
-    1. `enhancer.process()`
-    1. `hands.process()`
-    1. Update shared variable `latest_data` (with Lock). Increment `frame_id`.
-  - **Main Thread**: `get_latest()` returns copy of `latest_data` (or the immutable dataclass itself).
-
-#### 2. `hand_tracker.py`
-
-- **Modifications**:
-  - Replace direct loop with `pipeline.start()`.
-  - In `while True`:
-    - `data = pipeline.get_latest()`
-    - If `data` and `data.frame_id > last_processed_id`:
-      - Update `last_processed_id`.
-      - `app.process_frame(data.frame, data.landmarks)`
-    - Else:
-      - (Optional) Re-render UI only (if decoupling UI FPS from Camera FPS).
-
-#### 3. Tests (`tests/test_camera_pipeline.py`)
-
-- **Test Case 1: Thread Lifecycle**: Start, sleep, stop. Verify thread joins cleanly.
-- **Test Case 2: Data Flow**: Mock Camera. Verify `get_latest()` returns data produced by thread with increasing `frame_id`.
+To ensure visibility into system bottlenecks, we have implemented **Pipeline Instrumentation** to track "hop" latencies and resource contention. See [Performance Instrumentation](../docs/performance_instrumentation.md) for details on how we measure and optimize end-to-end performance.

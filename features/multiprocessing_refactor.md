@@ -18,7 +18,7 @@ The system will be split into four primary process types:
 
 **IPC Strategy**:
 
-- **Frames**: Shared Memory (via `multiprocessing.shared_memory`) using an **$N+2$ Buffer Strategy** to ensure zero-copy frame sharing and prevent tearing. See [Detailed IPC Design](../docs/plans/2026-03-01-multiprocessing-ipc-design.md) for implementation details.
+- **Frames**: Shared Memory (via `multiprocessing.shared_memory`) using an **$N+2$ Buffer Strategy** to ensure zero-copy frame sharing and prevent tearing. See [Multiprocessing Architecture](../docs/multiprocessing.md) for implementation details.
 - **Results**: `multiprocessing.Queue` for small detection results (coordinates, IDs, gestures).
 - **Synchronization**: Atomic shared counters for frame indices and a reactive event loop in the main process.
 

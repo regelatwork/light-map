@@ -110,14 +110,22 @@ def main():
 
     # 1. Load Calibration
     calibration_file = storage.get_data_path("projector_calibration.npz")
+    intrinsics_path = storage.get_data_path("camera_calibration.npz")
+    extrinsics_path = storage.get_data_path("camera_extrinsics.npz")
 
     # Helper to load calibration
     def load_calib(default_screen_w, default_screen_h):
         if not os.path.exists(calibration_file):
-            logger.warning(
-                "%s not found. Using default camera resolution.", calibration_file
+            msg = (
+                "\n" + "!" * 60 + "\n"
+                "CRITICAL ERROR: Projector Calibration Missing!\n"
+                f"  File not found: {calibration_file}\n"
+                "  The system cannot project correctly without this.\n"
+                "  PLEASE RUN: python3 projector_calibration.py\n"
+                "!" * 60 + "\n"
             )
-            return None, 2304, 1296, None
+            logger.critical(msg)
+            sys.exit(1)
         try:
             with np.load(calibration_file) as data:
                 if "projector_matrix" not in data:
@@ -243,6 +251,8 @@ def main():
                 num_consumers=2,
                 projector_matrix=app.config.projector_matrix,
                 map_dims=(app.config.width, app.config.height),
+                intrinsics_path=intrinsics_path,
+                extrinsics_path=extrinsics_path,
             )
             manager.start()
 

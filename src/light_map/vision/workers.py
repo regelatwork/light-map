@@ -21,6 +21,8 @@ def aruco_worker(
     aruco_dict_type: int = cv2.aruco.DICT_4X4_50,
     projector_matrix: Optional[np.ndarray] = None,
     map_dims: Optional[Tuple[int, int]] = None,
+    intrinsics_path: Optional[str] = None,
+    extrinsics_path: Optional[str] = None,
 ):
     """
     Worker function for ArUco detection. Consumes frames from shared memory,
@@ -33,7 +35,11 @@ def aruco_worker(
     producer.lock = lock
 
     # 2. Initialize Detector
-    detector = ArucoTokenDetector(dictionary_type=aruco_dict_type)
+    detector = ArucoTokenDetector(
+        calibration_file=intrinsics_path,
+        extrinsics_file=extrinsics_path,
+        dictionary_type=aruco_dict_type
+    )
 
     logging.info(f"ArUco Worker started (SHM: {shm_name})")
     last_processed_ts = -1

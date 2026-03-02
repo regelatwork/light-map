@@ -19,12 +19,16 @@ class VisionProcessManager:
         num_consumers: int = 2,
         projector_matrix: Optional[np.ndarray] = None,
         map_dims: Optional[Tuple[int, int]] = None,
+        intrinsics_path: Optional[str] = None,
+        extrinsics_path: Optional[str] = None,
     ):
         self.width = width
         self.height = height
         self.num_consumers = num_consumers
         self.projector_matrix = projector_matrix
         self.map_dims = map_dims
+        self.intrinsics_path = intrinsics_path
+        self.extrinsics_path = extrinsics_path
 
         self.operator: Optional[CameraOperator] = None
         self.shm_name: Optional[str] = None
@@ -64,6 +68,8 @@ class VisionProcessManager:
                 "num_consumers": self.num_consumers,
                 "projector_matrix": self.projector_matrix,
                 "map_dims": self.map_dims,
+                "intrinsics_path": self.intrinsics_path,
+                "extrinsics_path": self.extrinsics_path,
             },
             name="ArucoWorker",
         )

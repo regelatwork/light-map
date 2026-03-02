@@ -9,6 +9,18 @@ def app(tmp_path):
     from light_map.core.storage import StorageManager
 
     storage = StorageManager(base_dir=str(tmp_path))
+    storage.ensure_dirs()
+
+    # Create dummy calibration files
+    data_dir = storage.data_dir
+    K = np.eye(3, dtype=np.float32)
+    dist = np.zeros(5, dtype=np.float32)
+    rvec = np.zeros((3, 1), dtype=np.float32)
+    tvec = np.zeros((3, 1), dtype=np.float32)
+
+    np.savez(data_dir / "camera_calibration.npz", camera_matrix=K, dist_coeffs=dist)
+    np.savez(data_dir / "camera_extrinsics.npz", rvec=rvec, tvec=tvec)
+
     config = AppConfig(
         width=100,
         height=100,

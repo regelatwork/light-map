@@ -1,5 +1,6 @@
 import os
 import numpy as np
+from unittest.mock import patch
 from light_map.common_types import AppConfig
 from light_map.interactive_app import InteractiveApp
 
@@ -26,16 +27,32 @@ def test_interactive_app_resolution_sync(tmp_path):
     from light_map.core.storage import StorageManager
 
     storage = StorageManager(base_dir=str(tmp_path))
+    storage.ensure_dirs()
+
+    # Create dummy calibration files
+    data_dir = storage.data_dir
+    K = np.eye(3, dtype=np.float32)
+    dist = np.zeros(5, dtype=np.float32)
+    rvec = np.zeros((3, 1), dtype=np.float32)
+    tvec = np.zeros((3, 1), dtype=np.float32)
+
+    np.savez(data_dir / "camera_calibration.npz", camera_matrix=K, dist_coeffs=dist)
+    np.savez(data_dir / "camera_extrinsics.npz", rvec=rvec, tvec=tvec)
+
     m = np.eye(3, dtype=np.float32)
     config = AppConfig(
         width=640, height=480, projector_matrix=m, storage_manager=storage
     )
+    # Still use patch for instantiation if we want, but reload_config will call it again.
+    # It's better to just have the files.
     app = InteractiveApp(config)
 
     assert app.map_system.width == 640
     assert app.map_system.height == 480
 
-    new_config = AppConfig(width=1280, height=720, projector_matrix=m)
+    new_config = AppConfig(
+        width=1280, height=720, projector_matrix=m, storage_manager=storage
+    )
     app.reload_config(new_config)
 
     assert app.map_system.width == 1280
@@ -58,6 +75,17 @@ def test_interactive_app_load_map_normalization(tmp_path):
     from light_map.core.storage import StorageManager
 
     storage = StorageManager(base_dir=str(tmp_path))
+    storage.ensure_dirs()
+
+    # Create dummy calibration files
+    data_dir = storage.data_dir
+    K = np.eye(3, dtype=np.float32)
+    dist = np.zeros(5, dtype=np.float32)
+    rvec = np.zeros((3, 1), dtype=np.float32)
+    tvec = np.zeros((3, 1), dtype=np.float32)
+
+    np.savez(data_dir / "camera_calibration.npz", camera_matrix=K, dist_coeffs=dist)
+    np.savez(data_dir / "camera_extrinsics.npz", rvec=rvec, tvec=tvec)
 
     # Setup
     m = np.eye(3, dtype=np.float32)

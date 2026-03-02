@@ -27,7 +27,7 @@ def app(tmp_path):
         ) as mock_init,
         patch(
             "light_map.interactive_app.InteractiveApp._load_camera_calibration",
-            return_value=(None, None, None, None),
+            return_value=(np.eye(3), np.zeros(5), np.zeros((3,1)), np.zeros((3,1))),
         ),
     ):
         # Create mock scenes for all SceneIds

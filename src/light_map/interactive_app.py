@@ -3,6 +3,7 @@ import cv2
 import numpy as np
 import time
 import os
+import sys
 import logging
 from typing import List, Tuple, Any, Dict, Optional, TYPE_CHECKING, Callable
 
@@ -88,10 +89,10 @@ class InteractiveApp:
     def _load_camera_calibration(
         self,
     ) -> Tuple[
-        Optional[np.ndarray],
-        Optional[np.ndarray],
-        Optional[np.ndarray],
-        Optional[np.ndarray],
+        np.ndarray,
+        np.ndarray,
+        np.ndarray,
+        np.ndarray,
     ]:
         camera_matrix = None
         dist_coeffs = None
@@ -110,17 +111,37 @@ class InteractiveApp:
             else "camera_extrinsics.npz"
         )
 
-        if os.path.exists(intrinsics_path):
+        missing = []
+        if not os.path.exists(intrinsics_path):
+            missing.append(intrinsics_path)
+        if not os.path.exists(extrinsics_path):
+            missing.append(extrinsics_path)
+
+        if missing:
+            msg = (
+                "\n" + "!" * 60 + "\n"
+                "CRITICAL ERROR: Camera Calibration Files Missing!\n"
+                f"  Missing files: {', '.join(missing)}\n"
+                "  The system cannot map tokens without camera calibration.\n"
+                "  PLEASE RUN: python3 projector_calibration.py\n"
+                "!" * 60 + "\n"
+            )
+            logging.critical(msg)
+            sys.exit(1)
+
+        try:
             calib = np.load(intrinsics_path)
             camera_matrix = calib["camera_matrix"]
             dist_coeffs = calib["dist_coeffs"]
             logging.info("Loaded camera intrinsics from %s.", intrinsics_path)
 
-        if os.path.exists(extrinsics_path):
             ext = np.load(extrinsics_path)
             rvec = ext["rvec"]
             tvec = ext["tvec"]
             logging.info("Loaded camera extrinsics from %s.", extrinsics_path)
+        except Exception as e:
+            logging.critical("Failed to load calibration data: %s", e)
+            sys.exit(1)
 
         return camera_matrix, dist_coeffs, rvec, tvec
 
@@ -133,10 +154,27 @@ class InteractiveApp:
         debug_mode=False,
         show_tokens=True,
     ) -> AppContext:
-        aruco_detector = ArucoTokenDetector()
-        if camera_matrix is not None:
+        storage = self.config.storage_manager
+        intrinsics_path = (
+            storage.get_data_path("camera_calibration.npz")
+            if storage
+            else None
+        )
+        extrinsics_path = (
+            storage.get_data_path("camera_extrinsics.npz")
+            if storage
+            else None
+        )
+
+        aruco_detector = ArucoTokenDetector(
+            calibration_file=intrinsics_path,
+            extrinsics_file=extrinsics_path
+        )
+        # Fallback if for some reason they weren't loaded in constructor
+        # (though our check above makes this unlikely to be None if we reached here)
+        if aruco_detector.camera_matrix is None and camera_matrix is not None:
             aruco_detector.set_calibration(camera_matrix, dist_coeffs)
-        if rvec is not None:
+        if aruco_detector.rvec is None and rvec is not None:
             aruco_detector.set_extrinsics(rvec, tvec)
 
         return AppContext(

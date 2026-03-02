@@ -13,8 +13,8 @@ if TYPE_CHECKING:
 class ArucoTokenDetector:
     def __init__(
         self,
-        calibration_file: str = "camera_calibration.npz",
-        extrinsics_file: str = "camera_extrinsics.npz",
+        calibration_file: Optional[str] = None,
+        extrinsics_file: Optional[str] = None,
         dictionary_type: int = cv2.aruco.DICT_4X4_50,
         debug_mode: bool = False,
     ):
@@ -32,25 +32,27 @@ class ArucoTokenDetector:
         self._fov_mask_params = None
 
         # Load calibration
-        if os.path.exists(calibration_file):
-            data = np.load(calibration_file)
-            self.camera_matrix = data["camera_matrix"]
-            self.dist_coeffs = data["dist_coeffs"]
-            logging.info("ArucoDetector: Loaded camera calibration.")
-        else:
-            logging.warning("ArucoDetector: Camera calibration file not found.")
+        if calibration_file:
+            if os.path.exists(calibration_file):
+                data = np.load(calibration_file)
+                self.camera_matrix = data["camera_matrix"]
+                self.dist_coeffs = data["dist_coeffs"]
+                logging.info(f"ArucoDetector: Loaded camera calibration from {calibration_file}.")
+            else:
+                logging.warning(f"ArucoDetector: Camera calibration file '{calibration_file}' not found.")
 
         # Load extrinsics
-        if os.path.exists(extrinsics_file):
-            data = np.load(extrinsics_file)
-            self.rvec = data["rvec"]
-            self.tvec = data["tvec"]
-            self.R, _ = cv2.Rodrigues(self.rvec)
-            # Camera center in world coordinates: C = -R^T * t
-            self.camera_center_world = -self.R.T @ self.tvec.flatten()
-            logging.info("ArucoDetector: Loaded camera extrinsics.")
-        else:
-            logging.warning("ArucoDetector: Camera extrinsics file not found.")
+        if extrinsics_file:
+            if os.path.exists(extrinsics_file):
+                data = np.load(extrinsics_file)
+                self.rvec = data["rvec"]
+                self.tvec = data["tvec"]
+                self.R, _ = cv2.Rodrigues(self.rvec)
+                # Camera center in world coordinates: C = -R^T * t
+                self.camera_center_world = -self.R.T @ self.tvec.flatten()
+                logging.info(f"ArucoDetector: Loaded camera extrinsics from {extrinsics_file}.")
+            else:
+                logging.warning(f"ArucoDetector: Camera extrinsics file '{extrinsics_file}' not found.")
 
         # Initialize ArUco detector
         dictionary = cv2.aruco.getPredefinedDictionary(dictionary_type)

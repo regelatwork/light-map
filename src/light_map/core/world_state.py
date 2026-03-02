@@ -1,6 +1,7 @@
 import numpy as np
 from typing import List, Optional, Callable, Any, Dict
 from light_map.common_types import Token, DetectionResult, ResultType, ViewportState
+from light_map.menu_system import MenuState
 
 
 class WorldState:
@@ -25,6 +26,7 @@ class WorldState:
         self.handedness: List[Any] = []
         self.gesture: Optional[str] = None
         self.viewport: ViewportState = ViewportState()
+        self.menu_state: Optional[MenuState] = None
 
         # Granular Timestamps (Monotonic counters for caching)
         self.map_timestamp: int = 0
@@ -77,6 +79,13 @@ class WorldState:
 
     def increment_menu_timestamp(self):
         """Manually trigger a menu cache invalidation."""
+        self.menu_timestamp += 1
+
+    def update_menu_state(self, new_menu_state: Optional[MenuState]):
+        """Updates the menu state and increments its timestamp."""
+        # Simple identity check or full comparison?
+        # For simplicity and robustness, we will assume update = change.
+        self.menu_state = new_menu_state
         self.menu_timestamp += 1
 
     def increment_notifications_timestamp(self):

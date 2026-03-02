@@ -1,5 +1,4 @@
 from __future__ import annotations
-import cv2
 import numpy as np
 import time
 import os
@@ -25,7 +24,7 @@ from light_map.session_manager import SessionManager
 from light_map.core.app_context import AppContext
 from light_map.core.analytics import AnalyticsManager
 from light_map.core.notification import NotificationManager
-from light_map.core.scene import Scene, HandInput
+from light_map.core.scene import Scene
 from light_map.scenes.menu_scene import MenuScene
 from light_map.scenes.map_scene import MapScene, ViewingScene
 from light_map.scenes.scanning_scene import ScanningScene
@@ -44,7 +43,6 @@ from light_map.vision.input_processor import InputProcessor
 from light_map.vision.overlay_renderer import OverlayRenderer
 from light_map.vision.hand_masker import HandMasker
 from light_map.vision.aruco_detector import ArucoTokenDetector
-from light_map.display_utils import draw_text_with_background
 
 if TYPE_CHECKING:
     from light_map.core.world_state import WorldState
@@ -413,89 +411,6 @@ class InteractiveApp:
 
         return final_frame, []
 
-    def _apply_hand_masking(self, frame: np.ndarray, results: Any) -> np.ndarray:
-        if not self.config.enable_hand_masking:
-            return frame
-
-        if not results or not results.multi_hand_landmarks:
-            # Still call compute_hulls with empty list for persistence
-            hulls = self.hand_masker.compute_hulls([], None)
-        else:
-
-            def transform_pts(pts):
-                # pts is (N, 2) normalized
-                cam_pts = pts.reshape(-1, 1, 2).copy()
-                cam_pts[:, :, 0] *= self.app_context.last_camera_frame.shape[1]
-                cam_pts[:, :, 1] *= self.app_context.last_camera_frame.shape[0]
-
-                if self.config.distortion_model:
-                    proj_pts = self.config.distortion_model.apply_correction(cam_pts)
-                else:
-                    proj_pts = cv2.perspectiveTransform(
-                        cam_pts, self.config.projector_matrix
-                    )
-                return proj_pts.reshape(-1, 2)
-
-            hulls = self.hand_masker.compute_hulls(
-                results.multi_hand_landmarks, transform_pts
-            )
-
-        if hulls:
-            mask = self.hand_masker.generate_mask_image(
-                hulls,
-                self.config.width,
-                self.config.height,
-                padding=self.config.hand_mask_padding,
-                blur=self.config.hand_mask_blur,
-            )
-            # Apply mask
-            _, binary_mask = cv2.threshold(mask, 127, 255, cv2.THRESH_BINARY_INV)
-            frame = cv2.bitwise_and(frame, frame, mask=binary_mask)
-
-        return frame
-
-    def _render_base_layer(self, frame: np.ndarray) -> np.ndarray:
-        """Renders the map background if applicable, or returns a blank frame."""
-        if self.map_system.is_map_loaded() and not isinstance(
-            self.current_scene, MenuScene
-        ):
-            is_interacting = (
-                getattr(self.current_scene, "is_interacting", False)
-                if self.current_scene
-                else False
-            )
-            quality = 0.25 if is_interacting else 1.0
-            params = self.map_system.get_render_params()
-            params["quality"] = quality
-
-            # Check if we can reuse the cached map image
-            if (
-                self._cached_map_image is not None
-                and params == self._last_render_params
-            ):
-                map_image = self._cached_map_image
-            else:
-                # Cache miss: render and store
-                logging.info(
-                    f"Map Cache Miss! New params: {params}, Old params: {self._last_render_params}"
-                )
-                map_image = self.map_system.svg_loader.render(
-                    self.config.width,
-                    self.config.height,
-                    quality=quality,
-                    **self.map_system.get_render_params(),
-                )
-                self._cached_map_image = map_image
-                self._last_render_params = params.copy()
-
-            map_opacity = 0.5 if is_interacting else 1.0
-
-            if map_opacity >= 1.0:
-                return map_image
-            return cv2.convertScaleAbs(map_image, alpha=map_opacity, beta=0)
-
-        return np.zeros((self.config.height, self.config.width, 3), dtype=np.uint8)
-
     def _handle_payloads(self, payload: Any):
         """Handle side-effects from scene transitions, like loading maps."""
         if isinstance(payload, dict) and "map_file" in payload:
@@ -591,53 +506,3 @@ class InteractiveApp:
             tokens=self.map_system.ghost_tokens,
         )
         SessionManager.save_for_map(map_file, session, session_dir=session_dir)
-
-    def _render_global_overlays(
-        self, frame: np.ndarray, inputs: List[HandInput]
-    ) -> np.ndarray:
-        """Renders UI elements that are always visible, like debug info and notifications."""
-
-        # Check if the current scene requests to hide overlays (e.g. during scanning)
-        if getattr(self.current_scene, "should_hide_overlays", False):
-            return frame
-
-        # Draw Ghost Tokens
-        should_show_tokens = isinstance(self.current_scene, (ViewingScene, MapScene))
-
-        if should_show_tokens and self.map_system.ghost_tokens:
-            if self.app_context.show_tokens:
-                self.overlay_renderer.draw_ghost_tokens(frame, self.time_provider)
-
-            # Draw Token Count
-            count = len(self.map_system.ghost_tokens)
-            status = "" if self.app_context.show_tokens else " (Hidden)"
-            draw_text_with_background(
-                frame,
-                f"Tokens: {count}{status}",
-                (50, self.config.height - 140),
-                cv2.FONT_HERSHEY_SIMPLEX,
-                0.8,
-                (0, 255, 255),
-                2,
-            )
-
-        # Debug Overlay
-        if self.app_context.debug_mode:
-            self.overlay_renderer.draw_debug_overlay(
-                frame, self.fps, self.current_scene.__class__.__name__, inputs
-            )
-
-        # Draw notifications
-        self.overlay_renderer.draw_notifications(frame)
-
-        return frame
-
-    def _draw_ghost_tokens(self, image: np.ndarray):
-        """Delegate to OverlayRenderer for test compatibility."""
-        self.overlay_renderer.draw_ghost_tokens(image, self.time_provider)
-
-    def _draw_debug_overlay(self, image: np.ndarray, inputs: List[HandInput]):
-        """Delegate to OverlayRenderer for test compatibility."""
-        self.overlay_renderer.draw_debug_overlay(
-            image, self.fps, self.current_scene.__class__.__name__, inputs
-        )

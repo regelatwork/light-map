@@ -14,7 +14,7 @@ from light_map.common_types import (
 from light_map.core.scene import HandInput, Scene, SceneTransition
 from light_map.input_manager import InputManager
 from light_map.menu_builder import build_root_menu
-from light_map.menu_system import MenuSystem, MenuSystemState
+from light_map.menu_system import MenuState, MenuSystem, MenuSystemState
 
 if TYPE_CHECKING:
     from light_map.core.app_context import AppContext
@@ -204,8 +204,11 @@ class MenuScene(Scene):
                 map_system.state.rotation,
             )
 
+    @property
+    def menu_state(self) -> Optional[MenuState]:
+        return self._menu_state
+
     def render(self, frame: np.ndarray) -> np.ndarray:
-        # Menu is always rendered on a black background, hiding the map
-        return self.context.renderer.render(
-            self._menu_state, background=None, map_opacity=0.0
-        )
+        # Menu is now rendered by MenuLayer in the coordinator stack.
+        # This scene just provides the state.
+        return frame

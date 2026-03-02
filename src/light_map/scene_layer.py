@@ -1,5 +1,4 @@
 from typing import List, Optional, Any
-import cv2
 import numpy as np
 from .common_types import Layer, LayerMode, ImagePatch
 from .core.world_state import WorldState
@@ -36,16 +35,13 @@ class SceneLayer(Layer):
         result_bgr = self.scene.render(buffer_bgr)
 
         # Convert to BGRA for the layered system
-        # If the scene drew anything, make it opaque.
-        # This heuristic allows scenes to only return what they drew if they left the rest black.
-        # But most legacy scenes return a full frame.
-        result_bgra = cv2.cvtColor(result_bgr, cv2.COLOR_BGR2BGRA)
+        # Heuristic for alpha: if it's not black, it's opaque.
+        # This allows scenes to overlay on top of layers below.
+        result_bgra = np.zeros((self.height, self.width, 4), dtype=np.uint8)
+        result_bgra[:, :, :3] = result_bgr
 
-        # Simple heuristic for alpha: if it's not black, it's opaque.
-        # This helps if we use NORMAL mode to overlay on MapLayer.
-        mask = np.any(result_bgra[:, :, :3] > 0, axis=2)
+        mask = np.any(result_bgr > 0, axis=2)
         result_bgra[mask, 3] = 255
-
         self._cached_patch = ImagePatch(
             x=0, y=0, width=self.width, height=self.height, data=result_bgra
         )

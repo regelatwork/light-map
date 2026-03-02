@@ -31,9 +31,10 @@ def test_scene_layer_render(mock_scene):
     assert patch.data.shape == (100, 100, 4)
     # Check if scene drew onto it
     assert np.array_equal(patch.data[10, 10, :3], [123, 123, 123])
-    # Alpha should be 255 where drawn (or everywhere for full screen scenes)
-    # In SceneLayer, we'll probably just make it fully opaque for simplicity
+    # Alpha should be 255 where drawn
     assert patch.data[10, 10, 3] == 255
+    # Alpha should be 0 where NOT drawn
+    assert patch.data[0, 0, 3] == 0
 
 
 def test_scene_layer_caching(mock_scene):

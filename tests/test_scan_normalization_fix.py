@@ -1,6 +1,5 @@
 import os
 import numpy as np
-from unittest.mock import patch
 from light_map.common_types import AppConfig
 from light_map.interactive_app import InteractiveApp
 

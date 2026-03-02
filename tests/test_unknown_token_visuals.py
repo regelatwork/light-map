@@ -43,7 +43,7 @@ def app(app_config):
         patch("light_map.interactive_app.PpiCalibrationScene"),
         patch(
             "light_map.interactive_app.InteractiveApp._load_camera_calibration",
-            return_value=(np.eye(3), np.zeros(5), np.zeros((3,1)), np.zeros((3,1))),
+            return_value=(np.eye(3), np.zeros(5), np.zeros((3, 1)), np.zeros((3, 1))),
         ),
     ):
         _app = InteractiveApp(_app_config)

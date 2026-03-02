@@ -97,7 +97,9 @@ class MapScene(Scene):
         self.summon_gesture_start_time = 0.0
         self.is_interacting = False
         self.last_token_toggle_time = 0.0
-        self.context.notifications.add_notification("Map Interaction Mode: Pan (1 hand), Zoom (2 hands)")
+        self.context.notifications.add_notification(
+            "Map Interaction Mode: Pan (1 hand), Zoom (2 hands)"
+        )
 
     def update(
         self, inputs: List[HandInput], current_time: float

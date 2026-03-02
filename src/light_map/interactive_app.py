@@ -156,19 +156,14 @@ class InteractiveApp:
     ) -> AppContext:
         storage = self.config.storage_manager
         intrinsics_path = (
-            storage.get_data_path("camera_calibration.npz")
-            if storage
-            else None
+            storage.get_data_path("camera_calibration.npz") if storage else None
         )
         extrinsics_path = (
-            storage.get_data_path("camera_extrinsics.npz")
-            if storage
-            else None
+            storage.get_data_path("camera_extrinsics.npz") if storage else None
         )
 
         aruco_detector = ArucoTokenDetector(
-            calibration_file=intrinsics_path,
-            extrinsics_file=extrinsics_path
+            calibration_file=intrinsics_path, extrinsics_file=extrinsics_path
         )
         # Fallback if for some reason they weren't loaded in constructor
         # (though our check above makes this unlikely to be None if we reached here)

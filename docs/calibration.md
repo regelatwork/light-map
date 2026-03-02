@@ -41,22 +41,32 @@ Standard camera lenses (especially wide-angle) have barrel or pincushion distort
 
 ______________________________________________________________________
 
-## 3. Projector-Camera (Homography) Calibration
+## 3. Projector-Camera (Sequential) Calibration
 
-This step maps camera pixels directly to projector pixels for a flat plane.
-
-### Theory: The Homography Matrix
-
-A Homography is a 3x3 matrix ($H$) that relates two different views of the same planar surface. It accounts for rotation, scale, translation, and perspective (keystoning).
-$$p\_{proj} = H \\cdot p\_{cam}$$
-The system uses `cv2.findHomography` to compute this mapping by projecting a known chessboard pattern and detecting it with the camera.
+This step maps camera pixels directly to projector pixels and can sequentially calibrate PPI and Camera Extrinsics.
 
 ### Usage
 
-1. Ensure `camera_calibration.npz` exists.
-1. Select **Calibration > 2. Projector Homography** from the menu (or run `python projector_calibration.py`).
-1. The system will project a fullscreen pattern. Ensure the camera has a clear view of the entire pattern.
-1. The resulting matrix and raw calibration points are saved to `projector_calibration.npz`.
+1. Ensure `camera_calibration.npz` exists (see Step 2).
+1. Run the standalone calibration utility:
+   ```bash
+   python projector_calibration.py
+   ```
+1. **Sequential Steps**: By default, the script runs three calibrations one after the other:
+   - **Step 1: Projector Homography**: The system projects a fullscreen checkerboard. Ensure the camera sees the entire pattern.
+   - **Step 2: Physical PPI**: Place the 100mm ArUco target (IDs 0 & 1). A live preview helps with alignment. **Press Space to Save**.
+   - **Step 3: Camera Extrinsics**: Enter the **Calibration Arena**. Place 3+ known tokens on the asymmetric target zones (TL, TR, BL, BR, Center).
+1. **Calibration Arena UI**:
+   - **Target Zones**: Turn green when a valid token is detected.
+   - **Reprojection Residuals**: Subtle gray lines show the error between detection and the mathematical model.
+   - **Validation**: Real-time RMS error is displayed (aim for < 2.0px).
+   - **Controls**: **Space** to Accept/Save, **Q** to Skip.
+1. **Overrides**: Use the `--steps` argument to run specific calibrations:
+   ```bash
+   python projector_calibration.py --steps projector ppi
+   ```
+
+The resulting matrices and raw calibration points are saved to `projector_calibration.npz`, PPI is saved to the global configuration, and pose data is saved to `camera_extrinsics.npz`.
 
 ______________________________________________________________________
 

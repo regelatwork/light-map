@@ -39,4 +39,4 @@ with track_wait("shm_lock_main", self.instrument):
 
 ## Reporting
 
-Telemetry is periodically logged or can be accessed via `instrument.get_report()`. This data is used to optimize the system and ensure the user experience remains fluid (targeting <100ms total latency).
+Telemetry is periodically logged or can be accessed via `instrument.get_report()`. This data is used to optimize the system and ensure the user experience remains fluid (targeting \<100ms total latency).

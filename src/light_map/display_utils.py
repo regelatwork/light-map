@@ -29,14 +29,18 @@ class ProjectorWindow:
         # In the current architecture, keys are handled by MainLoopController via waitKey(1)
         return -1
 
-    def update_image(self, bgr_frame: np.ndarray):
+    def update_image(self, bgr_frame: np.ndarray) -> int:
         if self.closed:
-            return
+            return -1
 
-        cv2.imshow(self.name, bgr_frame)
-        self._frames_shown += 1
-        # Note: We rely on MainLoopController.tick() calling cv2.waitKey(1)
-        # to pump the event loop and update the window.
+        try:
+            cv2.imshow(self.name, bgr_frame)
+            self._frames_shown += 1
+            return cv2.waitKey(1)
+        except Exception as e:
+            logging.error(f"Error updating window {self.name}: {e}")
+            self.closed = True
+            return -1
 
     def close(self):
         if not self.closed:

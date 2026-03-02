@@ -37,9 +37,13 @@ class ArucoTokenDetector:
                 data = np.load(calibration_file)
                 self.camera_matrix = data["camera_matrix"]
                 self.dist_coeffs = data["dist_coeffs"]
-                logging.info(f"ArucoDetector: Loaded camera calibration from {calibration_file}.")
+                logging.info(
+                    f"ArucoDetector: Loaded camera calibration from {calibration_file}."
+                )
             else:
-                logging.warning(f"ArucoDetector: Camera calibration file '{calibration_file}' not found.")
+                logging.warning(
+                    f"ArucoDetector: Camera calibration file '{calibration_file}' not found."
+                )
 
         # Load extrinsics
         if extrinsics_file:
@@ -50,9 +54,13 @@ class ArucoTokenDetector:
                 self.R, _ = cv2.Rodrigues(self.rvec)
                 # Camera center in world coordinates: C = -R^T * t
                 self.camera_center_world = -self.R.T @ self.tvec.flatten()
-                logging.info(f"ArucoDetector: Loaded camera extrinsics from {extrinsics_file}.")
+                logging.info(
+                    f"ArucoDetector: Loaded camera extrinsics from {extrinsics_file}."
+                )
             else:
-                logging.warning(f"ArucoDetector: Camera extrinsics file '{extrinsics_file}' not found.")
+                logging.warning(
+                    f"ArucoDetector: Camera extrinsics file '{extrinsics_file}' not found."
+                )
 
         # Initialize ArUco detector
         dictionary = cv2.aruco.getPredefinedDictionary(dictionary_type)

@@ -38,7 +38,7 @@ def aruco_worker(
     detector = ArucoTokenDetector(
         calibration_file=intrinsics_path,
         extrinsics_file=extrinsics_path,
-        dictionary_type=aruco_dict_type
+        dictionary_type=aruco_dict_type,
     )
 
     logging.info(f"ArUco Worker started (SHM: {shm_name})")

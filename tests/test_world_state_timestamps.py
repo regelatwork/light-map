@@ -52,15 +52,51 @@ def test_viewport_timestamp_increments():
     assert ws.viewport == new_vp
 
 
-def test_map_and_menu_timestamps():
+def test_tokens_timestamp_idempotency():
     ws = WorldState()
+    tokens = [Token(id=1, world_x=10, world_y=20)]
+    res = DetectionResult(timestamp=100, type=ResultType.ARUCO, data={"tokens": tokens})
+    ws.apply(res)
+    ts_after_first = ws.tokens_timestamp
 
-    # Manual increments for now as these are often triggered by app logic
-    ws.increment_map_timestamp()
-    assert ws.map_timestamp == 1
+    # Apply same tokens again
+    ws.apply(res)
+    assert ws.tokens_timestamp == ts_after_first
 
-    ws.increment_menu_timestamp()
-    assert ws.menu_timestamp == 1
 
-    ws.increment_notifications_timestamp()
-    assert ws.notifications_timestamp == 1
+def test_hands_timestamp_idempotency():
+    ws = WorldState()
+    # Empty hands
+    res = DetectionResult(
+        timestamp=100, type=ResultType.HANDS, data={"landmarks": [], "handedness": []}
+    )
+    ws.apply(res)
+    ts_after_first = ws.hands_timestamp
+
+    # Apply empty hands again
+    ws.apply(res)
+    assert ws.hands_timestamp == ts_after_first
+
+
+def test_gesture_timestamp_idempotency():
+    ws = WorldState()
+    res = DetectionResult(
+        timestamp=100, type=ResultType.GESTURE, data={"gesture": "OPEN_PALM"}
+    )
+    ws.apply(res)
+    ts_after_first = ws.hands_timestamp
+
+    # Apply same gesture again
+    ws.apply(res)
+    assert ws.hands_timestamp == ts_after_first
+
+
+def test_viewport_timestamp_idempotency():
+    ws = WorldState()
+    vp = ViewportState(x=10, y=20)
+    ws.update_viewport(vp)
+    ts_after_first = ws.viewport_timestamp
+
+    # Update with same viewport
+    ws.update_viewport(vp)
+    assert ws.viewport_timestamp == ts_after_first

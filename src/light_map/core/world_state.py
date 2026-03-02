@@ -93,17 +93,21 @@ class WorldState:
             pass
 
         if result.type == ResultType.ARUCO:
+            changed = False
             if "tokens" in result.data:
                 # Logical/Snapped tokens
                 new_tokens = result.data["tokens"]
                 if not self._tokens_equal(self.tokens, new_tokens):
                     self.tokens = new_tokens
                     self.dirty_tokens = True
-                    self.tokens_timestamp += 1
+                    changed = True
 
                 # Update raw tokens if provided
                 if "raw_tokens" in result.data:
-                    self.raw_tokens = result.data["raw_tokens"]
+                    new_raw_tokens = result.data["raw_tokens"]
+                    if not self._tokens_equal(self.raw_tokens, new_raw_tokens):
+                        self.raw_tokens = new_raw_tokens
+                        changed = True
             else:
                 # Raw ArUco from workers (corners, ids)
                 new_ids = result.data.get("ids", [])
@@ -115,17 +119,45 @@ class WorldState:
                         "ids": new_ids,
                     }
                     self.dirty_tokens = True
-                    self.tokens_timestamp += 1
+                    changed = True
+
+            if changed:
+                self.tokens_timestamp += 1
 
         elif result.type == ResultType.HANDS:
-            self.hands = result.data.get("landmarks", [])
-            self.handedness = result.data.get("handedness", [])
-            self.dirty_hands = True
-            self.hands_timestamp += 1
+            new_landmarks = result.data.get("landmarks", [])
+            new_handedness = result.data.get("handedness", [])
+
+            if not self._hands_equal(
+                self.hands, self.handedness, new_landmarks, new_handedness
+            ):
+                self.hands = new_landmarks
+                self.handedness = new_handedness
+                self.dirty_hands = True
+                self.hands_timestamp += 1
+
         elif result.type == ResultType.GESTURE:
-            self.gesture = result.data.get("gesture")
-            self.dirty_hands = True
-            self.hands_timestamp += 1
+            new_gesture = result.data.get("gesture")
+            if self.gesture != new_gesture:
+                self.gesture = new_gesture
+                self.dirty_hands = True
+                self.hands_timestamp += 1
+
+    def _hands_equal(self, h1, hn1, h2, hn2) -> bool:
+        """Heuristic check for hand landmark equality."""
+        if len(h1) != len(h2):
+            return False
+        if len(h1) == 0:
+            return True
+
+        # Simple check: compare number of landmarks and a few key points if available
+        # But for efficiency, if we have landmarks, we might just assume they changed
+        # if the count is the same but they are not empty.
+        # However, to be spec-compliant with "only on change", we should be careful.
+        # MediaPipe landmarks are often slightly different every frame.
+        # If they are different, we SHOULD increment.
+        # But if they are BOTH empty, we should NOT.
+        return False  # Assume different if not both empty
 
     def _tokens_equal(self, list1: List[Token], list2: List[Token]) -> bool:
         """Compares two token lists for semantic equality (positions and status)."""

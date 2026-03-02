@@ -2,6 +2,7 @@ import numpy as np
 from typing import List, Optional, Callable, Any, Dict
 from light_map.common_types import Token, DetectionResult, ResultType, ViewportState
 from light_map.menu_system import MenuState
+from light_map.core.scene import HandInput
 
 
 class WorldState:
@@ -27,6 +28,8 @@ class WorldState:
         self.gesture: Optional[str] = None
         self.viewport: ViewportState = ViewportState()
         self.menu_state: Optional[MenuState] = None
+        self.inputs: List[HandInput] = []
+        self.fps: float = 0.0
 
         # Granular Timestamps (Monotonic counters for caching)
         self.map_timestamp: int = 0
@@ -96,6 +99,15 @@ class WorldState:
     def increment_notifications_timestamp(self):
         """Manually trigger a notification cache invalidation."""
         self.notifications_timestamp += 1
+
+    def update_performance_metrics(self, fps: float):
+        """Updates the FPS metric. Does not trigger dirty flag or timestamp as it's for transient display."""
+        self.fps = fps
+
+    def update_inputs(self, inputs: List[HandInput]):
+        """Updates the standardized hand inputs and increments hands_timestamp."""
+        self.inputs = inputs
+        self.hands_timestamp += 1
 
     def apply(self, result: DetectionResult):
         """

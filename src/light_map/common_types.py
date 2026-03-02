@@ -24,7 +24,7 @@ class ImagePatch:
     y: int
     width: int
     height: int
-    data: np.ndarray  # RGBA
+    data: np.ndarray  # BGRA
 
 
 class Layer(ABC):

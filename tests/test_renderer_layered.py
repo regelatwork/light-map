@@ -60,11 +60,38 @@ def test_renderer_normal_layer_alpha_blending():
     out = renderer.render(None, [layer1, layer2])
 
     # Expected: 0.5 * [0, 255, 0] + 0.5 * [255, 0, 0] = [127, 127, 0] (approx)
-    # Actually: (0, 127, 127) because 128/255 is ~0.5019
-    # Blue: 255 * (1 - 0.5019) = 127.01
-    # Green: 255 * 0.5019 = 127.98
-    # So [127, 128, 0] is likely
     val = out[50, 50]
     assert 120 <= val[0] <= 135  # Blue component
     assert 120 <= val[1] <= 135  # Green component
     assert val[2] == 0  # Red component
+
+
+def test_renderer_clipping():
+    renderer = Renderer(100, 100)
+
+    # 1. Patch partially off-left (x=-25, y=0, w=50, h=100)
+    red_data = np.zeros((100, 50, 4), dtype=np.uint8)
+    red_data[:, :, 0:3] = [0, 0, 255]  # BGR Red
+    red_data[:, :, 3] = 255
+    layer = MockLayer(
+        mode=LayerMode.BLOCKING, patches=[ImagePatch(-25, 0, 50, 100, red_data)]
+    )
+
+    out = renderer.render(None, [layer])
+    # x=0 to x=24 should be red. x=25 should be black.
+    assert np.array_equal(out[50, 10], [0, 0, 255])
+    assert np.array_equal(out[50, 30], [0, 0, 0])
+
+    # 2. Patch partially off-bottom (x=0, y=75, w=100, h=50)
+    blue_data = np.zeros((50, 100, 4), dtype=np.uint8)
+    blue_data[:, :, 0:3] = [255, 0, 0]  # BGR Blue
+    blue_data[:, :, 3] = 255
+    layer = MockLayer(
+        mode=LayerMode.BLOCKING, patches=[ImagePatch(0, 75, 100, 50, blue_data)]
+    )
+
+    out = renderer.render(None, [layer])
+    # y=75 to y=99 should be blue.
+    assert np.array_equal(out[90, 50], [255, 0, 0])
+    # y=70 should be black
+    assert np.array_equal(out[70, 50], [0, 0, 0])

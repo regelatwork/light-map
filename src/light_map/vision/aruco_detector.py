@@ -70,48 +70,79 @@ class ArucoTokenDetector:
         self.camera_center_world = -self.R.T @ self.tvec.flatten()
         logging.debug("ArucoDetector: Camera extrinsics updated.")
 
+    def get_fov_roi(
+        self,
+        frame_shape: Tuple[int, int],
+        scale: float,
+        projector_matrix: np.ndarray,
+        map_dims: Tuple[int, int],
+    ) -> Optional[Tuple[int, int, int, int]]:
+        """Returns (x, y, w, h) bounding box of the FOV mask."""
+        mask = self._get_fov_mask(frame_shape, scale, projector_matrix, map_dims)
+        if mask is None:
+            return None
+        return cv2.boundingRect(mask)
+
     def detect_raw(
         self,
         frame: np.ndarray,
         projector_matrix: Optional[np.ndarray] = None,
         map_dims: Optional[Tuple[int, int]] = None,
+        crop_offset: Optional[Tuple[int, int]] = None,
     ) -> Tuple[List[np.ndarray], List[int]]:
         """
         Detects ArUco markers, handles resizing, FOV masking, and duplicate resolution.
-        Returns (corners, ids) as lists.
+        If crop_offset=(x, y) is provided, it assumes frame is already cropped.
         """
         h_orig, w_orig = frame.shape[:2]
 
-        # 0. Resize for detection speed if needed
-        if w_orig > self.target_width:
-            scale = self.target_width / w_orig
-            frame_small = cv2.resize(frame, (0, 0), fx=scale, fy=scale)
-            gray = cv2.cvtColor(frame_small, cv2.COLOR_BGR2GRAY)
-        else:
-            scale = 1.0
-            gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        # Use 1.0 scale if we cropped, otherwise we'd need more complex math
+        # Actually, let's just use the current logic but respect the offset.
+        scale = 1.0  # Assumes pre-cropped/pre-scaled if offset is provided
+        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 
-        # 1. Mask Out Areas Outside Projector FOV
-        if projector_matrix is not None and map_dims is not None:
+        offset_x, offset_y = crop_offset if crop_offset else (0, 0)
+
+        # 1. FOV Masking (if not already cropped)
+        if (
+            crop_offset is None
+            and projector_matrix is not None
+            and map_dims is not None
+        ):
             mask = self._get_fov_mask(
                 gray.shape,
-                scale,
+                1.0,  # No scaling if crop_offset is None? No, keep it simple.
                 projector_matrix,
                 map_dims,
             )
             if mask is not None:
-                gray = cv2.bitwise_and(gray, mask)
+                x, y, w, h = cv2.boundingRect(mask)
+                if w > 0 and h > 0:
+                    gray = gray[y : y + h, x : x + w]
+                    mask = mask[y : y + h, x : x + w]
+                    gray = cv2.bitwise_and(gray, mask)
+                    offset_x, offset_y = x, y
 
+        # 2. Detect
         corners, ids, rejected = self.detector.detectMarkers(gray)
 
         if ids is None:
             return [], []
 
+        # 3. Process Detections
         # Group by ID and find best marker (largest area)
         detections_by_id = {}
         for i, marker_id_arr in enumerate(ids):
             marker_id = int(marker_id_arr[0])
-            marker_corners = corners[i][0]
+            # corners[i] is (1, 4, 2)
+            marker_corners = corners[i][0].copy()
+
+            # Add crop offset
+            if offset_x != 0 or offset_y != 0:
+                marker_corners[:, 0] += offset_x
+                marker_corners[:, 1] += offset_y
+
+            # Scale back to original resolution
             if scale != 1.0:
                 marker_corners = marker_corners / scale
 

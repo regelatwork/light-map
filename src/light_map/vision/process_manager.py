@@ -77,6 +77,8 @@ class VisionProcessManager:
                 "width": self.width,
                 "height": self.height,
                 "num_consumers": self.num_consumers,
+                "projector_matrix": self.projector_matrix,
+                "map_dims": self.map_dims,
             },
             name="HandWorker",
         )

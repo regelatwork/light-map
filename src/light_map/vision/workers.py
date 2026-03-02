@@ -57,9 +57,23 @@ def aruco_worker(
 
                 ts_to_process = latest_ts
                 ts_shm_pushed = producer.get_shm_pushed_timestamp()
-                # Process: Copy data for detection outside the lease
-                # We need to copy because detection takes time and we want to release the SHM.
-                frame_copy = frame_view.copy()
+
+                # OPTIMIZATION: If we have FOV parameters, crop inside the lease to copy less data
+                crop_offset = None
+                if projector_matrix is not None and map_dims is not None:
+                    roi = detector.get_fov_roi(
+                        frame_view.shape[:2], 1.0, projector_matrix, map_dims
+                    )
+                    if roi:
+                        rx, ry, rw, rh = roi
+                        # Copy only the ROI
+                        frame_copy = frame_view[ry : ry + rh, rx : rx + rw].copy()
+                        crop_offset = (rx, ry)
+                    else:
+                        frame_copy = frame_view.copy()
+                else:
+                    frame_copy = frame_view.copy()
+
             finally:
                 # Release lease ASAP
                 producer.release()
@@ -67,7 +81,10 @@ def aruco_worker(
 
             # Perform detection outside the lease
             corners, ids = detector.detect_raw(
-                frame_copy, projector_matrix=projector_matrix, map_dims=map_dims
+                frame_copy,
+                projector_matrix=projector_matrix,
+                map_dims=map_dims,
+                crop_offset=crop_offset,
             )
             ts_work_done = time.perf_counter_ns()
 
@@ -106,12 +123,15 @@ def hand_worker(
     width: int = 1920,
     height: int = 1080,
     num_consumers: int = 2,
+    projector_matrix: Optional[np.ndarray] = None,
+    map_dims: Optional[Tuple[int, int]] = None,
 ):
     """
     Worker function for hand detection. Consumes frames from shared memory,
     runs MediaPipe Hands, and pushes results to a queue.
     """
     import mediapipe as mp_lib
+    from light_map.vision.aruco_detector import ArucoTokenDetector
 
     # 1. Initialize Producer
     producer = FrameProducer(
@@ -124,6 +144,9 @@ def hand_worker(
     hands = mp_hands.Hands(
         max_num_hands=2, min_detection_confidence=0.7, min_tracking_confidence=0.5
     )
+
+    # Use Aruco detector helper for ROI calculation if needed
+    aruco_detector = ArucoTokenDetector()
 
     logging.info(f"Hand Worker started (SHM: {shm_name})")
     last_processed_ts = -1
@@ -147,8 +170,25 @@ def hand_worker(
 
                 ts_to_process = latest_ts
                 ts_shm_pushed = producer.get_shm_pushed_timestamp()
-                # MediaPipe requires RGB images. cvtColor copies the data.
-                frame_rgb = cv2.cvtColor(frame_view, cv2.COLOR_BGR2RGB)
+
+                # OPTIMIZATION: Crop inside the lease to copy less data
+                crop_offset = None
+                if projector_matrix is not None and map_dims is not None:
+                    roi = aruco_detector.get_fov_roi(
+                        frame_view.shape[:2], 1.0, projector_matrix, map_dims
+                    )
+                    if roi:
+                        rx, ry, rw, rh = roi
+                        # MediaPipe requires RGB images. cvtColor copies the data.
+                        frame_rgb = cv2.cvtColor(
+                            frame_view[ry : ry + rh, rx : rx + rw], cv2.COLOR_BGR2RGB
+                        )
+                        crop_offset = (rx, ry)
+                    else:
+                        frame_rgb = cv2.cvtColor(frame_view, cv2.COLOR_BGR2RGB)
+                else:
+                    frame_rgb = cv2.cvtColor(frame_view, cv2.COLOR_BGR2RGB)
+
             finally:
                 # Release lease
                 producer.release()
@@ -164,10 +204,22 @@ def hand_worker(
             handedness_data = []
             if results.multi_hand_landmarks:
                 for i, hand_landmarks in enumerate(results.multi_hand_landmarks):
-                    lm_list = [
-                        {"x": lm.x, "y": lm.y, "z": lm.z}
-                        for lm in hand_landmarks.landmark
-                    ]
+                    lm_list = []
+                    for lm in hand_landmarks.landmark:
+                        lx = lm.x
+                        ly = lm.y
+                        if crop_offset:
+                            rx, ry = crop_offset
+                            ch, cw = frame_rgb.shape[:2]
+                            # Map to full frame pixels
+                            px = lx * cw + rx
+                            py = ly * ch + ry
+                            # Map back to 0.0-1.0 relative to full frame
+                            lx = px / width
+                            ly = py / height
+
+                        lm_list.append({"x": lx, "y": ly, "z": lm.z})
+
                     landmarks_data.append(lm_list)
 
                     # Handedness info

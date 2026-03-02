@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Optional, Dict, Any
+from typing import TYPE_CHECKING, Optional, Dict, Any, List
 
 import numpy as np
 
@@ -40,3 +40,4 @@ class AppContext:
     raw_aruco: Dict[str, Any] = field(
         default_factory=lambda: {"corners": [], "ids": []}
     )
+    raw_tokens: List[Any] = field(default_factory=list)

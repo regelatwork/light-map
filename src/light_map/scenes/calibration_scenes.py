@@ -510,7 +510,7 @@ class ExtrinsicsCalibrationScene(Scene):
             if raw and raw.get("ids") is not None:
                 corners = raw.get("corners", [])
                 ids = raw.get("ids", [])
-                formatted_corners = tuple(c.reshape(1, 4, 2) for c in corners)
+                formatted_corners = tuple(np.array(c).reshape(1, 4, 2) for c in corners)
                 formatted_ids = np.array(ids)
 
             # CRITICAL: Pass known_targets so calibrate_extrinsics uses (tx, ty, h)
@@ -857,7 +857,7 @@ class PpiCalibrationScene(Scene):
                 ids = raw.get("ids", [])
 
                 # Re-format corners to (1, 4, 2) as expected by calculate_ppi_from_frame
-                formatted_corners = tuple(c.reshape(1, 4, 2) for c in corners)
+                formatted_corners = tuple(np.array(c).reshape(1, 4, 2) for c in corners)
                 formatted_ids = np.array(ids)
 
                 ppi = calculate_ppi_from_frame(

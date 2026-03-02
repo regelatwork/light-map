@@ -72,6 +72,11 @@ class InteractiveApp:
             self.map_config.scan_for_maps(config.map_search_patterns)
 
         # AppContext (shared state for scenes)
+        # Sync calibration to background tracker
+        self.tracking_coordinator.token_tracker.set_aruco_calibration(
+            camera_matrix, dist_coeffs, rvec, tvec
+        )
+
         self.app_context = self._create_app_context(
             camera_matrix, dist_coeffs, rvec, tvec
         )
@@ -197,17 +202,15 @@ class InteractiveApp:
             return None
 
         def mapper(raw_data):
-            return self.app_context.aruco_detector.map_to_tokens(
+            res = self.tracking_coordinator.map_and_filter_aruco(
                 raw_data,
                 self.map_system,
-                token_configs=self.map_config.get_aruco_configs(
-                    self.map_system.svg_loader.filename
-                    if self.map_system.svg_loader
-                    else None
-                ),
-                ppi=self.map_config.get_ppi(),
-                distortion_model=self.config.distortion_model,
+                self.map_config,
+                self.config,
             )
+            if res.get("tokens"):
+                logging.debug(f"aruco_mapper: Mapped {len(res['tokens'])} tokens.")
+            return res
 
         return mapper
 
@@ -247,6 +250,11 @@ class InteractiveApp:
         self.map_system.height = self.config.height
 
         camera_matrix, dist_coeffs, rvec, tvec = self._load_camera_calibration()
+
+        # Sync calibration to background tracker
+        self.tracking_coordinator.token_tracker.set_aruco_calibration(
+            camera_matrix, dist_coeffs, rvec, tvec
+        )
 
         self.app_context = self._create_app_context(
             camera_matrix,
@@ -341,8 +349,10 @@ class InteractiveApp:
         # You could also blend `actions` into `inputs` if your scene requires Action enums
 
         # We need to update tokens in map system from state
-        if state.tokens:
-            self.map_system.ghost_tokens = state.tokens
+        self.map_system.ghost_tokens = state.tokens
+
+        # Also store raw tokens in context for debug/calibration if needed
+        self.app_context.raw_tokens = state.raw_tokens
 
         # Scene Update
         transition = self.current_scene.update(inputs, current_time)
@@ -483,6 +493,23 @@ class InteractiveApp:
         self._last_render_params = {}
 
         entry = self.map_config.data.maps.get(filename)
+        if entry is None:
+            from light_map.map_config import MapEntry
+
+            self.map_config.data.maps[filename] = MapEntry()
+            entry = self.map_config.data.maps[filename]
+
+        # Automatically detect grid spacing if not already set
+        if entry.grid_spacing_svg <= 0:
+            spacing, ox, oy = self.map_system.svg_loader.detect_grid_spacing()
+            if spacing > 0:
+                logging.info(
+                    f"Auto-detected grid for {filename}: spacing={spacing:.1f}, origin=({ox:.1f}, {oy:.1f})"
+                )
+                entry.grid_spacing_svg = spacing
+                entry.grid_origin_svg_x = ox
+                entry.grid_origin_svg_y = oy
+                self.map_config.save()
 
         if load_session:
             session_dir = None

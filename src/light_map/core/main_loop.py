@@ -71,13 +71,31 @@ class MainLoopController:
             self._drain_queues()
 
         # 3. Map Raw ArUco if available
-        if self.aruco_mapper and self.state.raw_aruco["ids"]:
-            tokens = self.aruco_mapper(self.state.raw_aruco)
-            if tokens is not None:
-                self.state.tokens = tokens
-                self.state.dirty_tokens = True
-            # Clear raw after mapping to avoid re-mapping same result
-            self.state.raw_aruco = {"corners": [], "ids": []}
+        if self.state.raw_aruco["ids"]:
+            if self.aruco_mapper:
+                mapped_result = self.aruco_mapper(self.state.raw_aruco)
+                if isinstance(mapped_result, dict):
+                    new_tokens = mapped_result.get("tokens", [])
+                    new_raw_tokens = mapped_result.get("raw_tokens", [])
+
+                    # Update WorldState with BOTH
+                    # Note: We can reuse the apply() logic if we want, or do it manually.
+                    # Let's use a standard DetectionResult to leverage WorldState.apply's logic.
+                    from light_map.common_types import DetectionResult, ResultType
+
+                    res = DetectionResult(
+                        timestamp=time.perf_counter_ns(),
+                        type=ResultType.ARUCO,
+                        data={"tokens": new_tokens, "raw_tokens": new_raw_tokens},
+                    )
+                    self.state.apply(res)
+
+                # NOTE: We DO NOT clear raw_aruco here anymore.
+                # Calibration scenes (e.g. Extrinsics) rely on the raw corners
+                # being available in the context. If we clear it, they get empty data.
+                # Since WorldState.apply already implements a change-check,
+                # we won't trigger redundant renders if the same results arrive.
+                # raw_aruco will be cleared in WorldState.clear_dirty() after the render.
 
         # 4. Process Temporal Events
         self.events.check()

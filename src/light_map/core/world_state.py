@@ -18,7 +18,10 @@ class WorldState:
         self.background: Optional[np.ndarray] = None
         self.last_frame_timestamp: int = 0
 
-        self.tokens: List[Token] = []
+        self.tokens: List[Token] = []  # Logical/Snapped tokens (Triggers dirty)
+        self.raw_tokens: List[Token] = (
+            []
+        )  # Live/Unsnapped tokens (Does NOT trigger dirty)
         self.raw_aruco: Dict[str, Any] = {"corners": [], "ids": []}
         self.hands: List[Any] = []  # Landmarks
         self.handedness: List[Any] = []
@@ -62,13 +65,27 @@ class WorldState:
 
         if result.type == ResultType.ARUCO:
             if "tokens" in result.data:
-                self.tokens = result.data["tokens"]
+                # Logical/Snapped tokens
+                new_tokens = result.data["tokens"]
+                if not self._tokens_equal(self.tokens, new_tokens):
+                    self.tokens = new_tokens
+                    self.dirty_tokens = True
+                
+                # Update raw tokens if provided (they don't trigger dirty flag)
+                if "raw_tokens" in result.data:
+                    self.raw_tokens = result.data["raw_tokens"]
             else:
-                self.raw_aruco = {
-                    "corners": result.data.get("corners", []),
-                    "ids": result.data.get("ids", []),
-                }
-            self.dirty_tokens = True
+                # Raw ArUco from workers (corners, ids)
+                new_ids = result.data.get("ids", [])
+                new_corners = result.data.get("corners", [])
+
+                if self._raw_aruco_changed(new_ids, new_corners):
+                    self.raw_aruco = {
+                        "corners": new_corners,
+                        "ids": new_ids,
+                    }
+                    self.dirty_tokens = True
+
         elif result.type == ResultType.HANDS:
             self.hands = result.data.get("landmarks", [])
             self.handedness = result.data.get("handedness", [])
@@ -77,12 +94,53 @@ class WorldState:
             self.gesture = result.data.get("gesture")
             self.dirty_hands = True  # Gestures affect hand/input state
 
+    def _tokens_equal(self, list1: List[Token], list2: List[Token]) -> bool:
+        """Compares two token lists for semantic equality (positions and status)."""
+        if len(list1) != len(list2):
+            return False
+
+        # Sort by ID for deterministic comparison
+        s1 = sorted(list1, key=lambda t: t.id)
+        s2 = sorted(list2, key=lambda t: t.id)
+
+        for t1, t2 in zip(s1, s2):
+            if t1.id != t2.id:
+                return False
+            # Check grid positions first as they are discrete
+            if t1.grid_x != t2.grid_x or t1.grid_y != t2.grid_y:
+                return False
+            # Check status flags
+            if t1.is_occluded != t2.is_occluded or t1.is_duplicate != t2.is_duplicate:
+                return False
+            # Check world coordinates ONLY if snapped coords didn't catch the change.
+            # We use a 0.5 epsilon which means if the centroid moved more than
+            # half a pixel/unit, we update. For SNAPPED tokens, this should
+            # only trigger when they jump to a new grid cell.
+            if abs(t1.world_x - t2.world_x) > 0.5 or abs(t1.world_y - t2.world_y) > 0.5:
+                return False
+
+        return True
+
+    def _raw_aruco_changed(self, new_ids: List[int], new_corners: List[Any]) -> bool:
+        """Compares raw ArUco results for changes."""
+        if self.raw_aruco["ids"] != new_ids:
+            return True
+
+        if len(self.raw_aruco["corners"]) != len(new_corners):
+            return True
+
+        # For corners, we can just do a simple list equality check
+        # as they are converted to lists in the worker.
+        return self.raw_aruco["corners"] != new_corners
+
     def clear_dirty(self):
         """Resets all dirty flags after a render cycle."""
         self.dirty_background = False
         self.dirty_tokens = False
         self.dirty_hands = False
         self.dirty_viewport = False
+        # Clear raw ArUco after it has been potentially processed by a scene
+        self.raw_aruco = {"corners": [], "ids": []}
 
     @property
     def is_dirty(self) -> bool:

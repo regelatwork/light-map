@@ -40,7 +40,10 @@ class TokenFilter:
         new_seen_ids = set()
 
         # 1. Process new detections
-        for dt in detected_tokens:
+        from dataclasses import replace
+
+        for raw_dt in detected_tokens:
+            dt = replace(raw_dt)  # WORK ON A COPY
             # Masking check: filter out tokens outside map boundaries if provided
             if map_bounds is not None:
                 min_x, min_y, max_x, max_y = map_bounds

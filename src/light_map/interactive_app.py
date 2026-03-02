@@ -12,6 +12,11 @@ from light_map.common_types import (
     SceneId,
 )
 from light_map.renderer import Renderer
+from light_map.map_layer import MapLayer
+from light_map.menu_layer import MenuLayer
+from light_map.scene_layer import SceneLayer
+from light_map.hand_mask_layer import HandMaskLayer
+from light_map.overlay_layer import OverlayLayer
 from light_map.map_system import MapSystem
 from light_map.svg_loader import SVGLoader
 from light_map.map_config import MapConfigManager
@@ -81,6 +86,22 @@ class InteractiveApp:
             camera_matrix, dist_coeffs, rvec, tvec
         )
         self.overlay_renderer = OverlayRenderer(self.app_context)
+
+        # Initialize Layers
+        self.map_layer = MapLayer(self.map_system, config.width, config.height)
+        self.scene_layer = SceneLayer(None, config.width, config.height)
+        self.hand_mask_layer = HandMaskLayer(config)
+        self.menu_layer = MenuLayer()
+        self.overlay_layer = OverlayLayer(self.app_context)
+
+        # Layer Stack (Bottom to Top)
+        self.layer_stack = [
+            self.map_layer,
+            self.scene_layer,
+            self.hand_mask_layer,
+            self.menu_layer,
+            self.overlay_layer,
+        ]
 
         # Scene Management
         self.scenes = self._initialize_scenes()
@@ -296,6 +317,11 @@ class InteractiveApp:
                 self.fps = 1.0 / dt
         self.last_fps_time = current_time
 
+        # Update WorldState with latest metrics
+        state.update_performance_metrics(self.fps)
+        state.current_scene_name = self.current_scene.__class__.__name__
+        state.update_viewport(self.map_system.state)
+
         # Update context frame if available
         if state.background is not None:
             self.app_context.last_camera_frame = state.background
@@ -303,7 +329,7 @@ class InteractiveApp:
         else:
             frame_shape = (self.config.height, self.config.width, 3)
 
-        # Build dummy results for legacy processors, or update processors
+        # Build dummy results for legacy processors (to be refactored later)
         class DummyResults:
             def __init__(self, hands_list, handedness_list):
                 self.multi_hand_landmarks = []
@@ -338,21 +364,17 @@ class InteractiveApp:
 
         results = DummyResults(state.hands, state.handedness)
 
+        # Standardize Input
+        inputs = self.input_processor.convert_mediapipe_to_inputs(results, frame_shape)
+        state.update_inputs(inputs)
+
         # Update app context with latest vision results
         self.app_context.last_camera_frame = state.background
         self.app_context.raw_aruco = state.raw_aruco
-
-        # Standardize Input
-        inputs = self.input_processor.convert_mediapipe_to_inputs(results, frame_shape)
-
-        # Map actions to inputs if needed? We will just pass the mapped inputs for now
-        # You could also blend `actions` into `inputs` if your scene requires Action enums
+        self.app_context.raw_tokens = state.raw_tokens
 
         # We need to update tokens in map system from state
         self.map_system.ghost_tokens = state.tokens
-
-        # Also store raw tokens in context for debug/calibration if needed
-        self.app_context.raw_tokens = state.raw_tokens
 
         # Scene Update
         transition = self.current_scene.update(inputs, current_time)
@@ -360,38 +382,34 @@ class InteractiveApp:
             self._handle_payloads(transition.payload)
             self._switch_scene(transition)
 
+        # Sync Menu State to WorldState
+        from .scenes.menu_scene import MenuScene
+
+        menu_state = getattr(self.current_scene, "menu_state", None)
+        state.update_menu_state(menu_state)
+
+        # --- LAYERED RENDERING ---
         t_start = time.perf_counter_ns()
-        # Render Base Layer
-        if state.background is not None:
-            base_frame = self._render_base_layer(state.background)
-        else:
-            base_frame = np.zeros(frame_shape, dtype=np.uint8)
-        t_base = time.perf_counter_ns()
 
-        # Scene Render
-        # We MUST pass a copy because the scenes might draw directly onto the frame,
-        # and we don't want to pollute the cached base layer.
-        scene_frame = self.current_scene.render(base_frame.copy())
-        t_scene = time.perf_counter_ns()
+        # 1. Update MapLayer params based on scene
+        self.map_layer.opacity = 1.0
+        if isinstance(self.current_scene, MenuScene):
+            self.map_layer.opacity = 0.3
 
-        # Hand Masking
-        masked_frame = self._apply_hand_masking(scene_frame, results)
-        t_mask = time.perf_counter_ns()
+        is_interacting = getattr(self.current_scene, "is_interacting", False)
+        self.map_layer.quality = 0.25 if is_interacting else 1.0
 
-        # Global Overlays
-        final_frame = self._render_global_overlays(masked_frame, inputs)
-        t_overlays = time.perf_counter_ns()
+        # 2. Update SceneLayer bridge
+        self.scene_layer.scene = self.current_scene
+        # Force scene re-render every frame for now as scenes are dynamic
+        state.increment_scene_timestamp()
 
-        # Log breakdown if total exceeds threshold (e.g., 50ms)
-        total_ms = (t_overlays - t_start) / 1_000_000.0
+        # 3. Perform Composite Render
+        final_frame = self.renderer.render(state, self.layer_stack)
+
+        total_ms = (time.perf_counter_ns() - t_start) / 1_000_000.0
         if total_ms > 50.0:
-            logging.info(
-                f"RENDER BREAKDOWN ({total_ms:.1f}ms): "
-                f"base={(t_base - t_start) / 1_000_000.0:.1f}ms, "
-                f"scene={(t_scene - t_base) / 1_000_000.0:.1f}ms, "
-                f"mask={(t_mask - t_scene) / 1_000_000.0:.1f}ms, "
-                f"overlays={(t_overlays - t_mask) / 1_000_000.0:.1f}ms"
-            )
+            logging.info(f"RENDER TOTAL: {total_ms:.1f}ms (Layered)")
 
         return final_frame, []
 

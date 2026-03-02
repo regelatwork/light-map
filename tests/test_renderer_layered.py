@@ -1,15 +1,22 @@
 import numpy as np
 from light_map.renderer import Renderer
 from light_map.common_types import Layer, LayerMode, ImagePatch
+from light_map.core.world_state import WorldState
+from typing import List, Optional
 
 
 class MockLayer(Layer):
-    def __init__(self, mode=LayerMode.NORMAL, patches=None):
-        super().__init__(layer_mode=mode)
+    def __init__(self, state: Optional[WorldState] = None, mode: LayerMode = LayerMode.NORMAL, patches: Optional[List[ImagePatch]] = None, is_static: bool = False):
+        super().__init__(state=state, is_static=is_static, layer_mode=mode)
         self.patches = patches or []
+        self._dirty = True
 
-    def render(self, state):
-        self.last_rendered_timestamp += 1
+    @property
+    def is_dirty(self) -> bool:
+        return self._dirty
+
+    def _generate_patches(self) -> List[ImagePatch]:
+        self._dirty = False
         return self.patches
 
 
@@ -25,7 +32,8 @@ def test_renderer_blocking_layer():
     renderer = Renderer(100, 100)
     # Create a red patch
     red_data = np.zeros((50, 50, 4), dtype=np.uint8)
-    red_data[:, :, 0:3] = [0, 0, 255]  # BGR Red
+    red_data[:, :, 0:2] = 0
+    red_data[:, :, 2] = 255  # BGR Red
     red_data[:, :, 3] = 255  # Opaque
 
     patch = ImagePatch(x=10, y=10, width=50, height=50, data=red_data)
@@ -44,7 +52,7 @@ def test_renderer_normal_layer_alpha_blending():
 
     # 1. Bottom layer: Solid Blue (BLOCKING)
     blue_data = np.zeros((100, 100, 4), dtype=np.uint8)
-    blue_data[:, :, 0:3] = [255, 0, 0]  # BGR Blue
+    blue_data[:, :, 0] = 255  # BGR Blue
     blue_data[:, :, 3] = 255
     layer1 = MockLayer(
         mode=LayerMode.BLOCKING, patches=[ImagePatch(0, 0, 100, 100, blue_data)]
@@ -52,7 +60,7 @@ def test_renderer_normal_layer_alpha_blending():
 
     # 2. Top layer: 50% Alpha Green (NORMAL)
     green_data = np.zeros((100, 100, 4), dtype=np.uint8)
-    green_data[:, :, 0:3] = [0, 255, 0]  # BGR Green
+    green_data[:, :, 1] = 255  # BGR Green
     green_data[:, :, 3] = 128  # ~50% alpha
     layer2 = MockLayer(
         mode=LayerMode.NORMAL, patches=[ImagePatch(0, 0, 100, 100, green_data)]
@@ -72,7 +80,7 @@ def test_renderer_clipping():
 
     # 1. Patch partially off-left (x=-25, y=0, w=50, h=100)
     red_data = np.zeros((100, 50, 4), dtype=np.uint8)
-    red_data[:, :, 0:3] = [0, 0, 255]  # BGR Red
+    red_data[:, :, 2] = 255  # BGR Red
     red_data[:, :, 3] = 255
     layer = MockLayer(
         mode=LayerMode.BLOCKING, patches=[ImagePatch(-25, 0, 50, 100, red_data)]
@@ -85,7 +93,7 @@ def test_renderer_clipping():
 
     # 2. Patch partially off-bottom (x=0, y=75, w=100, h=50)
     blue_data = np.zeros((50, 100, 4), dtype=np.uint8)
-    blue_data[:, :, 0:3] = [255, 0, 0]  # BGR Blue
+    blue_data[:, :, 0] = 255  # BGR Blue
     blue_data[:, :, 3] = 255
     layer = MockLayer(
         mode=LayerMode.BLOCKING, patches=[ImagePatch(0, 75, 100, 50, blue_data)]
@@ -96,3 +104,22 @@ def test_renderer_clipping():
     assert np.array_equal(out[90, 50], [255, 0, 0])
     # y=70 should be black
     assert np.array_equal(out[70, 50], [0, 0, 0])
+
+
+def test_renderer_skip_if_not_dirty():
+    renderer = Renderer(100, 100)
+    state = WorldState()
+    layer = MockLayer(state=state)
+    
+    # Initial render
+    frame = renderer.render(state, [layer])
+    assert frame is not None
+    
+    # Subsequent render without changes should return None
+    frame = renderer.render(state, [layer])
+    assert frame is None
+    
+    # Set dirty again
+    layer._dirty = True
+    frame = renderer.render(state, [layer])
+    assert frame is not None

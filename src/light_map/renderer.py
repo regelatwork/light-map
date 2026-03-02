@@ -6,15 +6,25 @@ from .common_types import Layer, LayerMode, ImagePatch
 class Renderer:
     """
     Coordinates the compositing of multiple visual layers into a final frame.
+    Optimized with intermediate caching for static layers.
     """
 
     def __init__(self, screen_width: int, screen_height: int):
         self.screen_width = screen_width
         self.screen_height = screen_height
+
+        # Main output buffer (BGR)
         self.output_buffer = np.zeros(
             (self.screen_height, self.screen_width, 3), dtype=np.uint8
         )
+
+        # Cache for static layers (BGR)
+        self.background_cache = np.zeros(
+            (self.screen_height, self.screen_width, 3), dtype=np.uint8
+        )
+
         self._force_render = True
+        self._background_dirty = True
 
     def render(self, state: Any, layers: List[Layer]) -> Optional[np.ndarray]:
         """
@@ -22,41 +32,54 @@ class Renderer:
         Returns None if no layers requested a new render and compositing was skipped.
 
         Args:
-            state: The current WorldState.
+            state: The current WorldState (optional, layers use their own injected state).
             layers: A list of Layer objects, from bottom to top.
         """
-        layer_updated = self._force_render
+        any_dirty = self._force_render
+        static_dirty = self._background_dirty
 
-        # Track timestamps before render to see if any layer generates new output
-        prev_timestamps = [layer.last_rendered_timestamp for layer in layers]
+        # Poll all layers for dirty status
+        layer_info = []
+        for layer in layers:
+            is_dirty = layer.is_dirty
+            layer_info.append(is_dirty)
+            if is_dirty:
+                any_dirty = True
+                if layer.is_static:
+                    static_dirty = True
 
-        patches_to_render = []
-        for i, layer in enumerate(layers):
-            patches = layer.render(state)
-            if not patches:
-                continue
-
-            patches_to_render.append((patches, layer.layer_mode))
-
-            # If the layer's timestamp increased, it performed a new render
-            if layer.last_rendered_timestamp > prev_timestamps[i]:
-                layer_updated = True
-
-        if not layer_updated:
+        if not any_dirty:
             return None
 
-        # Clear buffer (or we could rely on a BLOCKING background layer at the bottom)
-        self.output_buffer.fill(0)
+        # 1. Update Background Cache if needed
+        if static_dirty:
+            self.background_cache.fill(0)
+            for i, layer in enumerate(layers):
+                if layer.is_static:
+                    patches = layer.render()
+                    for patch in patches:
+                        self._composite_patch(
+                            self.background_cache, patch, layer.layer_mode
+                        )
+            self._background_dirty = False
 
-        for patches, mode in patches_to_render:
-            for patch in patches:
-                self._composite_patch(patch, mode)
+        # 2. Copy Background Cache to Output Buffer
+        np.copyto(self.output_buffer, self.background_cache)
+
+        # 3. Composite Dynamic Layers
+        for i, layer in enumerate(layers):
+            if not layer.is_static:
+                patches = layer.render()
+                for patch in patches:
+                    self._composite_patch(self.output_buffer, patch, layer.layer_mode)
 
         self._force_render = False
         return self.output_buffer
 
-    def _composite_patch(self, patch: ImagePatch, mode: LayerMode):
-        """Internal helper to blend a patch onto the output buffer."""
+    def _composite_patch(
+        self, buffer: np.ndarray, patch: ImagePatch, mode: LayerMode
+    ):
+        """Internal helper to blend a patch onto a buffer."""
         # Bound checks
         x1, y1 = max(0, patch.x), max(0, patch.y)
         x2, y2 = (
@@ -68,20 +91,19 @@ class Renderer:
             return
 
         # Slice patch data if it's partially off-screen
-        # (Assuming patch.data matches patch.width/height)
         px1, py1 = x1 - patch.x, y1 - patch.y
         px2, py2 = px1 + (x2 - x1), py1 + (y2 - y1)
         patch_slice = patch.data[py1:py2, px1:px2]
 
         if mode == LayerMode.BLOCKING:
             # Fast slice assignment (ignore alpha)
-            self.output_buffer[y1:y2, x1:x2] = patch_slice[:, :, :3]
+            buffer[y1:y2, x1:x2] = patch_slice[:, :, :3]
         else:
             # NORMAL mode: Alpha blending
             # Final = (Patch * Alpha) + (Buffer * (1 - Alpha))
             alpha = patch_slice[:, :, 3:4] / 255.0
-            roi = self.output_buffer[y1:y2, x1:x2]
+            roi = buffer[y1:y2, x1:x2]
             blended = (patch_slice[:, :, :3] * alpha + roi * (1.0 - alpha)).astype(
                 np.uint8
             )
-            self.output_buffer[y1:y2, x1:x2] = blended
+            buffer[y1:y2, x1:x2] = blended

@@ -24,3 +24,4 @@ docs/whitepaper/*.out
 docs/whitepaper/*.pdf
 docs/whitepaper/*.gz
 docs/whitepaper/*.toc
+.worktrees/

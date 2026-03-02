@@ -10,41 +10,41 @@ class SceneLayer(Layer):
     This acts as a bridge during the transition.
     """
 
-    def __init__(self, scene: Any, width: int, height: int):
-        super().__init__(layer_mode=LayerMode.NORMAL)
+    def __init__(self, state: WorldState, scene: Any, width: int, height: int, is_static: bool = True):
+        super().__init__(state=state, is_static=is_static, layer_mode=LayerMode.NORMAL)
         self.scene = scene
         self.width = width
         self.height = height
 
-        # Cache
-        self._cached_patch: Optional[ImagePatch] = None
+    @property
+    def is_dirty(self) -> bool:
+        if self.state is None:
+            return True
+        return self.state.scene_timestamp > self._last_state_timestamp
 
-    def render(self, state: WorldState) -> List[ImagePatch]:
+    def _generate_patches(self) -> List[ImagePatch]:
         if not self.scene:
             return []
 
-        # Granular Cache Check
-        if state.scene_timestamp <= self.last_rendered_timestamp and self._cached_patch:
-            return [self._cached_patch]
-
         # Provide a blank BGR buffer to the scene
-        # Legacy scenes currently expect BGR
         buffer_bgr = np.zeros((self.height, self.width, 3), dtype=np.uint8)
 
         # Scene modifies the buffer
         result_bgr = self.scene.render(buffer_bgr)
 
         # Convert to BGRA for the layered system
-        # Heuristic for alpha: if it's not black, it's opaque.
-        # This allows scenes to overlay on top of layers below.
         result_bgra = np.zeros((self.height, self.width, 4), dtype=np.uint8)
         result_bgra[:, :, :3] = result_bgr
 
         mask = np.any(result_bgr > 0, axis=2)
         result_bgra[mask, 3] = 255
-        self._cached_patch = ImagePatch(
+        
+        patch = ImagePatch(
             x=0, y=0, width=self.width, height=self.height, data=result_bgra
         )
-        self.last_rendered_timestamp = state.scene_timestamp
 
-        return [self._cached_patch]
+        return [patch]
+
+    def _update_timestamp(self):
+        if self.state:
+            self._last_state_timestamp = self.state.scene_timestamp

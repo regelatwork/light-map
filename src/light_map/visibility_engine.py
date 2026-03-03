@@ -1,5 +1,7 @@
 import math
 import logging
+import cv2
+import numpy as np
 from typing import List, Tuple, Dict, Optional
 from .visibility_types import VisibilityType, VisibilityBlocker
 
@@ -24,6 +26,9 @@ class VisibilityEngine:
         # Visibility Cache: (token_id, grid_x, grid_y) -> List[Point]
         self.cache: Dict[Tuple[int, int, int], List[Tuple[float, float]]] = {}
         
+        # Mask Cache: (token_id, grid_x, grid_y, size) -> np.ndarray
+        self.mask_cache: Dict[Tuple[int, int, int, int], np.ndarray] = {}
+        
         # Track version of geometry to invalidate cache if doors open/close
         self.geometry_version = 0
 
@@ -35,6 +40,7 @@ class VisibilityEngine:
         self.segments = []
         self.spatial_hash = {}
         self.cache = {}
+        self.mask_cache = {}
         self.geometry_version += 1
 
         for b_idx, blocker in enumerate(blockers):
@@ -191,3 +197,73 @@ class VisibilityEngine:
             self.cache[cache_key] = polygon
             
         return polygon
+
+    def get_token_vision_mask(
+        self,
+        token_id: int,
+        origin_x: float,
+        origin_y: float,
+        size: int,
+        vision_range_grid: float,
+        mask_width: int,
+        mask_height: int,
+    ) -> np.ndarray:
+        """
+        Calculates a unioned LOS mask from the token's center and corners.
+        Returns a uint8 mask (0=hidden, 255=visible).
+        """
+        # 1. Check Mask Cache
+        gx = int((origin_x - self.grid_origin[0]) // self.grid_spacing_svg)
+        gy = int((origin_y - self.grid_origin[1]) // self.grid_spacing_svg)
+        mask_cache_key = (token_id, gx, gy, size)
+        
+        if mask_cache_key in self.mask_cache:
+            mask = self.mask_cache[mask_cache_key]
+            if mask.shape == (mask_height, mask_width):
+                return mask
+
+        # 2. Origin Calculation (Starfinder 1e)
+        # Center point + (S+1)^2 grid corners
+        origins = [(origin_x, origin_y)]
+        
+        # Grid corners are relative to the grid centers. 
+        # A size S token covers a square area.
+        half_s = size / 2.0
+        for i in range(size + 1):
+            for j in range(size + 1):
+                # Offset from center in grid units: (-S/2, -S/2) to (+S/2, +S/2)
+                off_x = (i - half_s) * self.grid_spacing_svg
+                off_y = (j - half_s) * self.grid_spacing_svg
+                origins.append((origin_x + off_x, origin_y + off_y))
+
+        # 3. Calculate and Union Polygons
+        vision_range_svg = vision_range_grid * self.grid_spacing_svg
+        mask = np.zeros((mask_height, mask_width), dtype=np.uint8)
+        
+        # Scale for SVG -> Mask (16px per grid unit)
+        svg_to_mask_scale = 16.0 / self.grid_spacing_svg
+        # SVG coordinates (x,y) to Mask coordinates (mx, my)
+        # mx = (x - origin_svg_x) * scale
+        
+        for ox, oy in origins:
+            # Check OOB for origin
+            # If an origin is outside a reasonable bounds, skip it (handled by calculate_visibility anyway)
+            poly = self.calculate_visibility((ox, oy), vision_range_svg, token_id=None) # We don't use the simple cache for multi-point yet to avoid key collisions
+            
+            if not poly:
+                continue
+
+            # Scale polygon to mask coordinates
+            mask_poly = []
+            for px, py in poly:
+                mx = (px - self.grid_origin[0]) * svg_to_mask_scale
+                my = (py - self.grid_origin[1]) * svg_to_mask_scale
+                mask_poly.append((int(mx), int(my)))
+            
+            if mask_poly:
+                pts = np.array(mask_poly, dtype=np.int32).reshape((-1, 1, 2))
+                cv2.fillPoly(mask, [pts], 255)
+
+        # 4. Update Cache
+        self.mask_cache[mask_cache_key] = mask
+        return mask

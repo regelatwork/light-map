@@ -424,7 +424,7 @@ class InteractiveApp:
             if final_frame is not None:
                 total_ms = (time.perf_counter_ns() - t_start) / 1_000_000.0
                 if total_ms > 50.0:
-                    logging.info(f"RENDER TOTAL: {total_ms:.1f}ms (Layered)")
+                    logging.debug(f"RENDER TOTAL: {total_ms:.1f}ms (Layered)")
 
         return final_frame, []
 

@@ -14,7 +14,7 @@ from light_map.common_types import (
 from light_map.core.scene import HandInput, Scene, SceneTransition
 from light_map.input_manager import InputManager
 from light_map.menu_builder import build_root_menu
-from light_map.menu_system import MenuState, MenuSystem, MenuSystemState
+from light_map.menu_system import MenuSystem, MenuSystemState
 
 if TYPE_CHECKING:
     from light_map.core.app_context import AppContext
@@ -56,11 +56,16 @@ class MenuScene(Scene):
 
         self.input_manager.update(px, py, gesture, is_present)
 
-        self._menu_state = self.menu_system.update(
+        new_state = self.menu_system.update(
             self.input_manager.get_x(),
             self.input_manager.get_y(),
             self.input_manager.get_gesture(),
         )
+
+        if self._menu_state.hovered_item_index != new_state.hovered_item_index:
+            self._is_dirty = True
+
+        self._menu_state = new_state
 
         if not self._menu_state.just_triggered_action:
             return None
@@ -205,8 +210,21 @@ class MenuScene(Scene):
             )
 
     @property
-    def menu_state(self) -> Optional[MenuState]:
-        return self._menu_state
+    def is_dirty(self) -> bool:
+        state = self.menu_system.get_current_state()
+        # Dirty if we are in the middle of a transition (progress)
+        # OR if we have a one-time dirty flag set (e.g. from hovering/scrolling)
+        # Note: state.is_visible is NOT enough, we only re-render if something CHANGES inside.
+        return (
+            self._is_dirty
+            or state.summon_progress > 0
+            or state.prime_progress > 0
+            or state.just_triggered_action is not None
+        )
+
+    @is_dirty.setter
+    def is_dirty(self, value: bool):
+        self._is_dirty = value
 
     def render(self, frame: np.ndarray) -> np.ndarray:
         # Menu is now rendered by MenuLayer in the coordinator stack.

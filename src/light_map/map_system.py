@@ -1,10 +1,13 @@
 from dataclasses import dataclass
-from typing import Dict, Any, Optional, Tuple, List
+from typing import Dict, Any, Optional, Tuple, List, TYPE_CHECKING
 import svgelements
 import math
 
 from light_map.svg_loader import SVGLoader
 from light_map.common_types import Token
+
+if TYPE_CHECKING:
+    from light_map.common_types import ViewportState
 
 
 @dataclass
@@ -13,6 +16,11 @@ class MapState:
     y: float = 0.0
     zoom: float = 1.0
     rotation: float = 0.0  # Degrees
+
+    def to_viewport(self) -> "ViewportState":
+        from light_map.common_types import ViewportState
+
+        return ViewportState(x=self.x, y=self.y, zoom=self.zoom, rotation=self.rotation)
 
 
 class MapSystem:

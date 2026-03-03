@@ -68,6 +68,11 @@ class InteractiveApp:
         self.tracking_coordinator = TrackingCoordinator(time_provider)
         self.input_processor = InputProcessor(config)
 
+        # Performance Tracking
+        from .core.analytics import LatencyInstrument
+
+        self.instrument = LatencyInstrument()
+
         # Load Camera Calibration
         camera_matrix, dist_coeffs, rvec, tvec = self._load_camera_calibration()
 
@@ -301,6 +306,11 @@ class InteractiveApp:
     def process_state(
         self, state: Optional["WorldState"] = None, actions: List["Action"] = None
     ) -> Tuple[Optional[np.ndarray], List[str]]:
+        from .core.analytics import track_wait
+
+        # Log performance stats every 10s at DEBUG level
+        self.instrument.log_and_reset_if_needed(interval_s=10.0, level=logging.DEBUG)
+
         if state is None:
             state = self.state
         if actions is None:
@@ -324,7 +334,7 @@ class InteractiveApp:
         # Update WorldState with latest metrics
         state.update_performance_metrics(self.fps)
         state.current_scene_name = self.current_scene.__class__.__name__
-        state.update_viewport(self.map_system.state)
+        state.update_viewport(self.map_system.state.to_viewport())
 
         # Update context frame if available
         if state.background is not None:
@@ -360,34 +370,36 @@ class InteractiveApp:
         state.update_menu_state(menu_state)
 
         # --- LAYERED RENDERING ---
-        t_start = time.perf_counter_ns()
+        with track_wait("total_render_logic", self.instrument):
+            t_start = time.perf_counter_ns()
 
-        # 1. Update MapLayer params based on scene
-        self.map_layer.opacity = 1.0
-        if isinstance(self.current_scene, MenuScene):
-            self.map_layer.opacity = 0.3
+            # 1. Update MapLayer params based on scene
+            self.map_layer.opacity = 1.0
+            if isinstance(self.current_scene, MenuScene):
+                self.map_layer.opacity = 0.3
 
-        is_interacting = getattr(self.current_scene, "is_interacting", False)
-        self.map_layer.quality = 0.25 if is_interacting else 1.0
+            is_interacting = getattr(self.current_scene, "is_interacting", False)
+            self.map_layer.quality = 0.25 if is_interacting else 1.0
 
-        # 2. Update SceneLayer bridge
-        self.scene_layer.scene = self.current_scene
-        # Only increment scene timestamp if scene is actually dirty
-        if self.current_scene.is_dirty:
-            state.increment_scene_timestamp()
-            # Most scenes (especially legacy) draw every frame once rendered
-            # or managing their own dirty flag.
-            # We clear it here if it's a scene that doesn't draw itself.
-            if not getattr(self.current_scene, "is_dynamic", False):
-                self.current_scene.is_dirty = False
+            # 2. Update SceneLayer bridge
+            self.scene_layer.scene = self.current_scene
+            # Only increment scene timestamp if scene is actually dirty
+            if self.current_scene.is_dirty:
+                state.increment_scene_timestamp()
+                # Most scenes (especially legacy) draw every frame once rendered
+                # or managing their own dirty flag.
+                # We clear it here if it's a scene that doesn't draw itself.
+                if not getattr(self.current_scene, "is_dynamic", False):
+                    self.current_scene.is_dirty = False
 
-        # 3. Perform Composite Render
-        final_frame = self.renderer.render(state, self.layer_stack)
+            # 3. Perform Composite Render
+            with track_wait("renderer_composite", self.instrument):
+                final_frame = self.renderer.render(state, self.layer_stack)
 
-        if final_frame is not None:
-            total_ms = (time.perf_counter_ns() - t_start) / 1_000_000.0
-            if total_ms > 50.0:
-                logging.info(f"RENDER TOTAL: {total_ms:.1f}ms (Layered)")
+            if final_frame is not None:
+                total_ms = (time.perf_counter_ns() - t_start) / 1_000_000.0
+                if total_ms > 50.0:
+                    logging.info(f"RENDER TOTAL: {total_ms:.1f}ms (Layered)")
 
         return final_frame, []
 

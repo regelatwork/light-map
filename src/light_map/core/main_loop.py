@@ -118,11 +118,10 @@ class MainLoopController:
             if self.state.menu_state:
                 # We'll need a way to get bounds. For now, just title and depth.
                 self.state_mirror["menu"] = {
-                    "title": self.state.menu_state.active_menu.title,
-                    "depth": self.state.menu_state.depth,
+                    "title": self.state.menu_state.current_menu_title,
+                    "depth": 0,  # MenuState doesn't expose depth directly now
                     "items": [
-                        item.title
-                        for item in self.state.menu_state.active_menu.children
+                        item.title for item in self.state.menu_state.active_items
                     ],
                 }
             else:

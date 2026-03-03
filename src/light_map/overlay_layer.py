@@ -24,26 +24,35 @@ class OverlayLayer(Layer):
         # Cache tracking
         self._last_debug_mode = False
         self._last_show_tokens = True
+        self._last_pulse_render_time = 0.0
 
     @property
     def is_dirty(self) -> bool:
         if self.state is None:
             return True
 
+        now = self.time_provider()
+
         # Ghost tokens pulse (time-dependent), so they might need frequent re-render.
-        # For now, let's re-render if any relevant timestamp changed or time has passed (for pulse).
-
-        # Force re-render for pulsing tokens if visible
+        # We throttle this to ~2 FPS (500ms) to avoid hogging CPU if nothing else changes.
+        pulse_dirty = False
         if self.context.show_tokens and self.state.tokens:
-            return True
+            if now - self._last_pulse_render_time > 0.5:
+                pulse_dirty = True
 
-        return (
-            self.state.notifications_timestamp > self._last_state_timestamp
+        if (
+            pulse_dirty
+            or self.state.notifications_timestamp > self._last_state_timestamp
             or self.state.tokens_timestamp > self._last_state_timestamp
             or self.state.hands_timestamp > self._last_state_timestamp
             or self.context.debug_mode != self._last_debug_mode
             or self.context.show_tokens != self._last_show_tokens
-        )
+        ):
+            if pulse_dirty:
+                self._last_pulse_render_time = now
+            return True
+
+        return False
 
     def _generate_patches(self) -> List[ImagePatch]:
         if self.state is None:
@@ -75,8 +84,9 @@ class OverlayLayer(Layer):
         patch_data = np.zeros((height, width, 4), dtype=np.uint8)
         patch_data[:, :, :3] = buffer_bgr
 
-        mask = np.any(buffer_bgr > 0, axis=2)
-        patch_data[mask, 3] = 255
+        # Use fast bitwise OR for masking
+        combined = buffer_bgr[:, :, 0] | buffer_bgr[:, :, 1] | buffer_bgr[:, :, 2]
+        patch_data[combined > 0, 3] = 255
 
         patch = ImagePatch(x=0, y=0, width=width, height=height, data=patch_data)
 

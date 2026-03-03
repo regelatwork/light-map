@@ -2,8 +2,7 @@ import json
 import logging
 import os
 import time
-from typing import Dict, Optional, Any
-from collections import deque
+from typing import Dict, Optional, Any, List
 from contextlib import contextmanager
 import numpy as np
 
@@ -54,9 +53,10 @@ class AnalyticsManager:
 class LatencyInstrument:
     """Tracks glass-to-glass latency and high-level pipeline hops for performance monitoring."""
 
-    def __init__(self, window_size: int = 100):
+    def __init__(self, window_size: int = 1000):
         self.window_size = window_size
-        self.history: Dict[str, deque] = {}
+        self.history: Dict[str, List[int]] = {}
+        self._last_report_time = time.perf_counter()
 
         # Backward compatibility maps
         self.captures: Dict[int, int] = {}  # ts_capture -> ts_recorded
@@ -65,16 +65,22 @@ class LatencyInstrument:
     def record_interval(self, name: str, duration_ns: int):
         """Records an arbitrary timing interval in nanoseconds."""
         if name not in self.history:
-            self.history[name] = deque(maxlen=self.window_size)
+            self.history[name] = []
         self.history[name].append(duration_ns)
+        # Optional: still cap the list to avoid memory leaks if report is never called
+        if len(self.history[name]) > self.window_size:
+            self.history[name].pop(0)
 
     def record_capture(self, ts_capture: int):
         """Backward compatibility for recording frame capture."""
         # Note: ts_capture is expected to be in nanoseconds (time.perf_counter_ns())
         self.captures[ts_capture] = time.perf_counter_ns()
-        if len(self.captures) > self.window_size * 2:
-            oldest = sorted(self.captures.keys())[0]
-            del self.captures[oldest]
+        if len(self.captures) > self.window_size:
+            # Simple cleanup of old entries
+            if len(self.captures) > 2000:
+                keys = sorted(self.captures.keys())
+                for k in keys[:1000]:
+                    del self.captures[k]
 
     def record_detection(self, ts_capture: int, ts_detected: Optional[int] = None):
         """Backward compatibility for recording detection."""
@@ -99,29 +105,40 @@ class LatencyInstrument:
         """Returns statistical report for all tracked intervals."""
         report = {}
         for name, samples in self.history.items():
-            if not samples or len(samples) == 0:
+            if not samples:
                 continue
 
-            arr = np.array(list(samples)) / 1_000_000.0  # Convert to milliseconds
-            if arr.size == 0:
-                continue
+            arr = np.array(samples) / 1_000_000.0  # Convert to milliseconds
             report[name] = {
-                "mean_ms": float(np.mean(arr)),
+                "avg_ms": float(np.mean(arr)),
                 "p50_ms": float(np.percentile(arr, 50)),
                 "p90_ms": float(np.percentile(arr, 90)),
                 "p95_ms": float(np.percentile(arr, 95)),
                 "samples": len(samples),
             }
 
-        # Backward compatibility for flat avg_* keys
-        if "total_latency" in report:
-            report["avg_total_latency_ms"] = report["total_latency"]["mean_ms"]
-        if "capture_to_detect" in report:
-            report["avg_detection_lag_ms"] = report["capture_to_detect"]["mean_ms"]
-        if "detect_to_render" in report:
-            report["avg_render_lag_ms"] = report["detect_to_render"]["mean_ms"]
-
         return report
+
+    def log_and_reset_if_needed(
+        self, interval_s: float = 10.0, level: int = logging.DEBUG
+    ):
+        """Logs the current statistics and resets history if interval has passed."""
+        now = time.perf_counter()
+        if now - self._last_report_time >= interval_s:
+            report = self.get_report()
+            if report:
+                msg = f"Performance Statistics (last {interval_s}s):\n"
+                for label, stats in report.items():
+                    msg += (
+                        f"  {label:25}: avg={stats['avg_ms']:6.1f}ms, "
+                        f"p50={stats['p50_ms']:6.1f}ms, p90={stats['p90_ms']:6.1f}ms, "
+                        f"p95={stats['p95_ms']:6.1f}ms ({stats['samples']} samples)\n"
+                    )
+                logger.log(level, msg)
+
+            # Reset
+            self.history.clear()
+            self._last_report_time = now
 
 
 @contextmanager

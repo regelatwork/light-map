@@ -202,14 +202,23 @@ class WorldState:
         for t1, t2 in zip(s1, s2):
             if t1.id != t2.id:
                 return False
-            # Check grid positions first as they are discrete
-            if t1.grid_x != t2.grid_x or t1.grid_y != t2.grid_y:
-                return False
+
+            # Use Grid Snapping if available (Stable against noise)
+            if t1.grid_x is not None and t2.grid_x is not None:
+                # If grid coordinates are assigned, ANY change in grid position is a semantic move.
+                if t1.grid_x != t2.grid_x or t1.grid_y != t2.grid_y:
+                    return False
+            else:
+                # If no grid, fall back to world coordinates with a 1.0 unit tolerance (usually mm)
+                # to avoid floating point jitter from vision/camera noise triggering re-renders.
+                if (
+                    abs(t1.world_x - t2.world_x) > 1.0
+                    or abs(t1.world_y - t2.world_y) > 1.0
+                ):
+                    return False
+
             # Check status flags
             if t1.is_occluded != t2.is_occluded or t1.is_duplicate != t2.is_duplicate:
-                return False
-            # Check world coordinates
-            if abs(t1.world_x - t2.world_x) > 0.5 or abs(t1.world_y - t2.world_y) > 0.5:
                 return False
 
         return True

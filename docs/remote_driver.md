@@ -99,6 +99,7 @@ These endpoints allow you to query the current state of the application.
 Returns a snapshot of the general world state.
 
 - **Includes:** Current scene, viewport (zoom/pan), and performance metrics (FPS).
+- **Note:** The `fps` value returned is the instantaneous frame rate calculated in the main loop.
 
 #### `GET /state/menu`
 
@@ -122,30 +123,66 @@ Returns the status of the remote driver process.
 
 ## 3. Python Integration Example
 
-You can use the `requests` library to automate interactions:
+You can use the `httpx` or `requests` library to automate interactions. See `scripts/verify_performance.py` for a comprehensive example of automated performance and caching verification.
 
 ```python
-import requests
+import httpx
 import time
 
 BASE_URL = "http://127.0.0.1:8000"
 
 # 1. Check current menu
-resp = requests.get(f"{BASE_URL}/state/menu")
+resp = httpx.get(f"{BASE_URL}/state/menu")
 print(f"Active Menu: {resp.json().get('title')}")
 
 # 2. Trigger a "Click" (Pointing gesture)
-requests.post(f"{BASE_URL}/input/hands", json=[
+httpx.post(f"{BASE_URL}/input/hands", json=[
     {"x": 500, "y": 300, "gesture": "Pointing"}
 ])
 
 # 3. Simulate a Token appearing
-requests.post(f"{BASE_URL}/input/tokens", json=[
+httpx.post(f"{BASE_URL}/input/tokens", json=[
     {"id": 10, "x": 50.0, "y": 50.0}
 ])
 ```
 
-## 4. Interactive Documentation (Swagger)
+## 4. Performance Monitoring and Diagnostics
+
+The Remote Application Driver, when used in conjunction with `--debug` and `--log-level DEBUG`, provides detailed performance telemetry.
+
+### 4.1 Latency Instrumentation
+
+The application tracks various internal intervals (in nanoseconds) and logs statistical reports every 10 seconds. These logs include:
+
+- **`total_render_logic`**: Time spent in the entire `process_state` logic including layer preparation and composition.
+- **`renderer_composite`**: Time spent inside the `Renderer.render` call (compositing layers).
+- **`shm_wait_main`**: Time the main loop spent waiting for access to the shared camera frame.
+- **`queue_transit_to_main`**: Latency of vision results traveling from worker processes to the main loop.
+
+Statistics provided include Average, P50 (Median), P90, and P95 percentiles.
+
+### 4.2 Verifying Caching
+
+To verify that the layered rendering and caching system is working correctly:
+
+1. Start the app with `--log-level DEBUG`.
+1. Observe the `RENDER TOTAL` log entries. These should only appear when a re-render is actually triggered by a state change (e.g., token movement, menu interaction).
+1. In a stable state (no movement), re-renders should be skipped, and `RENDER TOTAL` should not appear frequently.
+1. Check the 10s Performance Statistics for `renderer_composite` and `total_render_logic` to ensure average times stay within acceptable limits for your hardware.
+
+### 4.3 Automated Verification Script
+
+The `scripts/verify_performance.py` script automates the process of:
+
+1. Starting the application with a specific map.
+1. Waiting for API readiness.
+1. Injecting virtual inputs (tokens, hands) via the Remote Driver.
+1. Capturing and verifying the world state changes.
+1. Extracting performance statistics from the logs.
+
+Use this script as a template for building your own automated E2E tests and performance regressions.
+
+## 5. Interactive Documentation (Swagger)
 
 Once the application is running, you can access the full interactive API documentation provided by FastAPI:
 

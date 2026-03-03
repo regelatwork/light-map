@@ -14,7 +14,7 @@ from light_map.common_types import (
 from light_map.core.scene import HandInput, Scene, SceneTransition
 from light_map.input_manager import InputManager
 from light_map.menu_builder import build_root_menu
-from light_map.menu_system import MenuSystem, MenuSystemState
+from light_map.menu_system import MenuState, MenuSystem, MenuSystemState
 
 if TYPE_CHECKING:
     from light_map.core.app_context import AppContext
@@ -209,6 +209,11 @@ class MenuScene(Scene):
                 map_system.state.zoom,
                 map_system.state.rotation,
             )
+
+    @property
+    def menu_state(self) -> MenuState:
+        """Exposes the current menu state for the MenuLayer."""
+        return self.menu_system.get_current_state()
 
     @property
     def is_dirty(self) -> bool:

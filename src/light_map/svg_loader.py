@@ -5,9 +5,11 @@ import math
 import base64
 import logging
 from io import BytesIO
+from typing import List, Tuple, Optional
 from PIL import Image
 import functools
 from collections import Counter
+from .visibility_types import VisibilityType, VisibilityBlocker
 
 
 class SVGLoader:
@@ -581,3 +583,81 @@ class SVGLoader:
             )
 
         return image
+
+    def get_visibility_blockers(self) -> List[VisibilityBlocker]:
+        """
+        Extracts walls, doors, and windows from the SVG based on layer names.
+        """
+        if not self.svg:
+            return []
+
+        blockers = []
+
+        def traverse(element, current_v_type=None, current_layer_name="", current_unbreakable=False):
+            v_type = current_v_type
+            layer_name = current_layer_name
+            is_unbreakable = current_unbreakable
+
+            # Check if this element defines a new visibility context (layer)
+            if hasattr(element, "id") and element.id:
+                id_lower = str(element.id).lower()
+                if "wall" in id_lower:
+                    v_type = VisibilityType.WALL
+                    layer_name = str(element.id)
+                elif "door" in id_lower:
+                    v_type = VisibilityType.DOOR
+                    layer_name = str(element.id)
+                elif "window" in id_lower:
+                    v_type = VisibilityType.WINDOW
+                    layer_name = str(element.id)
+                    if "unbreakable" in id_lower:
+                        is_unbreakable = True
+
+            # If it's a shape and we are in a visibility context, extract it
+            if isinstance(element, svgelements.Shape) and v_type:
+                # In svgelements, Path(element) creates a path and usually applies the element's transform.
+                # However, for visibility, we want the absolute coordinates in the SVG.
+                # element.transform should be the cumulative transform if the SVG was parsed.
+                
+                path = svgelements.Path(element)
+                # To be absolutely sure we have global coordinates, we can reify the path
+                # but Path(element) already includes element.transform.
+                
+                segments: List[Tuple[float, float]] = []
+                for segment in path:
+                    if isinstance(segment, svgelements.Move):
+                        continue
+                    if not segments:
+                        segments.append((segment.start.x, segment.start.y))
+                    
+                    if isinstance(segment, svgelements.Line):
+                        segments.append((segment.end.x, segment.end.y))
+                    elif isinstance(segment, (svgelements.QuadraticBezier, svgelements.CubicBezier, svgelements.Arc)):
+                        for i in range(1, 11):
+                            p = segment.point(i / 10.0)
+                            segments.append((p.x, p.y))
+                    elif isinstance(segment, svgelements.Close):
+                        # Close back to the first point of this subpath
+                        if segments:
+                            # We need to find the start of the current subpath.
+                            # For simplicity, if we only have one subpath, it's segments[0].
+                            # svgelements.Close has .start and .end too.
+                            segments.append((segment.end.x, segment.end.y))
+
+                if segments:
+                    blockers.append(
+                        VisibilityBlocker(
+                            segments=segments,
+                            type=v_type,
+                            layer_name=layer_name,
+                            is_unbreakable=is_unbreakable,
+                        )
+                    )
+
+            # Recurse into children if it's a group or the root SVG
+            if isinstance(element, (svgelements.Group, svgelements.SVG)):
+                for child in element:
+                    traverse(child, v_type, layer_name, is_unbreakable)
+
+        traverse(self.svg)
+        return blockers

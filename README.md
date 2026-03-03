@@ -17,6 +17,7 @@ Light Map is an interactive Augmented Reality (AR) tabletop platform that merges
 - [Map System](docs/map_system.md)
 - [Menu System](docs/menu_system.md)
 - [Token Tracking](docs/token_tracking.md)
+- [Remote Application Driver (WebDriver)](docs/remote_driver.md)
 
 ## Quick Start
 

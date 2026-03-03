@@ -509,6 +509,26 @@ class InteractiveApp:
                 self.fow_layer.save()
                 self.notifications.add_notification("Fog of War Reset")
 
+        if payload.get("action") == "TOGGLE_FOW":
+            if self.fow_layer:
+                self.fow_layer.is_disabled = not self.fow_layer.is_disabled
+                state = "OFF" if self.fow_layer.is_disabled else "ON"
+                self.notifications.add_notification(f"GM: Fog of War {state}")
+
+        if payload.get("action") == "TOGGLE_DOOR":
+            door_layer = payload.get("door")
+            if door_layer:
+                # Toggle door in visibility engine
+                found = False
+                for blocker in self.visibility_engine.blockers:
+                    if blocker.layer_name == door_layer:
+                        blocker.is_open = not blocker.is_open
+                        found = True
+                if found:
+                    self.visibility_engine.update_blockers(self.visibility_engine.blockers)
+                    self.notifications.add_notification(f"Door {door_layer} Toggled")
+                    self.save_session() # Persist door state
+
     def switch_to_viewing(self):
         """Switches the current scene to ViewingScene."""
         if SceneId.VIEWING in self.scenes:
@@ -582,6 +602,12 @@ class InteractiveApp:
                 self.state.tokens = session.tokens
                 self.state.tokens_timestamp += 1
 
+                # Restore door states
+                for blocker in self.visibility_engine.blockers:
+                    if blocker.layer_name in session.door_states:
+                        blocker.is_open = session.door_states[blocker.layer_name]
+                self.visibility_engine.update_blockers(self.visibility_engine.blockers)
+
                 if session.viewport:
                     self.map_system.set_state(
                         session.viewport.x,
@@ -620,6 +646,9 @@ class InteractiveApp:
 
         from light_map.common_types import SessionData, ViewportState
 
+        # Collect current door states
+        door_states = {b.layer_name: b.is_open for b in self.visibility_engine.blockers if b.type == "door"}
+
         session = SessionData(
             map_file=map_file,
             viewport=ViewportState(
@@ -629,5 +658,6 @@ class InteractiveApp:
                 rotation=self.map_system.state.rotation,
             ),
             tokens=self.map_system.ghost_tokens,
+            door_states=door_states,
         )
         SessionManager.save_for_map(map_file, session, session_dir=session_dir)

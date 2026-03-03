@@ -107,6 +107,7 @@ class SessionManager:
                 map_file=raw.get("map_file", ""),
                 viewport=viewport,
                 tokens=tokens,
+                door_states=raw.get("door_states", {}),
                 timestamp=raw.get("timestamp", ""),
             )
 

@@ -41,3 +41,5 @@ class AppContext:
         default_factory=lambda: {"corners": [], "ids": []}
     )
     raw_tokens: List[Any] = field(default_factory=list)
+    selected_door: Optional[str] = None
+    inspected_token_id: Optional[int] = None

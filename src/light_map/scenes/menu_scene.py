@@ -40,7 +40,8 @@ class MenuScene(Scene):
         """Called once when the scene becomes active."""
         self.menu_system.state = MenuSystemState.ACTIVE
         # Rebuild menu in case of changes (e.g., map list, debug state)
-        new_root = build_root_menu(self.context.map_config_manager)
+        selected_door = getattr(self.context, "selected_door", None)
+        new_root = build_root_menu(self.context.map_config_manager, selected_door=selected_door)
         self.menu_system.set_root_menu(new_root)
         self._is_dirty = True
 
@@ -172,6 +173,14 @@ class MenuScene(Scene):
         elif action == MenuActions.RESET_ZOOM:
             self.context.map_system.reset_zoom_to_base()
             self._save_session()
+        elif action == MenuActions.SYNC_VISION:
+            return SceneTransition(SceneId.VIEWING, payload={"action": "SYNC_VISION"})
+        elif action == MenuActions.RESET_FOW:
+            return SceneTransition(SceneId.VIEWING, payload={"action": "RESET_FOW"})
+        elif action == MenuActions.TOGGLE_FOW:
+            return SceneTransition(SceneId.VIEWING, payload={"action": "TOGGLE_FOW"})
+        elif action == MenuActions.TOGGLE_DOOR:
+            return SceneTransition(SceneId.VIEWING, payload={"action": "TOGGLE_DOOR", "door": payload})
 
         return None
 

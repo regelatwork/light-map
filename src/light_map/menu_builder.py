@@ -1,5 +1,5 @@
 import os
-from typing import List
+from typing import List, Optional
 from light_map.common_types import MenuItem, MenuActions
 from light_map.map_config import MapConfigManager
 
@@ -47,7 +47,7 @@ def build_map_actions_submenu(filename: str, has_session: bool) -> List[MenuItem
     return items
 
 
-def build_root_menu(map_config: MapConfigManager) -> MenuItem:
+def build_root_menu(map_config: MapConfigManager, selected_door: Optional[str] = None) -> MenuItem:
 
     # Build Maps Submenu
     map_items = []
@@ -109,6 +109,11 @@ def build_root_menu(map_config: MapConfigManager) -> MenuItem:
             ),
             maps_menu,  # NEW
             MenuItem(
+                title="Sync Vision",
+                action_id=MenuActions.SYNC_VISION,
+                should_close_on_trigger=True,
+            ),
+            MenuItem(
                 title="Map Interaction Mode",
                 action_id=MenuActions.MAP_CONTROLS,
                 should_close_on_trigger=True,
@@ -146,7 +151,23 @@ def build_root_menu(map_config: MapConfigManager) -> MenuItem:
                         action_id=MenuActions.CALIBRATE_SCALE,
                         should_close_on_trigger=True,
                     ),
-                ],
+                    MenuItem(
+                        title="Reset Fog of War",
+                        action_id=MenuActions.RESET_FOW,
+                        should_close_on_trigger=True,
+                    ),
+                    MenuItem(
+                        title="GM: Toggle Fog of War",
+                        action_id=MenuActions.TOGGLE_FOW,
+                        should_close_on_trigger=False,
+                    ),
+                ] + ([
+                    MenuItem(
+                        title=f"Toggle Door ({selected_door})",
+                        action_id=MenuActions.TOGGLE_DOOR,
+                        should_close_on_trigger=True,
+                    )
+                ] if selected_door else []),
             ),
             MenuItem(
                 title="Calibration",

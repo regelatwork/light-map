@@ -118,6 +118,10 @@ class MenuActions(StrEnum):
     SCAN_ALGORITHM = "SCAN_ALGORITHM"
     TOGGLE_HAND_MASKING = "TOGGLE_HAND_MASKING"
     SET_GM_POSITION = "SET_GM_POSITION"
+    SYNC_VISION = "SYNC_VISION"
+    RESET_FOW = "RESET_FOW"
+    TOGGLE_FOW = "TOGGLE_FOW"
+    TOGGLE_DOOR = "TOGGLE_DOOR"
 
 
 class SceneId(StrEnum):
@@ -241,6 +245,7 @@ class SessionData:
     map_file: str
     viewport: ViewportState
     tokens: List[Token]
+    door_states: Dict[str, bool] = field(default_factory=dict)
     timestamp: str = ""
 
 

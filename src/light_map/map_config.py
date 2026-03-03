@@ -275,6 +275,12 @@ class MapConfigManager:
             return self.data.maps[map_name].viewport
         return ViewportState()
 
+    def get_map_grid_spacing(self, map_name: str) -> float:
+        map_name = os.path.abspath(map_name)
+        if map_name in self.data.maps:
+            return self.data.maps[map_name].grid_spacing_svg
+        return 0.0
+
     def save_map_viewport(
         self, map_name: str, x: float, y: float, zoom: float, rotation: float
     ):

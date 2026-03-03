@@ -50,3 +50,27 @@ def test_remote_driver_tokens_endpoint():
     assert len(result.data["tokens"]) == 1
     assert result.data["tokens"][0].id == 42
     assert result.data["tokens"][0].world_x == 10.5
+
+def test_remote_driver_state_inspection():
+    results_queue = Queue()
+    stop_event = Event()
+    state_mirror = {
+        "world": {"scene": "MAP", "fps": 60.0},
+        "tokens": [{"id": 1, "world_x": 100, "world_y": 200}],
+        "menu": {"title": "Main Menu"}
+    }
+    
+    app = create_app(results_queue, stop_event, state_mirror)
+    client = TestClient(app)
+    
+    response = client.get("/state/world")
+    assert response.status_code == 200
+    assert response.json()["scene"] == "MAP"
+    
+    response = client.get("/state/tokens")
+    assert response.status_code == 200
+    assert response.json()[0]["id"] == 1
+    
+    response = client.get("/state/menu")
+    assert response.status_code == 200
+    assert response.json()["title"] == "Main Menu"

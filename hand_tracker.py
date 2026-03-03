@@ -71,7 +71,36 @@ def main():
         default=None,
         help="Path to log file (relative to data dir if not absolute)",
     )
+    # Remote Driver Args
+    parser.add_argument(
+        "--remote-hands",
+        type=str,
+        choices=["exclusive", "merge", "ignore"],
+        default="ignore",
+        help="Mode for remote hand inputs",
+    )
+    parser.add_argument(
+        "--remote-tokens",
+        type=str,
+        choices=["exclusive", "merge", "ignore"],
+        default="ignore",
+        help="Mode for remote token inputs",
+    )
+    parser.add_argument(
+        "--remote-port",
+        type=int,
+        default=8000,
+        help="Port for the remote driver HTTP API",
+    )
     args = parser.parse_args()
+
+    # Initialize Multiprocessing Manager for shared state mirror
+    mp_manager = mp.Manager()
+    state_mirror = mp_manager.dict()
+    state_mirror["config"] = {}
+    state_mirror["world"] = {}
+    state_mirror["tokens"] = []
+    state_mirror["menu"] = None
 
     # Initialize Storage
     storage = StorageManager(base_dir=args.base_dir)
@@ -243,6 +272,15 @@ def main():
                 )
                 logger.critical(msg)
 
+            # Populate initial config mirror
+            state_mirror["config"] = {
+                "cam_res": (cam_w, cam_h),
+                "proj_res": (native_screen_w, native_screen_h),
+                "remote_hands": args.remote_hands,
+                "remote_tokens": args.remote_tokens,
+                "remote_port": args.remote_port,
+            }
+
             # Start Process Manager
             manager = VisionProcessManager(
                 width=cam_w,
@@ -252,6 +290,10 @@ def main():
                 map_dims=(app.config.width, app.config.height),
                 intrinsics_path=intrinsics_path,
                 extrinsics_path=extrinsics_path,
+                remote_mode_hands=args.remote_hands,
+                remote_mode_tokens=args.remote_tokens,
+                remote_port=args.remote_port,
+                state_mirror=state_mirror,
             )
             manager.start()
 
@@ -264,7 +306,12 @@ def main():
 
             input_manager = InputManager()
             main_loop = MainLoopController(
-                state, manager, input_manager, producer, aruco_mapper=app.aruco_mapper
+                state,
+                manager,
+                input_manager,
+                producer,
+                aruco_mapper=app.aruco_mapper,
+                state_mirror=state_mirror,
             )
 
             stop_event = threading.Event()

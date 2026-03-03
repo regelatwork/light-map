@@ -1,4 +1,4 @@
-# SVG Wall Support and Fog of War Implementation Plan
+# SVG Wall Support and Fog of War Implementation Plan (Refined)
 
 > **For Gemini:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
@@ -10,181 +10,156 @@
 
 ---
 
-### Task 1: SVG Blocker Extraction
+### Task 1: SVG Blocker Extraction & Data Types
 
-**Goal:** Extend `SVGLoader` to categorize paths by layer name.
+**Goal:** Extend `SVGLoader` to categorize paths by layer name and define a robust `VisibilityBlocker` data structure.
 
 **Files:**
+- Create: `src/light_map/visibility_types.py`
 - Modify: `src/light_map/svg_loader.py`
 - Test: `tests/test_svg_loader_visibility.py`
 
-**Step 1: Write the failing test**
-Create `tests/test_svg_loader_visibility.py` to test layer detection for "Walls", "Doors", and "Unbreakable Windows".
+**Step 1: Define `VisibilityBlocker` and `VisibilityState`**
+Use `dataclass` to store geometry, layer name, type (WALL, DOOR, WINDOW), and state (OPEN, CLOSED).
 
-```python
-import pytest
-from src.light_map.svg_loader import SVGLoader
-import os
+**Step 2: Implement `get_visibility_blockers` in `SVGLoader`**
+Logic to traverse elements and check group/parent IDs for keywords (case-insensitive substring).
 
-def test_extract_visibility_layers(tmp_path):
-    svg_content = """<svg width="100" height="100">
-      <g id="Walls_Layer"><path d="M 0 0 L 10 10" /></g>
-      <g id="Secret_Doors"><path d="M 20 20 L 30 30" /></g>
-      <g id="Unbreakable_Windows"><path d="M 40 40 L 50 50" /></g>
-    </svg>"""
-    svg_path = tmp_path / "test.svg"
-    svg_path.write_text(svg_content)
-    
-    loader = SVGLoader(str(svg_path))
-    blockers = loader.get_visibility_blockers()
-    
-    assert len(blockers['walls']) == 1
-    assert len(blockers['doors']) == 1
-    assert len(blockers['windows']) == 1
-```
+**Step 3: Write and run tests**
+Verify layer detection for "Walls", "Doors", and "Unbreakable Windows" using mock SVGs.
 
-**Step 2: Run test to verify it fails**
-`pytest tests/test_svg_loader_visibility.py -v`
-
-**Step 3: Implement `get_visibility_blockers`**
-Add logic to `SVGLoader` to traverse elements and check group/parent IDs for keywords.
-
-**Step 4: Run test to verify it passes**
-`pytest tests/test_svg_loader_visibility.py -v`
-
-**Step 5: Commit**
-`git add src/light_map/svg_loader.py tests/test_svg_loader_visibility.py && git commit -m "feat: Add visibility blocker extraction to SVGLoader"`
+**Step 4: Commit**
+`git commit -m "feat: Add VisibilityBlocker types and SVG extraction logic"`
 
 ---
 
-### Task 2: 2D Shadowcasting Engine (Single Point)
+### Task 2: 2D Shadowcasting Engine with Caching
 
-**Goal:** Implement a basic visibility polygon generator using a shadowcasting algorithm.
+**Goal:** Implement a high-performance visibility polygon generator with a geometry cache.
 
 **Files:**
-- Create: `src/light_map/visibility.py`
+- Create: `src/light_map/visibility_engine.py`
 - Test: `tests/test_visibility_logic.py`
 
-**Step 1: Write failing test for simple LOS**
-Test that a point at (50, 50) surrounded by a square wall (0,0 to 100,100) sees the whole square.
+**Step 1: Implement `GeometryCache`**
+Stores static wall segments and only updates when doors/windows change state.
 
-**Step 2: Run test to verify it fails**
-`pytest tests/test_visibility_logic.py -v`
+**Step 2: Implement `calculate_visibility`**
+Recursive shadowcasting or ray-casting algorithm. Returns a list of points (polygon).
 
-**Step 3: Implement Shadowcasting**
-Add `calculate_visibility(origin, segments, max_range)` in `src/light_map/visibility.py`.
+**Step 3: Implement `VisibilityCache`**
+Caches the final LOS polygon for a token ID and position. Invalidates if the token moves > 0.1 inches or `GeometryCache` is dirty.
 
-**Step 4: Run test to verify it passes**
-`pytest tests/test_visibility_logic.py -v`
+**Step 4: Write and run tests**
+Test LOS through doors (open vs closed) and performance with many segments.
 
 **Step 5: Commit**
-`git add src/light_map/visibility.py tests/test_visibility_logic.py && git commit -m "feat: Add core 2D visibility engine"`
+`git commit -m "feat: Add visibility engine with geometry and mask caching"`
 
 ---
 
-### Task 3: Starfinder 1e Multi-Point Vision
+### Task 3: Starfinder 1e Multi-Point Vision Union
 
-**Goal:** Union multiple visibility polygons for tokens of size S.
+**Goal:** Union multiple visibility polygons for tokens of size S using OpenCV `bitwise_or`.
 
 **Files:**
-- Modify: `src/light_map/visibility.py`
+- Modify: `src/light_map/visibility_engine.py`
 - Test: `tests/test_visibility_starfinder.py`
 
-**Step 1: Write test for 2x2 token vision**
-Verify vision is calculated from 9 corners + center.
+**Step 1: Implement `get_token_vision_mask(token_rect, segments, range)`**
+- Calculate vision from center + corners.
+- Render each polygon into a single-channel mask.
+- Use `cv2.bitwise_or` to union them.
 
-**Step 2: Run test to verify it fails**
+**Step 2: Write and run tests**
+Verify 1x1, 2x2, and 3x3 token vision patterns.
 
-**Step 3: Implement `get_token_vision(token_rect, segments, range)`**
-Logic to calculate and union polygons.
-
-**Step 4: Run test to verify it passes**
-
-**Step 5: Commit**
-`git add src/light_map/visibility.py tests/test_visibility_starfinder.py && git commit -m "feat: Implement Starfinder 1e multi-point vision rules"`
+**Step 3: Commit**
+`git commit -m "feat: Implement Starfinder 1e multi-point vision mask union"`
 
 ---
 
-### Task 4: Fog of War Persistence
+### Task 4: Fog of War Layer & Persistence
 
-**Goal:** Manage the 16x grid PNG bitmap.
+**Goal:** Manage the 16x grid PNG bitmap and its persistence.
 
 **Files:**
-- Create: `src/light_map/fow_manager.py`
-- Test: `tests/test_fow_persistence.py`
+- Create: `src/light_map/fow_layer.py`
+- Test: `tests/test_fow_layer.py`
 
-**Step 1: Write test for FoW update and save**
-Initialize a 100x100 grid (1600x1600 mask), reveal a circle, save, and reload.
+**Step 1: Implement `FogOfWarLayer`**
+- Extends `Layer` for rendering.
+- Manages an in-memory `cv2` mask (16x grid resolution).
+- Handles `load(map_path)` and `save(map_path)`.
 
-**Step 2: Run test to verify it fails**
+**Step 2: Implement "Explored but Not Visible" dimming**
+The layer will render a dimmed version of the map for pixels that are `explored == True` and `visible == False`.
 
-**Step 3: Implement `FogOfWarManager`**
-Methods: `update_revealed(polygons)`, `save(path)`, `load(path)`, `reset()`.
-
-**Step 4: Run test to verify it passes**
-
-**Step 5: Commit**
-`git add src/light_map/fow_manager.py tests/test_fow_persistence.py && git commit -m "feat: Add Fog of War persistence manager"`
+**Step 3: Commit**
+`git commit -m "feat: Add FogOfWarLayer and persistence logic"`
 
 ---
 
-### Task 5: Renderer Integration
+### Task 5: Renderer Multi-Layer Composition
 
-**Goal:** Composite Map + FoW + Current Visibility.
+**Goal:** Composite Map, FoW, and Current Visibility layers.
 
 **Files:**
 - Modify: `src/light_map/renderer.py`
-- Modify: `src/light_map/map_layer.py`
-
-**Step 1: Update Renderer to accept multiple masks**
-Add logic to apply the visibility mask (binary) and FoW mask (alpha) during composition.
-
-**Step 2: Integrate into MapLayer**
-`MapLayer` should hold the `FogOfWarManager` and request LOS updates.
-
-**Step 3: Test rendering output**
-Use a regression test in `tests/test_renderer_visibility.py` to check pixel values.
-
-**Step 4: Commit**
-`git add src/light_map/renderer.py src/light_map/map_layer.py && git commit -m "feat: Integrate visibility masks into renderer"`
-
----
-
-### Task 6: Interaction & Dwell Logic
-
-**Goal:** Implement the 1-inch virtual pointer and 2-second dwell for selection.
-
-**Files:**
-- Modify: `src/light_map/input_processor.py`
-- Modify: `src/light_map/scenes/map_scene.py`
-
-**Step 1: Implement virtual pointer offset**
-Add 1-inch (PPI-scaled) offset to the tracked index finger position.
-
-**Step 2: Implement Dwell Timer**
-Logic in `MapScene` or `InputProcessor` to track how long a pointer stays on an object.
-
-**Step 3: Test dwell triggering**
-Mock hand input hovering for 2.1s and verify the event triggers.
-
-**Step 4: Commit**
-`git add src/light_map/input_processor.py src/light_map/scenes/map_scene.py && git commit -m "feat: Add virtual pointer and dwell-based selection logic"`
-
----
-
-### Task 7: Menu Integration
-
-**Goal:** Add FOV controls and Door toggles to the menu.
-
-**Files:**
-- Modify: `src/light_map/menu_config.py`
 - Modify: `src/light_map/interactive_app.py`
 
-**Step 1: Add "Sync Vision" and "Open/Close Door" menu entries**
-Update configuration to show these context-sensitive items.
+**Step 1: Update Layer stack in `InteractiveApp`**
+1. `MapLayer` (Bottom)
+2. `FogOfWarLayer` (Masks Map)
+3. `VisibilityLayer` (Real-time LOS)
+4. `MenuLayer` (Top)
 
-**Step 2: Implement menu actions**
-Wire the menu actions to `FogOfWarManager` and the door state list.
+**Step 2: Implement "Exclusive Vision Mode"**
+A flag to swap the normal layer stack for one that only renders the single token's vision.
 
 **Step 3: Commit**
-`git add src/light_map/menu_config.py src/light_map/interactive_app.py && git commit -m "feat: Add Fog of War and Door controls to menu"`
+`git commit -m "feat: Implement multi-layer composition for visibility and FoW"`
+
+---
+
+### Task 6: Interaction Dwell & Virtual Pointer
+
+**Goal:** Implement 1-inch offset and 2-second dwell logic for selection.
+
+**Files:**
+- Create: `src/light_map/dwell_tracker.py`
+- Modify: `src/light_map/input_processor.py`
+
+**Step 1: Implement `DwellTracker`**
+Tracks `(x, y)` position over time. Triggers an `ON_DWELL` event after 2 seconds of stability.
+
+**Step 2: Implement 1-inch Virtual Pointer**
+Apply PPI-based offset in `InputProcessor` to the index finger tip.
+
+**Step 3: Write and run tests**
+Verify dwell triggering and pointer offset accuracy.
+
+**Step 4: Commit**
+`git commit -m "feat: Add DwellTracker and virtual pointer logic"`
+
+---
+
+### Task 7: Session Persistence & Menu Integration
+
+**Goal:** Persist door states and add FOV controls to the menu.
+
+**Files:**
+- Modify: `src/light_map/session_manager.py`
+- Modify: `src/light_map/menu_config.py`
+
+**Step 1: Persist Door States**
+Update `SessionManager` to save the state (Open/Closed) of all interactive blockers in the map session.
+
+**Step 2: Add Menu Entries**
+"Sync Vision", "Reset FoW", "Toggle Door", and "GM: Disable FoW".
+
+**Step 3: Final Integration Test**
+Run a full scenario: Load map -> Move tokens -> Sync Vision -> Save/Reload.
+
+**Step 4: Commit**
+`git commit -m "feat: Add session persistence for door states and final menu integration"`

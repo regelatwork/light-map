@@ -1,4 +1,4 @@
-# SVG Wall Support and Fog of War Implementation Plan (Refined)
+# SVG Wall Support and Fog of War Implementation Plan (Final)
 
 > **For Gemini:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
@@ -6,55 +6,53 @@
 
 **Architecture:** Extend `SVGLoader` to extract visibility blockers, implement a 2D shadowcasting engine for LOS calculations, and manage a persistent PNG-based exploration mask. Integration via the `Renderer` for compositing and `InputProcessor` for dwell-based interactions.
 
+**Coordinate Mapping:** 
+- **Scale:** `16 / MapEntry.grid_spacing_svg` (maps SVG units to the 16x-resolution FoW pixels).
+- **Origin:** `(MapEntry.grid_origin_svg_x, MapEntry.grid_origin_svg_y)`.
+
 **Tech Stack:** Python, OpenCV (for mask operations), `svgelements` (SVG parsing), `numpy`.
 
 ---
 
 ### Task 1: SVG Blocker Extraction & Data Types
 
-**Goal:** Extend `SVGLoader` to categorize paths by layer name and define a robust `VisibilityBlocker` data structure.
+**Goal:** Extend `SVGLoader` to categorize paths by layer name and define `VisibilityBlocker`.
 
 **Files:**
 - Create: `src/light_map/visibility_types.py`
 - Modify: `src/light_map/svg_loader.py`
 - Test: `tests/test_svg_loader_visibility.py`
 
-**Step 1: Define `VisibilityBlocker` and `VisibilityState`**
-Use `dataclass` to store geometry, layer name, type (WALL, DOOR, WINDOW), and state (OPEN, CLOSED).
+**Step 1: Define `VisibilityBlocker` and `VisibilityType`**
+Include `segments: List[Tuple[float, float]]`, `type: VisibilityType` (WALL, DOOR, WINDOW), and `is_open: bool`.
 
 **Step 2: Implement `get_visibility_blockers` in `SVGLoader`**
-Logic to traverse elements and check group/parent IDs for keywords (case-insensitive substring).
+Substring matching for "Wall", "Door", "Window", and "Unbreakable". Handle nested transforms.
 
-**Step 3: Write and run tests**
-Verify layer detection for "Walls", "Doors", and "Unbreakable Windows" using mock SVGs.
-
-**Step 4: Commit**
+**Step 3: Commit**
 `git commit -m "feat: Add VisibilityBlocker types and SVG extraction logic"`
 
 ---
 
-### Task 2: 2D Shadowcasting Engine with Caching
+### Task 2: 2D Shadowcasting Engine with Spatial Hashing
 
-**Goal:** Implement a high-performance visibility polygon generator with a geometry cache.
+**Goal:** Implement high-performance visibility calculation with segment pruning.
 
 **Files:**
 - Create: `src/light_map/visibility_engine.py`
 - Test: `tests/test_visibility_logic.py`
 
-**Step 1: Implement `GeometryCache`**
-Stores static wall segments and only updates when doors/windows change state.
+**Step 1: Implement Spatial Hashing**
+Divide the map into 10x10 grid tiles to quickly prune far-away wall segments for each ray-cast.
 
-**Step 2: Implement `calculate_visibility`**
-Recursive shadowcasting or ray-casting algorithm. Returns a list of points (polygon).
+**Step 2: Implement `VisibilityCache`**
+Key: `(token_id, int(grid_x), int(grid_y))`. This provides 1-cell hysteresis for physical token micro-movements.
 
-**Step 3: Implement `VisibilityCache`**
-Caches the final LOS polygon for a token ID and position. Invalidates if the token moves > 0.1 inches or `GeometryCache` is dirty.
+**Step 3: Write and run tests**
+Test LOS through doors and performance with 500+ segments.
 
-**Step 4: Write and run tests**
-Test LOS through doors (open vs closed) and performance with many segments.
-
-**Step 5: Commit**
-`git commit -m "feat: Add visibility engine with geometry and mask caching"`
+**Step 4: Commit**
+`git commit -m "feat: Add visibility engine with spatial hashing and jitter-resistant caching"`
 
 ---
 
@@ -66,56 +64,45 @@ Test LOS through doors (open vs closed) and performance with many segments.
 - Modify: `src/light_map/visibility_engine.py`
 - Test: `tests/test_visibility_starfinder.py`
 
-**Step 1: Implement `get_token_vision_mask(token_rect, segments, range)`**
-- Calculate vision from center + corners.
-- Render each polygon into a single-channel mask.
-- Use `cv2.bitwise_or` to union them.
+**Step 1: Implement `get_token_vision_mask`**
+Calculate vision from center + corners. Union polygons using `cv2.fillPoly` and `cv2.bitwise_or`.
 
-**Step 2: Write and run tests**
-Verify 1x1, 2x2, and 3x3 token vision patterns.
+**Step 2: Handle Out-of-Bounds**
+If token is outside map limits, return an all-black mask (0.0 visibility).
 
 **Step 3: Commit**
-`git commit -m "feat: Implement Starfinder 1e multi-point vision mask union"`
+`git commit -m "feat: Implement Starfinder 1e multi-point vision mask union with OOB safety"`
 
 ---
 
-### Task 4: Fog of War Layer & Persistence
+### Task 4: Fog of War Layer & Resilience
 
-**Goal:** Manage the 16x grid PNG bitmap and its persistence.
+**Goal:** Manage the persistent 16x grid PNG bitmap with error handling.
 
 **Files:**
 - Create: `src/light_map/fow_layer.py`
 - Test: `tests/test_fow_layer.py`
 
-**Step 1: Implement `FogOfWarLayer`**
-- Extends `Layer` for rendering.
-- Manages an in-memory `cv2` mask (16x grid resolution).
-- Handles `load(map_path)` and `save(map_path)`.
+**Step 1: Implement FoW PNG Loading with Try-Except**
+If the PNG is missing or corrupted, initialize a blank (0,0,0) mask.
 
 **Step 2: Implement "Explored but Not Visible" dimming**
-The layer will render a dimmed version of the map for pixels that are `explored == True` and `visible == False`.
+`mask = (explored_bitmap == 255) & (visible_mask == 0)`. Render at 30% alpha.
 
 **Step 3: Commit**
-`git commit -m "feat: Add FogOfWarLayer and persistence logic"`
+`git commit -m "feat: Add resilient FoWLayer with explored-dimming support"`
 
 ---
 
 ### Task 5: Renderer Multi-Layer Composition
 
-**Goal:** Composite Map, FoW, and Current Visibility layers.
+**Goal:** Composite Map, FoW, and Visibility layers.
 
-**Files:**
-- Modify: `src/light_map/renderer.py`
-- Modify: `src/light_map/interactive_app.py`
+**Step 1: Update Layer Stack**
+Stack: `MapLayer` -> `FoWLayer` -> `VisibilityLayer`. 
 
-**Step 1: Update Layer stack in `InteractiveApp`**
-1. `MapLayer` (Bottom)
-2. `FogOfWarLayer` (Masks Map)
-3. `VisibilityLayer` (Real-time LOS)
-4. `MenuLayer` (Top)
-
-**Step 2: Implement "Exclusive Vision Mode"**
-A flag to swap the normal layer stack for one that only renders the single token's vision.
+**Step 2: Implement Exclusive Vision Mode**
+Toggle logic in `InteractiveApp` to render only the pointed-at token's mask.
 
 **Step 3: Commit**
 `git commit -m "feat: Implement multi-layer composition for visibility and FoW"`
@@ -124,42 +111,28 @@ A flag to swap the normal layer stack for one that only renders the single token
 
 ### Task 6: Interaction Dwell & Virtual Pointer
 
-**Goal:** Implement 1-inch offset and 2-second dwell logic for selection.
-
-**Files:**
-- Create: `src/light_map/dwell_tracker.py`
-- Modify: `src/light_map/input_processor.py`
+**Goal:** Implement 1-inch offset and 2-second dwell logic.
 
 **Step 1: Implement `DwellTracker`**
-Tracks `(x, y)` position over time. Triggers an `ON_DWELL` event after 2 seconds of stability.
+Track index finger stability (within 0.5-inch radius) for 2.0s.
 
 **Step 2: Implement 1-inch Virtual Pointer**
-Apply PPI-based offset in `InputProcessor` to the index finger tip.
+Apply `config.projector_ppi` based offset to pointer coordinates.
 
-**Step 3: Write and run tests**
-Verify dwell triggering and pointer offset accuracy.
-
-**Step 4: Commit**
+**Step 3: Commit**
 `git commit -m "feat: Add DwellTracker and virtual pointer logic"`
 
 ---
 
 ### Task 7: Session Persistence & Menu Integration
 
-**Goal:** Persist door states and add FOV controls to the menu.
+**Goal:** Persist door states and add FOV controls.
 
-**Files:**
-- Modify: `src/light_map/session_manager.py`
-- Modify: `src/light_map/menu_config.py`
-
-**Step 1: Persist Door States**
-Update `SessionManager` to save the state (Open/Closed) of all interactive blockers in the map session.
+**Step 1: Persist Door States in `SessionManager`**
+Save `door_states: Dict[str, bool]` in the session JSON.
 
 **Step 2: Add Menu Entries**
-"Sync Vision", "Reset FoW", "Toggle Door", and "GM: Disable FoW".
+"Sync Vision", "Reset FoW", "Toggle Door", "GM: Disable FoW".
 
-**Step 3: Final Integration Test**
-Run a full scenario: Load map -> Move tokens -> Sync Vision -> Save/Reload.
-
-**Step 4: Commit**
-`git commit -m "feat: Add session persistence for door states and final menu integration"`
+**Step 3: Commit**
+`git commit -m "feat: Add door state persistence and final menu integration"`

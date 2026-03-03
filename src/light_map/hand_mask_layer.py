@@ -71,30 +71,40 @@ class HandMaskLayer(Layer):
         if not hulls:
             return []
 
-        # Generate binary mask (white hands on black background)
-        mask = self.hand_masker.generate_mask_image(
-            hulls,
-            self.config.width,
-            self.config.height,
-            padding=self.config.hand_mask_padding,
-            blur=self.config.hand_mask_blur,
-        )
+        patches = []
+        for hull in hulls:
+            # Get bounding box for this hull
+            x, y, w, h = cv2.boundingRect(hull)
 
-        patch_data = np.zeros(
-            (self.config.height, self.config.width, 4), dtype=np.uint8
-        )
-        patch_data[:, :, 3] = mask  # Alpha = mask intensity
-        # RGB is already 0.
+            # Apply padding to the bounding box
+            pad = self.config.hand_mask_padding + 20  # extra margin for blur
+            x1 = max(0, x - pad)
+            y1 = max(0, y - pad)
+            x2 = min(self.config.width, x + w + pad)
+            y2 = min(self.config.height, y + h + pad)
 
-        patch = ImagePatch(
-            x=0,
-            y=0,
-            width=self.config.width,
-            height=self.config.height,
-            data=patch_data,
-        )
+            pw, ph = x2 - x1, y2 - y1
+            if pw <= 0 or ph <= 0:
+                continue
 
-        return [patch]
+            # Create local patch
+            local_hull = hull - [x1, y1]
+
+            # Draw hull mask on patch
+            mask_patch = np.zeros((ph, pw), dtype=np.uint8)
+            cv2.drawContours(mask_patch, [local_hull.astype(np.int32)], -1, 255, -1)
+
+            # Optional blur on the patch
+            if self.config.hand_mask_blur > 1:
+                k = self.config.hand_mask_blur * 2 + 1
+                mask_patch = cv2.GaussianBlur(mask_patch, (k, k), 0)
+
+            patch_data = np.zeros((ph, pw, 4), dtype=np.uint8)
+            patch_data[:, :, 3] = mask_patch  # RGB is 0 (Black)
+
+            patches.append(ImagePatch(x=x1, y=y1, width=pw, height=ph, data=patch_data))
+
+        return patches
 
     def _update_timestamp(self):
         if self.state:

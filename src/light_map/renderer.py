@@ -1,6 +1,9 @@
-from typing import List, Any, Optional
+from typing import Any, List, Optional
+
 import numpy as np
-from .common_types import Layer, LayerMode, ImagePatch
+
+from .common_types import ImagePatch, Layer, LayerMode
+from .core.analytics import LatencyInstrument, track_wait
 
 
 class Renderer:
@@ -26,7 +29,12 @@ class Renderer:
         self._force_render = True
         self._background_dirty = True
 
-    def render(self, state: Any, layers: List[Layer]) -> Optional[np.ndarray]:
+    def render(
+        self,
+        state: Any,
+        layers: List[Layer],
+        instrument: Optional[LatencyInstrument] = None,
+    ) -> Optional[np.ndarray]:
         """
         Composites all provided layers into the final output buffer.
         Returns None if no layers requested a new render and compositing was skipped.
@@ -34,6 +42,7 @@ class Renderer:
         Args:
             state: The current WorldState (optional, layers use their own injected state).
             layers: A list of Layer objects, from bottom to top.
+            instrument: Optional LatencyInstrument to track per-layer timings.
         """
         any_dirty = self._force_render
         static_dirty = self._background_dirty
@@ -56,11 +65,14 @@ class Renderer:
             self.background_cache.fill(0)
             for i, layer in enumerate(layers):
                 if layer.is_static:
-                    patches = layer.render()
-                    for patch in patches:
-                        self._composite_patch(
-                            self.background_cache, patch, layer.layer_mode
-                        )
+                    layer_name = layer.__class__.__name__
+                    with track_wait(f"layer_render_{layer_name}", instrument):
+                        patches = layer.render()
+                    with track_wait(f"layer_composite_{layer_name}", instrument):
+                        for patch in patches:
+                            self._composite_patch(
+                                self.background_cache, patch, layer.layer_mode
+                            )
             self._background_dirty = False
 
         # 2. Copy Background Cache to Output Buffer
@@ -69,9 +81,17 @@ class Renderer:
         # 3. Composite Dynamic Layers
         for i, layer in enumerate(layers):
             if not layer.is_static:
-                patches = layer.render()
-                for patch in patches:
-                    self._composite_patch(self.output_buffer, patch, layer.layer_mode)
+                layer_name = layer.__class__.__name__
+                # We only render and composite if it's dirty or we are forced
+                # But Layer.render() usually handles its own internal caching/dirty check.
+                # However, for consistency and clear stats, we wrap it.
+                with track_wait(f"layer_render_{layer_name}", instrument):
+                    patches = layer.render()
+                with track_wait(f"layer_composite_{layer_name}", instrument):
+                    for patch in patches:
+                        self._composite_patch(
+                            self.output_buffer, patch, layer.layer_mode
+                        )
 
         self._force_render = False
         return self.output_buffer
@@ -98,10 +118,28 @@ class Renderer:
             buffer[y1:y2, x1:x2] = patch_slice[:, :, :3]
         else:
             # NORMAL mode: Alpha blending
-            # Final = (Patch * Alpha) + (Buffer * (1 - Alpha))
-            alpha = patch_slice[:, :, 3:4] / 255.0
-            roi = buffer[y1:y2, x1:x2]
-            blended = (patch_slice[:, :, :3] * alpha + roi * (1.0 - alpha)).astype(
-                np.uint8
-            )
-            buffer[y1:y2, x1:x2] = blended
+            # OPTIMIZATION: Check if patch is mostly transparent
+            # If patch has an alpha channel, use it.
+            if patch_slice.shape[2] == 4:
+                alpha_channel = patch_slice[:, :, 3]
+
+                # If all pixels are transparent, skip
+                if not np.any(alpha_channel):
+                    return
+
+                # If all pixels are opaque, do blocking copy
+                if np.all(alpha_channel == 255):
+                    buffer[y1:y2, x1:x2] = patch_slice[:, :, :3]
+                    return
+
+                # Standard Alpha blending: (Patch * Alpha) + (Buffer * (1 - Alpha))
+                # Using float32 for blending to avoid overflow and then back to uint8
+                alpha = alpha_channel[:, :, np.newaxis].astype(np.float32) / 255.0
+                roi = buffer[y1:y2, x1:x2].astype(np.float32)
+                patch_bgr = patch_slice[:, :, :3].astype(np.float32)
+
+                blended = (patch_bgr * alpha + roi * (1.0 - alpha)).astype(np.uint8)
+                buffer[y1:y2, x1:x2] = blended
+            else:
+                # No alpha channel, treat as blocking
+                buffer[y1:y2, x1:x2] = patch_slice[:, :, :3]

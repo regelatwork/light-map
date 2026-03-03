@@ -90,7 +90,14 @@ def verify():
         after_hand_state = resp.json()
         print(f"State after hand: {json.dumps(after_hand_state, indent=2)}")
 
-        # 8. Observe stability again and wait for Performance Statistics (logged every 10s)
+        # 8. Trigger Viewport change (MapLayer render)
+        print("Zooming in to trigger MapLayer render...")
+        httpx.post(f"{base_url}/map/zoom", params={"delta": 0.1})
+        time.sleep(2)
+        httpx.post(f"{base_url}/map/zoom", params={"delta": -0.1})
+        time.sleep(2)
+
+        # 9. Observe stability again and wait for Performance Statistics (logged every 10s)
         print("Waiting for final stability and performance report (approx 15s)...")
         time.sleep(15)
 

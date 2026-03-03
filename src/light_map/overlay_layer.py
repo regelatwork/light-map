@@ -1,5 +1,4 @@
 from typing import List
-import numpy as np
 import time
 from .common_types import Layer, LayerMode, ImagePatch
 from .core.world_state import WorldState
@@ -58,49 +57,30 @@ class OverlayLayer(Layer):
         if self.state is None:
             return []
 
-        width = self.context.app_config.width
-        height = self.context.app_config.height
-
-        # Create BGR buffer
-        buffer_bgr = np.zeros((height, width, 3), dtype=np.uint8)
+        patches = []
 
         # 1. Ghost Tokens
         if self.context.show_tokens:
-            self.overlay_renderer.draw_ghost_tokens(buffer_bgr, self.time_provider)
+            patches.extend(self.overlay_renderer.draw_ghost_tokens(self.time_provider))
 
         # 2. Notifications
-        self.overlay_renderer.draw_notifications(buffer_bgr)
+        patches.extend(self.overlay_renderer.draw_notifications())
 
         # 3. Debug Overlay
         if self.context.debug_mode:
-            self.overlay_renderer.draw_debug_overlay(
-                buffer_bgr,
-                self.state.fps,
-                self.state.current_scene_name,
-                self.state.inputs,
+            patches.extend(
+                self.overlay_renderer.draw_debug_overlay(
+                    self.state.fps,
+                    self.state.current_scene_name,
+                    self.state.inputs,
+                )
             )
-
-        # Convert to BGRA with alpha heuristic
-        patch_data = np.zeros((height, width, 4), dtype=np.uint8)
-        patch_data[:, :, :3] = buffer_bgr
-
-        # Use fast np.any for masking to ensure any pixel > 0 is preserved with full alpha
-        # Note: Even if color is (1,1,1), it will be visible.
-        # Backgrounds in draw_text_with_background are usually darker but not zero.
-        mask = np.any(buffer_bgr > 0, axis=2)
-        patch_data[mask, 3] = 255
-
-        # If we have a very dark background (e.g. 0,0,0 with alpha), we might need
-        # a different way to track what was drawn. But draw_text_with_background
-        # draws on top of the buffer.
-
-        patch = ImagePatch(x=0, y=0, width=width, height=height, data=patch_data)
 
         # Update tracking
         self._last_debug_mode = self.context.debug_mode
         self._last_show_tokens = self.context.show_tokens
 
-        return [patch]
+        return patches
 
     def _update_timestamp(self):
         if self.state:

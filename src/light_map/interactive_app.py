@@ -264,6 +264,8 @@ class InteractiveApp:
         if self.app_context.debug_mode != enabled:
             self.app_context.debug_mode = enabled
             self.state.notifications_timestamp += 1
+        # Always ensure it is set correctly
+        self.app_context.debug_mode = enabled
 
     def reload_config(self, new_config: AppConfig):
         """Reloads application configuration, rebuilding context and scenes."""
@@ -408,7 +410,9 @@ class InteractiveApp:
 
             # 3. Perform Composite Render
             with track_wait("renderer_composite", self.instrument):
-                final_frame = self.renderer.render(state, self.layer_stack)
+                final_frame = self.renderer.render(
+                    state, self.layer_stack, self.instrument
+                )
 
             if final_frame is not None:
                 total_ms = (time.perf_counter_ns() - t_start) / 1_000_000.0

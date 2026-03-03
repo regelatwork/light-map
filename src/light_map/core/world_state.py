@@ -123,15 +123,12 @@ class WorldState:
         Applies a detection result from a worker process to the state.
         Ensures synchronization via timestamp.
         """
-        if result.timestamp < self.last_frame_timestamp - 1000000:  # 1s grace window
-            # In a real system, we might be more strict.
-            pass
-
         if result.type == ResultType.ARUCO:
             changed = False
             if "tokens" in result.data:
                 # Logical/Snapped tokens
                 new_tokens = result.data["tokens"]
+
                 if not self._tokens_equal(self.tokens, new_tokens):
                     self.tokens = new_tokens
                     changed = True
@@ -158,15 +155,26 @@ class WorldState:
                 self.tokens_timestamp += 1
 
         elif result.type == ResultType.HANDS:
-            new_landmarks = result.data.get("landmarks", [])
-            new_handedness = result.data.get("handedness", [])
-
-            if not self._hands_equal(
-                self.hands, self.handedness, new_landmarks, new_handedness
+            if (
+                isinstance(result.data, list)
+                and len(result.data) > 0
+                and hasattr(result.data[0], "gesture")
             ):
-                self.hands = new_landmarks
-                self.handedness = new_handedness
-                self.hands_timestamp += 1
+                # Standardized HandInput objects (likely from Remote Driver)
+                if not self._inputs_equal(self.inputs, result.data):
+                    self.inputs = result.data
+                    self.hands_timestamp += 1
+            else:
+                # Raw landmarks from MediaPipe worker
+                new_landmarks = result.data.get("landmarks", [])
+                new_handedness = result.data.get("handedness", [])
+
+                if not self._hands_equal(
+                    self.hands, self.handedness, new_landmarks, new_handedness
+                ):
+                    self.hands = new_landmarks
+                    self.handedness = new_handedness
+                    self.hands_timestamp += 1
 
         elif result.type == ResultType.GESTURE:
             new_gesture = result.data.get("gesture")

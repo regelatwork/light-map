@@ -84,9 +84,9 @@ class OverlayLayer(Layer):
         patch_data = np.zeros((height, width, 4), dtype=np.uint8)
         patch_data[:, :, :3] = buffer_bgr
 
-        # Use fast bitwise OR for masking
-        combined = buffer_bgr[:, :, 0] | buffer_bgr[:, :, 1] | buffer_bgr[:, :, 2]
-        patch_data[combined > 0, 3] = 255
+        # Use fast np.any for masking to ensure any pixel > 0 is preserved with full alpha
+        mask = np.any(buffer_bgr > 0, axis=2)
+        patch_data[mask, 3] = 255
 
         patch = ImagePatch(x=0, y=0, width=width, height=height, data=patch_data)
 

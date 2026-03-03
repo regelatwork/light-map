@@ -80,17 +80,17 @@ class MainLoopController:
                     new_tokens = mapped_result.get("tokens", [])
                     new_raw_tokens = mapped_result.get("raw_tokens", [])
 
-                    # Update WorldState with BOTH
-                    # Note: We can reuse the apply() logic if we want, or do it manually.
-                    # Let's use a standard DetectionResult to leverage WorldState.apply's logic.
-                    from light_map.common_types import DetectionResult, ResultType
+                    # Only apply if we actually found something, OR if there's no remote tokens.
+                    # But the simplest is to only apply non-empty physical results to avoid flickering.
+                    if new_tokens or new_raw_tokens:
+                        from light_map.common_types import DetectionResult, ResultType
 
-                    res = DetectionResult(
-                        timestamp=time.perf_counter_ns(),
-                        type=ResultType.ARUCO,
-                        data={"tokens": new_tokens, "raw_tokens": new_raw_tokens},
-                    )
-                    self.state.apply(res)
+                        res = DetectionResult(
+                            timestamp=time.perf_counter_ns(),
+                            type=ResultType.ARUCO,
+                            data={"tokens": new_tokens, "raw_tokens": new_raw_tokens},
+                        )
+                        self.state.apply(res)
 
                 # NOTE: We DO NOT clear raw_aruco here anymore.
                 # Calibration scenes (e.g. Extrinsics) rely on the raw corners
@@ -195,6 +195,8 @@ class MainLoopController:
                 # 2. Trigger Render (Layered Renderer handles dirty states)
                 ts_to_render = self.state.last_frame_timestamp
                 with track_wait("render_time", self.instrument):
+                    # We always call render_callback so InteractiveApp can check for dirty scenes
+                    # or remote inputs even if no new camera frame arrived.
                     did_render = render_callback(self.state, actions)
 
                 if did_render:

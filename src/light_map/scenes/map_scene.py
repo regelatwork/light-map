@@ -40,12 +40,12 @@ class ViewingScene(Scene):
         super().__init__(context)
         self.summon_gesture_start_time = 0.0
         self.last_token_toggle_time = 0.0
-        self.is_dirty = False  # Static scene
+        self.is_dirty = True  # Start dirty to render once
 
     def on_enter(self, payload: dict | None = None) -> None:
         self.summon_gesture_start_time = 0.0
         self.last_token_toggle_time = 0.0
-        self.is_dirty = False
+        self.is_dirty = True
 
     def update(
         self, inputs: List[HandInput], current_time: float
@@ -71,6 +71,8 @@ class ViewingScene(Scene):
             elif (
                 current_time - self.summon_gesture_start_time > config_vars.SUMMON_TIME
             ):
+                # Reset start time after trigger to avoid double trigger
+                self.summon_gesture_start_time = 0.0
                 return SceneTransition(SceneId.MENU)
         else:
             self.summon_gesture_start_time = 0.0
@@ -94,13 +96,13 @@ class MapScene(Scene):
         self.summon_gesture_start_time = 0.0
         self.is_interacting = False
         self.last_token_toggle_time = 0.0
-        self.is_dirty = False  # Pure interaction scene
+        self.is_dirty = True  # Interaction scene
 
     def on_enter(self, payload: dict | None = None) -> None:
         self.summon_gesture_start_time = 0.0
         self.is_interacting = False
         self.last_token_toggle_time = 0.0
-        self.is_dirty = False
+        self.is_dirty = True
         self.context.notifications.add_notification(
             "Map Interaction Mode: Pan (1 hand), Zoom (2 hands)"
         )
@@ -126,6 +128,8 @@ class MapScene(Scene):
             elif (
                 current_time - self.summon_gesture_start_time > config_vars.SUMMON_TIME
             ):
+                # Reset start time after trigger to avoid double trigger
+                self.summon_gesture_start_time = 0.0
                 return SceneTransition(SceneId.MENU)
         else:
             self.summon_gesture_start_time = 0.0

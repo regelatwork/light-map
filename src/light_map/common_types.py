@@ -52,6 +52,7 @@ class Layer(ABC):
         """Handles caching and calls _generate_patches if dirty."""
         if self.is_dirty or self._cached_patches is None:
             self._cached_patches = self._generate_patches()
+            # Call after patches generated so subclasses can update tracking state
             self._update_timestamp()
         return self._cached_patches
 

@@ -297,9 +297,11 @@ class InteractiveApp:
     def _switch_scene(self, transition):
         target_id = transition.target_scene
         if target_id in self.scenes:
+            logging.debug("Switching scene to: %s", target_id)
             self.current_scene.on_exit()
             self.current_scene = self.scenes[target_id]
             self.current_scene.on_enter(transition.payload)
+            self.state.increment_scene_timestamp()
         else:
             logging.error("Scene '%s' not found.", target_id)
 
@@ -332,8 +334,9 @@ class InteractiveApp:
         self.last_fps_time = current_time
 
         # Update WorldState with latest metrics
-        state.update_performance_metrics(self.fps)
-        state.current_scene_name = self.current_scene.__class__.__name__
+        self.current_scene_name = self.current_scene.__class__.__name__
+        state.fps = self.fps
+        state.current_scene_name = self.current_scene_name
         state.update_viewport(self.map_system.state.to_viewport())
 
         # Update context frame if available
@@ -343,11 +346,24 @@ class InteractiveApp:
         else:
             frame_shape = (self.config.height, self.config.width, 3)
 
-        results = DummyResults(state.hands, state.handedness)
-
         # Standardize Input
-        inputs = self.input_processor.convert_mediapipe_to_inputs(results, frame_shape)
-        state.update_inputs(inputs)
+        # Priority 1: Raw landmarks from physical camera
+        if state.hands or state.handedness:
+            results = DummyResults(state.hands, state.handedness)
+            inputs = self.input_processor.convert_mediapipe_to_inputs(
+                results, frame_shape
+            )
+            state.update_inputs(inputs)
+        # Priority 2: Use existing inputs (might be from Remote Driver)
+        else:
+            inputs = state.inputs
+            # If we are in 'ignore' or 'merge' remote mode, and physical lost hand,
+            # we should ensure inputs is cleared if it was a physical hand.
+            # TrackingCoordinator/VisionProcessManager already handles this split
+            # by either sending HandInput objects or Landmarks.
+            if self.config.storage_manager:  # check if we are in a real app context
+                # For now, let's trust state.inputs is the source of truth if hands is empty.
+                pass
 
         # Update app context with latest vision results
         self.app_context.last_camera_frame = state.background
@@ -364,7 +380,6 @@ class InteractiveApp:
             self._switch_scene(transition)
 
         # Sync Menu State to WorldState
-        from .scenes.menu_scene import MenuScene
 
         menu_state = getattr(self.current_scene, "menu_state", None)
         state.update_menu_state(menu_state)
@@ -375,9 +390,6 @@ class InteractiveApp:
 
             # 1. Update MapLayer params based on scene
             self.map_layer.opacity = 1.0
-            if isinstance(self.current_scene, MenuScene):
-                self.map_layer.opacity = 0.3
-
             is_interacting = getattr(self.current_scene, "is_interacting", False)
             self.map_layer.quality = 0.25 if is_interacting else 1.0
 
@@ -408,10 +420,20 @@ class InteractiveApp:
         if isinstance(payload, dict) and "map_file" in payload:
             self.load_map(payload["map_file"], payload.get("load_session", False))
 
+    def switch_to_viewing(self):
+        """Switches the current scene to ViewingScene."""
+        if SceneId.VIEWING in self.scenes:
+            target_scene = self.scenes[SceneId.VIEWING]
+            if self.current_scene != target_scene:
+                self.current_scene.on_exit()
+                self.current_scene = target_scene
+                self.current_scene.on_enter()
+
     def load_map(self, filename: str, load_session: bool = False):
         """Loads an SVG map file and restores its state."""
         filename = os.path.abspath(filename)
         self.map_system.svg_loader = SVGLoader(filename)
+        self.state.increment_map_timestamp()
 
         entry = self.map_config.data.maps.get(filename)
         if entry is None:
@@ -441,6 +463,9 @@ class InteractiveApp:
             session = SessionManager.load_for_map(filename, session_dir=session_dir)
             if session:
                 self.map_system.ghost_tokens = session.tokens
+                self.state.tokens = session.tokens
+                self.state.tokens_timestamp += 1
+
                 if session.viewport:
                     self.map_system.set_state(
                         session.viewport.x,
@@ -450,6 +475,7 @@ class InteractiveApp:
                     )
                 self.map_config.data.global_settings.last_used_map = filename
                 self.map_config.save()
+                self.switch_to_viewing()
                 return
 
         # Default loading if no session or session load failed
@@ -462,12 +488,7 @@ class InteractiveApp:
         self.map_config.save()
 
         # Switch to Viewing Scene to ensure map is visible
-        if SceneId.VIEWING in self.scenes:
-            target_scene = self.scenes[SceneId.VIEWING]
-            if self.current_scene != target_scene:
-                self.current_scene.on_exit()
-                self.current_scene = target_scene
-                self.current_scene.on_enter()
+        self.switch_to_viewing()
 
     def save_session(self):
         """Saves the current session (tokens and viewport)."""

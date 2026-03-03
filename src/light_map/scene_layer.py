@@ -40,16 +40,11 @@ class SceneLayer(Layer):
         result_bgr = self.scene.render(buffer_bgr)
 
         # Convert to BGRA for the layered system
-        # OPTIMIZATION: Instead of np.any() which is very slow on large frames,
-        # we only do the alpha conversion if the scene actually claims to be visible.
-        # For MenuScene, we know it covers the whole screen or specific areas.
-        # But to be safe and fast, let's use a faster bitwise OR to find non-zero pixels.
         result_bgra = np.zeros((self.height, self.width, 4), dtype=np.uint8)
         result_bgra[:, :, :3] = result_bgr
 
-        # Use bitwise OR across channels to find any non-zero pixel
-        combined = result_bgr[:, :, 0] | result_bgr[:, :, 1] | result_bgr[:, :, 2]
-        result_bgra[combined > 0, 3] = 255
+        mask = np.any(result_bgr > 0, axis=2)
+        result_bgra[mask, 3] = 255
 
         patch = ImagePatch(
             x=0, y=0, width=self.width, height=self.height, data=result_bgra

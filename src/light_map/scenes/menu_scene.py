@@ -42,6 +42,7 @@ class MenuScene(Scene):
         # Rebuild menu in case of changes (e.g., map list, debug state)
         new_root = build_root_menu(self.context.map_config_manager)
         self.menu_system.set_root_menu(new_root)
+        self._is_dirty = True
 
     def update(
         self, inputs: List[HandInput], current_time: float

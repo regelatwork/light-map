@@ -72,6 +72,7 @@ class MapLayer(Layer):
         # Update tracking
         self._last_render_params = current_params.copy()
         self._last_opacity = self.opacity
+        self._update_timestamp()
 
         return [patch]
 

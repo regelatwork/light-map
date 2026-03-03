@@ -41,6 +41,9 @@ class WorldState:
         self.notifications_timestamp: int = 0
         self.viewport_timestamp: int = 0
 
+        # Hand Expiration tracking
+        self.last_hand_timestamp: float = 0.0
+
     def update_from_frame(self, shm_view: np.ndarray, timestamp: int):
         """
         Updates the background from a shared memory view using the injected processor.
@@ -96,8 +99,11 @@ class WorldState:
         """Updates the FPS metric. Does not trigger dirty flag or timestamp as it's for transient display."""
         self.fps = fps
 
-    def update_inputs(self, inputs: List[HandInput]):
+    def update_inputs(self, inputs: List[HandInput], current_time: float = 0.0):
         """Updates the standardized hand inputs and increments hands_timestamp if changed."""
+        if inputs:
+            self.last_hand_timestamp = current_time
+
         if not self._inputs_equal(self.inputs, inputs):
             self.inputs = inputs
             self.hands_timestamp += 1

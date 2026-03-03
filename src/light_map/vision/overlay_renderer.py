@@ -103,11 +103,13 @@ class OverlayRenderer:
             draw_text_with_background(
                 token_buffer,
                 resolved.name,
-                (lsx - radius, lsy + radius + 20),
+                (lsx - radius, lsy + radius + 25),
                 cv2.FONT_HERSHEY_SIMPLEX,
                 0.5,
                 color,
                 1,
+                bg_color=(0, 0, 0),
+                alpha=0.8,
             )
 
             patches.append(self._create_patch_from_buffer(token_buffer, x1, y1))

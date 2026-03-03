@@ -357,7 +357,7 @@ class InteractiveApp:
             inputs = self.input_processor.convert_mediapipe_to_inputs(
                 results, frame_shape
             )
-            state.update_inputs(inputs)
+            state.update_inputs(inputs, current_time)
         # Priority 2: Use existing inputs (might be from Remote Driver)
         else:
             inputs = state.inputs
@@ -368,6 +368,13 @@ class InteractiveApp:
             if self.config.storage_manager:  # check if we are in a real app context
                 # For now, let's trust state.inputs is the source of truth if hands is empty.
                 pass
+
+            # BUG-FIX: Expire inputs if no update received for > 200ms
+            if inputs and (current_time - state.last_hand_timestamp > 0.2):
+                logging.debug("Expiring hand inputs after 200ms of inactivity.")
+                state.inputs = []
+                state.hands_timestamp += 1
+                inputs = []
 
         # Update app context with latest vision results
         self.app_context.last_camera_frame = state.background

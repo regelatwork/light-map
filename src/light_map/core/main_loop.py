@@ -25,6 +25,7 @@ class MainLoopController:
         frame_producer: Optional[FrameProducer] = None,
         target_fps: int = 60,
         aruco_mapper: Optional[Callable[[Dict[str, Any]], List[Token]]] = None,
+        state_mirror: Optional[Dict[str, Any]] = None,
     ):
         self.state = world_state
         self.manager = process_manager
@@ -33,6 +34,7 @@ class MainLoopController:
         self.target_fps = target_fps
         self.frame_time = 1.0 / target_fps
         self.aruco_mapper = aruco_mapper
+        self.state_mirror = state_mirror
 
         self.is_running = False
         self.instrument = LatencyInstrument()
@@ -106,6 +108,22 @@ class MainLoopController:
 
         # 6. Get Semantic Actions
         actions = self.input.get_actions()
+
+        # 6.5 Update State Mirror for Remote Driver
+        if self.state_mirror is not None:
+            self.state_mirror["world"] = self.state.to_dict()
+            self.state_mirror["tokens"] = [t.to_dict() for t in self.state.tokens]
+            
+            # For menu, we need to extract current regions if available
+            if self.state.menu_state:
+                # We'll need a way to get bounds. For now, just title and depth.
+                self.state_mirror["menu"] = {
+                    "title": self.state.menu_state.active_menu.title,
+                    "depth": self.state.menu_state.depth,
+                    "items": [item.title for item in self.state.menu_state.active_menu.children]
+                }
+            else:
+                self.state_mirror["menu"] = None
 
         # 7. Periodic Performance Reporting (when debug is active)
         if self.debug_mode:

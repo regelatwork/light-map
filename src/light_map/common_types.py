@@ -195,6 +195,14 @@ class ViewportState:
     zoom: float = 1.0
     rotation: float = 0.0
 
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "x": self.x,
+            "y": self.y,
+            "zoom": self.zoom,
+            "rotation": self.rotation,
+        }
+
 
 @dataclass
 class Token:
@@ -212,6 +220,19 @@ class Token:
     confidence: float = 1.0
     is_occluded: bool = False
     is_duplicate: bool = False
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "id": self.id,
+            "world_x": self.world_x,
+            "world_y": self.world_y,
+            "world_z": self.world_z,
+            "grid_x": self.grid_x,
+            "grid_y": self.grid_y,
+            "confidence": self.confidence,
+            "is_occluded": self.is_occluded,
+            "is_duplicate": self.is_duplicate,
+        }
 
 
 @dataclass

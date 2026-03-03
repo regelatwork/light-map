@@ -1,9 +1,10 @@
 import multiprocessing as mp
 import logging
 import numpy as np
-from typing import List, Optional, Tuple
+from typing import List, Optional, Tuple, Dict, Any
 from light_map.vision.camera_operator import CameraOperator
 from light_map.vision.workers import aruco_worker, hand_worker
+from light_map.vision.remote_driver import remote_driver_worker
 
 
 class VisionProcessManager:
@@ -21,6 +22,10 @@ class VisionProcessManager:
         map_dims: Optional[Tuple[int, int]] = None,
         intrinsics_path: Optional[str] = None,
         extrinsics_path: Optional[str] = None,
+        remote_mode_hands: str = "ignore",
+        remote_mode_tokens: str = "ignore",
+        remote_port: int = 8000,
+        state_mirror: Optional[Dict[str, Any]] = None,
     ):
         self.width = width
         self.height = height
@@ -29,6 +34,11 @@ class VisionProcessManager:
         self.map_dims = map_dims
         self.intrinsics_path = intrinsics_path
         self.extrinsics_path = extrinsics_path
+
+        self.remote_mode_hands = remote_mode_hands
+        self.remote_mode_tokens = remote_mode_tokens
+        self.remote_port = remote_port
+        self.state_mirror = state_mirror
 
         self.operator: Optional[CameraOperator] = None
         self.shm_name: Optional[str] = None
@@ -58,37 +68,50 @@ class VisionProcessManager:
         self.operator.lock = self.lock
 
         # 2. Spawn Child Processes
-        # ArUco Worker
-        p_aruco = mp.Process(
-            target=aruco_worker,
-            args=(self.shm_name, self.results_queue, self.lock, self.stop_event),
-            kwargs={
-                "width": self.width,
-                "height": self.height,
-                "num_consumers": self.num_consumers,
-                "projector_matrix": self.projector_matrix,
-                "map_dims": self.map_dims,
-                "intrinsics_path": self.intrinsics_path,
-                "extrinsics_path": self.extrinsics_path,
-            },
-            name="ArucoWorker",
-        )
-        self.processes.append(p_aruco)
+        
+        # ArUco Worker (Physical)
+        if self.remote_mode_tokens != "exclusive":
+            p_aruco = mp.Process(
+                target=aruco_worker,
+                args=(self.shm_name, self.results_queue, self.lock, self.stop_event),
+                kwargs={
+                    "width": self.width,
+                    "height": self.height,
+                    "num_consumers": self.num_consumers,
+                    "projector_matrix": self.projector_matrix,
+                    "map_dims": self.map_dims,
+                    "intrinsics_path": self.intrinsics_path,
+                    "extrinsics_path": self.extrinsics_path,
+                },
+                name="ArucoWorker",
+            )
+            self.processes.append(p_aruco)
 
-        # Hand Worker
-        p_hand = mp.Process(
-            target=hand_worker,
-            args=(self.shm_name, self.results_queue, self.lock, self.stop_event),
-            kwargs={
-                "width": self.width,
-                "height": self.height,
-                "num_consumers": self.num_consumers,
-                "projector_matrix": self.projector_matrix,
-                "map_dims": self.map_dims,
-            },
-            name="HandWorker",
-        )
-        self.processes.append(p_hand)
+        # Hand Worker (Physical)
+        if self.remote_mode_hands != "exclusive":
+            p_hand = mp.Process(
+                target=hand_worker,
+                args=(self.shm_name, self.results_queue, self.lock, self.stop_event),
+                kwargs={
+                    "width": self.width,
+                    "height": self.height,
+                    "num_consumers": self.num_consumers,
+                    "projector_matrix": self.projector_matrix,
+                    "map_dims": self.map_dims,
+                },
+                name="HandWorker",
+            )
+            self.processes.append(p_hand)
+
+        # Remote Driver Worker
+        if self.remote_mode_hands != "ignore" or self.remote_mode_tokens != "ignore":
+            p_remote = mp.Process(
+                target=remote_driver_worker,
+                args=(self.results_queue, self.stop_event, self.state_mirror),
+                kwargs={"port": self.remote_port},
+                name="RemoteDriverWorker",
+            )
+            self.processes.append(p_remote)
 
         for p in self.processes:
             p.daemon = True

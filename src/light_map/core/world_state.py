@@ -224,6 +224,17 @@ class WorldState:
 
         return self.raw_aruco["corners"] != new_corners
 
+    def to_dict(self) -> Dict[str, Any]:
+        """Serializes the WorldState into a dictionary for the Remote Driver."""
+        return {
+            "scene": self.current_scene_name,
+            "viewport": self.viewport.to_dict(),
+            "fps": round(self.fps, 2),
+            "tokens_count": len(self.tokens),
+            "hands_count": len(self.inputs),
+            "timestamp": self.last_frame_timestamp,
+        }
+
     def clear_raw_aruco(self):
         """Resets raw ArUco after it has been potentially processed by a scene."""
         self.raw_aruco = {"corners": [], "ids": []}

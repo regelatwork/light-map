@@ -20,6 +20,9 @@ from light_map.map_system import MapSystem
 from light_map.svg_loader import SVGLoader
 from light_map.map_config import MapConfigManager
 from light_map.session_manager import SessionManager
+from light_map.fow_layer import FogOfWarLayer
+from light_map.visibility_layer import VisibilityLayer
+from light_map.visibility_engine import VisibilityEngine
 
 from light_map.core.app_context import AppContext
 from light_map.core.analytics import AnalyticsManager
@@ -64,6 +67,13 @@ class InteractiveApp:
         self.map_config = MapConfigManager(storage=config.storage_manager)
         self.notifications = NotificationManager()
 
+        # Visibility and FoW Systems
+        # Use a temporary engine until map is loaded
+        self.visibility_engine = VisibilityEngine(grid_spacing_svg=10.0) 
+        self.fow_layer = FogOfWarLayer(config.width, config.height)
+        self.visibility_layer = VisibilityLayer(config.width, config.height)
+        self.inspected_token_id: Optional[int] = None
+
         # New Modular Coordinators
         self.tracking_coordinator = TrackingCoordinator(time_provider)
         self.input_processor = InputProcessor(config)
@@ -104,6 +114,8 @@ class InteractiveApp:
         # Layer Stack (Bottom to Top)
         self.layer_stack = [
             self.map_layer,
+            self.fow_layer,
+            self.visibility_layer,
             self.scene_layer,
             self.hand_mask_layer,
             self.menu_layer,
@@ -381,6 +393,55 @@ class InteractiveApp:
         self.app_context.raw_aruco = state.raw_aruco
         self.app_context.raw_tokens = state.raw_tokens
 
+        # --- VISIBILITY CALCULATION ---
+        combined_pc_mask = None
+        if self.map_system.is_map_loaded():
+            mask_w, mask_h = self.fow_layer.mask_width, self.fow_layer.mask_height
+            
+            # Aggregate LOS for all PC tokens
+            pc_tokens = [t for t in state.tokens if self.map_config.resolve_token_profile(t.id).type == "PC"]
+            
+            for token in pc_tokens:
+                token_mask = self.visibility_engine.get_token_vision_mask(
+                    token.id, token.world_x, token.world_y, 
+                    size=self.map_config.resolve_token_profile(token.id).size,
+                    vision_range_grid=25.0, # Default per design
+                    mask_width=mask_w, mask_height=mask_h
+                )
+                if combined_pc_mask is None:
+                    combined_pc_mask = token_mask.copy()
+                else:
+                    cv2.bitwise_or(combined_pc_mask, token_mask, combined_pc_mask)
+            
+            if combined_pc_mask is not None:
+                self.fow_layer.set_visible_mask(combined_pc_mask)
+                self.visibility_layer.set_mask(combined_pc_mask)
+                
+                # Check for "Exclusive Vision" (Token Inspection)
+                # This state is expected to be set by scenes/inputs later.
+                if self.inspected_token_id is not None:
+                    # Find inspected token's mask
+                    insp_token = next((t for t in state.tokens if t.id == self.inspected_token_id), None)
+                    if insp_token:
+                        insp_mask = self.visibility_engine.get_token_vision_mask(
+                            insp_token.id, insp_token.world_x, insp_token.world_y,
+                            size=self.map_config.resolve_token_profile(insp_token.id).size,
+                            vision_range_grid=25.0,
+                            mask_width=mask_w, mask_height=mask_h
+                        )
+                        # Switch to Exclusive Stack: Visibility (Full LOS) + Scene + Hand + Menu
+                        current_stack = [self.visibility_layer, self.scene_layer, self.hand_mask_layer, self.menu_layer]
+                        # The visibility layer should be the single token's vision
+                        self.visibility_layer.set_mask(insp_mask)
+                    else:
+                        current_stack = self.layer_stack
+                else:
+                    current_stack = self.layer_stack
+            else:
+                current_stack = self.layer_stack
+        else:
+            current_stack = self.layer_stack
+
         # We need to update tokens in map system from state
         self.map_system.ghost_tokens = state.tokens
 
@@ -418,7 +479,7 @@ class InteractiveApp:
             # 3. Perform Composite Render
             with track_wait("renderer_composite", self.instrument):
                 final_frame = self.renderer.render(
-                    state, self.layer_stack, self.instrument
+                    state, current_stack, self.instrument
                 )
 
             if final_frame is not None:
@@ -430,8 +491,23 @@ class InteractiveApp:
 
     def _handle_payloads(self, payload: Any):
         """Handle side-effects from scene transitions, like loading maps."""
-        if isinstance(payload, dict) and "map_file" in payload:
+        if not isinstance(payload, dict):
+            return
+
+        if "map_file" in payload:
             self.load_map(payload["map_file"], payload.get("load_session", False))
+        
+        if payload.get("action") == "SYNC_VISION":
+            if self.fow_layer:
+                self.fow_layer.reveal_area(self.fow_layer.visible_mask)
+                self.fow_layer.save()
+                self.notifications.add_notification("Vision Synchronized")
+        
+        if payload.get("action") == "RESET_FOW":
+            if self.fow_layer:
+                self.fow_layer.reset()
+                self.fow_layer.save()
+                self.notifications.add_notification("Fog of War Reset")
 
     def switch_to_viewing(self):
         """Switches the current scene to ViewingScene."""
@@ -448,6 +524,9 @@ class InteractiveApp:
         self.map_system.svg_loader = SVGLoader(filename)
         self.state.increment_map_timestamp()
 
+        # Update Visibility Engine with blockers
+        blockers = self.map_system.svg_loader.get_visibility_blockers()
+        
         entry = self.map_config.data.maps.get(filename)
         if entry is None:
             from light_map.map_config import MapEntry
@@ -466,6 +545,30 @@ class InteractiveApp:
                 entry.grid_origin_svg_x = ox
                 entry.grid_origin_svg_y = oy
                 self.map_config.save()
+
+        # Setup Visibility Engine with correct scaling
+        self.visibility_engine = VisibilityEngine(
+            grid_spacing_svg=entry.grid_spacing_svg or 10.0,
+            grid_origin=(entry.grid_origin_svg_x, entry.grid_origin_svg_y)
+        )
+        self.visibility_engine.update_blockers(blockers)
+
+        # Setup FoW Layer with persistence
+        fow_dir = os.path.join(os.path.expanduser("~"), ".light_map", "maps", os.path.basename(filename))
+        fow_path = os.path.join(fow_dir, "fow.png")
+        
+        # Calculate mask dimensions based on 16x grid resolution
+        # SVG width/height in units
+        svg_w = self.map_system.svg_loader.svg.width
+        svg_h = self.map_system.svg_loader.svg.height
+        mask_w = int((svg_w / entry.grid_spacing_svg) * 16) if entry.grid_spacing_svg > 0 else self.config.width
+        mask_h = int((svg_h / entry.grid_spacing_svg) * 16) if entry.grid_spacing_svg > 0 else self.config.height
+        
+        self.fow_layer = FogOfWarLayer(mask_w, mask_h, file_path=fow_path)
+        # Update layer in stack (it might have been replaced)
+        self.layer_stack[1] = self.fow_layer
+        self.visibility_layer = VisibilityLayer(mask_w, mask_h)
+        self.layer_stack[2] = self.visibility_layer
 
         if load_session:
             session_dir = None

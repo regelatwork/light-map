@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from typing import TYPE_CHECKING, List, Optional, Tuple
 
 import numpy as np
@@ -67,14 +68,21 @@ class ViewingScene(Scene):
 
         if primary_gesture == config_vars.SUMMON_GESTURE:
             if self.summon_gesture_start_time == 0:
+                logging.debug("Summon gesture started")
                 self.summon_gesture_start_time = current_time
             elif (
                 current_time - self.summon_gesture_start_time > config_vars.SUMMON_TIME
             ):
+                logging.info("Summon gesture triggered transition to MENU")
                 # Reset start time after trigger to avoid double trigger
                 self.summon_gesture_start_time = 0.0
                 return SceneTransition(SceneId.MENU)
         else:
+            if self.summon_gesture_start_time > 0:
+                logging.debug(
+                    "Summon gesture lost after %.2f seconds",
+                    current_time - self.summon_gesture_start_time,
+                )
             self.summon_gesture_start_time = 0.0
 
         return None
@@ -124,14 +132,21 @@ class MapScene(Scene):
 
         if primary_gesture == config_vars.SUMMON_GESTURE:
             if self.summon_gesture_start_time == 0:
+                logging.debug("Summon gesture started")
                 self.summon_gesture_start_time = current_time
             elif (
                 current_time - self.summon_gesture_start_time > config_vars.SUMMON_TIME
             ):
+                logging.info("Summon gesture triggered transition to MENU")
                 # Reset start time after trigger to avoid double trigger
                 self.summon_gesture_start_time = 0.0
                 return SceneTransition(SceneId.MENU)
         else:
+            if self.summon_gesture_start_time > 0:
+                logging.debug(
+                    "Summon gesture lost after %.2f seconds",
+                    current_time - self.summon_gesture_start_time,
+                )
             self.summon_gesture_start_time = 0.0
 
         # Process map interactions

@@ -38,7 +38,7 @@ class MenuScene(Scene):
 
     def on_enter(self, payload: Any = None) -> None:
         """Called once when the scene becomes active."""
-        self.menu_system.state = MenuSystemState.WAITING_FOR_NEUTRAL
+        self.menu_system.state = MenuSystemState.ACTIVE
         # Rebuild menu in case of changes (e.g., map list, debug state)
         new_root = build_root_menu(self.context.map_config_manager)
         self.menu_system.set_root_menu(new_root)

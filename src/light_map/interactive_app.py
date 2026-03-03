@@ -261,7 +261,9 @@ class InteractiveApp:
         self.app_context.debug_mode = enabled
 
     def set_debug_mode(self, enabled: bool):
-        self.app_context.debug_mode = enabled
+        if self.app_context.debug_mode != enabled:
+            self.app_context.debug_mode = enabled
+            self.state.notifications_timestamp += 1
 
     def reload_config(self, new_config: AppConfig):
         """Reloads application configuration, rebuilding context and scenes."""
@@ -334,8 +336,8 @@ class InteractiveApp:
         self.last_fps_time = current_time
 
         # Update WorldState with latest metrics
-        self.current_scene_name = self.current_scene.__class__.__name__
         state.fps = self.fps
+        self.current_scene_name = self.current_scene.__class__.__name__
         state.current_scene_name = self.current_scene_name
         state.update_viewport(self.map_system.state.to_viewport())
 

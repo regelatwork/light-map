@@ -85,8 +85,14 @@ class OverlayLayer(Layer):
         patch_data[:, :, :3] = buffer_bgr
 
         # Use fast np.any for masking to ensure any pixel > 0 is preserved with full alpha
+        # Note: Even if color is (1,1,1), it will be visible.
+        # Backgrounds in draw_text_with_background are usually darker but not zero.
         mask = np.any(buffer_bgr > 0, axis=2)
         patch_data[mask, 3] = 255
+
+        # If we have a very dark background (e.g. 0,0,0 with alpha), we might need
+        # a different way to track what was drawn. But draw_text_with_background
+        # draws on top of the buffer.
 
         patch = ImagePatch(x=0, y=0, width=width, height=height, data=patch_data)
 

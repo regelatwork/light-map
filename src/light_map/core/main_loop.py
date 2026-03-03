@@ -113,14 +113,17 @@ class MainLoopController:
         if self.state_mirror is not None:
             self.state_mirror["world"] = self.state.to_dict()
             self.state_mirror["tokens"] = [t.to_dict() for t in self.state.tokens]
-            
+
             # For menu, we need to extract current regions if available
             if self.state.menu_state:
                 # We'll need a way to get bounds. For now, just title and depth.
                 self.state_mirror["menu"] = {
                     "title": self.state.menu_state.active_menu.title,
                     "depth": self.state.menu_state.depth,
-                    "items": [item.title for item in self.state.menu_state.active_menu.children]
+                    "items": [
+                        item.title
+                        for item in self.state.menu_state.active_menu.children
+                    ],
                 }
             else:
                 self.state_mirror["menu"] = None

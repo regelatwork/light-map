@@ -2,18 +2,20 @@ from __future__ import annotations
 import time
 import logging
 import uvicorn
-from fastapi import FastAPI, Body, HTTPException
+from fastapi import FastAPI
 from pydantic import BaseModel
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any
 from multiprocessing import Queue, Event
 
 from light_map.common_types import DetectionResult, ResultType, Token, GestureType
 from light_map.core.scene import HandInput
 
+
 class RemoteHandInput(BaseModel):
     x: int
     y: int
     gesture: str = "None"
+
 
 class RemoteToken(BaseModel):
     id: int
@@ -21,6 +23,7 @@ class RemoteToken(BaseModel):
     y: float
     z: float = 0.0
     angle: float = 0.0
+
 
 def create_app(results_queue: Queue, stop_event: Event, state_mirror: Dict[str, Any]):
     app = FastAPI(title="Light Map Remote Driver")
@@ -44,14 +47,14 @@ def create_app(results_queue: Queue, stop_event: Event, state_mirror: Dict[str, 
                 HandInput(
                     gesture=g,
                     proj_pos=(h.x, h.y),
-                    raw_landmarks=None  # Virtual hands don't have landmarks
+                    raw_landmarks=None,  # Virtual hands don't have landmarks
                 )
             )
-        
+
         res = DetectionResult(
             timestamp=time.perf_counter_ns(),
             type=ResultType.HANDS,
-            data=processed_hands
+            data=processed_hands,
         )
         results_queue.put(res)
         return {"status": "injected", "count": len(processed_hands)}
@@ -62,20 +65,14 @@ def create_app(results_queue: Queue, stop_event: Event, state_mirror: Dict[str, 
         processed_tokens = []
         for t in tokens:
             processed_tokens.append(
-                Token(
-                    id=t.id,
-                    world_x=t.x,
-                    world_y=t.y,
-                    world_z=t.z,
-                    confidence=1.0
-                )
+                Token(id=t.id, world_x=t.x, world_y=t.y, world_z=t.z, confidence=1.0)
             )
-        
+
         # Wrapped as ARUCO result type
         res = DetectionResult(
             timestamp=time.perf_counter_ns(),
             type=ResultType.ARUCO,
-            data={"tokens": processed_tokens, "raw_tokens": []}
+            data={"tokens": processed_tokens, "raw_tokens": []},
         )
         results_queue.put(res)
         return {"status": "injected", "count": len(processed_tokens)}
@@ -98,20 +95,23 @@ def create_app(results_queue: Queue, stop_event: Event, state_mirror: Dict[str, 
 
     return app
 
+
 def remote_driver_worker(
     results_queue: Queue,
     stop_event: Event,
     state_mirror: Dict[str, Any],
     port: int = 8000,
-    host: str = "127.0.0.1"
+    host: str = "127.0.0.1",
 ):
     """Worker process entry point for the Remote Driver."""
     logging.info(f"Starting Remote Driver on {host}:{port}")
     app = create_app(results_queue, stop_event, state_mirror)
-    
-    config = uvicorn.Config(app, host=host, port=port, log_level="info", access_log=False)
+
+    config = uvicorn.Config(
+        app, host=host, port=port, log_level="info", access_log=False
+    )
     server = uvicorn.Server(config)
-    
+
     # Run the server in the current process
     # We don't use server.run() because we might want to check stop_event
     # but uvicorn handles signals. For simplicity in a worker process:

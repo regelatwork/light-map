@@ -68,7 +68,7 @@ class VisionProcessManager:
         self.operator.lock = self.lock
 
         # 2. Spawn Child Processes
-        
+
         # ArUco Worker (Physical)
         if self.remote_mode_tokens != "exclusive":
             p_aruco = mp.Process(

@@ -5,6 +5,7 @@ import numpy as np
 import argparse
 import time
 import logging
+import multiprocessing as mp
 
 # Ensure we can import the local package
 sys.path.insert(0, os.path.abspath("src"))

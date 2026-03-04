@@ -26,6 +26,8 @@ from light_map.calibration import (
 if TYPE_CHECKING:
     from light_map.core.app_context import AppContext
     from light_map.core.scene import HandInput
+    from light_map.interactive_app import InteractiveApp
+    from light_map.common_types import Layer
 
 
 class FlashCalibStage(Enum):
@@ -79,6 +81,26 @@ class FlashCalibrationScene(Scene):
                 return SceneTransition(SceneId.MENU)
 
         return None
+
+    @property
+    def blocking(self) -> bool:
+        """Calibration scenes should have a black background (blocking lower layers)."""
+        return True
+
+    @property
+    def show_tokens(self) -> bool:
+        """Calibration scenes should not show ghost tokens."""
+        return False
+
+    def get_active_layers(self, app: InteractiveApp) -> List[Layer]:
+        """Calibration scenes only need scene, token (for hide), notification, debug, and cursor layers."""
+        return [
+            app.scene_layer,
+            app.token_layer,
+            app.notification_layer,
+            app.debug_layer,
+            app.cursor_layer,
+        ]
 
     def render(self, frame: np.ndarray) -> np.ndarray:
         if self._stage == FlashCalibStage.TESTING:
@@ -210,6 +232,26 @@ class IntrinsicsCalibrationScene(Scene):
 
         return None
 
+    @property
+    def blocking(self) -> bool:
+        """Calibration scenes should have a black background (blocking lower layers)."""
+        return True
+
+    @property
+    def show_tokens(self) -> bool:
+        """Calibration scenes should not show ghost tokens."""
+        return False
+
+    def get_active_layers(self, app: InteractiveApp) -> List[Layer]:
+        """Calibration scenes only need scene, token (for hide), notification, debug, and cursor layers."""
+        return [
+            app.scene_layer,
+            app.token_layer,
+            app.notification_layer,
+            app.debug_layer,
+            app.cursor_layer,
+        ]
+
     def render(self, frame: np.ndarray) -> np.ndarray:
         # Overlay instructions or status based on stage
         if self._stage == "CAPTURE":
@@ -328,6 +370,26 @@ class ProjectorCalibrationScene(Scene):
             return SceneTransition(SceneId.MENU)
 
         return None
+
+    @property
+    def blocking(self) -> bool:
+        """Calibration scenes should have a black background (blocking lower layers)."""
+        return True
+
+    @property
+    def show_tokens(self) -> bool:
+        """Calibration scenes should not show ghost tokens."""
+        return False
+
+    def get_active_layers(self, app: InteractiveApp) -> List[Layer]:
+        """Calibration scenes only need scene, token (for hide), notification, debug, and cursor layers."""
+        return [
+            app.scene_layer,
+            app.token_layer,
+            app.notification_layer,
+            app.debug_layer,
+            app.cursor_layer,
+        ]
 
     def render(self, frame: np.ndarray) -> np.ndarray:
         if self._pattern_image is not None:
@@ -584,6 +646,26 @@ class ExtrinsicsCalibrationScene(Scene):
 
         return None
 
+    @property
+    def blocking(self) -> bool:
+        """Calibration scenes should have a black background (blocking lower layers)."""
+        return True
+
+    @property
+    def show_tokens(self) -> bool:
+        """Calibration scenes should not show ghost tokens."""
+        return False
+
+    def get_active_layers(self, app: InteractiveApp) -> List[Layer]:
+        """Calibration scenes only need scene, token (for hide), notification, debug, and cursor layers."""
+        return [
+            app.scene_layer,
+            app.token_layer,
+            app.notification_layer,
+            app.debug_layer,
+            app.cursor_layer,
+        ]
+
     def render(self, frame: np.ndarray) -> np.ndarray:
         h, w = frame.shape[:2]
         current_time = self._current_time
@@ -821,6 +903,26 @@ class PpiCalibrationScene(Scene):
             elif gesture == GestureType.OPEN_PALM:
                 self._stage = "DETECTING"
         return None
+
+    @property
+    def blocking(self) -> bool:
+        """Calibration scenes should have a black background (blocking lower layers)."""
+        return True
+
+    @property
+    def show_tokens(self) -> bool:
+        """Calibration scenes should not show ghost tokens."""
+        return False
+
+    def get_active_layers(self, app: InteractiveApp) -> List[Layer]:
+        """Calibration scenes only need scene, token (for hide), notification, debug, and cursor layers."""
+        return [
+            app.scene_layer,
+            app.token_layer,
+            app.notification_layer,
+            app.debug_layer,
+            app.cursor_layer,
+        ]
 
     def render(self, frame: np.ndarray) -> np.ndarray:
         h, w = frame.shape[:2]
@@ -1088,6 +1190,27 @@ class MapGridCalibrationScene(Scene):
             map_system.base_scale = new_base_scale
 
         self.context.notifications.add_notification("Map grid calibrated.")
+
+    @property
+    def blocking(self) -> bool:
+        """Map grid calibration needs to show the map behind the grid crosses."""
+        return False
+
+    @property
+    def show_tokens(self) -> bool:
+        """Calibration scenes should not show ghost tokens."""
+        return False
+
+    def get_active_layers(self, app: InteractiveApp) -> List[Layer]:
+        """Map grid calibration needs the map background and standard UI layers."""
+        return [
+            app.map_layer,
+            app.scene_layer,
+            app.token_layer,
+            app.notification_layer,
+            app.debug_layer,
+            app.cursor_layer,
+        ]
 
     def render(self, frame: np.ndarray) -> np.ndarray:
         # The main app loop renders the map background.

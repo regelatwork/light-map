@@ -56,6 +56,11 @@ class ViewingScene(Scene):
         self.is_dirty = True
         self.dwell_tracker.reset()
 
+    @property
+    def blocking(self) -> bool:
+        """Viewing scene should show the map."""
+        return False
+
     def update(
         self, inputs: List[HandInput], current_time: float
     ) -> Optional[SceneTransition]:
@@ -210,6 +215,11 @@ class MapScene(Scene):
         self.context.notifications.add_notification(
             "Map Interaction Mode: Pan (1 hand), Zoom (2 hands)"
         )
+
+    @property
+    def blocking(self) -> bool:
+        """Map interaction scene should show the map."""
+        return False
 
     def update(
         self, inputs: List[HandInput], current_time: float

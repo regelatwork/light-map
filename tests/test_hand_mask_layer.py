@@ -32,26 +32,21 @@ def test_hand_mask_layer_render_enabled(mock_config):
     layer = HandMaskLayer(ws, mock_config)
 
     # Mock HandMasker internals to avoid CV2 calls
-    with patch.object(layer.hand_masker, "compute_hulls") as mock_hulls:
+    with patch.object(layer.hand_masker, "get_mask_hulls") as mock_hulls:
         mock_hulls.return_value = [
-            np.array([[0, 0], [10, 0], [10, 10]], dtype=np.int32)
+            np.array([[50, 50], [60, 50], [60, 60]], dtype=np.int32)
         ]
-        with patch.object(layer.hand_masker, "generate_mask_image") as mock_mask:
-            # Return a small white square on black
-            dummy_mask = np.zeros((1080, 1920), dtype=np.uint8)
-            dummy_mask[0:10, 0:10] = 255
-            mock_mask.return_value = dummy_mask
 
-            patches = layer.render(current_time=0.0)
+        patches = layer.render(current_time=0.0)
 
-            assert len(patches) > 0
-            p = patches[0]
-            # localized patches won't be full screen
-            assert p.width < 1920
-            assert p.height < 1080
-            # Check alpha channel exists and has some visibility
-            assert p.data.shape[2] == 4
-            assert np.any(p.data[:, :, 3] > 0)
+        assert len(patches) > 0
+        p = patches[0]
+        # localized patches won't be full screen
+        assert p.width < 1920
+        assert p.height < 1080
+        # Check alpha channel exists and has some visibility
+        assert p.data.shape[2] == 4
+        assert np.any(p.data[:, :, 3] > 0)
 
 
 def test_hand_mask_layer_disabled(mock_config):
@@ -73,26 +68,24 @@ def test_hand_mask_layer_caching(mock_config):
 
     layer = HandMaskLayer(ws, mock_config)
 
-    with patch.object(layer.hand_masker, "compute_hulls") as mock_hulls:
-        mock_hulls.return_value = [np.array([[0, 0], [1, 1]])]
-        with patch.object(layer.hand_masker, "generate_mask_image") as mock_mask:
-            mock_mask.return_value = np.zeros((1080, 1920), dtype=np.uint8)
+    with patch.object(layer.hand_masker, "get_mask_hulls") as mock_hulls:
+        mock_hulls.return_value = [np.array([[50, 50], [60, 60]])]
 
-            p1 = layer.render(current_time=0.0)
-            p2 = layer.render(current_time=0.0)
+        p1 = layer.render(current_time=0.0)
+        p2 = layer.render(current_time=0.0)
 
-            assert p1 is p2
-            assert mock_hulls.call_count == 1
+        assert p1 is p2
+        assert mock_hulls.call_count == 1
 
-            # Change timestamp
-            from light_map.core.scene import HandInput
-            from light_map.common_types import GestureType
+        # Change timestamp
+        from light_map.core.scene import HandInput
+        from light_map.common_types import GestureType
 
-            new_input = [HandInput(GestureType.POINTING, (100, 100), (0.0, 0.0), None)]
-            ws.update_inputs(new_input)  # increments hands_timestamp
-            p3 = layer.render(current_time=0.1)
-            assert p3 is not p1
-            assert mock_hulls.call_count == 2
+        new_input = [HandInput(GestureType.POINTING, (100, 100), (0.0, 0.0), None)]
+        ws.update_inputs(new_input)  # increments hands_timestamp
+        p3 = layer.render(current_time=0.1)
+        assert p3 is not p1
+        assert mock_hulls.call_count == 2
 
 
 def test_hand_mask_expansion_with_ppi():

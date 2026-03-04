@@ -14,7 +14,7 @@ class MockLayer(Layer):
         # For testing, dirty if map_timestamp changed
         return self.state.map_timestamp > self._last_state_timestamp
 
-    def _generate_patches(self) -> List[ImagePatch]:
+    def _generate_patches(self, current_time: float) -> List[ImagePatch]:
         self.generate_count += 1
         return [
             ImagePatch(

@@ -1,6 +1,6 @@
 import cv2
 import numpy as np
-from typing import List, Tuple, Any
+from typing import List, Tuple, Any, Callable
 from light_map.common_types import GmPosition
 
 
@@ -21,10 +21,6 @@ class HandMasker:
         """
         Checks if a point (in projector space) should be masked (ignored)
         based on the GM's position.
-
-        New Approach:
-        1. Points INSIDE the projector area (0,0 to w,h) are NEVER masked.
-        2. Points OUTSIDE are masked, unless they are on the GM's side.
         """
         w, h = resolution
 
@@ -62,12 +58,23 @@ class HandMasker:
 
         return True
 
+    def get_mask_hulls(
+        self,
+        multi_hand_landmarks: List[Any],
+        transformation_fn: Callable[[np.ndarray], np.ndarray],
+        current_time: float,
+    ) -> List[np.ndarray]:
+        """
+        High-level API for HandMaskLayer.
+        Returns hulls in projector space, respecting persistence.
+        """
+        return self.compute_hulls(multi_hand_landmarks, transformation_fn, current_time)
+
     def compute_hulls(
         self,
         multi_hand_landmarks: List[Any],
-        transformation_fn: Any,
+        transformation_fn: Callable[[np.ndarray], np.ndarray],
         current_time: float,
-        padding: int = 0,
     ) -> List[np.ndarray]:
         """
         Computes convex hulls for multiple hands in projector space.
@@ -110,9 +117,6 @@ class HandMasker:
             approx_hull = cv2.approxPolyDP(hull_pts, epsilon, True)
             hull_pts = approx_hull.reshape(-1, 2)
 
-            # Apply padding (simple scaling or offsetting?)
-            # For now, let's just use the hull as is, or maybe dilate later in the mask.
-            # Dilation in mask space is easier and more robust.
             hulls.append(hull_pts)
 
         self.last_hulls = hulls
@@ -121,7 +125,6 @@ class HandMasker:
     def _hash_hulls(self, hulls: List[np.ndarray]) -> int:
         if not hulls:
             return 0
-        # Fast hash using array bytes
         h_val = 0
         for hull in hulls:
             h_val ^= hash(hull.tobytes())
@@ -155,12 +158,10 @@ class HandMasker:
             return mask
 
         if padding > 0:
-            # Draw thick boundaries to simulate dilation (much faster than cv2.dilate on large images)
             cv2.drawContours(mask, hulls, -1, 255, thickness=padding * 2)
         cv2.fillPoly(mask, hulls, 255)
 
         if blur > 0:
-            # Ensure blur is odd
             b = blur if blur % 2 == 1 else blur + 1
             mask = cv2.GaussianBlur(mask, (b, b), 0)
 

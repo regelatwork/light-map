@@ -32,8 +32,8 @@ def test_interactive_app_layered_init(mock_config, monkeypatch):
 
     assert hasattr(app, "layer_stack")
     assert (
-        len(app.layer_stack) == 8
-    )  # Map, FoW, Visibility, Scene, Hand, Menu, Overlay, Cursor
+        len(app.layer_stack) == 10
+    )  # Map, FoW, Visibility, Scene, Hand, Menu, Token, Notif, Debug, Cursor
     assert app.renderer.output_buffer.shape == (100, 100, 3)
 
 
@@ -77,6 +77,7 @@ def test_interactive_app_process_state_skips_render_when_not_dirty(
     app.current_scene = MagicMock()
     app.current_scene.is_dirty = True
     app.current_scene.update.return_value = None
+    app.current_scene.get_active_layers.return_value = app.layer_stack
     app.current_scene.render.return_value = np.zeros((100, 100, 3), dtype=np.uint8)
 
     frame1, _ = app.process_state(ws, [])
@@ -88,6 +89,9 @@ def test_interactive_app_process_state_skips_render_when_not_dirty(
 
     # We must ensure the scene is clean
     app.current_scene.is_dirty = False
+    
+    # Also need to mock get_active_layers to return same stack
+    app.current_scene.get_active_layers.return_value = app.layer_stack
 
     frame2, _ = app.process_state(ws, [])
     assert frame2 is None

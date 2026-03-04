@@ -18,6 +18,8 @@ from light_map.menu_system import MenuState, MenuSystem, MenuSystemState
 
 if TYPE_CHECKING:
     from light_map.core.app_context import AppContext
+    from light_map.interactive_app import InteractiveApp
+    from light_map.common_types import Layer
 
 
 class MenuScene(Scene):
@@ -244,6 +246,26 @@ class MenuScene(Scene):
     @is_dirty.setter
     def is_dirty(self, value: bool):
         self._is_dirty = value
+
+    @property
+    def blocking(self) -> bool:
+        """Menu scene should have a black background (blocking lower layers)."""
+        return True
+
+    @property
+    def show_tokens(self) -> bool:
+        """Menu should not show ghost tokens."""
+        return False
+
+    def get_active_layers(self, app: InteractiveApp) -> List[Layer]:
+        """Menu only needs menu, notification, debug, and cursor layers."""
+        return [
+            app.menu_layer,
+            app.token_layer,  # Will be hidden by show_tokens=False
+            app.notification_layer,
+            app.debug_layer,
+            app.cursor_layer,
+        ]
 
     def render(self, frame: np.ndarray) -> np.ndarray:
         # Menu is now rendered by MenuLayer in the coordinator stack.

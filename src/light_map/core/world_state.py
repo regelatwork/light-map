@@ -31,6 +31,8 @@ class WorldState:
         self.inputs: List[HandInput] = []
         self.fps: float = 0.0
         self.current_scene_name: str = ""
+        self.effective_show_tokens: bool = True
+        self.visibility_mask: Optional[np.ndarray] = None
 
         # Granular Timestamps (Monotonic counters for caching)
         self.map_timestamp: int = 0
@@ -40,6 +42,7 @@ class WorldState:
         self.scene_timestamp: int = 0
         self.notifications_timestamp: int = 0
         self.viewport_timestamp: int = 0
+        self.visibility_timestamp: int = 0
 
         # Hand Expiration tracking
         self.last_hand_timestamp: float = 0.0
@@ -72,6 +75,14 @@ class WorldState:
         ):
             self.viewport = new_viewport
             self.viewport_timestamp += 1
+
+    def update_visibility_mask(self, mask: np.ndarray):
+        """Updates the LOS visibility mask and increments timestamp if changed."""
+        if self.visibility_mask is None or not np.array_equal(
+            self.visibility_mask, mask
+        ):
+            self.visibility_mask = mask.copy()
+            self.visibility_timestamp += 1
 
     def increment_map_timestamp(self):
         """Manually trigger a map cache invalidation."""

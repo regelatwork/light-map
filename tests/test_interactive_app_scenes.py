@@ -101,3 +101,29 @@ def test_process_state_triggers_switch(app):
 
     # Verify _switch_scene was called
     app._switch_scene.assert_called_once_with(transition)
+
+
+def test_process_state_layer_filtering(app):
+    """Verifies that process_state uses the scene's requested layer stack."""
+    # Setup scene and its active layers
+    current_scene = MagicMock()
+    mock_layer = MagicMock()
+    current_scene.get_active_layers.return_value = [mock_layer]
+    app.current_scene = current_scene
+
+    # Mock renderer to verify what layers it receives
+    app.renderer.render = MagicMock(
+        return_value=np.zeros((100, 100, 3), dtype=np.uint8)
+    )
+
+    # Mock other methods to avoid side effects
+    app.input_processor.convert_mediapipe_to_inputs = MagicMock(return_value=[])
+    current_scene.update.return_value = None
+
+    state = WorldState()
+    app.process_state(state, [])
+
+    # Verify renderer.render was called with the scene's requested layers
+    # (The state is the first argument, current_time the third, instrument fourth)
+    args, kwargs = app.renderer.render.call_args
+    assert args[1] == [mock_layer]

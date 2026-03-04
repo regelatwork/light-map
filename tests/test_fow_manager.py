@@ -1,0 +1,62 @@
+import numpy as np
+import os
+from light_map.fow_manager import FogOfWarManager
+
+
+def test_fow_manager_initialization():
+    manager = FogOfWarManager(100, 100)
+    assert manager.width == 100
+    assert manager.height == 100
+    assert np.all(manager.explored_mask == 0)
+    assert np.all(manager.visible_mask == 0)
+    assert manager.is_disabled is False
+
+
+def test_fow_manager_reveal_area():
+    manager = FogOfWarManager(100, 100)
+    mask = np.zeros((100, 100), dtype=np.uint8)
+    mask[10:20, 10:20] = 255
+
+    manager.reveal_area(mask)
+    assert np.sum(manager.explored_mask == 255) == 100
+    assert manager.explored_mask[15, 15] == 255
+    assert manager.explored_mask[0, 0] == 0
+
+
+def test_fow_manager_set_visible_mask():
+    manager = FogOfWarManager(100, 100)
+    mask = np.zeros((100, 100), dtype=np.uint8)
+    mask[5:15, 5:15] = 255
+
+    manager.set_visible_mask(mask)
+    assert np.sum(manager.visible_mask == 255) == 100
+    assert manager.visible_mask[10, 10] == 255
+    assert manager.visible_mask[0, 0] == 0
+
+
+def test_fow_manager_reset():
+    manager = FogOfWarManager(100, 100)
+    manager.explored_mask.fill(255)
+    manager.reset()
+    assert np.all(manager.explored_mask == 0)
+
+
+def test_fow_manager_toggle():
+    manager = FogOfWarManager(100, 100)
+    assert manager.is_disabled is False
+    manager.is_disabled = True
+    assert manager.is_disabled is True
+
+
+def test_fow_manager_persistence(tmp_path):
+    fow_path = str(tmp_path / "fow.png")
+    manager = FogOfWarManager(10, 10)
+    manager.explored_mask[0, 0] = 255
+    manager.save(fow_path)
+
+    assert os.path.exists(fow_path)
+
+    # Load into new manager
+    manager2 = FogOfWarManager(10, 10, file_path=fow_path)
+    assert manager2.explored_mask[0, 0] == 255
+    assert manager2.explored_mask[1, 1] == 0

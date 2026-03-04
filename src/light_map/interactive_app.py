@@ -16,11 +16,12 @@ from light_map.map_layer import MapLayer
 from light_map.menu_layer import MenuLayer
 from light_map.scene_layer import SceneLayer
 from light_map.hand_mask_layer import HandMaskLayer
-from light_map.overlay_layer import OverlayLayer
+from light_map.overlay_layer import TokenLayer, NotificationLayer, DebugLayer
 from light_map.map_system import MapSystem
 from light_map.svg_loader import SVGLoader
 from light_map.map_config import MapConfigManager
 from light_map.session_manager import SessionManager
+from light_map.fow_manager import FogOfWarManager
 from light_map.fow_layer import FogOfWarLayer
 from light_map.visibility_layer import VisibilityLayer
 from light_map.visibility_engine import VisibilityEngine
@@ -72,8 +73,9 @@ class InteractiveApp:
         # Visibility and FoW Systems
         # Use a temporary engine until map is loaded
         self.visibility_engine = VisibilityEngine(grid_spacing_svg=10.0)
-        self.fow_layer = FogOfWarLayer(config.width, config.height)
-        self.visibility_layer = VisibilityLayer(config.width, config.height)
+        self.fow_manager = FogOfWarManager(config.width, config.height)
+        self.fow_layer = FogOfWarLayer(self.fow_manager)
+        self.visibility_layer = VisibilityLayer(self.state, config.width, config.height)
         self.inspected_token_id: Optional[int] = None
 
         # New Modular Coordinators
@@ -111,7 +113,9 @@ class InteractiveApp:
         )
         self.hand_mask_layer = HandMaskLayer(self.state, config)
         self.menu_layer = MenuLayer(self.state)
-        self.overlay_layer = OverlayLayer(self.state, self.app_context)
+        self.token_layer = TokenLayer(self.state, self.app_context)
+        self.notification_layer = NotificationLayer(self.state, self.app_context)
+        self.debug_layer = DebugLayer(self.state, self.app_context)
         self.cursor_layer = CursorLayer(self.state, self.app_context)
 
         # Layer Stack (Bottom to Top)
@@ -122,7 +126,9 @@ class InteractiveApp:
             self.scene_layer,
             self.hand_mask_layer,
             self.menu_layer,
-            self.overlay_layer,
+            self.token_layer,
+            self.notification_layer,
+            self.debug_layer,
             self.cursor_layer,
         ]
 
@@ -272,6 +278,13 @@ class InteractiveApp:
     def debug_mode(self) -> bool:
         return self.app_context.debug_mode
 
+    @property
+    def effective_show_tokens(self) -> bool:
+        """Returns True if tokens should be shown (global setting AND scene preference)."""
+        return self.app_context.show_tokens and getattr(
+            self.current_scene, "show_tokens", True
+        )
+
     @debug_mode.setter
     def debug_mode(self, enabled: bool):
         self.app_context.debug_mode = enabled
@@ -357,6 +370,7 @@ class InteractiveApp:
         state.fps = self.fps
         self.current_scene_name = self.current_scene.__class__.__name__
         state.current_scene_name = self.current_scene_name
+        state.effective_show_tokens = self.effective_show_tokens
         state.update_viewport(self.map_system.state.to_viewport())
 
         # Update context frame if available
@@ -399,8 +413,10 @@ class InteractiveApp:
 
         # --- VISIBILITY CALCULATION ---
         combined_pc_mask = None
+        current_stack = self.current_scene.get_active_layers(self)
+
         if self.map_system.is_map_loaded():
-            mask_w, mask_h = self.fow_layer.mask_width, self.fow_layer.mask_height
+            mask_w, mask_h = self.fow_manager.width, self.fow_manager.height
 
             # Aggregate LOS for all PC tokens
             pc_tokens = [
@@ -425,8 +441,9 @@ class InteractiveApp:
                     cv2.bitwise_or(combined_pc_mask, token_mask, combined_pc_mask)
 
             if combined_pc_mask is not None:
-                self.fow_layer.set_visible_mask(combined_pc_mask)
-                self.visibility_layer.set_mask(combined_pc_mask)
+                self.fow_manager.set_visible_mask(combined_pc_mask)
+                self.fow_layer.is_dirty = True
+                state.update_visibility_mask(combined_pc_mask)
 
                 # Check for "Exclusive Vision" (Token Inspection)
                 # This state is expected to be set by scenes/inputs later.
@@ -456,15 +473,7 @@ class InteractiveApp:
                             self.menu_layer,
                         ]
                         # The visibility layer should be the single token's vision
-                        self.visibility_layer.set_mask(insp_mask)
-                    else:
-                        current_stack = self.layer_stack
-                else:
-                    current_stack = self.layer_stack
-            else:
-                current_stack = self.layer_stack
-        else:
-            current_stack = self.layer_stack
+                        state.update_visibility_mask(insp_mask)
 
         # We need to update tokens in map system from state
         self.map_system.ghost_tokens = state.tokens
@@ -522,21 +531,24 @@ class InteractiveApp:
             self.load_map(payload["map_file"], payload.get("load_session", False))
 
         if payload.get("action") == "SYNC_VISION":
-            if self.fow_layer:
-                self.fow_layer.reveal_area(self.fow_layer.visible_mask)
-                self.fow_layer.save()
+            if self.fow_manager:
+                self.fow_manager.reveal_area(self.fow_manager.visible_mask)
+                self.fow_manager.save()
+                self.fow_layer.is_dirty = True
                 self.notifications.add_notification("Vision Synchronized")
 
         if payload.get("action") == "RESET_FOW":
-            if self.fow_layer:
-                self.fow_layer.reset()
-                self.fow_layer.save()
+            if self.fow_manager:
+                self.fow_manager.reset()
+                self.fow_manager.save()
+                self.fow_layer.is_dirty = True
                 self.notifications.add_notification("Fog of War Reset")
 
         if payload.get("action") == "TOGGLE_FOW":
-            if self.fow_layer:
-                self.fow_layer.is_disabled = not self.fow_layer.is_disabled
-                state = "OFF" if self.fow_layer.is_disabled else "ON"
+            if self.fow_manager:
+                self.fow_manager.is_disabled = not self.fow_manager.is_disabled
+                self.fow_layer.is_dirty = True
+                state = "OFF" if self.fow_manager.is_disabled else "ON"
                 self.notifications.add_notification(f"GM: Fog of War {state}")
 
         if payload.get("action") == "TOGGLE_DOOR":
@@ -620,10 +632,11 @@ class InteractiveApp:
             else self.config.height
         )
 
-        self.fow_layer = FogOfWarLayer(mask_w, mask_h, file_path=fow_path)
+        self.fow_manager = FogOfWarManager(mask_w, mask_h, file_path=fow_path)
+        self.fow_layer = FogOfWarLayer(self.fow_manager)
         # Update layer in stack (it might have been replaced)
         self.layer_stack[1] = self.fow_layer
-        self.visibility_layer = VisibilityLayer(mask_w, mask_h)
+        self.visibility_layer = VisibilityLayer(self.state, mask_w, mask_h)
         self.layer_stack[2] = self.visibility_layer
 
         if load_session:

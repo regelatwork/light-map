@@ -121,8 +121,8 @@ def test_draw_ghost_tokens_unknown(app):
         ws = WorldState()
         ws.tokens = app.map_system.ghost_tokens
         ws.tokens_timestamp = 1
-        app.overlay_layer.state = ws
-        app.overlay_layer.render()
+        app.token_layer.state = ws
+        app.token_layer.render()
 
         # Verify that circles were drawn
         assert mock_circle.called or mock_dashed_circle.called
@@ -158,8 +158,8 @@ def test_draw_ghost_tokens_duplicate(app):
             "light_map.vision.overlay_renderer.draw_dashed_circle"
         ) as mock_dashed_circle,
     ):
-        app.overlay_layer.state = ws
-        app.overlay_layer.render()
+        app.token_layer.state = ws
+        app.token_layer.render()
 
         assert mock_dashed_circle.called
         assert mock_circle.called
@@ -188,8 +188,8 @@ def test_token_name_position(app):
     ws.tokens_timestamp = 1
 
     with patch("cv2.putText") as mock_putText:
-        app.overlay_layer.state = ws
-        app.overlay_layer.render()
+        app.token_layer.state = ws
+        app.token_layer.render()
 
         # Check if name was drawn at expected position (offset from 500, 500)
         found = False

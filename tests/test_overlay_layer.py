@@ -1,7 +1,7 @@
 import pytest
 from unittest.mock import MagicMock, patch
 import numpy as np
-from light_map.overlay_layer import OverlayLayer
+from light_map.overlay_layer import TokenLayer, NotificationLayer, DebugLayer
 from light_map.core.world_state import WorldState
 from light_map.core.app_context import AppContext
 from light_map.common_types import AppConfig
@@ -28,11 +28,11 @@ def mock_app_context():
     return ctx
 
 
-def test_overlay_layer_render_notifications(mock_app_context):
+def test_notification_layer_render(mock_app_context):
     ws = WorldState()
     ws.notifications_timestamp = 1
 
-    layer = OverlayLayer(ws, mock_app_context)
+    layer = NotificationLayer(ws, mock_app_context)
 
     # Mock OverlayRenderer to avoid complex logic
     from light_map.common_types import ImagePatch
@@ -46,45 +46,55 @@ def test_overlay_layer_render_notifications(mock_app_context):
 
         mock_draw.side_effect = draw_side_effect
 
-        # Also need to mock other methods called in _generate_patches
-        with patch.object(layer.overlay_renderer, "draw_ghost_tokens"):
-            patches = layer.render()
+        patches = layer.render()
 
-            assert len(patches) == 1
-            p = patches[0]
-            assert p.width == 1920
-            assert p.height == 1080
-            # Check alpha
-            assert np.array_equal(p.data[5, 5], [255, 255, 255, 255])
-            assert np.array_equal(p.data[20, 20], [0, 0, 0, 0])
+        assert len(patches) == 1
+        p = patches[0]
+        assert p.width == 1920
+        assert p.height == 1080
+        # Check alpha
+        assert np.array_equal(p.data[5, 5], [255, 255, 255, 255])
+        assert np.array_equal(p.data[20, 20], [0, 0, 0, 0])
 
 
-def test_overlay_layer_render_tokens(mock_app_context):
+def test_token_layer_render(mock_app_context):
     ws = WorldState()
     ws.tokens = [MagicMock()]
     ws.tokens_timestamp = 1
 
-    layer = OverlayLayer(ws, mock_app_context)
+    layer = TokenLayer(ws, mock_app_context)
 
     with patch.object(layer.overlay_renderer, "draw_ghost_tokens") as mock_draw:
-        with patch.object(layer.overlay_renderer, "draw_notifications"):
-            layer.render()
-            assert mock_draw.called
+        layer.render()
+        assert mock_draw.called
 
 
-def test_overlay_layer_caching(mock_app_context):
+def test_debug_layer_render(mock_app_context):
     ws = WorldState()
-    ws.notifications_timestamp = 1
+    ws.hands_timestamp = 1
+    mock_app_context.debug_mode = True
 
-    layer = OverlayLayer(ws, mock_app_context)
+    layer = DebugLayer(ws, mock_app_context)
 
-    with patch.object(layer.overlay_renderer, "draw_notifications"):
-        with patch.object(layer.overlay_renderer, "draw_ghost_tokens"):
-            p1 = layer.render()
-            p2 = layer.render()
-            assert p1 is p2
+    with patch.object(layer.overlay_renderer, "draw_debug_overlay") as mock_draw:
+        layer.render()
+        assert mock_draw.called
 
-            # Change timestamp
-            ws.increment_notifications_timestamp()
-            p3 = layer.render()
-            assert p3 is not p1
+
+def test_token_layer_caching(mock_app_context):
+    ws = WorldState()
+    ws.tokens = [MagicMock()]
+    ws.tokens_timestamp = 1
+
+    layer = TokenLayer(ws, mock_app_context)
+
+    with patch.object(layer.overlay_renderer, "draw_ghost_tokens") as mock_draw:
+        mock_draw.side_effect = lambda *args: [MagicMock()]
+        p1 = layer.render()
+        p2 = layer.render()
+        assert p1 is p2
+
+        # Change timestamp
+        ws.tokens_timestamp += 1
+        p3 = layer.render()
+        assert p3 is not p1

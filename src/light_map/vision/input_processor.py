@@ -134,16 +134,24 @@ class InputProcessor:
                         ux = pdx / pmag
                         uy = pdy / pmag
 
+            # --- VIRTUAL CURSOR POSITION ---
+            cursor_pos = None
+            if gesture == GestureType.POINTING:
+                ppi = getattr(self.config, "projector_ppi", 96.0)
+                cx = int(px + ux * ppi)
+                cy = int(py + uy * ppi)
+                cursor_pos = (cx, cy)
+
             # Input Masking (Filter by GM Position)
             if self.hand_masker.is_point_masked(px, py, self.config.gm_position, res):
                 continue
 
-            inputs.append(
-                HandInput(
-                    gesture=gesture,
-                    proj_pos=(px, py),
-                    unit_direction=(ux, uy),
-                    raw_landmarks=landmarks,
-                )
+            hi = HandInput(
+                gesture=gesture,
+                proj_pos=(px, py),
+                unit_direction=(ux, uy),
+                raw_landmarks=landmarks,
             )
+            hi.cursor_pos = cursor_pos
+            inputs.append(hi)
         return inputs

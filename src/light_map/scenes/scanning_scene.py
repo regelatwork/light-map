@@ -21,6 +21,8 @@ from light_map.token_tracker import TokenTracker
 if TYPE_CHECKING:
     from light_map.core.app_context import AppContext
     from light_map.core.scene import HandInput
+    from light_map.interactive_app import InteractiveApp
+    from light_map.common_types import Layer
 
 
 class ScanStage(Enum):
@@ -307,3 +309,31 @@ class ScanningScene(Scene):
     def _change_stage(self, new_stage: ScanStage, current_time: float):
         self._stage = new_stage
         self._stage_start_time = current_time
+
+    @property
+    def blocking(self) -> bool:
+        """Scanning should be blocking during capture stages to avoid interference."""
+        return self._stage not in [ScanStage.SHOW_RESULT, ScanStage.DONE]
+
+    @property
+    def show_tokens(self) -> bool:
+        """Tokens should only be visible during results view."""
+        return self._stage in [ScanStage.SHOW_RESULT, ScanStage.DONE]
+
+    def get_active_layers(self, app: InteractiveApp) -> List[Layer]:
+        """
+        Scanning needs a black background during capture stages to avoid interference,
+        but needs the map background to show results at the end.
+        """
+        common_overlays = [
+            app.token_layer,  # Hidden/Shown dynamically by scene.show_tokens
+            app.notification_layer,
+            app.debug_layer,
+            app.cursor_layer,
+        ]
+
+        if self._stage in [ScanStage.SHOW_RESULT, ScanStage.DONE]:
+            return app.layer_stack
+
+        # During capture: only show the scene layer (projector pattern/flash) + overlays
+        return [app.scene_layer] + common_overlays

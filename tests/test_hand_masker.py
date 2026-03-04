@@ -88,7 +88,7 @@ def test_compute_hulls_from_landmarks():
     def transform(pts):
         return pts * 1000
 
-    hulls = masker.compute_hulls([landmarks], transform, current_time=0.0, padding=0)
+    hulls = masker.compute_hulls([landmarks], transform, current_time=0.0)
 
     assert len(hulls) == 1
     assert hulls[0].shape[0] >= 3  # Should be a polygon
@@ -145,4 +145,20 @@ def test_persistence_manual():
 
     # Frame 3: Lost at t=2.1
     hulls3 = masker.compute_hulls([], transform, current_time=2.1)
-    assert len(hulls3) == 0  # Now empty
+    assert len(hulls3) == 0  # Now empty after 2.1s
+
+
+def test_get_mask_hulls():
+    masker = HandMasker()
+    # Mock landmarks (normalized 0-1)
+    hands = [[{"x": 0.1, "y": 0.1}, {"x": 0.2, "y": 0.1}, {"x": 0.2, "y": 0.2}]]
+
+    # Mock transformation function (scale by 1000)
+    def transform(pts):
+        return pts * 1000
+
+    hulls = masker.get_mask_hulls(hands, transform, current_time=1.0)
+
+    assert len(hulls) == 1
+    # Check that points are in projector space (around 100, 100)
+    assert np.any(np.all(np.isclose(hulls[0], [100, 100], atol=1), axis=1))

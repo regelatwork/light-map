@@ -14,7 +14,7 @@ class MockLayer(Layer):
     def is_dirty(self):
         return self._is_dirty
 
-    def _generate_patches(self):
+    def _generate_patches(self, current_time: float = 0.0):
         data = np.zeros((100, 100, 4), dtype=np.uint8)
         data[:, :, :3] = self.color
         data[:, :, 3] = self.alpha
@@ -41,7 +41,7 @@ def test_renderer_visibility_composition():
         def is_dirty(self):
             return True
 
-        def _generate_patches(self):
+        def _generate_patches(self, current_time: float = 0.0):
             return [ImagePatch(0, 0, 100, 100, fow_data)]
 
     fow_layer = FowLayer()

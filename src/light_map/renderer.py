@@ -28,6 +28,7 @@ class Renderer:
 
         self._force_render = True
         self._background_dirty = True
+        self._last_layer_stack: List[Layer] = []
 
     def render(
         self,
@@ -46,6 +47,14 @@ class Renderer:
             current_time: The current application time (monotonic).
             instrument: Optional LatencyInstrument to track per-layer timings.
         """
+        # If the layer stack itself changed (e.g., scene switch), we MUST force a full redraw
+        # and invalidate the background cache.
+        stack_changed = layers != self._last_layer_stack
+        if stack_changed:
+            self._force_render = True
+            self._background_dirty = True
+            self._last_layer_stack = list(layers)
+
         any_dirty = self._force_render
         static_dirty = self._background_dirty
 

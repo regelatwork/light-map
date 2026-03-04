@@ -21,7 +21,7 @@ class MockLayer(Layer):
     def is_dirty(self) -> bool:
         return self._dirty
 
-    def _generate_patches(self) -> List[ImagePatch]:
+    def _generate_patches(self, current_time: float = 0.0) -> List[ImagePatch]:
         self._dirty = False
         return self.patches
 
@@ -129,3 +129,27 @@ def test_renderer_skip_if_not_dirty():
     layer._dirty = True
     frame = renderer.render(state, [layer])
     assert frame is not None
+
+
+def test_renderer_layer_stack_change_invalidates_cache():
+    renderer = Renderer(100, 100)
+    state = WorldState()
+
+    # 1. First stack: Blue layer
+    blue_data = np.zeros((100, 100, 4), dtype=np.uint8)
+    blue_data[:, :, 0] = 255
+    blue_data[:, :, 3] = 255
+    layer1 = MockLayer(patches=[ImagePatch(0, 0, 100, 100, blue_data)], is_static=True)
+
+    out1 = renderer.render(state, [layer1])
+    assert np.array_equal(out1[0, 0], [255, 0, 0])
+
+    # 2. Second stack: Red layer (replaces Blue)
+    red_data = np.zeros((100, 100, 4), dtype=np.uint8)
+    red_data[:, :, 2] = 255
+    red_data[:, :, 3] = 255
+    layer2 = MockLayer(patches=[ImagePatch(0, 0, 100, 100, red_data)], is_static=True)
+
+    out2 = renderer.render(state, [layer2])
+    # If cache wasn't invalidated, this might still be blue
+    assert np.array_equal(out2[0, 0], [0, 0, 255])

@@ -14,6 +14,7 @@ class VisibilityBlocker:
     """
     Represents a physical or visual obstacle extracted from an SVG map.
     """
+
     segments: List[Tuple[float, float]]  # Flattened coordinates (x, y, x, y...)
     type: VisibilityType
     layer_name: str

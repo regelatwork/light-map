@@ -110,7 +110,12 @@ def test_map_grid_calibration_confirm_saves_config(
     overlay.offset_y = 60.0
 
     inputs = [
-        HandInput(gesture=GestureType.VICTORY, proj_pos=(0, 0), raw_landmarks=None)
+        HandInput(
+            gesture=GestureType.VICTORY,
+            proj_pos=(0, 0),
+            unit_direction=(0.0, 0.0),
+            raw_landmarks=None,
+        )
     ]
 
     # First call sets start time
@@ -148,7 +153,10 @@ def test_map_grid_calibration_interaction_updates_overlay(
     ) as mock_process:
         inputs = [
             HandInput(
-                gesture=GestureType.CLOSED_FIST, proj_pos=(10, 10), raw_landmarks=None
+                gesture=GestureType.POINTING,
+                proj_pos=(100, 100),
+                unit_direction=(0.0, 0.0),
+                raw_landmarks=None,
             )
         ]
         map_grid_calib_scene.update(inputs, 0.0)

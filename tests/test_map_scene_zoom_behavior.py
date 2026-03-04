@@ -13,6 +13,10 @@ def map_scene_context():
     context.map_system = MagicMock(spec=MapSystem)
     context.map_system.width = 1000
     context.map_system.height = 1000
+    context.app_config = MagicMock()
+    context.app_config.projector_ppi = 96.0
+    context.map_config_manager = MagicMock()
+    context.map_config_manager.get_ppi.return_value = 96.0
     return context
 
 
@@ -21,8 +25,8 @@ def test_map_scene_uses_adapter(map_scene_context):
 
     # Mock inputs for zoom
     inputs = [
-        HandInput(GestureType.POINTING, (100, 100), None),
-        HandInput(GestureType.POINTING, (200, 200), None),
+        HandInput(GestureType.POINTING, (100, 100), (0.0, 0.0), None),
+        HandInput(GestureType.POINTING, (200, 200), (0.0, 0.0), None),
     ]
 
     # Mock interaction controller process_gestures

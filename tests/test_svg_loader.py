@@ -86,3 +86,86 @@ def test_render_transformations(sample_svg_file):
     shifted_pixels = np.count_nonzero(img_shifted)
 
     assert shifted_pixels == 0, "Image shifted offscreen should be empty"
+
+
+def test_svg_visibility_layers_id(tmp_path):
+    svg_content = """
+    <svg width="100" height="100" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape">
+      <g id="walls">
+        <line x1="10" y1="10" x2="90" y2="10" />
+      </g>
+      <g id="doors">
+        <line x1="50" y1="10" x2="50" y2="30" />
+      </g>
+    </svg>
+    """
+    p = tmp_path / "vis_id.svg"
+    p.write_text(svg_content)
+
+    loader = SVGLoader(str(p))
+    blockers = loader.get_visibility_blockers()
+
+    assert len(blockers) == 2
+    types = [b.type.name for b in blockers]
+    assert "WALL" in types
+    assert "DOOR" in types
+
+
+def test_svg_visibility_layers_inkscape(tmp_path):
+    svg_content = """
+    <svg width="100" height="100" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape">
+      <g inkscape:label="walls" id="g1">
+        <line x1="10" y1="10" x2="90" y2="10" />
+      </g>
+      <g inkscape:label="doors" id="g2">
+        <line x1="50" y1="10" x2="50" y2="30" />
+      </g>
+      <g inkscape:label="windows" id="g3">
+        <line x1="10" y1="50" x2="90" y2="50" />
+      </g>
+      <g inkscape:label="unbreakable windows" id="g4">
+        <line x1="10" y1="60" x2="90" y2="60" />
+      </g>
+    </svg>
+    """
+    p = tmp_path / "vis_inkscape.svg"
+    p.write_text(svg_content)
+
+    loader = SVGLoader(str(p))
+    blockers = loader.get_visibility_blockers()
+
+    assert len(blockers) == 4
+    types = [b.type.name for b in blockers]
+    assert "WALL" in types
+    assert "DOOR" in types
+    assert "WINDOW" in types
+    # Unbreakable window should still be WINDOW type but with is_unbreakable=True
+    unbreakable = [b for b in blockers if b.is_unbreakable]
+    assert len(unbreakable) == 1
+    assert unbreakable[0].type.name == "WINDOW"
+
+
+def test_svg_visibility_layers_priority(tmp_path):
+    # Test that inkscape:label takes precedence over id for keyword matching
+    svg_content = """
+    <svg width="100" height="100" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape">
+      <g inkscape:label="walls" id="layer_with_no_keyword">
+        <line x1="10" y1="10" x2="90" y2="10" />
+      </g>
+      <g inkscape:label="normal_layer" id="door_in_id">
+        <line x1="50" y1="10" x2="50" y2="30" />
+      </g>
+    </svg>
+    """
+    p = tmp_path / "vis_priority.svg"
+    p.write_text(svg_content)
+
+    loader = SVGLoader(str(p))
+    blockers = loader.get_visibility_blockers()
+
+    # "walls" should match from inkscape:label
+    # "door_in_id" should NOT match because inkscape:label "normal_layer" is prioritized
+    # and doesn't contain any keyword.
+    assert len(blockers) == 1
+    assert blockers[0].type.name == "WALL"
+    assert blockers[0].layer_name == "walls"

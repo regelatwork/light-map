@@ -3,7 +3,7 @@ import cv2
 import numpy as np
 import logging
 from typing import List, Optional
-from .common_types import Layer, ImagePatch, LayerMode
+from .common_types import Layer, ImagePatch
 
 
 class FogOfWarLayer(Layer):
@@ -15,22 +15,24 @@ class FogOfWarLayer(Layer):
     3. Unexplored: Opaque black.
     """
 
-    def __init__(self, mask_width: int, mask_height: int, file_path: Optional[str] = None):
+    def __init__(
+        self, mask_width: int, mask_height: int, file_path: Optional[str] = None
+    ):
         super().__init__()
         self.mask_width = mask_width
         self.mask_height = mask_height
         self.file_path = file_path
         self._is_dirty = True
-        
+
         # Persistent mask (255 = explored, 0 = unexplored)
         self.explored_mask = np.zeros((mask_height, mask_width), dtype=np.uint8)
-        
+
         # Current LOS mask (255 = visible, 0 = hidden)
         self.visible_mask = np.zeros((mask_height, mask_width), dtype=np.uint8)
-        
+
         # GM Override: If True, everything is visible
         self.is_disabled = False
-        
+
         if file_path:
             self.load(file_path)
 
@@ -59,7 +61,7 @@ class FogOfWarLayer(Layer):
         target = file_path or self.file_path
         if not target:
             return
-        
+
         try:
             os.makedirs(os.path.dirname(target), exist_ok=True)
             cv2.imwrite(target, self.explored_mask)
@@ -70,15 +72,23 @@ class FogOfWarLayer(Layer):
         """Unions the provided mask into the explored state."""
         if mask.shape != self.explored_mask.shape:
             # Resize if needed (e.g. different resolution)
-            mask = cv2.resize(mask, (self.mask_width, self.mask_height), interpolation=cv2.INTER_NEAREST)
-            
+            mask = cv2.resize(
+                mask,
+                (self.mask_width, self.mask_height),
+                interpolation=cv2.INTER_NEAREST,
+            )
+
         cv2.bitwise_or(self.explored_mask, mask, self.explored_mask)
         self.is_dirty = True
 
     def set_visible_mask(self, mask: np.ndarray):
         """Updates the current LOS mask for rendering."""
         if mask.shape != self.visible_mask.shape:
-            mask = cv2.resize(mask, (self.mask_width, self.mask_height), interpolation=cv2.INTER_NEAREST)
+            mask = cv2.resize(
+                mask,
+                (self.mask_width, self.mask_height),
+                interpolation=cv2.INTER_NEAREST,
+            )
         self.visible_mask = mask
         self.is_dirty = True
 
@@ -102,11 +112,11 @@ class FogOfWarLayer(Layer):
         """
         # Create a black BGR image
         fow_bgr = np.zeros((self.mask_height, self.mask_width, 3), dtype=np.uint8)
-        
+
         # Calculate Alpha mask:
         # 1. Start with 255 (Unexplored = Opaque Black)
         alpha = np.full((self.mask_height, self.mask_width), 255, dtype=np.uint8)
-        
+
         if self.is_disabled:
             # GM Override: Fully transparent
             alpha.fill(0)
@@ -114,13 +124,19 @@ class FogOfWarLayer(Layer):
             # 2. Explored areas are 70% opaque (Alpha 178)
             # If explored_mask == 255, alpha = 178
             alpha[self.explored_mask == 255] = 178
-            
+
             # 3. Currently visible areas are 0% opaque (Alpha 0)
             # If visible_mask == 255, alpha = 0
             alpha[self.visible_mask == 255] = 0
-            
+
         # Combine BGR and Alpha
-        fow_bgra = cv2.merge([fow_bgr[:,:,0], fow_bgr[:,:,1], fow_bgr[:,:,2], alpha])
-        
+        fow_bgra = cv2.merge(
+            [fow_bgr[:, :, 0], fow_bgr[:, :, 1], fow_bgr[:, :, 2], alpha]
+        )
+
         self._is_dirty = False
-        return [ImagePatch(x=0, y=0, width=self.mask_width, height=self.mask_height, data=fow_bgra)]
+        return [
+            ImagePatch(
+                x=0, y=0, width=self.mask_width, height=self.mask_height, data=fow_bgra
+            )
+        ]

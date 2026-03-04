@@ -82,7 +82,7 @@ def test_extrinsics_scene_uses_ground_points(
     }
 
     # Simulate Fist gesture
-    inputs = [HandInput(GestureType.CLOSED_FIST, (0, 0), None)]
+    inputs = [HandInput(GestureType.CLOSED_FIST, (0, 0), (0.0, 0.0), None)]
 
     # Call update to trigger detection and transition to CAPTURE (implied logic check)
     # The update loop logic:
@@ -148,7 +148,7 @@ def test_extrinsics_scene_validation_flow(mock_save, mock_calibrate, mock_contex
 
     # 2. Validation - Retry Flow
     # Hold Fist for 1.0s (not enough)
-    inputs = [HandInput(GestureType.CLOSED_FIST, (0, 0), None)]
+    inputs = [HandInput(GestureType.CLOSED_FIST, (0, 0), (0.0, 0.0), None)]
     scene.update(inputs, 2.0)  # Start retry
     assert scene._retry_gesture_start_time == 2.0
     assert scene._stage == "VALIDATION"
@@ -163,7 +163,7 @@ def test_extrinsics_scene_validation_flow(mock_save, mock_calibrate, mock_contex
     scene.update([], 5.0)  # CAPTURE -> VALIDATION
     assert scene._stage == "VALIDATION"
 
-    inputs = [HandInput(GestureType.VICTORY, (0, 0), None)]
+    inputs = [HandInput(GestureType.VICTORY, (0, 0), (0.0, 0.0), None)]
     transition = scene.update(inputs, 6.0)
 
     assert transition is not None

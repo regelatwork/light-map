@@ -1,6 +1,3 @@
-import pytest
-import os
-import svgelements
 from light_map.svg_loader import SVGLoader
 from light_map.visibility_types import VisibilityType
 
@@ -28,7 +25,7 @@ def test_get_visibility_blockers_simple_wall(tmp_path):
     svg = create_test_svg(tmp_path, svg_content)
     loader = SVGLoader(svg)
     blockers = loader.get_visibility_blockers()
-    
+
     assert len(blockers) == 1
     assert blockers[0].type == VisibilityType.WALL
     assert blockers[0].layer_name == "Walls"
@@ -54,12 +51,12 @@ def test_get_visibility_blockers_case_insensitive_substring(tmp_path):
     svg = create_test_svg(tmp_path, svg_content)
     loader = SVGLoader(svg)
     blockers = loader.get_visibility_blockers()
-    
+
     # We expect 3 blockers
     types = [b.type for b in blockers]
     assert VisibilityType.DOOR in types
     assert VisibilityType.WINDOW in types
-    
+
     # Find the unbreakable window
     unbreakable = [b for b in blockers if b.is_unbreakable]
     assert len(unbreakable) == 1
@@ -77,7 +74,7 @@ def test_get_visibility_blockers_nested_transform(tmp_path):
     svg = create_test_svg(tmp_path, svg_content)
     loader = SVGLoader(svg)
     blockers = loader.get_visibility_blockers()
-    
+
     assert len(blockers) == 1
     # Original (0,0)->(10,0)
     # Scaled (0,0)->(20,0)
@@ -100,7 +97,7 @@ def test_get_visibility_blockers_reset_context(tmp_path):
     svg = create_test_svg(tmp_path, svg_content)
     loader = SVGLoader(svg)
     blockers = loader.get_visibility_blockers()
-    
+
     # Should only find the wall
     assert len(blockers) == 1
     assert blockers[0].layer_name == "Wall-Layer"

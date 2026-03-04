@@ -116,11 +116,17 @@ class WorldState:
             return True
 
         # For simplicity, if they are not empty and lengths are same,
-        # check gestures and positions
+        # check gestures, positions and direction (with tolerance)
         for h1, h2 in zip(i1, i2):
             if h1.gesture != h2.gesture:
                 return False
             if h1.proj_pos != h2.proj_pos:
+                return False
+
+            # Check direction vector change
+            d1 = h1.unit_direction
+            d2 = h2.unit_direction
+            if abs(d1[0] - d2[0]) > 0.01 or abs(d1[1] - d2[1]) > 0.01:
                 return False
         return True
 

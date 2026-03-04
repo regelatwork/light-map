@@ -59,7 +59,8 @@ def test_intrinsics_calibration_capture_and_process(
                         HandInput(
                             gesture=GestureType.CLOSED_FIST,
                             proj_pos=(0, 0),
-                            raw_landmarks=None,
+                            unit_direction=(0.0, 0.0),
+                            raw_landmarks=MagicMock(),
                         )
                     ],
                     0.0,
@@ -102,7 +103,8 @@ def test_intrinsics_calibration_process_failure(
                     HandInput(
                         gesture=GestureType.CLOSED_FIST,
                         proj_pos=(0, 0),
-                        raw_landmarks=None,
+                        unit_direction=(0.0, 0.0),
+                        raw_landmarks=MagicMock(),
                     )
                 ],
                 0.0,

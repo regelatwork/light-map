@@ -5,7 +5,7 @@ import math
 import base64
 import logging
 from io import BytesIO
-from typing import List, Tuple, Optional
+from typing import List, Tuple
 from PIL import Image
 import functools
 from collections import Counter
@@ -593,46 +593,69 @@ class SVGLoader:
 
         blockers = []
 
-        def traverse(element, current_v_type=None, current_layer_name="", current_unbreakable=False):
+        def traverse(
+            element,
+            current_v_type=None,
+            current_layer_name="",
+            current_unbreakable=False,
+        ):
             v_type = current_v_type
             layer_name = current_layer_name
             is_unbreakable = current_unbreakable
 
             # Check if this element defines a new visibility context (layer)
-            if hasattr(element, "id") and element.id:
-                id_lower = str(element.id).lower()
+            # Support both standard id and inkscape:label (including namespaced)
+            # Prioritize label as it is usually more descriptive in Inkscape
+            label = None
+            if "inkscape:label" in element.values:
+                label = str(element.values["inkscape:label"])
+            elif "{http://www.inkscape.org/namespaces/inkscape}label" in element.values:
+                label = str(
+                    element.values["{http://www.inkscape.org/namespaces/inkscape}label"]
+                )
+            elif hasattr(element, "id") and element.id:
+                label = str(element.id)
+
+            if label:
+                id_lower = label.lower()
                 if "wall" in id_lower:
                     v_type = VisibilityType.WALL
-                    layer_name = str(element.id)
+                    layer_name = label
                 elif "door" in id_lower:
                     v_type = VisibilityType.DOOR
-                    layer_name = str(element.id)
+                    layer_name = label
                 elif "window" in id_lower:
                     v_type = VisibilityType.WINDOW
-                    layer_name = str(element.id)
+                    layer_name = label
                     if "unbreakable" in id_lower:
                         is_unbreakable = True
 
-            # If it's a shape and we are in a visibility context, extract it
             if isinstance(element, svgelements.Shape) and v_type:
                 # In svgelements, Path(element) creates a path and usually applies the element's transform.
                 # However, for visibility, we want the absolute coordinates in the SVG.
                 # element.transform should be the cumulative transform if the SVG was parsed.
-                
+
                 path = svgelements.Path(element)
                 # To be absolutely sure we have global coordinates, we can reify the path
                 # but Path(element) already includes element.transform.
-                
+
                 segments: List[Tuple[float, float]] = []
                 for segment in path:
                     if isinstance(segment, svgelements.Move):
                         continue
                     if not segments:
                         segments.append((segment.start.x, segment.start.y))
-                    
+
                     if isinstance(segment, svgelements.Line):
                         segments.append((segment.end.x, segment.end.y))
-                    elif isinstance(segment, (svgelements.QuadraticBezier, svgelements.CubicBezier, svgelements.Arc)):
+                    elif isinstance(
+                        segment,
+                        (
+                            svgelements.QuadraticBezier,
+                            svgelements.CubicBezier,
+                            svgelements.Arc,
+                        ),
+                    ):
                         for i in range(1, 11):
                             p = segment.point(i / 10.0)
                             segments.append((p.x, p.y))
@@ -660,4 +683,14 @@ class SVGLoader:
                     traverse(child, v_type, layer_name, is_unbreakable)
 
         traverse(self.svg)
+        if blockers:
+            counts = {}
+            for b in blockers:
+                counts[b.type.name] = counts.get(b.type.name, 0) + 1
+            logging.info(
+                "Extracted %d visibility blockers from SVG: %s", len(blockers), counts
+            )
+        else:
+            logging.info("No visibility blockers found in SVG.")
+
         return blockers

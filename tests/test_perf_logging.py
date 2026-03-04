@@ -16,13 +16,16 @@ def test_perf_logging_when_debug_active():
 
     controller = MainLoopController(state, manager, input_mgr)
     controller.debug_mode = True
+    # Manually age the last report time to trigger logging immediately on first tick
+    # MainLoopController uses its own _last_report_time
+    controller._last_report_time = time.perf_counter() - 6.0
 
     # Record some mock data
     controller.instrument.record_interval("test_metric", 10_000_000)  # 10ms
 
-    # Mock logging and time
-    with patch("logging.info") as mock_log:
-        # First tick should log because _last_report_time is 0
+    # Mock logging
+    with patch("logging.debug") as mock_log:
+        # First tick should log
         controller.tick()
         assert mock_log.called
 
@@ -31,14 +34,14 @@ def test_perf_logging_when_debug_active():
         controller.tick()
         assert not mock_log.called
 
-        # Advance time by 5.1s
-        with patch("time.perf_counter", return_value=time.perf_counter() + 6.0):
-            controller.tick()
-            assert mock_log.called
-            # Check if p95_ms is in the log message
-            args, _ = mock_log.call_args
-            assert "Performance Report" in args[0]
-            assert "test_metric" in args[0]
+        # Advance time by manually aging again
+        controller._last_report_time = time.perf_counter() - 6.0
+        controller.tick()
+        assert mock_log.called
+        # Check if p95 is in the log message
+        args, _ = mock_log.call_args
+        assert "Performance Report" in args[0]
+        assert "test_metric" in args[0]
 
 
 def test_perf_logging_mixed_types():
@@ -51,26 +54,36 @@ def test_perf_logging_mixed_types():
 
     controller = MainLoopController(state, manager, input_mgr)
     controller.debug_mode = True
+    # Manually age the last report time
+    controller._last_report_time = time.perf_counter() - 6.0
 
     # Manually populate instrument with mixed types as get_report() does
     controller.instrument.record_interval("test_metric", 10_000_000)
 
-    with patch("logging.info") as mock_log:
+    with patch("logging.debug") as mock_log:
         # Mock get_report to return mixed types
         with patch.object(
             controller.instrument,
             "get_report",
             return_value={
-                "test_metric": {"p95_ms": 10.0},
+                "test_metric": {
+                    "avg_ms": 10.0,
+                    "p50_ms": 10.0,
+                    "p90_ms": 10.0,
+                    "p95_ms": 10.0,
+                    "samples": 1,
+                },
                 "avg_total_latency_ms": 25.0,  # This would cause TypeError before fix
             },
         ):
             controller.tick()
             assert mock_log.called
             args, _ = mock_log.call_args
+            assert "Performance Report" in args[0]
             assert "test_metric" in args[0]
             assert "10.0" in args[0]
-            assert "avg_total_latency_ms" not in args[0]  # Should be filtered out
+            # It filters out things that are NOT dicts
+            assert "avg_total_latency_ms" not in args[0]
 
 
 def test_no_perf_logging_when_debug_inactive():
@@ -82,13 +95,15 @@ def test_no_perf_logging_when_debug_inactive():
 
     controller = MainLoopController(state, manager, input_mgr)
     controller.debug_mode = False
+    # Even with enough time passed, it shouldn't log if debug is inactive
+    controller._last_report_time = time.perf_counter() - 6.0
 
     # Record some mock data
     controller.instrument.record_interval("test_metric", 10_000_000)  # 10ms
 
-    with patch("logging.info") as mock_log:
+    with patch("logging.debug") as mock_log:
         controller.tick()
-        # Filter out other logs if any (like "Menu action selected")
+        # Filter out other logs if any
         perf_logs = [
             arg[0]
             for arg, _ in mock_log.call_args_list

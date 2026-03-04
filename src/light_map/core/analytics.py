@@ -109,11 +109,14 @@ class LatencyInstrument:
                 continue
 
             arr = np.array(samples) / 1_000_000.0  # Convert to milliseconds
+            if arr.size == 0:
+                continue
+
             report[name] = {
                 "avg_ms": float(np.mean(arr)),
-                "p50_ms": float(np.percentile(arr, 50)),
-                "p90_ms": float(np.percentile(arr, 90)),
-                "p95_ms": float(np.percentile(arr, 95)),
+                "p50_ms": float(np.percentile(arr, 50)) if arr.size > 0 else 0.0,
+                "p90_ms": float(np.percentile(arr, 90)) if arr.size > 0 else 0.0,
+                "p95_ms": float(np.percentile(arr, 95)) if arr.size > 0 else 0.0,
                 "samples": len(samples),
             }
 

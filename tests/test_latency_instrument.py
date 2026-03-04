@@ -15,6 +15,6 @@ def test_latency_instrument_reporting():
     instrument.record_render(ts_capture, ts_render)
 
     report = instrument.get_report()
-    assert report["avg_total_latency_ms"] == 100.0
-    assert report["avg_detection_lag_ms"] == 50.0
-    assert report["avg_render_lag_ms"] == 50.0
+    assert report["total_latency"]["avg_ms"] == 100.0
+    assert report["capture_to_detect"]["avg_ms"] == 50.0
+    assert report["detect_to_render"]["avg_ms"] == 50.0

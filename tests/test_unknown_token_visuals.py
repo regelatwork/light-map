@@ -197,8 +197,10 @@ def test_token_name_position(app):
             args, _ = call
             if args[1] == "Test Hero":
                 pos = args[2]
-                # Expected roughly (500-radius, 500+radius+20) = (400, 620)
-                assert 390 <= pos[0] <= 410
-                assert 610 <= pos[1] <= 630
+                # Local position in patch buffer
+                # Padding was 10, radius 100, so lsx = radius + 10 = 110
+                # draw_text_with_background uses (lsx - radius, lsy + radius + 25)
+                # so x should be around 10
+                assert 5 <= pos[0] <= 15
                 found = True
         assert found

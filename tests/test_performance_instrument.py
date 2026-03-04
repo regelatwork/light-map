@@ -13,7 +13,7 @@ def test_latency_instrument_percentiles():
     report = instrument.get_report()
     stats = report["test_interval"]
 
-    assert stats["mean_ms"] == pytest.approx(50.5, abs=0.1)
+    assert stats["avg_ms"] == pytest.approx(50.5, abs=0.1)
     assert stats["p50_ms"] == pytest.approx(50.5, abs=1.0)
     assert stats["p90_ms"] == pytest.approx(90.5, abs=1.0)
     assert stats["p95_ms"] == pytest.approx(95.5, abs=1.0)
@@ -27,7 +27,7 @@ def test_track_wait_context_manager():
 
     report = instrument.get_report()
     assert "test_lock" in report
-    assert report["test_lock"]["mean_ms"] >= 50.0
+    assert report["test_lock"]["avg_ms"] >= 50.0
 
 
 def test_latency_instrument_empty():
@@ -55,4 +55,4 @@ def test_backward_compatibility():
     report = instrument.get_report()
     # We expect intervals like "capture_to_detect", "detect_to_render", "total_latency"
     assert "total_latency" in report
-    assert report["total_latency"]["mean_ms"] >= 20.0
+    assert report["total_latency"]["avg_ms"] >= 20.0

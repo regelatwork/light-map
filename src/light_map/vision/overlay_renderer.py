@@ -145,27 +145,27 @@ class OverlayRenderer:
             px, py = hand_input.proj_pos
             label = hand_input.gesture.name
 
-            (lw, lh), lb = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, 1, 2)
-            hand_w, hand_h = max(lw + 20, 40), lh + lb + 60
-            hand_buffer = np.zeros((hand_h, hand_w, 3), dtype=np.uint8)
-
-            # Local draw
-            lx, ly = hand_w // 2, hand_h - 10
-            draw_text_with_background(
-                hand_buffer,
-                label,
-                (10, lh + 10),
-                cv2.FONT_HERSHEY_SIMPLEX,
-                1,
-                (0, 255, 255),
-                2,
-            )
-            cv2.circle(hand_buffer, (lx, ly), 10, (0, 255, 255), -1)
-
+            # Draw a small yellow dot at the physical tip (projected)
+            hand_buffer = np.zeros((30, 30, 3), dtype=np.uint8)
+            cv2.circle(hand_buffer, (15, 15), 5, (0, 255, 255), -1)
             patches.append(
-                self._create_patch_from_buffer(
-                    hand_buffer, px - hand_w // 2, py - hand_h + 10
-                )
+                self._create_patch_from_buffer(hand_buffer, px - 15, py - 15)
+            )
+
+            # Draw label above it
+            (lw, lh), _ = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, 0.5, 1)
+            label_buffer = np.zeros((lh + 10, lw + 10, 3), dtype=np.uint8)
+            draw_text_with_background(
+                label_buffer,
+                label,
+                (5, lh + 5),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.5,
+                (0, 255, 255),
+                1,
+            )
+            patches.append(
+                self._create_patch_from_buffer(label_buffer, px - lw // 2, py - 30 - lh)
             )
 
         return patches

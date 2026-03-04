@@ -35,10 +35,14 @@ def test_overlay_layer_render_notifications(mock_app_context):
     layer = OverlayLayer(ws, mock_app_context)
 
     # Mock OverlayRenderer to avoid complex logic
+    from light_map.common_types import ImagePatch
+
     with patch.object(layer.overlay_renderer, "draw_notifications") as mock_draw:
-        # Side effect: draw something on buffer
-        def draw_side_effect(buffer):
-            buffer[0:10, 0:10] = [255, 255, 255]
+        # Side effect: return a mock patch
+        def draw_side_effect():
+            data = np.zeros((1080, 1920, 4), dtype=np.uint8)
+            data[0:10, 0:10] = [255, 255, 255, 255]
+            return [ImagePatch(x=0, y=0, width=1920, height=1080, data=data)]
 
         mock_draw.side_effect = draw_side_effect
 

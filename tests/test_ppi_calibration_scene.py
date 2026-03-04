@@ -55,7 +55,10 @@ def test_ppi_calibration_scene_confirming_to_done(mock_app_context):
     # Simulate VICTORY gesture
     inputs = [
         HandInput(
-            gesture=GestureType.VICTORY, proj_pos=(0, 0), raw_landmarks=MagicMock()
+            gesture=GestureType.VICTORY,
+            proj_pos=(0, 0),
+            unit_direction=(0.0, 0.0),
+            raw_landmarks=MagicMock(),
         )
     ]
     transition = scene.update(inputs, 0.0)
@@ -74,7 +77,10 @@ def test_ppi_calibration_scene_confirming_to_detecting(mock_app_context):
     # Simulate OPEN_PALM gesture
     inputs = [
         HandInput(
-            gesture=GestureType.OPEN_PALM, proj_pos=(0, 0), raw_landmarks=MagicMock()
+            gesture=GestureType.OPEN_PALM,
+            proj_pos=(0, 0),
+            unit_direction=(0.0, 0.0),
+            raw_landmarks=MagicMock(),
         )
     ]
     scene.update(inputs, 0.0)

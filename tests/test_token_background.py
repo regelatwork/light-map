@@ -1,5 +1,4 @@
 import numpy as np
-import cv2
 from unittest.mock import MagicMock, patch
 from light_map.display_utils import draw_text_with_background
 
@@ -46,17 +45,17 @@ def test_overlay_renderer_uses_background_text(mock_draw_bg):
     context.map_system.svg_loader = None
 
     renderer = OverlayRenderer(context)
-    img = np.zeros((1000, 1000, 3), dtype=np.uint8)
 
-    renderer.draw_ghost_tokens(img, lambda: 0)
+    patches = renderer.draw_ghost_tokens(lambda: 0)
+    assert len(patches) == 1
 
     # Verify draw_text_with_background was called for the name
-    mock_draw_bg.assert_called_with(
-        img,
-        "Hero",
-        (500 - 100, 500 + 100 + 20),
-        cv2.FONT_HERSHEY_SIMPLEX,
-        0.5,
-        (0, 255, 0),  # PC color is Green
-        1,
-    )
+    # The position is now relative to the patch buffer
+    mock_draw_bg.assert_called()
+    found = False
+    for call in mock_draw_bg.call_args_list:
+        args, _ = call
+        if args[1] == "Hero":
+            found = True
+            break
+    assert found

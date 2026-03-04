@@ -192,10 +192,18 @@ def test_menu_scene_scan_fails_without_map(mock_app_context):
 
 def test_menu_scene_handles_calibrate_intrinsics(mock_app_context):
     scene = MenuScene(mock_app_context)
-    mock_menu_state = MagicMock(spec=MenuState)
-    mock_menu_state.just_triggered_action = MenuActions.CALIBRATE_INTRINSICS
-    mock_menu_state.active_items = []
-    mock_menu_state.is_visible = True
+    mock_menu_state = MenuState(
+        current_menu_title="",
+        active_items=[],
+        item_rects=[],
+        hovered_item_index=None,
+        feedback_item_index=None,
+        prime_progress=0.0,
+        summon_progress=0.0,
+        cursor_pos=None,
+        is_visible=True,
+        just_triggered_action=MenuActions.CALIBRATE_INTRINSICS,
+    )
     with patch.object(scene.menu_system, "update", return_value=mock_menu_state):
         transition = scene.update(inputs=[], current_time=0.0)
     assert transition.target_scene == SceneId.CALIBRATE_INTRINSICS
@@ -203,10 +211,18 @@ def test_menu_scene_handles_calibrate_intrinsics(mock_app_context):
 
 def test_menu_scene_handles_calibrate_projector(mock_app_context):
     scene = MenuScene(mock_app_context)
-    mock_menu_state = MagicMock(spec=MenuState)
-    mock_menu_state.just_triggered_action = MenuActions.CALIBRATE_PROJECTOR
-    mock_menu_state.active_items = []
-    mock_menu_state.is_visible = True
+    mock_menu_state = MenuState(
+        current_menu_title="",
+        active_items=[],
+        item_rects=[],
+        hovered_item_index=None,
+        feedback_item_index=None,
+        prime_progress=0.0,
+        summon_progress=0.0,
+        cursor_pos=None,
+        is_visible=True,
+        just_triggered_action=MenuActions.CALIBRATE_PROJECTOR,
+    )
     with patch.object(scene.menu_system, "update", return_value=mock_menu_state):
         transition = scene.update(inputs=[], current_time=0.0)
     assert transition.target_scene == SceneId.CALIBRATE_PROJECTOR
@@ -214,10 +230,18 @@ def test_menu_scene_handles_calibrate_projector(mock_app_context):
 
 def test_menu_scene_handles_calibrate_ppi(mock_app_context):
     scene = MenuScene(mock_app_context)
-    mock_menu_state = MagicMock(spec=MenuState)
-    mock_menu_state.just_triggered_action = MenuActions.CALIBRATE_PPI
-    mock_menu_state.active_items = []
-    mock_menu_state.is_visible = True
+    mock_menu_state = MenuState(
+        current_menu_title="",
+        active_items=[],
+        item_rects=[],
+        hovered_item_index=None,
+        feedback_item_index=None,
+        prime_progress=0.0,
+        summon_progress=0.0,
+        cursor_pos=None,
+        is_visible=True,
+        just_triggered_action=MenuActions.CALIBRATE_PPI,
+    )
     with patch.object(scene.menu_system, "update", return_value=mock_menu_state):
         transition = scene.update(inputs=[], current_time=0.0)
     assert transition.target_scene == SceneId.CALIBRATE_PPI
@@ -225,10 +249,18 @@ def test_menu_scene_handles_calibrate_ppi(mock_app_context):
 
 def test_menu_scene_handles_calibrate_extrinsics(mock_app_context):
     scene = MenuScene(mock_app_context)
-    mock_menu_state = MagicMock(spec=MenuState)
-    mock_menu_state.just_triggered_action = MenuActions.CALIBRATE_EXTRINSICS
-    mock_menu_state.active_items = []
-    mock_menu_state.is_visible = True
+    mock_menu_state = MenuState(
+        current_menu_title="",
+        active_items=[],
+        item_rects=[],
+        hovered_item_index=None,
+        feedback_item_index=None,
+        prime_progress=0.0,
+        summon_progress=0.0,
+        cursor_pos=None,
+        is_visible=True,
+        just_triggered_action=MenuActions.CALIBRATE_EXTRINSICS,
+    )
     with patch.object(scene.menu_system, "update", return_value=mock_menu_state):
         transition = scene.update(inputs=[], current_time=0.0)
     assert transition.target_scene == SceneId.CALIBRATE_EXTRINSICS

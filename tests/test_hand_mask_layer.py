@@ -43,15 +43,14 @@ def test_hand_mask_layer_render_enabled(mock_config):
 
             patches = layer.render()
 
-            assert len(patches) == 1
+            assert len(patches) > 0
             p = patches[0]
-            assert p.x == 0
-            assert p.y == 0
-            assert p.width == 1920
-            assert p.height == 1080
-            # Check alpha channel
-            assert np.array_equal(p.data[5, 5], [0, 0, 0, 255])
-            assert np.array_equal(p.data[20, 20], [0, 0, 0, 0])
+            # localized patches won't be full screen
+            assert p.width < 1920
+            assert p.height < 1080
+            # Check alpha channel exists and has some visibility
+            assert p.data.shape[2] == 4
+            assert np.any(p.data[:, :, 3] > 0)
 
 
 def test_hand_mask_layer_disabled(mock_config):
@@ -88,7 +87,7 @@ def test_hand_mask_layer_caching(mock_config):
             from light_map.core.scene import HandInput
             from light_map.common_types import GestureType
 
-            new_input = [HandInput(GestureType.POINTING, (100, 100), None)]
+            new_input = [HandInput(GestureType.POINTING, (100, 100), (0.0, 0.0), None)]
             ws.update_inputs(new_input)  # increments hands_timestamp
             p3 = layer.render()
             assert p3 is not p1

@@ -6,19 +6,21 @@
 
 **Architecture:** Extend `SVGLoader` to extract visibility blockers, implement a 2D shadowcasting engine for LOS calculations, and manage a persistent PNG-based exploration mask. Integration via the `Renderer` for compositing and `InputProcessor` for dwell-based interactions.
 
-**Coordinate Mapping:** 
+**Coordinate Mapping:**
+
 - **Scale:** `16 / MapEntry.grid_spacing_svg` (maps SVG units to the 16x-resolution FoW pixels).
 - **Origin:** `(MapEntry.grid_origin_svg_x, MapEntry.grid_origin_svg_y)`.
 
 **Tech Stack:** Python, OpenCV (for mask operations), `svgelements` (SVG parsing), `numpy`.
 
----
+______________________________________________________________________
 
 ### Task 1: SVG Blocker Extraction & Data Types
 
 **Goal:** Extend `SVGLoader` to categorize paths by layer name and define `VisibilityBlocker`.
 
 **Files:**
+
 - Create: `src/light_map/visibility_types.py`
 - Modify: `src/light_map/svg_loader.py`
 - Test: `tests/test_svg_loader_visibility.py`
@@ -32,13 +34,14 @@ Substring matching for "Wall", "Door", "Window", and "Unbreakable". Handle neste
 **Step 3: Commit**
 `git commit -m "feat: Add VisibilityBlocker types and SVG extraction logic"`
 
----
+______________________________________________________________________
 
 ### Task 2: 2D Shadowcasting Engine with Spatial Hashing
 
 **Goal:** Implement high-performance visibility calculation with segment pruning.
 
 **Files:**
+
 - Create: `src/light_map/visibility_engine.py`
 - Test: `tests/test_visibility_logic.py`
 
@@ -54,13 +57,14 @@ Test LOS through doors and performance with 500+ segments.
 **Step 4: Commit**
 `git commit -m "feat: Add visibility engine with spatial hashing and jitter-resistant caching"`
 
----
+______________________________________________________________________
 
 ### Task 3: Starfinder 1e Multi-Point Vision Union
 
 **Goal:** Union multiple visibility polygons for tokens of size S using OpenCV `bitwise_or`.
 
 **Files:**
+
 - Modify: `src/light_map/visibility_engine.py`
 - Test: `tests/test_visibility_starfinder.py`
 
@@ -73,13 +77,14 @@ If token is outside map limits, return an all-black mask (0.0 visibility).
 **Step 3: Commit**
 `git commit -m "feat: Implement Starfinder 1e multi-point vision mask union with OOB safety"`
 
----
+______________________________________________________________________
 
 ### Task 4: Fog of War Layer & Resilience
 
 **Goal:** Manage the persistent 16x grid PNG bitmap with error handling.
 
 **Files:**
+
 - Create: `src/light_map/fow_layer.py`
 - Test: `tests/test_fow_layer.py`
 
@@ -92,14 +97,14 @@ If the PNG is missing or corrupted, initialize a blank (0,0,0) mask.
 **Step 3: Commit**
 `git commit -m "feat: Add resilient FoWLayer with explored-dimming support"`
 
----
+______________________________________________________________________
 
 ### Task 5: Renderer Multi-Layer Composition
 
 **Goal:** Composite Map, FoW, and Visibility layers.
 
 **Step 1: Update Layer Stack**
-Stack: `MapLayer` -> `FoWLayer` -> `VisibilityLayer`. 
+Stack: `MapLayer` -> `FoWLayer` -> `VisibilityLayer`.
 
 **Step 2: Implement Exclusive Vision Mode**
 Toggle logic in `InteractiveApp` to render only the pointed-at token's mask.
@@ -107,7 +112,7 @@ Toggle logic in `InteractiveApp` to render only the pointed-at token's mask.
 **Step 3: Commit**
 `git commit -m "feat: Implement multi-layer composition for visibility and FoW"`
 
----
+______________________________________________________________________
 
 ### Task 6: Interaction Dwell & Virtual Pointer
 
@@ -122,7 +127,7 @@ Apply `config.projector_ppi` based offset to pointer coordinates.
 **Step 3: Commit**
 `git commit -m "feat: Add DwellTracker and virtual pointer logic"`
 
----
+______________________________________________________________________
 
 ### Task 7: Session Persistence & Menu Integration
 

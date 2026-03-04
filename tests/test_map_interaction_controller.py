@@ -23,7 +23,10 @@ def test_pan_delta_closed_fist(map_interaction_controller, mock_map_system):
     # First update to establish the initial hand position
     inputs1 = [
         HandInput(
-            gesture=GestureType.CLOSED_FIST, proj_pos=(100, 100), raw_landmarks=None
+            gesture=GestureType.CLOSED_FIST,
+            proj_pos=(100, 100),
+            unit_direction=(0.0, 0.0),
+            raw_landmarks=None,
         )
     ]
     map_interaction_controller.process_gestures(inputs1, mock_map_system)
@@ -32,7 +35,10 @@ def test_pan_delta_closed_fist(map_interaction_controller, mock_map_system):
     # Second update to calculate the delta
     inputs2 = [
         HandInput(
-            gesture=GestureType.CLOSED_FIST, proj_pos=(120, 130), raw_landmarks=None
+            gesture=GestureType.CLOSED_FIST,
+            proj_pos=(120, 130),
+            unit_direction=(0.0, 0.0),
+            raw_landmarks=None,
         )
     ]
     interaction_occurred = map_interaction_controller.process_gestures(
@@ -48,10 +54,16 @@ def test_zoom_scaling_pointing(map_interaction_controller, mock_map_system):
     # First update to establish the initial distance
     inputs1 = [
         HandInput(
-            gesture=GestureType.POINTING, proj_pos=(100, 100), raw_landmarks=None
+            gesture=GestureType.POINTING,
+            proj_pos=(100, 100),
+            unit_direction=(0.0, 0.0),
+            raw_landmarks=None,
         ),
         HandInput(
-            gesture=GestureType.POINTING, proj_pos=(200, 100), raw_landmarks=None
+            gesture=GestureType.POINTING,
+            proj_pos=(200, 100),
+            unit_direction=(0.0, 0.0),
+            raw_landmarks=None,
         ),
     ]
     map_interaction_controller.process_gestures(inputs1, mock_map_system)
@@ -59,9 +71,17 @@ def test_zoom_scaling_pointing(map_interaction_controller, mock_map_system):
 
     # Second update to calculate the zoom factor (zooming in)
     inputs2 = [
-        HandInput(gesture=GestureType.POINTING, proj_pos=(50, 100), raw_landmarks=None),
         HandInput(
-            gesture=GestureType.POINTING, proj_pos=(250, 100), raw_landmarks=None
+            gesture=GestureType.POINTING,
+            proj_pos=(50, 100),
+            unit_direction=(0.0, 0.0),
+            raw_landmarks=None,
+        ),
+        HandInput(
+            gesture=GestureType.POINTING,
+            proj_pos=(250, 100),
+            unit_direction=(0.0, 0.0),
+            raw_landmarks=None,
         ),
     ]
     interaction_occurred = map_interaction_controller.process_gestures(
@@ -81,7 +101,10 @@ def test_no_interaction_wrong_gestures(map_interaction_controller, mock_map_syst
     # Case 1: One hand but wrong gesture (OPEN_PALM instead of CLOSED_FIST)
     inputs_wrong_pan = [
         HandInput(
-            gesture=GestureType.OPEN_PALM, proj_pos=(100, 100), raw_landmarks=None
+            gesture=GestureType.OPEN_PALM,
+            proj_pos=(100, 100),
+            unit_direction=(0.0, 0.0),
+            raw_landmarks=None,
         )
     ]
     assert (
@@ -93,10 +116,16 @@ def test_no_interaction_wrong_gestures(map_interaction_controller, mock_map_syst
     # Case 2: Two hands but wrong gestures (OPEN_PALM instead of POINTING)
     inputs_wrong_zoom = [
         HandInput(
-            gesture=GestureType.OPEN_PALM, proj_pos=(100, 100), raw_landmarks=None
+            gesture=GestureType.OPEN_PALM,
+            proj_pos=(100, 100),
+            unit_direction=(0.0, 0.0),
+            raw_landmarks=None,
         ),
         HandInput(
-            gesture=GestureType.OPEN_PALM, proj_pos=(200, 100), raw_landmarks=None
+            gesture=GestureType.OPEN_PALM,
+            proj_pos=(200, 100),
+            unit_direction=(0.0, 0.0),
+            raw_landmarks=None,
         ),
     ]
     assert (

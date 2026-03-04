@@ -47,7 +47,9 @@ def build_map_actions_submenu(filename: str, has_session: bool) -> List[MenuItem
     return items
 
 
-def build_root_menu(map_config: MapConfigManager, selected_door: Optional[str] = None) -> MenuItem:
+def build_root_menu(
+    map_config: MapConfigManager, selected_door: Optional[str] = None
+) -> MenuItem:
 
     # Build Maps Submenu
     map_items = []
@@ -161,13 +163,18 @@ def build_root_menu(map_config: MapConfigManager, selected_door: Optional[str] =
                         action_id=MenuActions.TOGGLE_FOW,
                         should_close_on_trigger=False,
                     ),
-                ] + ([
-                    MenuItem(
-                        title=f"Toggle Door ({selected_door})",
-                        action_id=MenuActions.TOGGLE_DOOR,
-                        should_close_on_trigger=True,
-                    )
-                ] if selected_door else []),
+                ]
+                + (
+                    [
+                        MenuItem(
+                            title=f"Toggle Door ({selected_door})",
+                            action_id=MenuActions.TOGGLE_DOOR,
+                            should_close_on_trigger=True,
+                        )
+                    ]
+                    if selected_door
+                    else []
+                ),
             ),
             MenuItem(
                 title="Calibration",

@@ -47,6 +47,7 @@ def create_app(results_queue: Queue, stop_event: Event, state_mirror: Dict[str, 
                 HandInput(
                     gesture=g,
                     proj_pos=(h.x, h.y),
+                    unit_direction=(0.0, 0.0),  # Default to no specific direction
                     raw_landmarks=None,  # Virtual hands don't have landmarks
                 )
             )

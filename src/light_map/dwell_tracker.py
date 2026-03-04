@@ -11,7 +11,7 @@ class DwellTracker:
     def __init__(self, radius_pixels: float, dwell_time_threshold: float = 2.0):
         self.radius_pixels = radius_pixels
         self.dwell_time_threshold = dwell_time_threshold
-        
+
         self.last_point: Optional[Tuple[float, float]] = None
         self.accumulated_time = 0.0
         self.is_triggered = False
@@ -32,11 +32,16 @@ class DwellTracker:
             return False
 
         # Calculate distance
-        dist = math.sqrt((point[0] - self.last_point[0])**2 + (point[1] - self.last_point[1])**2)
-        
+        dist = math.sqrt(
+            (point[0] - self.last_point[0]) ** 2 + (point[1] - self.last_point[1]) ** 2
+        )
+
         if dist <= self.radius_pixels:
             self.accumulated_time += dt
-            if self.accumulated_time >= self.dwell_time_threshold and not self.is_triggered:
+            if (
+                self.accumulated_time >= self.dwell_time_threshold
+                and not self.is_triggered
+            ):
                 self.is_triggered = True
                 return True
         else:
@@ -44,7 +49,7 @@ class DwellTracker:
             self.last_point = point
             self.accumulated_time = 0.0
             self.is_triggered = False
-            
+
         return False
 
     def reset(self):

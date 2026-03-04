@@ -25,7 +25,7 @@ def test_world_state_apply_results():
     state = WorldState()
 
     # 1. Apply ArUco result (Initial)
-    tokens = [Token(id=1, world_x=10, world_y=20, grid_x=0, grid_y=0)]
+    tokens = [Token(id=1, world_x=10, world_y=20)]
     result = DetectionResult(
         timestamp=2000, type=ResultType.ARUCO, data={"tokens": tokens}
     )
@@ -44,7 +44,7 @@ def test_world_state_apply_results():
     assert state.tokens_timestamp == last_ts
 
     # 3. Apply tokens with tiny jitter (< 0.01) - should NOT be dirty
-    jitter_tokens = [Token(id=1, world_x=10.005, world_y=20.0, grid_x=0, grid_y=0)]
+    jitter_tokens = [Token(id=1, world_x=10.005, world_y=20.0)]
     result_jitter = DetectionResult(
         timestamp=2020, type=ResultType.ARUCO, data={"tokens": jitter_tokens}
     )
@@ -52,7 +52,7 @@ def test_world_state_apply_results():
     assert state.tokens_timestamp == last_ts
 
     # 4. Apply tokens with significant movement - SHOULD be dirty
-    moved_tokens = [Token(id=1, world_x=15.0, world_y=20.0, grid_x=0, grid_y=0)]
+    moved_tokens = [Token(id=1, world_x=15.0, world_y=20.0)]
     result_moved = DetectionResult(
         timestamp=2030, type=ResultType.ARUCO, data={"tokens": moved_tokens}
     )

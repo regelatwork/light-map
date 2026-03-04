@@ -1,6 +1,6 @@
 import cv2
 import numpy as np
-from typing import List, Optional
+from typing import List
 from .common_types import Layer, ImagePatch
 
 
@@ -22,7 +22,11 @@ class VisibilityLayer(Layer):
     def set_mask(self, mask: np.ndarray):
         """Updates the current visibility mask."""
         if mask.shape != self.visible_mask.shape:
-            mask = cv2.resize(mask, (self.mask_width, self.mask_height), interpolation=cv2.INTER_NEAREST)
+            mask = cv2.resize(
+                mask,
+                (self.mask_width, self.mask_height),
+                interpolation=cv2.INTER_NEAREST,
+            )
         self.visible_mask = mask
         self._is_dirty = True
 
@@ -42,16 +46,22 @@ class VisibilityLayer(Layer):
         """
         # For now, let's make it an additive glow or just a highlight.
         # But per Task 5 design, it's used for the exclusive view.
-        
+
         # Create a light blue highlight for visible areas (optional effect)
         # BGR: (255, 100, 100) with 20% alpha
         highlight = np.zeros((self.mask_height, self.mask_width, 3), dtype=np.uint8)
         highlight[self.visible_mask == 255] = [255, 100, 100]
-        
+
         alpha = np.zeros((self.mask_height, self.mask_width), dtype=np.uint8)
-        alpha[self.visible_mask == 255] = 50 # 20% opaque
-        
-        bgra = cv2.merge([highlight[:,:,0], highlight[:,:,1], highlight[:,:,2], alpha])
-        
+        alpha[self.visible_mask == 255] = 50  # 20% opaque
+
+        bgra = cv2.merge(
+            [highlight[:, :, 0], highlight[:, :, 1], highlight[:, :, 2], alpha]
+        )
+
         self._is_dirty = False
-        return [ImagePatch(x=0, y=0, width=self.mask_width, height=self.mask_height, data=bgra)]
+        return [
+            ImagePatch(
+                x=0, y=0, width=self.mask_width, height=self.mask_height, data=bgra
+            )
+        ]

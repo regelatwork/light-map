@@ -44,7 +44,9 @@ class ViewingScene(Scene):
         self.last_token_toggle_time = 0.0
         # 0.5 inch radius for dwell
         ppi = getattr(self.context.app_config, "projector_ppi", 96.0)
-        self.dwell_tracker = DwellTracker(radius_pixels=ppi * 0.5, dwell_time_threshold=2.0)
+        self.dwell_tracker = DwellTracker(
+            radius_pixels=ppi * 0.5, dwell_time_threshold=2.0
+        )
         self.is_dirty = True  # Start dirty to render once
         self.last_update_time = 0.0
 
@@ -58,7 +60,9 @@ class ViewingScene(Scene):
         self, inputs: List[HandInput], current_time: float
     ) -> Optional[SceneTransition]:
         """In Viewing mode, we only check for the gesture to summon the menu."""
-        dt = current_time - self.last_update_time if self.last_update_time > 0 else 0.033
+        dt = (
+            current_time - self.last_update_time if self.last_update_time > 0 else 0.033
+        )
         self.last_update_time = current_time
 
         if not inputs:
@@ -68,7 +72,12 @@ class ViewingScene(Scene):
             return None
 
         primary_gesture = inputs[0].gesture
-        cursor_pos = inputs[0].cursor_pos
+        px, py = inputs[0].proj_pos
+        ux, uy = inputs[0].unit_direction
+
+        # Calculate 1-inch virtual pointer offset if pointing
+        ppi = getattr(self.context.app_config, "projector_ppi", 96.0)
+        cursor_pos = (int(px + ux * ppi), int(py + uy * ppi))
 
         # --- DWELL LOGIC ---
         if primary_gesture == GestureType.POINTING:
@@ -103,13 +112,19 @@ class ViewingScene(Scene):
 
     def _handle_dwell_trigger(self, cursor_pos: Tuple[int, int]):
         """Detects if we are pointing at a token or a door."""
-        world_x, world_y = self.context.map_system.screen_to_world(cursor_pos[0], cursor_pos[1])
-        
+        world_x, world_y = self.context.map_system.screen_to_world(
+            cursor_pos[0], cursor_pos[1]
+        )
+
         # 1. Check Tokens
         for token in self.context.raw_tokens:
-            dist = np.sqrt((token.world_x - world_x)**2 + (token.world_y - world_y)**2)
+            dist = np.sqrt(
+                (token.world_x - world_x) ** 2 + (token.world_y - world_y) ** 2
+            )
             # Use 0.5 grid cell radius for selection
-            grid_spacing = self.context.map_config_manager.get_map_grid_spacing(self.context.map_system.svg_loader.filename)
+            grid_spacing = self.context.map_config_manager.get_map_grid_spacing(
+                self.context.map_system.svg_loader.filename
+            )
             if dist < 0.5 * grid_spacing:
                 self.context.inspected_token_id = token.id
                 self.context.notifications.add_notification(f"Inspecting: {token.id}")
@@ -127,22 +142,24 @@ class ViewingScene(Scene):
         # We need access to blockers.
         if not self.context.map_system.svg_loader:
             return None
-            
+
         blockers = self.context.map_system.svg_loader.get_visibility_blockers()
         # Radius for selection (e.g. 0.2 grid cells)
-        grid_spacing = self.context.map_config_manager.get_map_grid_spacing(self.context.map_system.svg_loader.filename)
+        grid_spacing = self.context.map_config_manager.get_map_grid_spacing(
+            self.context.map_system.svg_loader.filename
+        )
         threshold = 0.3 * grid_spacing
-        
+
         for blocker in blockers:
             if blocker.type != "door":
                 continue
-            
+
             # Check proximity to any segment
             pts = blocker.segments
             for i in range(len(pts) - 1):
                 p1 = pts[i]
-                p2 = pts[i+1]
-                
+                p2 = pts[i + 1]
+
                 # Distance from point to segment
                 d = self._point_to_segment_dist((wx, wy), p1, p2)
                 if d < threshold:
@@ -155,14 +172,14 @@ class ViewingScene(Scene):
         x2, y2 = s2
         dx, dy = x2 - x1, y2 - y1
         if dx == 0 and dy == 0:
-            return np.sqrt((px - x1)**2 + (py - y1)**2)
-        
+            return np.sqrt((px - x1) ** 2 + (py - y1) ** 2)
+
         t = ((px - x1) * dx + (py - y1) * dy) / (dx * dx + dy * dy)
         t = max(0, min(1, t))
-        
+
         closest_x = x1 + t * dx
         closest_y = y1 + t * dy
-        return np.sqrt((px - closest_x)**2 + (py - closest_y)**2)
+        return np.sqrt((px - closest_x) ** 2 + (py - closest_y) ** 2)
 
     def render(self, frame: np.ndarray) -> np.ndarray:
         return frame
@@ -179,7 +196,9 @@ class MapScene(Scene):
         self.last_token_toggle_time = 0.0
         self.is_dirty = True
         ppi = getattr(self.context.app_config, "projector_ppi", 96.0)
-        self.dwell_tracker = DwellTracker(radius_pixels=ppi * 0.5, dwell_time_threshold=2.0)
+        self.dwell_tracker = DwellTracker(
+            radius_pixels=ppi * 0.5, dwell_time_threshold=2.0
+        )
         self.last_update_time = 0.0
 
     def on_enter(self, payload: dict | None = None) -> None:
@@ -196,11 +215,18 @@ class MapScene(Scene):
         self, inputs: List[HandInput], current_time: float
     ) -> Optional[SceneTransition]:
         """Processes gestures for map interaction and menu summoning."""
-        dt = current_time - self.last_update_time if self.last_update_time > 0 else 0.033
+        dt = (
+            current_time - self.last_update_time if self.last_update_time > 0 else 0.033
+        )
         self.last_update_time = current_time
 
         primary_gesture = inputs[0].gesture if inputs else GestureType.NONE
-        cursor_pos = inputs[0].cursor_pos if inputs else None
+        cursor_pos = None
+        if inputs:
+            px, py = inputs[0].proj_pos
+            ux, uy = inputs[0].unit_direction
+            ppi = getattr(self.context.app_config, "projector_ppi", 96.0)
+            cursor_pos = (int(px + ux * ppi), int(py + uy * ppi))
 
         # --- DWELL LOGIC ---
         if primary_gesture == GestureType.POINTING:
@@ -235,8 +261,11 @@ class MapScene(Scene):
         svg_loader = getattr(map_system, "svg_loader", None)
         if svg_loader:
             import os
+
             filename = svg_loader.filename
-            entry = self.context.map_config_manager.data.maps.get(os.path.abspath(filename))
+            entry = self.context.map_config_manager.data.maps.get(
+                os.path.abspath(filename)
+            )
             if entry and entry.grid_spacing_svg > 0:
                 grid_size = entry.grid_spacing_svg * map_system.state.zoom
 
@@ -253,12 +282,18 @@ class MapScene(Scene):
 
     def _handle_dwell_trigger(self, cursor_pos: Tuple[int, int]):
         # Reuse logic from ViewingScene (ideally factor this out to a helper)
-        world_x, world_y = self.context.map_system.screen_to_world(cursor_pos[0], cursor_pos[1])
-        
+        world_x, world_y = self.context.map_system.screen_to_world(
+            cursor_pos[0], cursor_pos[1]
+        )
+
         # 1. Check Tokens
         for token in self.context.raw_tokens:
-            dist = np.sqrt((token.world_x - world_x)**2 + (token.world_y - world_y)**2)
-            grid_spacing = self.context.map_config_manager.get_map_grid_spacing(self.context.map_system.svg_loader.filename)
+            dist = np.sqrt(
+                (token.world_x - world_x) ** 2 + (token.world_y - world_y) ** 2
+            )
+            grid_spacing = self.context.map_config_manager.get_map_grid_spacing(
+                self.context.map_system.svg_loader.filename
+            )
             if dist < 0.5 * grid_spacing:
                 self.context.inspected_token_id = token.id
                 self.context.notifications.add_notification(f"Inspecting: {token.id}")
@@ -277,10 +312,13 @@ class MapScene(Scene):
             from light_map.session_manager import SessionManager
             from light_map.common_types import SessionData, ViewportState
             import os
+
             map_file = map_system.svg_loader.filename
             session_dir = None
             if self.context.app_config.storage_manager:
-                session_dir = os.path.join(self.context.app_config.storage_manager.get_data_dir(), "sessions")
+                session_dir = os.path.join(
+                    self.context.app_config.storage_manager.get_data_dir(), "sessions"
+                )
             session = SessionData(
                 map_file=map_file,
                 viewport=ViewportState(
@@ -293,8 +331,11 @@ class MapScene(Scene):
             )
             SessionManager.save_for_map(map_file, session, session_dir=session_dir)
             self.context.map_config_manager.save_map_viewport(
-                map_file, map_system.state.x, map_system.state.y,
-                map_system.state.zoom, map_system.state.rotation,
+                map_file,
+                map_system.state.x,
+                map_system.state.y,
+                map_system.state.zoom,
+                map_system.state.rotation,
             )
 
     def render(self, frame: np.ndarray) -> np.ndarray:

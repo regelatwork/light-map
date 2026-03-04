@@ -83,7 +83,7 @@ def test_extrinsics_scene_passes_known_targets(
     assert scene._target_status[2] == "VALID"
 
     # 2. Trigger Capture with Fist
-    inputs = [HandInput(GestureType.CLOSED_FIST, (0, 0), None)]
+    inputs = [HandInput(GestureType.CLOSED_FIST, (0, 0), (0.0, 0.0), None)]
     scene.update(inputs, 1.1)
 
     # 3. Update again to run CAPTURE logic

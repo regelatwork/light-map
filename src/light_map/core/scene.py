@@ -18,7 +18,9 @@ class HandInput:
 
     gesture: GestureType
     proj_pos: Tuple[int, int]  # (x, y) in projector space
-    cursor_pos: Tuple[int, int]  # (x, y) virtual pointer (offset for pointing)
+    unit_direction: Tuple[
+        float, float
+    ]  # (dx, dy) normalized direction vector of finger
     raw_landmarks: Any  # MediaPipe landmarks for advanced processing if needed
 
 

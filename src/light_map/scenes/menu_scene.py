@@ -41,7 +41,9 @@ class MenuScene(Scene):
         self.menu_system.state = MenuSystemState.ACTIVE
         # Rebuild menu in case of changes (e.g., map list, debug state)
         selected_door = getattr(self.context, "selected_door", None)
-        new_root = build_root_menu(self.context.map_config_manager, selected_door=selected_door)
+        new_root = build_root_menu(
+            self.context.map_config_manager, selected_door=selected_door
+        )
         self.menu_system.set_root_menu(new_root)
         self._is_dirty = True
 
@@ -180,7 +182,9 @@ class MenuScene(Scene):
         elif action == MenuActions.TOGGLE_FOW:
             return SceneTransition(SceneId.VIEWING, payload={"action": "TOGGLE_FOW"})
         elif action == MenuActions.TOGGLE_DOOR:
-            return SceneTransition(SceneId.VIEWING, payload={"action": "TOGGLE_DOOR", "door": payload})
+            return SceneTransition(
+                SceneId.VIEWING, payload={"action": "TOGGLE_DOOR", "door": payload}
+            )
 
         return None
 

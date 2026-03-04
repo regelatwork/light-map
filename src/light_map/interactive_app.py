@@ -90,6 +90,11 @@ class InteractiveApp:
         # Load Camera Calibration
         camera_matrix, dist_coeffs, rvec, tvec = self._load_camera_calibration()
 
+        # Normalize calibration if resolution mismatch
+        camera_matrix, rvec, tvec = self._normalize_calibration(
+            camera_matrix, rvec, tvec
+        )
+
         # Scan for maps if provided
         if config.map_search_patterns:
             self.map_config.scan_for_maps(config.map_search_patterns)
@@ -136,6 +141,52 @@ class InteractiveApp:
         self.scenes = self._initialize_scenes()
         self.current_scene: Scene = self.scenes[SceneId.MENU]
         self.current_scene.on_enter()
+
+    def _normalize_calibration(
+        self, camera_matrix: np.ndarray, rvec: np.ndarray, tvec: np.ndarray
+    ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+        """
+        Normalizes camera_matrix and projector_matrix if the current camera resolution
+        differs from the resolution used during calibration.
+        """
+        cam_w, cam_h = self.config.camera_resolution
+        calib_w, calib_h = self.config.projector_matrix_resolution
+
+        if cam_w == 0 or calib_w == 0:
+            return camera_matrix, rvec, tvec
+
+        if cam_w == calib_w and cam_h == calib_h:
+            return camera_matrix, rvec, tvec
+
+        logging.info(
+            f"InteractiveApp: Normalizing calibration from {calib_w}x{calib_h} to {cam_w}x{cam_h}"
+        )
+
+        # 1. Normalize Camera Intrinsics
+        # K_new = K_old * diag(W_new/W_old, H_new/H_old, 1)
+        scale_x = cam_w / calib_w
+        scale_y = cam_h / calib_h
+
+        new_camera_matrix = camera_matrix.copy()
+        new_camera_matrix[0, 0] *= scale_x  # fx
+        new_camera_matrix[0, 2] *= scale_x  # cx
+        new_camera_matrix[1, 1] *= scale_y  # fy
+        new_camera_matrix[1, 2] *= scale_y  # cy
+
+        # 2. Normalize Projector Homography (Camera -> Projector)
+        # H_runtime = H_calib * S
+        # S maps runtime (W_new, H_new) to calibration (W_old, H_old)
+        # S = diag(W_old/W_new, H_old/H_new, 1)
+        inv_scale_x = calib_w / cam_w
+        inv_scale_y = calib_h / cam_h
+
+        S = np.array(
+            [[inv_scale_x, 0, 0], [0, inv_scale_y, 0], [0, 0, 1]], dtype=np.float32
+        )
+
+        self.config.projector_matrix = self.config.projector_matrix @ S
+
+        return new_camera_matrix, rvec, tvec
 
     def _load_camera_calibration(
         self,

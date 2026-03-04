@@ -6,6 +6,14 @@ class Camera:
     """
     A wrapper around cv2.VideoCapture to handle different camera sources
     (standard webcam vs Raspberry Pi GStreamer).
+
+    CRITICAL NOTE: The default resolution 4608x2592 is INTENTIONAL.
+    The camera has a large field of view, and the projected area only covers about
+    one quarter of the seen area. High resolution is required for:
+    - ArUco marker detection reliability
+    - Structured light token detection precision
+    - Hand tracking/gesture precision
+    DO NOT CHANGE THIS RESOLUTION WITHOUT CONSULTING THE USER.
     """
 
     def __init__(self, index=0, width=4608, height=2592, framerate=8):
@@ -49,6 +57,11 @@ class Camera:
             self.cap = cv2.VideoCapture(self.index)
             self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, self.width)
             self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, self.height)
+
+            # Read back actual resolution
+            self.width = int(self.cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+            self.height = int(self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+            logging.info("Actual camera resolution: %dx%d", self.width, self.height)
 
         if not self.cap.isOpened():
             raise RuntimeError("Failed to open camera.")

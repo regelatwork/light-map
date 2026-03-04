@@ -23,6 +23,8 @@ def aruco_worker(
     map_dims: Optional[Tuple[int, int]] = None,
     intrinsics_path: Optional[str] = None,
     extrinsics_path: Optional[str] = None,
+    camera_matrix: Optional[np.ndarray] = None,
+    dist_coeffs: Optional[np.ndarray] = None,
 ):
     """
     Worker function for ArUco detection. Consumes frames from shared memory,
@@ -40,6 +42,8 @@ def aruco_worker(
         extrinsics_file=extrinsics_path,
         dictionary_type=aruco_dict_type,
     )
+    if camera_matrix is not None and dist_coeffs is not None:
+        detector.set_calibration(camera_matrix, dist_coeffs)
 
     logging.info(f"ArUco Worker started (SHM: {shm_name})")
     last_processed_ts = -1

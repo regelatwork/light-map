@@ -280,12 +280,16 @@ class ArucoTokenDetector:
 
         w_proj, h_proj = map_dims
         try:
-            # projector_matrix maps from projector to camera coordinates
+            # projector_matrix maps from camera to projector.
+            # We need to map projector corners (0,0, w, h) BACK to camera space
+            # to define the FOV mask in the camera frame.
+            inv_h = np.linalg.inv(projector_matrix)
+
             proj_corners = np.array(
                 [[0, 0], [w_proj, 0], [w_proj, h_proj], [0, h_proj]],
                 dtype=np.float32,
             ).reshape(-1, 1, 2)
-            cam_corners = cv2.perspectiveTransform(proj_corners, projector_matrix)
+            cam_corners = cv2.perspectiveTransform(proj_corners, inv_h)
 
             # Adjust corners for scaled detection frame
             if scale != 1.0:

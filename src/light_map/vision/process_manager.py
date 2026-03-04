@@ -22,6 +22,8 @@ class VisionProcessManager:
         map_dims: Optional[Tuple[int, int]] = None,
         intrinsics_path: Optional[str] = None,
         extrinsics_path: Optional[str] = None,
+        camera_matrix: Optional[np.ndarray] = None,
+        dist_coeffs: Optional[np.ndarray] = None,
         remote_mode_hands: str = "ignore",
         remote_mode_tokens: str = "ignore",
         remote_port: int = 8000,
@@ -34,6 +36,8 @@ class VisionProcessManager:
         self.map_dims = map_dims
         self.intrinsics_path = intrinsics_path
         self.extrinsics_path = extrinsics_path
+        self.camera_matrix = camera_matrix
+        self.dist_coeffs = dist_coeffs
 
         self.remote_mode_hands = remote_mode_hands
         self.remote_mode_tokens = remote_mode_tokens
@@ -82,6 +86,8 @@ class VisionProcessManager:
                     "map_dims": self.map_dims,
                     "intrinsics_path": self.intrinsics_path,
                     "extrinsics_path": self.extrinsics_path,
+                    "camera_matrix": self.camera_matrix,
+                    "dist_coeffs": self.dist_coeffs,
                 },
                 name="ArucoWorker",
             )

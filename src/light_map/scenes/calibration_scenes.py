@@ -50,6 +50,7 @@ class FlashCalibrationScene(Scene):
         self._current_level_idx = 0
         self._results: Dict[int, int] = {}
         self._capture_frame = False
+        self.is_dynamic = True
 
     def on_enter(self, payload: dict | None = None) -> None:
         self._stage = FlashCalibStage.START
@@ -57,6 +58,7 @@ class FlashCalibrationScene(Scene):
         self._current_level_idx = 0
         self._results = {}
         self.token_tracker.debug_mode = self.context.debug_mode
+        self.is_dirty = True
 
     def update(
         self, inputs: List[HandInput], current_time: float
@@ -171,10 +173,12 @@ class IntrinsicsCalibrationScene(Scene):
         self._captured_images: list[np.ndarray] = []
         self._stage = "CAPTURE"  # CAPTURE | PROCESSING | DONE | ERROR
         self._required_images = 15
+        self.is_dynamic = True
 
     def on_enter(self, payload: Any = None) -> None:
         self._captured_images = []
         self._stage = "CAPTURE"
+        self.is_dirty = True
         self.context.notifications.add_notification(
             f"Capture {self._required_images} chessboard images."
         )
@@ -287,11 +291,13 @@ class ProjectorCalibrationScene(Scene):
         self._pattern_image: Optional[np.ndarray] = None
         self._pattern_params: Optional[Dict] = None
         self._start_time = 0.0
+        self.is_dynamic = True
 
     def on_enter(self, payload: Any = None) -> None:
         from light_map.projector import generate_calibration_pattern
 
         self._stage = "DISPLAY_PATTERN"
+        self.is_dirty = True
 
         # Generate pattern
         w, h = self.context.app_config.width, self.context.app_config.height
@@ -423,9 +429,11 @@ class ExtrinsicsCalibrationScene(Scene):
         self._current_time: float = 0.0
         self._cached_canvas: Optional[np.ndarray] = None
         self._last_render_params: Dict[str, Any] = {}
+        self.is_dynamic = True
 
     def on_enter(self, payload: Any = None) -> None:
         self._stage = "PLACEMENT"
+        self.is_dirty = True
         self._ppi = self.context.map_config_manager.get_ppi()
         self._reprojection_error = 0.0
         self._obj_points = None
@@ -498,7 +506,13 @@ class ExtrinsicsCalibrationScene(Scene):
                 self._detected_ids = {}
                 self._known_targets = {}
 
-                for i, aid in enumerate(ids):
+                for i, marker_id_raw in enumerate(ids):
+                    # Ensure marker_id is an integer (flatten if it's a list/array from raw detection)
+                    if isinstance(marker_id_raw, (list, np.ndarray)):
+                        aid = int(marker_id_raw[0])
+                    else:
+                        aid = int(marker_id_raw)
+
                     marker_corners = corners[i]
                     c_cam = np.mean(marker_corners, axis=0)
 
@@ -519,7 +533,7 @@ class ExtrinsicsCalibrationScene(Scene):
                             best_idx = idx
 
                     if best_idx != -1:
-                        info = {"aid": int(aid)}
+                        info = {"aid": aid}
                         if aid in self._token_heights:
                             self._target_status[best_idx] = "VALID"
                             info["height"] = self._token_heights[aid]
@@ -882,6 +896,7 @@ class PpiCalibrationScene(Scene):
         super().__init__(context)
         self._stage = "DETECTING"  # DETECTING | CONFIRMING
         self._candidate_ppi = 0.0
+        self.is_dynamic = True
 
     def on_enter(self, payload: Any = None) -> None:
         self._stage = "DETECTING"
@@ -955,14 +970,32 @@ class PpiCalibrationScene(Scene):
 
         if self._stage == "DETECTING":
             raw = self.context.raw_aruco
-            if raw and raw.get("ids") is not None:
-                # ids is a list of ints, corners is a list of (4, 2) arrays
-                corners = raw.get("corners", [])
-                ids = raw.get("ids", [])
+            corners = []
+            ids = []
 
+            if raw and raw.get("ids") is not None and len(raw.get("ids", [])) >= 2:
+                ids = raw.get("ids", [])
+                corners = raw.get("corners", [])
+
+            # Ensure ids are flat integers for robust check
+            flat_ids = []
+            for item in ids:
+                if isinstance(item, (list, np.ndarray)):
+                    flat_ids.append(int(item[0]))
+                else:
+                    flat_ids.append(int(item))
+
+            # Fallback to direct detection from frame if worker is slow/missing
+            if (0 not in flat_ids or 1 not in flat_ids) and self.context.last_camera_frame is not None:
+                ppi = calculate_ppi_from_frame(
+                    self.context.last_camera_frame,
+                    self.context.projector_matrix,
+                    target_dist_mm=100.0,
+                )
+            elif (0 in flat_ids and 1 in flat_ids):
                 # Re-format corners to (1, 4, 2) as expected by calculate_ppi_from_frame
                 formatted_corners = tuple(np.array(c).reshape(1, 4, 2) for c in corners)
-                formatted_ids = np.array(ids)
+                formatted_ids = np.array(flat_ids)
 
                 ppi = calculate_ppi_from_frame(
                     None,
@@ -971,12 +1004,16 @@ class PpiCalibrationScene(Scene):
                     aruco_corners=formatted_corners,
                     aruco_ids=formatted_ids,
                 )
-                if ppi:
-                    self._candidate_ppi = ppi
-                    self._stage = "CONFIRMING"
-                    self.context.notifications.add_notification(
-                        f"Detected PPI: {ppi:.2f}. Victory to save."
-                    )
+            else:
+                ppi = None
+
+            if ppi:
+                self._candidate_ppi = ppi
+                self._stage = "CONFIRMING"
+                self.context.notifications.add_notification(
+                    f"Detected PPI: {ppi:.2f}. Victory to save."
+                )
+
 
         elif self._stage == "CONFIRMING":
             cv2.putText(
@@ -1031,10 +1068,12 @@ class MapGridCalibrationScene(Scene):
         self.is_interacting = False
         self.calib_map_grid_size_inches = 1.0
         self.grid_overlay: Optional[GridOverlay] = None
+        self.is_dynamic = True
 
     def on_enter(self, payload: dict | None = None) -> None:
         self.is_interacting = False
         self.summon_gesture_start_time = 0.0
+        self.is_dirty = True
 
         map_system = self.context.map_system
         map_config = self.context.map_config_manager

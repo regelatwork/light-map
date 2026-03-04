@@ -159,12 +159,12 @@ def main():
             with np.load(calibration_file) as data:
                 if "projector_matrix" not in data:
                     logger.error("Invalid calibration file (missing projector_matrix).")
-                    return None, 2304, 1296, None
+                    return None, 4608, 2592, None
                 matrix = data["projector_matrix"]
                 if "resolution" in data:
                     w, h = data["resolution"]
                 else:
-                    w, h = 2304, 1296
+                    w, h = 4608, 2592
 
                 model = None
                 if "camera_points" in data and "projector_points" in data:
@@ -176,7 +176,7 @@ def main():
                 return matrix, w, h, model
         except Exception as e:
             logger.error("Error loading calibration: %s", e, exc_info=True)
-            return None, 2304, 1296, None
+            return None, 4608, 2592, None
 
     native_screen_w, native_screen_h = get_screen_resolution()
     logger.info("Hardware Screen Resolution: %dx%d", native_screen_w, native_screen_h)
@@ -209,12 +209,18 @@ def main():
     map_config_manager = MapConfigManager(storage=storage)
     gs = map_config_manager.data.global_settings
 
+    # Detect runtime camera resolution first
+    cam_w, cam_h = 0, 0
+    with Camera() as cam:
+        cam_w, cam_h = cam.width, cam.height
+
     # 2. Setup App
     config = AppConfig(
         width=native_screen_w,
         height=native_screen_h,
         projector_matrix=transformation_matrix,
         projector_matrix_resolution=(cam_res_w, cam_res_h),
+        camera_resolution=(cam_w, cam_h),
         map_search_patterns=map_sources,
         distortion_model=dist_model,
         storage_manager=storage,
@@ -292,6 +298,8 @@ def main():
                 map_dims=(app.config.width, app.config.height),
                 intrinsics_path=intrinsics_path,
                 extrinsics_path=extrinsics_path,
+                camera_matrix=app.app_context.camera_matrix,
+                dist_coeffs=app.app_context.dist_coeffs,
                 remote_mode_hands=args.remote_hands,
                 remote_mode_tokens=args.remote_tokens,
                 remote_port=args.remote_port,

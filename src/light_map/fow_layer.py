@@ -105,7 +105,7 @@ class FogOfWarLayer(Layer):
     def is_dirty(self, value: bool):
         self._is_dirty = value
 
-    def _generate_patches(self) -> List[ImagePatch]:
+    def _generate_patches(self, current_time: float) -> List[ImagePatch]:
         """
         Produces a 4-channel (BGRA) mask patch.
         Alpha channel represents the FoW state.

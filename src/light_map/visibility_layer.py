@@ -38,7 +38,7 @@ class VisibilityLayer(Layer):
     def is_dirty(self, value: bool):
         self._is_dirty = value
 
-    def _generate_patches(self) -> List[ImagePatch]:
+    def _generate_patches(self, current_time: float) -> List[ImagePatch]:
         """
         Produces a 4-channel (BGRA) mask patch for the visible area.
         For standard visibility, this could be empty if FoWLayer handles it.

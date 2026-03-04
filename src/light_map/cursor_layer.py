@@ -28,7 +28,7 @@ class CursorLayer(Layer):
 
         return False
 
-    def _generate_patches(self) -> List[ImagePatch]:
+    def _generate_patches(self, current_time: float) -> List[ImagePatch]:
         if self.state is None or not self.state.inputs:
             self._last_cursor_positions = []
             return []

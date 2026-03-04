@@ -34,7 +34,7 @@ class MenuLayer(Layer):
 
         return self.state.menu_timestamp > self._last_state_timestamp
 
-    def _generate_patches(self) -> List[ImagePatch]:
+    def _generate_patches(self, current_time: float) -> List[ImagePatch]:
         if self.state is None:
             return []
 

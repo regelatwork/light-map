@@ -30,9 +30,15 @@ class HandMaskLayer(Layer):
         if self.state is None:
             return True
 
+        # If we have active masks or are within the persistence window, we should be dirty
+        # to ensure we eventually clear the mask.
+        # Check if the masker is still persisting results
+        if self.hand_masker.last_hulls:
+            return True
+
         return self.state.hands_timestamp > self._last_state_timestamp
 
-    def _generate_patches(self) -> List[ImagePatch]:
+    def _generate_patches(self, current_time: float) -> List[ImagePatch]:
         self._last_enabled = self.config.enable_hand_masking
         if not self.config.enable_hand_masking:
             return []
@@ -43,7 +49,7 @@ class HandMaskLayer(Layer):
         # Logic adapted from InteractiveApp._apply_hand_masking
         if not self.state.hands:
             # Still call compute_hulls with empty list for persistence if HandMasker uses it
-            hulls = self.hand_masker.compute_hulls([], None)
+            hulls = self.hand_masker.compute_hulls([], None, current_time)
         else:
 
             def transform_pts(pts):
@@ -66,18 +72,24 @@ class HandMaskLayer(Layer):
                     )
                 return proj_pts.reshape(-1, 2)
 
-            hulls = self.hand_masker.compute_hulls(self.state.hands, transform_pts)
+            hulls = self.hand_masker.compute_hulls(
+                self.state.hands, transform_pts, current_time
+            )
 
         if not hulls:
             return []
 
         patches = []
+        # Calculate padding in pixels for a 2cm (0.7874 inch) radius
+        # This ensures the mask covers the entire hand, not just the skeleton points.
+        padding_2cm = int(0.7874 * self.config.projector_ppi)
+
         for hull in hulls:
             # Get bounding box for this hull
             x, y, w, h = cv2.boundingRect(hull)
 
             # Apply padding to the bounding box
-            pad = self.config.hand_mask_padding + 20  # extra margin for blur
+            pad = padding_2cm + 20  # extra margin for blur
             x1 = max(0, x - pad)
             y1 = max(0, y - pad)
             x2 = min(self.config.width, x + w + pad)
@@ -92,7 +104,11 @@ class HandMaskLayer(Layer):
 
             # Draw hull mask on patch
             mask_patch = np.zeros((ph, pw), dtype=np.uint8)
-            cv2.drawContours(mask_patch, [local_hull.astype(np.int32)], -1, 255, -1)
+            # Dilate the hull by drawing a thick boundary around it
+            cv2.drawContours(
+                mask_patch, [local_hull.astype(np.int32)], -1, 255, thickness=padding_2cm * 2
+            )
+            cv2.fillPoly(mask_patch, [local_hull.astype(np.int32)], 255)
 
             # Optional blur on the patch
             if self.config.hand_mask_blur > 1:

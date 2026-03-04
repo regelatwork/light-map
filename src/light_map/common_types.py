@@ -48,10 +48,10 @@ class Layer(ABC):
         """True if the layer needs to re-render its patches."""
         pass
 
-    def render(self) -> List[ImagePatch]:
+    def render(self, current_time: float = 0.0) -> List[ImagePatch]:
         """Handles caching and calls _generate_patches if dirty."""
         if self.is_dirty or self._cached_patches is None:
-            self._cached_patches = self._generate_patches()
+            self._cached_patches = self._generate_patches(current_time)
             # Call after patches generated so subclasses can update tracking state
             self._update_timestamp()
         return self._cached_patches
@@ -62,7 +62,7 @@ class Layer(ABC):
         pass
 
     @abstractmethod
-    def _generate_patches(self) -> List[ImagePatch]:
+    def _generate_patches(self, current_time: float) -> List[ImagePatch]:
         """Actual rendering logic implemented by subclasses."""
         pass
 
@@ -191,6 +191,7 @@ class AppConfig:
     hand_mask_padding: int = 30
     hand_mask_blur: int = 15
     gm_position: GmPosition = GmPosition.NONE
+    projector_ppi: float = 96.0
 
 
 @dataclass

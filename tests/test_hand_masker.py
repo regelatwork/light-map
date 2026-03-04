@@ -88,7 +88,7 @@ def test_compute_hulls_from_landmarks():
     def transform(pts):
         return pts * 1000
 
-    hulls = masker.compute_hulls([landmarks], transform, padding=0)
+    hulls = masker.compute_hulls([landmarks], transform, current_time=0.0, padding=0)
 
     assert len(hulls) == 1
     assert hulls[0].shape[0] >= 3  # Should be a polygon
@@ -96,37 +96,53 @@ def test_compute_hulls_from_landmarks():
     assert np.any(np.all(np.isclose(hulls[0], [100, 100], atol=1), axis=1))
 
 
-def test_persistence():
-    masker = HandMasker(persistence_frames=2)
+def test_persistence_default():
+    # New default is 1.0 seconds
+    masker = HandMasker()
 
-    # Mock landmarks
-    class MockLandmark:
-        def __init__(self, x, y):
-            self.x = x
-            self.y = y
-
-    class MockLandmarks:
-        def __init__(self, pts):
-            self.landmark = [MockLandmark(p[0], p[1]) for p in pts]
-
-    landmarks = MockLandmarks([(0.1, 0.1), (0.2, 0.2), (0.3, 0.1)])
+    landmarks = [
+        {"x": 0.1, "y": 0.1},
+        {"x": 0.2, "y": 0.2},
+        {"x": 0.3, "y": 0.1},
+    ]
 
     def transform(pts):
         return pts * 1000
 
-    # Frame 1: Detection
-    hulls1 = masker.compute_hulls([landmarks], transform)
+    # Frame 1: Detection at t=0
+    hulls1 = masker.compute_hulls([landmarks], transform, current_time=0.0)
     assert len(hulls1) == 1
 
-    # Frame 2: Lost detection
-    hulls2 = masker.compute_hulls([], transform)
-    assert len(hulls2) == 1  # Persisted
+    # Frame 2: Lost detection at t=0.5
+    hulls2 = masker.compute_hulls([], transform, current_time=0.5)
+    assert len(hulls2) == 1  # Persisted within 1s
     assert np.array_equal(hulls2[0], hulls1[0])
 
-    # Frame 3: Still lost
-    hulls3 = masker.compute_hulls([], transform)
-    assert len(hulls3) == 1  # Still persisted
+    # Frame 3: Still lost at t=1.1
+    hulls3 = masker.compute_hulls([], transform, current_time=1.1)
+    assert len(hulls3) == 0  # Now empty after 1.1s
 
-    # Frame 4: Exceeded persistence
-    hulls4 = masker.compute_hulls([], transform)
-    assert len(hulls4) == 0  # Now empty
+
+def test_persistence_manual():
+    # Verify it still works if manually set to different duration
+    masker = HandMasker(persistence_seconds=2.0)
+    landmarks = [
+        {"x": 0.1, "y": 0.1},
+        {"x": 0.2, "y": 0.2},
+        {"x": 0.3, "y": 0.1},
+    ]
+
+    def transform(pts):
+        return pts * 1000
+
+    # Frame 1: Detection at t=0
+    hulls1 = masker.compute_hulls([landmarks], transform, current_time=0.0)
+    assert len(hulls1) == 1
+
+    # Frame 2: Lost detection at t=1.5
+    hulls2 = masker.compute_hulls([], transform, current_time=1.5)
+    assert len(hulls2) == 1  # Persisted (within 2s)
+
+    # Frame 3: Lost at t=2.1
+    hulls3 = masker.compute_hulls([], transform, current_time=2.1)
+    assert len(hulls3) == 0  # Now empty

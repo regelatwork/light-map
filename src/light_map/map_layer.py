@@ -48,7 +48,7 @@ class MapLayer(Layer):
             or self._cached_map_bgra is None
         )
 
-    def _generate_patches(self) -> List[ImagePatch]:
+    def _generate_patches(self, current_time: float) -> List[ImagePatch]:
         if not self.map_system.is_map_loaded():
             return []
 

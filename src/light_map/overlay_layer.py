@@ -53,7 +53,7 @@ class OverlayLayer(Layer):
 
         return False
 
-    def _generate_patches(self) -> List[ImagePatch]:
+    def _generate_patches(self, current_time: float) -> List[ImagePatch]:
         if self.state is None:
             return []
 

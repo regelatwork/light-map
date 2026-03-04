@@ -7,10 +7,10 @@ from light_map.common_types import GmPosition
 class HandMasker:
     """Handles both Input Masking (filtering hands) and Projection Masking (Digital Shadow)."""
 
-    def __init__(self, persistence_frames: int = 3):
-        self.persistence_frames = persistence_frames
+    def __init__(self, persistence_seconds: float = 1.0):
+        self.persistence_seconds = persistence_seconds
         self.last_hulls: List[np.ndarray] = []
-        self.frames_since_detection = 0
+        self.last_detection_time = 0.0
         self._cached_mask: Any = None
         self._cached_hulls_hash: int = -1
         self._cached_params: Tuple[int, int, int, int] = (-1, -1, -1, -1)
@@ -63,21 +63,24 @@ class HandMasker:
         return True
 
     def compute_hulls(
-        self, multi_hand_landmarks: List[Any], transformation_fn: Any, padding: int = 0
+        self,
+        multi_hand_landmarks: List[Any],
+        transformation_fn: Any,
+        current_time: float,
+        padding: int = 0,
     ) -> List[np.ndarray]:
         """
         Computes convex hulls for multiple hands in projector space.
         transformation_fn: maps (N, 2) normalized landmarks to (N, 2) projector pixels.
         """
         if not multi_hand_landmarks:
-            self.frames_since_detection += 1
-            if self.frames_since_detection <= self.persistence_frames:
+            if current_time - self.last_detection_time <= self.persistence_seconds:
                 return self.last_hulls
             else:
                 self.last_hulls = []
                 return []
 
-        self.frames_since_detection = 0
+        self.last_detection_time = current_time
         hulls = []
         for landmarks in multi_hand_landmarks:
             if hasattr(landmarks, "landmark"):

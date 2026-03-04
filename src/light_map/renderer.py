@@ -33,6 +33,7 @@ class Renderer:
         self,
         state: Any,
         layers: List[Layer],
+        current_time: float = 0.0,
         instrument: Optional[LatencyInstrument] = None,
     ) -> Optional[np.ndarray]:
         """
@@ -42,6 +43,7 @@ class Renderer:
         Args:
             state: The current WorldState (optional, layers use their own injected state).
             layers: A list of Layer objects, from bottom to top.
+            current_time: The current application time (monotonic).
             instrument: Optional LatencyInstrument to track per-layer timings.
         """
         any_dirty = self._force_render
@@ -67,7 +69,7 @@ class Renderer:
                 if layer.is_static:
                     layer_name = layer.__class__.__name__
                     with track_wait(f"layer_render_{layer_name}", instrument):
-                        patches = layer.render()
+                        patches = layer.render(current_time)
                     with track_wait(f"layer_composite_{layer_name}", instrument):
                         for patch in patches:
                             self._composite_patch(
@@ -86,7 +88,7 @@ class Renderer:
                 # But Layer.render() usually handles its own internal caching/dirty check.
                 # However, for consistency and clear stats, we wrap it.
                 with track_wait(f"layer_render_{layer_name}", instrument):
-                    patches = layer.render()
+                    patches = layer.render(current_time)
                 with track_wait(f"layer_composite_{layer_name}", instrument):
                     for patch in patches:
                         self._composite_patch(

@@ -503,7 +503,7 @@ class InteractiveApp:
             # 3. Perform Composite Render
             with track_wait("renderer_composite", self.instrument):
                 final_frame = self.renderer.render(
-                    state, current_stack, self.instrument
+                    state, current_stack, current_time, self.instrument
                 )
 
             if final_frame is not None:

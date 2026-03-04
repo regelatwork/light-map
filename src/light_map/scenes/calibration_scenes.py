@@ -812,6 +812,8 @@ class PpiCalibrationScene(Scene):
             gesture = inputs[0].gesture
             if gesture == GestureType.VICTORY:
                 self.context.map_config_manager.set_ppi(self._candidate_ppi)
+                # Update the active config so layers (like HandMaskLayer) can use it immediately
+                self.context.app_config.projector_ppi = self._candidate_ppi
                 self.context.notifications.add_notification(
                     f"PPI saved: {self._candidate_ppi:.2f}"
                 )

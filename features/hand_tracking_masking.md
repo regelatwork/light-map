@@ -65,10 +65,10 @@ The system supports a configurable "GM Position" to filter out accidental hand d
 
 ### 2. Digital Shadow (Projection Masking) Details
 
-- **Hull Buffer**: 30 pixels (default).
+- **Hull Buffer**: 2cm physical expansion (calculated using `config.projector_ppi`).
 - **Blur Radius**: 15 pixels (default).
 - **Latency Compensation**: None initially, rely on padding.
-- **Persistence**: 3 frames. If tracking is lost, keep the last mask for 3 frames to avoid a "flash" of light on the hand before MediaPipe gives up.
+- **Persistence**: **1.0 second**. If tracking is lost, keep the last mask for up to 1 second to avoid "flash" of light on the hand.
 
 ## Technical Implementation Plan
 
@@ -79,13 +79,14 @@ The system supports a configurable "GM Position" to filter out accidental hand d
    - Handles both Projection Masking (Digital Shadow) and Input Masking (Filtering).
    - Takes hand landmarks and project settings.
    - Computes the convex hull in projector space.
+   - **Persistence**: Uses a time-based approach (default 1.0s) to maintain the last known hulls during tracking jitter.
    - Generates a mask image or provides a `is_point_masked(x, y)` check.
 
 ### Phase 2: Input Processor & Renderer Integration
 
 1. Update `InputProcessor` to filter out detected hands if they fall in the masked input zones.
-1. Update `Renderer` (or `InteractiveApp`) to apply the digital shadow mask to the final image.
-1. Ensure the mask is applied *after* map and UI rendering.
+1. Update `HandMaskLayer` to call `hand_masker.get_mask_hulls()`.
+1. Ensure the mask is applied *after* map and scene rendering but before UI overlays.
 
 ### Phase 3: Configuration & Tuning
 

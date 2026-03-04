@@ -20,14 +20,29 @@ The central manager of the rendering pipeline.
 - Maintains a dynamic stack (list) of `Layer` objects.
 - Orchestrates the frame generation by collecting `ImagePatch`es from each layer.
 - Performs the final composition onto the output buffer based on `LayerMode`.
+- **Cache Invalidation**: Automatically invalidates the composite frame if the layer stack itself changes (e.g., during scene transitions).
 
 ### 2. `Layer` (Interface)
 
 An abstract base class for all visual components.
 
-- **`render(state: WorldState) -> list[ImagePatch]`**: Inspects the state and returns patches to be drawn.
+- **`render(current_time: float) -> list[ImagePatch]`**: Inspects the state and returns patches to be drawn.
+- **`is_dirty: bool`**: Property that determines if the layer needs a redraw based on `WorldState` timestamps.
 - **`layer_mode: LayerMode`**: Defines how the layer's output interacts with layers below it.
-- **Caching**: Each layer tracks a `last_rendered_timestamp` to decide if it can reuse previously generated patches.
+- **Caching**: Each layer tracks its own `_last_state_timestamp` to decide if it can reuse previously generated patches.
+
+## Standard Layer Stack (Bottom to Top)
+
+1. **`MapLayer`**: Renders the background map (SVG/Image).
+1. **`FogOfWarLayer`**: Renders the explored/unexplored mask.
+1. **`VisibilityLayer`**: Renders real-time line-of-sight highlights.
+1. **`SceneLayer` / `LegacySceneLayer`**: Renders the active scene's content (e.g., calibration patterns).
+1. **`HandMaskLayer`**: Renders the "digital shadow" to protect hand tracking.
+1. **`MenuLayer`**: Renders the interactive menu system.
+1. **`TokenLayer`**: Renders ghost tokens and labels.
+1. **`NotificationLayer`**: Renders system-level alerts.
+1. **`DebugLayer`**: Renders FPS and diagnostic info.
+1. **`CursorLayer`**: Renders the virtual pointer/reticle.
 
 ### 3. `ImagePatch` (Data Structure)
 

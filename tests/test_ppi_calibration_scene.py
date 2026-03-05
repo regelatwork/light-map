@@ -16,6 +16,8 @@ def mock_app_context():
     mock_context.last_camera_frame = np.zeros((100, 100, 3), dtype=np.uint8)
     mock_context.map_config_manager = MagicMock()
     mock_context.notifications = MagicMock()
+    mock_context.map_system = MagicMock()
+    mock_context.map_system.is_map_loaded.return_value = False
     return mock_context
 
 

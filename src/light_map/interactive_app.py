@@ -653,6 +653,13 @@ class InteractiveApp:
                 entry.grid_spacing_svg = spacing
                 entry.grid_origin_svg_x = ox
                 entry.grid_origin_svg_y = oy
+
+                # Calculate initial base scale for this map
+                ppi = self.map_config.get_ppi()
+                if ppi > 0:
+                    entry.scale_factor_1to1 = (
+                        entry.physical_unit_inches * ppi
+                    ) / spacing
                 self.map_config.save()
 
         # Setup Visibility Engine with correct scaling
@@ -723,14 +730,46 @@ class InteractiveApp:
         # Default loading if no session or session load failed
         vp = self.map_config.get_map_viewport(filename)
         self.map_system.set_state(vp.x, vp.y, vp.zoom, vp.rotation)
-        self.map_system.base_scale = (
-            entry.scale_factor_1to1 if entry and entry.scale_factor_1to1 > 0 else 1.0
-        )
+
+        # Calculate and set base scale (1:1 zoom level)
+        # If we have grid info, we can always derive the correct scale from PPI.
+        # This handles changes in PPI (projector height/model) automatically.
+        ppi = self.map_config.get_ppi()
+        if entry and entry.grid_spacing_svg > 0 and ppi > 0:
+            self.map_system.base_scale = (
+                entry.physical_unit_inches * ppi
+            ) / entry.grid_spacing_svg
+        else:
+            self.map_system.base_scale = (
+                entry.scale_factor_1to1 if entry and entry.scale_factor_1to1 > 0 else 1.0
+            )
+
         self.map_config.data.global_settings.last_used_map = filename
         self.map_config.save()
 
         # Switch to Viewing Scene to ensure map is visible
         self.switch_to_viewing()
+
+    def refresh_base_scale(self):
+        """Recalculates the base scale for the currently loaded map based on current PPI."""
+        if not self.map_system.is_map_loaded():
+            return
+
+        filename = self.map_system.svg_loader.filename
+        entry = self.map_config.data.maps.get(filename)
+        ppi = self.map_config.get_ppi()
+
+        if entry and entry.grid_spacing_svg > 0 and ppi > 0:
+            self.map_system.base_scale = (
+                entry.physical_unit_inches * ppi
+            ) / entry.grid_spacing_svg
+            logging.info(
+                f"Refreshed base scale for {os.path.basename(filename)}: {self.map_system.base_scale:.4f} (PPI={ppi:.1f})"
+            )
+        elif entry:
+            self.map_system.base_scale = (
+                entry.scale_factor_1to1 if entry.scale_factor_1to1 > 0 else 1.0
+            )
 
     def save_session(self):
         """Saves the current session (tokens and viewport)."""

@@ -911,6 +911,20 @@ class PpiCalibrationScene(Scene):
                 self.context.map_config_manager.set_ppi(self._candidate_ppi)
                 # Update the active config so layers (like HandMaskLayer) can use it immediately
                 self.context.app_config.projector_ppi = self._candidate_ppi
+
+                # Refresh current map's base scale if loaded
+                map_system = self.context.map_system
+                if map_system.is_map_loaded():
+                    filename = map_system.svg_loader.filename
+                    entry = self.context.map_config_manager.data.maps.get(filename)
+                    if entry and entry.grid_spacing_svg > 0:
+                        map_system.base_scale = (
+                            entry.physical_unit_inches * self._candidate_ppi
+                        ) / entry.grid_spacing_svg
+                        logging.info(
+                            f"Updated base scale for {os.path.basename(filename)} to {map_system.base_scale:.4f}"
+                        )
+
                 self.context.notifications.add_notification(
                     f"PPI saved: {self._candidate_ppi:.2f}"
                 )

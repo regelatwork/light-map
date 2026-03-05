@@ -68,11 +68,11 @@ def test_aruco_fov_masking():
     assert tokens_masked[0].id == 1
 
     # 4. Detect WITH shifted masking (Bottom-Right area)
-    # Let's say the projector pixels (0,0) to (200,200) map to camera area (300, 300) to (500, 500)
-    # This means cx = px + 300, cy = py + 300.
-    # The projector_matrix parameter in detect() is defined as the mapping from PROJECTOR to CAMERA.
+    # The projector_matrix parameter in detect() is defined as the mapping from CAMERA to PROJECTOR.
+    # We want Projector (0,0) to map to Camera (300, 300).
+    # This means cx = px + 300  => px = cx - 300.
     projector_matrix_shifted = np.array(
-        [[1.0, 0.0, 300.0], [0.0, 1.0, 300.0], [0.0, 0.0, 1.0]], dtype=np.float32
+        [[1.0, 0.0, -300.0], [0.0, 1.0, -300.0], [0.0, 0.0, 1.0]], dtype=np.float32
     )
 
     print("\nDetecting with shifted matrix...")

@@ -92,7 +92,7 @@ def test_interactive_app_process_state_skips_render_when_not_dirty(
 
     # We must ensure the scene is clean
     app.current_scene.is_dirty = False
-    
+
     # Also need to mock get_active_layers to return same stack
     app.current_scene.get_active_layers.return_value = app.layer_stack
 

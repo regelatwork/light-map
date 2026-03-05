@@ -741,7 +741,9 @@ class InteractiveApp:
             ) / entry.grid_spacing_svg
         else:
             self.map_system.base_scale = (
-                entry.scale_factor_1to1 if entry and entry.scale_factor_1to1 > 0 else 1.0
+                entry.scale_factor_1to1
+                if entry and entry.scale_factor_1to1 > 0
+                else 1.0
             )
 
         self.map_config.data.global_settings.last_used_map = filename

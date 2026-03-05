@@ -1000,13 +1000,15 @@ class PpiCalibrationScene(Scene):
                     flat_ids.append(int(item))
 
             # Fallback to direct detection from frame if worker is slow/missing
-            if (0 not in flat_ids or 1 not in flat_ids) and self.context.last_camera_frame is not None:
+            if (
+                0 not in flat_ids or 1 not in flat_ids
+            ) and self.context.last_camera_frame is not None:
                 ppi = calculate_ppi_from_frame(
                     self.context.last_camera_frame,
                     self.context.projector_matrix,
                     target_dist_mm=100.0,
                 )
-            elif (0 in flat_ids and 1 in flat_ids):
+            elif 0 in flat_ids and 1 in flat_ids:
                 # Re-format corners to (1, 4, 2) as expected by calculate_ppi_from_frame
                 formatted_corners = tuple(np.array(c).reshape(1, 4, 2) for c in corners)
                 formatted_ids = np.array(flat_ids)
@@ -1027,7 +1029,6 @@ class PpiCalibrationScene(Scene):
                 self.context.notifications.add_notification(
                     f"Detected PPI: {ppi:.2f}. Victory to save."
                 )
-
 
         elif self._stage == "CONFIRMING":
             cv2.putText(

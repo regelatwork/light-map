@@ -1,6 +1,8 @@
 import numpy as np
 import os
 from light_map.fow_manager import FogOfWarManager
+from light_map.map_config import MapConfigManager
+from light_map.core.storage import StorageManager
 
 
 def test_fow_manager_initialization():
@@ -37,8 +39,10 @@ def test_fow_manager_set_visible_mask():
 def test_fow_manager_reset():
     manager = FogOfWarManager(100, 100)
     manager.explored_mask.fill(255)
+    manager.visible_mask.fill(255)
     manager.reset()
     assert np.all(manager.explored_mask == 0)
+    assert np.all(manager.visible_mask == 0)
 
 
 def test_fow_manager_toggle():
@@ -48,15 +52,26 @@ def test_fow_manager_toggle():
     assert manager.is_disabled is True
 
 
-def test_fow_manager_persistence(tmp_path):
-    fow_path = str(tmp_path / "fow.png")
+def test_fow_persistence_via_config(tmp_path):
+    # Setup MapConfigManager with tmp storage
+    storage = StorageManager(base_dir=str(tmp_path))
+    config = MapConfigManager(storage=storage)
+
+    map_path = "/tmp/test_map.svg"
     manager = FogOfWarManager(10, 10)
     manager.explored_mask[0, 0] = 255
-    manager.save(fow_path)
+    manager.visible_mask[1, 1] = 255
 
-    assert os.path.exists(fow_path)
+    # Save
+    config.save_fow_masks(map_path, manager)
+
+    fow_dir = config.get_fow_dir(map_path)
+    assert os.path.exists(os.path.join(fow_dir, "fow.png"))
+    assert os.path.exists(os.path.join(fow_dir, "los.png"))
 
     # Load into new manager
-    manager2 = FogOfWarManager(10, 10, file_path=fow_path)
+    manager2 = FogOfWarManager(10, 10)
+    config.load_fow_masks(map_path, manager2)
     assert manager2.explored_mask[0, 0] == 255
+    assert manager2.visible_mask[1, 1] == 255
     assert manager2.explored_mask[1, 1] == 0

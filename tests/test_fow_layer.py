@@ -3,17 +3,22 @@ from light_map.fow_layer import FogOfWarLayer
 from light_map.fow_manager import FogOfWarManager
 
 
+from light_map.core.world_state import WorldState
+
+
 def test_fow_initialization():
+    ws = WorldState()
     manager = FogOfWarManager(100, 100)
-    layer = FogOfWarLayer(manager)
+    layer = FogOfWarLayer(ws, manager, 10.0, (0.0, 0.0), 100, 100)
     assert layer.manager.width == 100
     assert layer.manager.height == 100
     assert layer.is_dirty is True
 
 
 def test_fow_render_three_states():
+    ws = WorldState()
     manager = FogOfWarManager(10, 10)
-    layer = FogOfWarLayer(manager)
+    layer = FogOfWarLayer(ws, manager, 10.0, (0.0, 0.0), 10, 10)
 
     # 1. Unexplored (All black/opaque)
     patches = layer.render()
@@ -44,12 +49,12 @@ def test_fow_render_three_states():
 
 
 def test_fow_gm_override():
+    ws = WorldState()
     manager = FogOfWarManager(10, 10)
-    layer = FogOfWarLayer(manager)
+    layer = FogOfWarLayer(ws, manager, 10.0, (0.0, 0.0), 10, 10)
     manager.is_disabled = True
     layer.is_dirty = True
 
     patches = layer.render()
-    alpha = patches[0].data[:, :, 3]
-    # Everything should be transparent (Alpha 0)
-    assert np.all(alpha == 0)
+    # No patches should be returned when disabled
+    assert len(patches) == 0

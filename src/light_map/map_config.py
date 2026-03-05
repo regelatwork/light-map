@@ -2,6 +2,8 @@ import os
 import glob
 import datetime
 import logging
+import hashlib
+import cv2
 from dataclasses import asdict, dataclass, field
 from typing import Dict, Optional, List, Any
 from light_map.common_types import (
@@ -14,6 +16,12 @@ from light_map.session_manager import SessionManager
 from light_map.core.storage import StorageManager
 from light_map.core.config_store import ConfigStore
 from light_map.token_naming import generate_token_name
+
+# Add TYPE_CHECKING to avoid circular import with FogOfWarManager
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .fow_manager import FogOfWarManager
 
 _DEFAULT_STORAGE = StorageManager()
 STATE_FILE = _DEFAULT_STORAGE.get_config_path("map_state.json")
@@ -378,12 +386,12 @@ class MapConfigManager:
 
     def get_map_status(self, filename: str) -> Dict[str, bool]:
         """
-        Returns {'calibrated': bool, 'has_session': bool}
+        Returns {'calibrated': bool, 'has_session': bool, 'has_fow': bool}
         """
         filename = os.path.abspath(filename)
         entry = self.data.maps.get(filename)
         if not entry:
-            return {"calibrated": False, "has_session": False}
+            return {"calibrated": False, "has_session": False, "has_fow": False}
 
         calibrated = entry.grid_spacing_svg > 0
         session_dir = None
@@ -391,7 +399,71 @@ class MapConfigManager:
             session_dir = os.path.join(self.storage.get_data_dir(), "sessions")
         has_session = SessionManager.has_session(filename, session_dir=session_dir)
 
-        return {"calibrated": calibrated, "has_session": has_session}
+        # Check for FoW
+        fow_dir = self.get_fow_dir(filename)
+        has_fow = os.path.exists(os.path.join(fow_dir, "fow.png"))
+
+        return {
+            "calibrated": calibrated,
+            "has_session": has_session,
+            "has_fow": has_fow,
+        }
+
+    def get_fow_dir(self, map_path: str) -> str:
+        """Returns the stable storage directory for a map's Fog of War data."""
+        abs_path = os.path.abspath(map_path)
+        path_hash = hashlib.md5(abs_path.encode()).hexdigest()[:8]
+        stem = os.path.splitext(os.path.basename(map_path))[0]
+        # Store in managed data directory
+        return os.path.join(self.storage.get_data_dir(), "fow", f"{stem}_{path_hash}")
+
+    def load_fow_masks(self, map_path: str, fow_manager: "FogOfWarManager"):
+        """Loads explored and visible masks into the manager."""
+        storage_dir = self.get_fow_dir(map_path)
+        if not os.path.exists(storage_dir):
+            return
+
+        # 1. Load Explored Mask
+        fow_path = os.path.join(storage_dir, "fow.png")
+        if os.path.exists(fow_path):
+            try:
+                img = cv2.imread(fow_path, cv2.IMREAD_GRAYSCALE)
+                if img is not None:
+                    if img.shape == (fow_manager.height, fow_manager.width):
+                        fow_manager.explored_mask = img
+                    else:
+                        logging.warning(
+                            "FoW dimension mismatch, ignoring: %s", fow_path
+                        )
+            except Exception as e:
+                logging.error("Error loading FoW: %s", e)
+
+        # 2. Load Visible Mask (LOS)
+        los_path = os.path.join(storage_dir, "los.png")
+        if os.path.exists(los_path):
+            try:
+                img = cv2.imread(los_path, cv2.IMREAD_GRAYSCALE)
+                if img is not None:
+                    if img.shape == (fow_manager.height, fow_manager.width):
+                        fow_manager.visible_mask = img
+                    else:
+                        logging.warning(
+                            "LOS dimension mismatch, ignoring: %s", los_path
+                        )
+            except Exception as e:
+                logging.error("Error loading LOS: %s", e)
+
+    def save_fow_masks(self, map_path: str, fow_manager: "FogOfWarManager"):
+        """Saves both masks to stable storage."""
+        storage_dir = self.get_fow_dir(map_path)
+        try:
+            os.makedirs(storage_dir, exist_ok=True)
+            # Save Explored Mask
+            cv2.imwrite(os.path.join(storage_dir, "fow.png"), fow_manager.explored_mask)
+            # Save Visible Mask (LOS)
+            cv2.imwrite(os.path.join(storage_dir, "los.png"), fow_manager.visible_mask)
+        except Exception as e:
+            logging.error("Error saving FoW/LOS to %s: %s", storage_dir, e)
 
     # --- New ArUco / Profile Methods ---
 

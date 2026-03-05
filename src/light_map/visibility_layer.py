@@ -1,6 +1,8 @@
 import cv2
 import numpy as np
-from typing import List
+import math
+import svgelements
+from typing import List, Tuple
 from .common_types import Layer, ImagePatch
 from .core.world_state import WorldState
 
@@ -8,43 +10,115 @@ from .core.world_state import WorldState
 class VisibilityLayer(Layer):
     """
     Renders the current aggregated Line-of-Sight (LOS) for all PC tokens.
-    Consumes mask from WorldState.
+    Consumes mask from WorldState and transforms it to screen space.
     """
 
-    def __init__(self, state: WorldState, mask_width: int, mask_height: int):
+    def __init__(
+        self,
+        state: WorldState,
+        mask_width: int,
+        mask_height: int,
+        grid_spacing_svg: float,
+        grid_origin_svg: Tuple[float, float],
+        width: int,
+        height: int,
+    ):
         super().__init__(state=state)
         self.mask_width = mask_width
         self.mask_height = mask_height
+        self.grid_spacing_svg = grid_spacing_svg
+        self.grid_origin_svg = grid_origin_svg
+        self.width = width  # Screen width
+        self.height = height  # Screen height
 
     @property
     def is_dirty(self) -> bool:
         if self.state is None:
             return True
-        return self.state.visibility_timestamp > self._last_state_timestamp
+        return (
+            self.state.visibility_timestamp > self._last_state_timestamp
+            or self.state.viewport_timestamp > self._last_state_timestamp
+        )
 
     def _generate_patches(self, current_time: float) -> List[ImagePatch]:
         if self.state is None or self.state.visibility_mask is None:
             return []
 
-        visible_mask = self.state.visibility_mask
+        visible_mask_full = self.state.visibility_mask
 
         # Create a light blue highlight for visible areas (Exclusive Vision mode)
-        highlight = np.zeros((self.mask_height, self.mask_width, 3), dtype=np.uint8)
-        highlight[visible_mask == 255] = [255, 100, 100]
-
-        alpha = np.zeros((self.mask_height, self.mask_width), dtype=np.uint8)
-        alpha[visible_mask == 255] = 50  # 20% opaque
-
-        bgra = cv2.merge(
-            [highlight[:, :, 0], highlight[:, :, 1], highlight[:, :, 2], alpha]
+        # 1. Create highlight in "Mask Space"
+        highlight_full = np.zeros(
+            (self.mask_height, self.mask_width, 3), dtype=np.uint8
         )
+        highlight_full[visible_mask_full == 255] = [255, 100, 100]
+
+        alpha_full = np.zeros((self.mask_height, self.mask_width), dtype=np.uint8)
+        alpha_full[visible_mask_full == 255] = 50  # ~20% opaque
+
+        bgra_full = cv2.merge(
+            [
+                highlight_full[:, :, 0],
+                highlight_full[:, :, 1],
+                highlight_full[:, :, 2],
+                alpha_full,
+            ]
+        )
+
+        # 2. Transform to Screen Space
+        if self.state.viewport:
+            vp = self.state.viewport
+            cx, cy = self.width / 2, self.height / 2
+
+            # M_fow_to_svg: (Same as FogOfWarLayer)
+            m_fow_to_svg = svgelements.Matrix()
+            m_fow_to_svg.post_scale(
+                self.grid_spacing_svg / 16.0, self.grid_spacing_svg / 16.0
+            )
+            m_fow_to_svg.post_translate(
+                self.grid_origin_svg[0], self.grid_origin_svg[1]
+            )
+
+            # M_svg_to_screen:
+            m_svg_to_screen = svgelements.Matrix()
+            m_svg_to_screen.post_scale(vp.zoom, vp.zoom)
+            m_svg_to_screen.post_rotate(math.radians(vp.rotation), cx, cy)
+            m_svg_to_screen.post_translate(vp.x, vp.y)
+
+            final_m = m_fow_to_svg * m_svg_to_screen
+
+            M = np.float32(
+                [
+                    [final_m.a, final_m.c, final_m.e],
+                    [final_m.b, final_m.d, final_m.f],
+                ]
+            )
+
+            bgra_screen = cv2.warpAffine(
+                bgra_full,
+                M,
+                (self.width, self.height),
+                flags=cv2.INTER_NEAREST,
+                borderMode=cv2.BORDER_CONSTANT,
+                borderValue=(0, 0, 0, 0),
+            )
+        else:
+            bgra_screen = cv2.resize(
+                bgra_full, (self.width, self.height), interpolation=cv2.INTER_NEAREST
+            )
 
         return [
             ImagePatch(
-                x=0, y=0, width=self.mask_width, height=self.mask_height, data=bgra
+                x=0,
+                y=0,
+                width=self.width,
+                height=self.height,
+                data=bgra_screen,
             )
         ]
 
     def _update_timestamp(self):
         if self.state:
-            self._last_state_timestamp = self.state.visibility_timestamp
+            self._last_state_timestamp = max(
+                self.state.visibility_timestamp, self.state.viewport_timestamp
+            )

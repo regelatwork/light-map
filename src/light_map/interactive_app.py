@@ -74,9 +74,26 @@ class InteractiveApp:
         # Use a temporary engine until map is loaded
         self.visibility_engine = VisibilityEngine(grid_spacing_svg=10.0)
         self.fow_manager = FogOfWarManager(config.width, config.height)
-        self.fow_layer = FogOfWarLayer(self.fow_manager)
-        self.visibility_layer = VisibilityLayer(self.state, config.width, config.height)
+        self.fow_layer = FogOfWarLayer(
+            self.state,
+            self.fow_manager,
+            grid_spacing_svg=10.0,
+            grid_origin_svg=(0.0, 0.0),
+            width=config.width,
+            height=config.height,
+        )
+        self.visibility_layer = VisibilityLayer(
+            self.state,
+            config.width,
+            config.height,
+            grid_spacing_svg=10.0,
+            grid_origin_svg=(0.0, 0.0),
+            width=config.width,
+            height=config.height,
+        )
         self.inspected_token_id: Optional[int] = None
+        self._latest_vision_mask: Optional[np.ndarray] = None
+        self.current_map_path: Optional[str] = None
 
         # New Modular Coordinators
         self.tracking_coordinator = TrackingCoordinator(time_provider)
@@ -492,39 +509,22 @@ class InteractiveApp:
                     cv2.bitwise_or(combined_pc_mask, token_mask, combined_pc_mask)
 
             if combined_pc_mask is not None:
-                self.fow_manager.set_visible_mask(combined_pc_mask)
-                self.fow_layer.is_dirty = True
-                state.update_visibility_mask(combined_pc_mask)
+                # Store the latest mask, but DO NOT apply it to the manager or state yet.
+                # This ensures vision only updates when the user chooses "Sync Vision".
+                self._latest_vision_mask = combined_pc_mask
 
                 # Check for "Exclusive Vision" (Token Inspection)
-                # This state is expected to be set by scenes/inputs later.
+                # This uses the LAST SYNCHRONIZED vision for that token if it exists.
                 if self.inspected_token_id is not None:
-                    # Find inspected token's mask
-                    insp_token = next(
-                        (t for t in state.tokens if t.id == self.inspected_token_id),
-                        None,
-                    )
-                    if insp_token:
-                        insp_mask = self.visibility_engine.get_token_vision_mask(
-                            insp_token.id,
-                            insp_token.world_x,
-                            insp_token.world_y,
-                            size=self.map_config.resolve_token_profile(
-                                insp_token.id
-                            ).size,
-                            vision_range_grid=25.0,
-                            mask_width=mask_w,
-                            mask_height=mask_h,
-                        )
-                        # Switch to Exclusive Stack: Visibility (Full LOS) + Scene + Hand + Menu
-                        current_stack = [
-                            self.visibility_layer,
-                            self.scene_layer,
-                            self.hand_mask_layer,
-                            self.menu_layer,
-                        ]
-                        # The visibility layer should be the single token's vision
-                        state.update_visibility_mask(insp_mask)
+                    # Switch to Exclusive Stack: Visibility (Current LOS) + Scene + Hand + Menu
+                    current_stack = [
+                        self.visibility_layer,
+                        self.scene_layer,
+                        self.hand_mask_layer,
+                        self.menu_layer,
+                    ]
+                    # Note: VisibilityLayer uses state.visibility_mask which is ONLY updated
+                    # during SYNC_VISION, so inspection shows the last 'official' position.
 
         # We need to update tokens in map system from state
         self.map_system.ghost_tokens = state.tokens
@@ -582,16 +582,32 @@ class InteractiveApp:
             self.load_map(payload["map_file"], payload.get("load_session", False))
 
         if payload.get("action") == "SYNC_VISION":
-            if self.fow_manager:
-                self.fow_manager.reveal_area(self.fow_manager.visible_mask)
-                self.fow_manager.save()
+            if (
+                self.fow_manager
+                and self._latest_vision_mask is not None
+                and self.current_map_path
+            ):
+                # 1. Update Persistent Fog of War (Explore new areas)
+                self.fow_manager.reveal_area(self._latest_vision_mask)
+
+                # 2. Update Visible Line-of-Sight (the 'clear holes')
+                self.fow_manager.set_visible_mask(self._latest_vision_mask)
+
+                # 3. Save both to stable storage
+                self.map_config.save_fow_masks(self.current_map_path, self.fow_manager)
+
+                # 4. Update VisibilityLayer (the highlight)
+                self.state.update_visibility_mask(self._latest_vision_mask)
+
+                # 5. Invalidate Layer Caches
                 self.fow_layer.is_dirty = True
+
                 self.notifications.add_notification("Vision Synchronized")
 
         if payload.get("action") == "RESET_FOW":
-            if self.fow_manager:
+            if self.fow_manager and self.current_map_path:
                 self.fow_manager.reset()
-                self.fow_manager.save()
+                self.map_config.save_fow_masks(self.current_map_path, self.fow_manager)
                 self.fow_layer.is_dirty = True
                 self.notifications.add_notification("Fog of War Reset")
 
@@ -668,13 +684,9 @@ class InteractiveApp:
             grid_origin=(entry.grid_origin_svg_x, entry.grid_origin_svg_y),
         )
         self.visibility_engine.update_blockers(blockers)
+        self.current_map_path = filename
 
-        # Setup FoW Layer with persistence
-        fow_dir = os.path.join(
-            os.path.expanduser("~"), ".light_map", "maps", os.path.basename(filename)
-        )
-        fow_path = os.path.join(fow_dir, "fow.png")
-
+        # Setup FoW Logic with persistence managed by MapConfig
         # Calculate mask dimensions based on 16x grid resolution
         # SVG width/height in units
         svg_w = self.map_system.svg_loader.svg.width
@@ -690,11 +702,35 @@ class InteractiveApp:
             else self.config.height
         )
 
-        self.fow_manager = FogOfWarManager(mask_w, mask_h, file_path=fow_path)
-        self.fow_layer = FogOfWarLayer(self.fow_manager)
+        self.fow_manager = FogOfWarManager(mask_w, mask_h)
+        self.map_config.load_fow_masks(filename, self.fow_manager)
+
+        # Restore Visibility Highlight in state if loaded from persistence
+        if np.any(self.fow_manager.visible_mask):
+            self.state.update_visibility_mask(self.fow_manager.visible_mask)
+
+        spacing = entry.grid_spacing_svg if entry.grid_spacing_svg > 0 else 10.0
+        origin = (entry.grid_origin_svg_x, entry.grid_origin_svg_y)
+
+        self.fow_layer = FogOfWarLayer(
+            self.state,
+            self.fow_manager,
+            spacing,
+            origin,
+            self.config.width,
+            self.config.height,
+        )
         # Update layer in stack (it might have been replaced)
         self.layer_stack[1] = self.fow_layer
-        self.visibility_layer = VisibilityLayer(self.state, mask_w, mask_h)
+        self.visibility_layer = VisibilityLayer(
+            self.state,
+            mask_w,
+            mask_h,
+            spacing,
+            origin,
+            self.config.width,
+            self.config.height,
+        )
         self.layer_stack[2] = self.visibility_layer
 
         if load_session:

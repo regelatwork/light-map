@@ -5,7 +5,7 @@ from light_map.core.world_state import WorldState
 
 def test_visibility_layer_initialization():
     ws = WorldState()
-    layer = VisibilityLayer(ws, 100, 100)
+    layer = VisibilityLayer(ws, 100, 100, 10.0, (0.0, 0.0), 100, 100)
     assert layer.mask_width == 100
     assert layer.mask_height == 100
     assert layer.is_dirty is True
@@ -13,7 +13,7 @@ def test_visibility_layer_initialization():
 
 def test_visibility_layer_render():
     ws = WorldState()
-    layer = VisibilityLayer(ws, 10, 10)
+    layer = VisibilityLayer(ws, 10, 10, 10.0, (0.0, 0.0), 10, 10)
 
     # Initially no mask
     assert len(layer.render()) == 0
@@ -37,7 +37,7 @@ def test_visibility_layer_render():
 
 def test_visibility_layer_caching():
     ws = WorldState()
-    layer = VisibilityLayer(ws, 10, 10)
+    layer = VisibilityLayer(ws, 10, 10, 10.0, (0.0, 0.0), 10, 10)
 
     mask = np.zeros((10, 10), dtype=np.uint8)
     ws.update_visibility_mask(mask)

@@ -263,8 +263,8 @@ class VisibilityEngine:
             # Scale polygon to mask coordinates
             mask_poly = []
             for px, py in poly:
-                mx = (px - self.grid_origin[0]) * svg_to_mask_scale
-                my = (py - self.grid_origin[1]) * svg_to_mask_scale
+                mx = px * svg_to_mask_scale
+                my = py * svg_to_mask_scale
                 mask_poly.append((int(mx), int(my)))
 
             if mask_poly:

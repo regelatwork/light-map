@@ -75,9 +75,8 @@ class VisibilityLayer(Layer):
             m_fow_to_svg.post_scale(
                 self.grid_spacing_svg / 16.0, self.grid_spacing_svg / 16.0
             )
-            m_fow_to_svg.post_translate(
-                self.grid_origin_svg[0], self.grid_origin_svg[1]
-            )
+            # No translation: (0,0) in mask is (0,0) in SVG
+            # m_fow_to_svg.post_translate(self.grid_origin_svg[0], self.grid_origin_svg[1])
 
             # M_svg_to_screen:
             m_svg_to_screen = svgelements.Matrix()

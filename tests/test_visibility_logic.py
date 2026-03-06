@@ -1,4 +1,3 @@
-import pytest
 import numpy as np
 from light_map.visibility_engine import VisibilityEngine
 from light_map.visibility_types import VisibilityType, VisibilityBlocker
@@ -19,7 +18,7 @@ def test_visibility_empty_room():
         size=1,
         vision_range_grid=5.0,
         mask_width=mask_w,
-        mask_height=mask_h
+        mask_height=mask_h,
     )
 
     # Should be a circle-like area
@@ -48,7 +47,7 @@ def test_visibility_blocked_by_wall():
         size=1,
         vision_range_grid=10.0,
         mask_width=mask_w,
-        mask_height=mask_h
+        mask_height=mask_h,
     )
 
     # Point before wall: (20, 16) -> (125 svg, 100 svg)
@@ -77,7 +76,7 @@ def test_visibility_door_toggle():
     door.is_open = True
     # Re-update blockers to rebuild mask
     engine.update_blockers([door], mask_width=mask_w, mask_height=mask_h)
-    
+
     mask_open = engine.get_token_vision_mask(1, 100, 100, 1, 10, mask_w, mask_h)
     assert mask_open[16, 28] > 0
 
@@ -89,14 +88,18 @@ def test_visibility_cache_hysteresis():
 
     token_id = 1
     # Both in Grid (1, 1) assuming grid spacing is 100
-    origin1 = (120, 120) 
-    mask1 = engine.get_token_vision_mask(token_id, origin1[0], origin1[1], 1, 5, mask_w, mask_h)
+    origin1 = (120, 120)
+    mask1 = engine.get_token_vision_mask(
+        token_id, origin1[0], origin1[1], 1, 5, mask_w, mask_h
+    )
 
     assert len(engine.mask_cache) == 1
 
     # Move slightly within the same grid cell
     origin2 = (140, 140)
-    mask2 = engine.get_token_vision_mask(token_id, origin2[0], origin2[1], 1, 5, mask_w, mask_h)
+    mask2 = engine.get_token_vision_mask(
+        token_id, origin2[0], origin2[1], 1, 5, mask_w, mask_h
+    )
 
     # Should be identical from cache
     assert np.array_equal(mask1, mask2)
@@ -104,6 +107,8 @@ def test_visibility_cache_hysteresis():
 
     # Move to next cell
     origin3 = (220, 120)  # Grid (2, 1)
-    mask3 = engine.get_token_vision_mask(token_id, origin3[0], origin3[1], 1, 5, mask_w, mask_h)
+    mask3 = engine.get_token_vision_mask(
+        token_id, origin3[0], origin3[1], 1, 5, mask_w, mask_h
+    )
     assert not np.array_equal(mask1, mask3)
     assert len(engine.mask_cache) == 2

@@ -1,5 +1,4 @@
 import numpy as np
-import cv2
 from light_map.visibility_engine import VisibilityEngine
 from light_map.visibility_types import VisibilityType, VisibilityBlocker
 
@@ -11,7 +10,7 @@ def test_starfinder_see_around_corners():
     # Wall right in front of the center (100, 100) svg -> (16, 16) px.
     # Wall from (110, 90) to (110, 110) svg -> (17.6, 14.4) to (17.6, 17.6) px.
     # Center (16, 16). Radius for size 1 is 8px.
-    # Corners are at x=8, 24. 
+    # Corners are at x=8, 24.
     wall = VisibilityBlocker(
         segments=[(110, 90), (110, 110)], type=VisibilityType.WALL, layer_name="Wall"
     )
@@ -24,7 +23,7 @@ def test_starfinder_see_around_corners():
 
     # Point directly behind the small wall: (120, 100) svg -> (19.2, 16) px
     # Since it's a size 1 token, its edge can reach y=100-50=50 to y=100+50=150.
-    # The wall is only y=90 to y=110. 
+    # The wall is only y=90 to y=110.
     # So a point at y=100, x=110 should be visible from e.g. (90, 120) footprint?
     # Wait, the token footprint is +/- 8px + 1px = 9px from center.
     # Center (16, 16). Footprint reaches y=7..25.

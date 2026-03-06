@@ -1,4 +1,3 @@
-import math
 import cv2
 import numpy as np
 from typing import List, Tuple, Dict, Optional
@@ -28,7 +27,10 @@ class VisibilityEngine:
         self.svg_to_mask_scale = 16.0 / grid_spacing_svg
 
     def update_blockers(
-        self, blockers: List[VisibilityBlocker], mask_width: int = 0, mask_height: int = 0
+        self,
+        blockers: List[VisibilityBlocker],
+        mask_width: int = 0,
+        mask_height: int = 0,
     ):
         """
         Renders a high-resolution blocker mask from SVG blockers.
@@ -100,9 +102,12 @@ class VisibilityEngine:
 
                 if 0 <= nx < w and 0 <= ny < h:
                     if footprint[ny, nx] == 0:
-                        # Check distance constraint (Manhattan or Chebyshev is faster, 
+                        # Check distance constraint (Manhattan or Chebyshev is faster,
                         # but L-infinity/square is what we want for grid cells)
-                        if abs(nx - cx_mask) <= range_limit and abs(ny - cy_mask) <= range_limit:
+                        if (
+                            abs(nx - cx_mask) <= range_limit
+                            and abs(ny - cy_mask) <= range_limit
+                        ):
                             # Check if not a wall
                             if self.blocker_mask[ny, nx] == 0:
                                 footprint[ny, nx] = 255
@@ -155,13 +160,13 @@ class VisibilityEngine:
             # 2. In polar space, find the "shadow" of each blocker
             # For each angle (row), find the first non-zero pixel (wall)
             # Everything after that pixel is in shadow.
-            
+
             # Use argmax to find the first 255 (wall) in each row
             # If no 255 found, it returns 0, but we need to know if it actually found one.
             # So we check if the row has any non-zero pixels.
             has_wall = np.any(polar_blockers > 0, axis=1)
             first_wall = np.argmax(polar_blockers > 0, axis=1)
-            
+
             # Create a visibility mask in polar space
             # 255 for visible, 0 for shadow
             polar_vision = np.zeros((polar_rows, polar_cols), dtype=np.uint8)
@@ -180,7 +185,7 @@ class VisibilityEngine:
                 float(r),
                 cv2.WARP_FILL_OUTLIERS + cv2.WARP_INVERSE_MAP + cv2.INTER_NEAREST,
             )
-            
+
             # 4. Union with combined mask
             cv2.bitwise_or(combined_mask, source_vision, combined_mask)
 
@@ -217,7 +222,7 @@ class VisibilityEngine:
 
         # 3. Calculate Token Footprint (Corner Peeking)
         footprint = self._calculate_token_footprint(cx_mask, cy_mask, size)
-        
+
         # 4. Extract Source Points (Area Light Sources)
         # We use a set of points from the footprint boundary.
         # Find points on the edge of the footprint.
@@ -226,17 +231,25 @@ class VisibilityEngine:
             # For efficiency, we use a subset of points:
             # - Token Center
             source_points.append((cx_mask, cy_mask))
-            
+
             # - Corners and Midpoints of the footprint's bounding box
             coords = np.where(footprint > 0)
             min_y, max_y = np.min(coords[0]), np.max(coords[0])
             min_x, max_x = np.min(coords[1]), np.max(coords[1])
             mid_y, mid_x = (min_y + max_y) // 2, (min_x + max_x) // 2
-            
-            source_points.extend([
-                (min_x, min_y), (max_x, min_y), (min_x, max_y), (max_x, max_y), # Corners
-                (mid_x, min_y), (mid_x, max_y), (min_x, mid_y), (max_x, mid_y)  # Midpoints
-            ])
+
+            source_points.extend(
+                [
+                    (min_x, min_y),
+                    (max_x, min_y),
+                    (min_x, max_y),
+                    (max_x, max_y),  # Corners
+                    (mid_x, min_y),
+                    (mid_x, max_y),
+                    (min_x, mid_y),
+                    (max_x, mid_y),  # Midpoints
+                ]
+            )
 
         # 5. Calculate and Union Polygons (Pixel-based)
         mask = self._calculate_visibility_mask(

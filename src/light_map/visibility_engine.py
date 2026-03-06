@@ -35,9 +35,15 @@ class VisibilityEngine:
         # Track version of geometry to invalidate cache if doors open/close
         self.geometry_version = 0
 
-    def update_blockers(self, blockers: List[VisibilityBlocker]):
+        self.blocker_mask: Optional[np.ndarray] = None
+        self.svg_to_mask_scale = 16.0 / grid_spacing_svg
+
+    def update_blockers(
+        self, blockers: List[VisibilityBlocker], mask_width: int = 0, mask_height: int = 0
+    ):
         """
         Rebuilds the spatial hash and segment list.
+        Also renders a high-resolution blocker mask if dimensions are provided.
         """
         self.blockers = blockers
         self.segments = []
@@ -46,11 +52,34 @@ class VisibilityEngine:
         self.mask_cache = {}
         self.geometry_version += 1
 
+        if mask_width > 0 and mask_height > 0:
+            self.blocker_mask = np.zeros((mask_height, mask_width), dtype=np.uint8)
+
         for b_idx, blocker in enumerate(blockers):
             # Convert flattened segments into pairs of points
             points = blocker.segments
             if len(points) < 2:
                 continue
+
+            # Render blocker mask if dimensions provided
+            if self.blocker_mask is not None:
+                # Windows are transparent to vision
+                if blocker.type != VisibilityType.WINDOW:
+                    # Doors only block when NOT open
+                    if blocker.type != VisibilityType.DOOR or not blocker.is_open:
+                        mask_points = []
+                        for px, py in points:
+                            mx = int(px * self.svg_to_mask_scale)
+                            my = int(py * self.svg_to_mask_scale)
+                            mask_points.append((mx, my))
+
+                        for i in range(len(mask_points) - 1):
+                            p1 = mask_points[i]
+                            p2 = mask_points[i + 1]
+                            # 2px width + Round Caps
+                            cv2.line(self.blocker_mask, p1, p2, 255, thickness=2)
+                            cv2.circle(self.blocker_mask, p1, 1, 255, -1)
+                            cv2.circle(self.blocker_mask, p2, 1, 255, -1)
 
             for i in range(len(points) - 1):
                 p1 = points[i]

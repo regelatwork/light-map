@@ -1,6 +1,7 @@
 import sys
 import os
 import cv2
+import signal
 import numpy as np
 import argparse
 import time
@@ -117,6 +118,20 @@ def main():
 
     setup_logging(level=log_level, log_file=log_file)
     logger = logging.getLogger(__name__)
+
+    main_loop = None
+
+    # Signal handling for graceful shutdown
+    def signal_handler(sig, frame):
+        sig_name = signal.Signals(sig).name
+        logger.info(f"Received {sig_name}. Triggering graceful shutdown...")
+        if main_loop:
+            main_loop.stop()
+        else:
+            sys.exit(0)
+
+    signal.signal(signal.SIGINT, signal_handler)
+    signal.signal(signal.SIGTERM, signal_handler)
 
     # Ensure all unhandled exceptions are logged
     def handle_exception(exc_type, exc_value, exc_traceback):

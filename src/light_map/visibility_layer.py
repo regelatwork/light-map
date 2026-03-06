@@ -2,7 +2,7 @@ import cv2
 import numpy as np
 import math
 import svgelements
-from typing import List, Tuple
+from typing import List, Tuple, Optional
 from .common_types import Layer, ImagePatch
 from .core.world_state import WorldState
 
@@ -44,17 +44,19 @@ class VisibilityLayer(Layer):
         if self.state is None or self.state.visibility_mask is None:
             return []
 
-        visible_mask_full = self.state.visibility_mask
+        return self._render_mask_to_patches(self.state.visibility_mask)
 
-        # Create a light blue highlight for visible areas (Exclusive Vision mode)
+    def _render_mask_to_patches(self, mask: np.ndarray) -> List[ImagePatch]:
+        """Core logic to transform a vision mask to screen space patches."""
+        # Create a light blue highlight for visible areas
         # 1. Create highlight in "Mask Space"
         highlight_full = np.zeros(
             (self.mask_height, self.mask_width, 3), dtype=np.uint8
         )
-        highlight_full[visible_mask_full == 255] = [255, 100, 100]
+        highlight_full[mask == 255] = [255, 100, 100]
 
         alpha_full = np.zeros((self.mask_height, self.mask_width), dtype=np.uint8)
-        alpha_full[visible_mask_full == 255] = 50  # ~20% opaque
+        alpha_full[mask == 255] = 150  # ~60% opaque
 
         bgra_full = cv2.merge(
             [
@@ -70,15 +72,11 @@ class VisibilityLayer(Layer):
             vp = self.state.viewport
             cx, cy = self.width / 2, self.height / 2
 
-            # M_fow_to_svg: (Same as FogOfWarLayer)
             m_fow_to_svg = svgelements.Matrix()
             m_fow_to_svg.post_scale(
                 self.grid_spacing_svg / 16.0, self.grid_spacing_svg / 16.0
             )
-            # No translation: (0,0) in mask is (0,0) in SVG
-            # m_fow_to_svg.post_translate(self.grid_origin_svg[0], self.grid_origin_svg[1])
 
-            # M_svg_to_screen:
             m_svg_to_screen = svgelements.Matrix()
             m_svg_to_screen.post_scale(vp.zoom, vp.zoom)
             m_svg_to_screen.post_rotate(math.radians(vp.rotation), cx, cy)
@@ -87,10 +85,7 @@ class VisibilityLayer(Layer):
             final_m = m_fow_to_svg * m_svg_to_screen
 
             M = np.float32(
-                [
-                    [final_m.a, final_m.c, final_m.e],
-                    [final_m.b, final_m.d, final_m.f],
-                ]
+                [[final_m.a, final_m.c, final_m.e], [final_m.b, final_m.d, final_m.f]]
             )
 
             bgra_screen = cv2.warpAffine(
@@ -121,3 +116,27 @@ class VisibilityLayer(Layer):
             self._last_state_timestamp = max(
                 self.state.visibility_timestamp, self.state.viewport_timestamp
             )
+
+
+class ExclusiveVisionLayer(VisibilityLayer):
+    """
+    Renders the real-time Line-of-Sight (LOS) for a single inspected token.
+    Uses an explicitly provided mask instead of the global WorldState mask.
+    """
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.mask_override: Optional[np.ndarray] = None
+
+    def set_mask(self, mask: Optional[np.ndarray]):
+        self.mask_override = mask
+
+    @property
+    def is_dirty(self) -> bool:
+        # Since this is for real-time inspection, we consider it dirty if we have a mask.
+        return self.mask_override is not None
+
+    def _generate_patches(self, current_time: float) -> List[ImagePatch]:
+        if self.mask_override is None:
+            return []
+        return self._render_mask_to_patches(self.mask_override)

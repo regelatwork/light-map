@@ -23,7 +23,7 @@ from light_map.map_config import MapConfigManager
 from light_map.session_manager import SessionManager
 from light_map.fow_manager import FogOfWarManager
 from light_map.fow_layer import FogOfWarLayer
-from light_map.visibility_layer import VisibilityLayer
+from light_map.visibility_layer import VisibilityLayer, ExclusiveVisionLayer
 from light_map.visibility_engine import VisibilityEngine
 from light_map.cursor_layer import CursorLayer
 
@@ -83,6 +83,15 @@ class InteractiveApp:
             height=config.height,
         )
         self.visibility_layer = VisibilityLayer(
+            self.state,
+            config.width,
+            config.height,
+            grid_spacing_svg=10.0,
+            grid_origin_svg=(0.0, 0.0),
+            width=config.width,
+            height=config.height,
+        )
+        self.exclusive_vision_layer = ExclusiveVisionLayer(
             self.state,
             config.width,
             config.height,
@@ -439,6 +448,7 @@ class InteractiveApp:
         self.current_scene_name = self.current_scene.__class__.__name__
         state.current_scene_name = self.current_scene_name
         state.effective_show_tokens = self.effective_show_tokens
+        state.notifications_timestamp = self.app_context.notifications.timestamp
         state.update_viewport(self.map_system.state.to_viewport())
 
         # Update context frame if available
@@ -478,12 +488,14 @@ class InteractiveApp:
         self.app_context.last_camera_frame = state.background
         self.app_context.raw_aruco = state.raw_aruco
         self.app_context.raw_tokens = state.raw_tokens
+        self.inspected_token_id = self.app_context.inspected_token_id
 
         # --- VISIBILITY CALCULATION ---
         combined_pc_mask = None
         current_stack = self.current_scene.get_active_layers(self)
 
-        if self.map_system.is_map_loaded():
+        is_loaded = self.map_system.is_map_loaded()
+        if is_loaded:
             mask_w, mask_h = self.fow_manager.width, self.fow_manager.height
 
             # Aggregate LOS for all PC tokens
@@ -513,18 +525,48 @@ class InteractiveApp:
                 # This ensures vision only updates when the user chooses "Sync Vision".
                 self._latest_vision_mask = combined_pc_mask
 
-                # Check for "Exclusive Vision" (Token Inspection)
-                # This uses the LAST SYNCHRONIZED vision for that token if it exists.
-                if self.inspected_token_id is not None:
-                    # Switch to Exclusive Stack: Visibility (Current LOS) + Scene + Hand + Menu
+            # Check for "Exclusive Vision" (Token Inspection)
+            if self.inspected_token_id is not None:
+                # 1. Calculate REAL-TIME vision for ONLY the inspected token
+                # This ensures it updates as you move the physical mini.
+                inspected_token = next(
+                    (t for t in state.tokens if t.id == self.inspected_token_id), None
+                )
+                if inspected_token:
+                    token_mask = self.visibility_engine.get_token_vision_mask(
+                        inspected_token.id,
+                        inspected_token.world_x,
+                        inspected_token.world_y,
+                        size=self.map_config.resolve_token_profile(
+                            inspected_token.id
+                        ).size,
+                        vision_range_grid=25.0,
+                        mask_width=mask_w,
+                        mask_height=mask_h,
+                    )
+                    self.exclusive_vision_layer.set_mask(token_mask)
+
+                    # 2. Switch to specialized Exclusive Stack:
+                    # Map (Full Brightness) + Exclusive Highlight + UI
                     current_stack = [
-                        self.visibility_layer,
+                        self.map_layer,
+                        self.exclusive_vision_layer,
                         self.scene_layer,
                         self.hand_mask_layer,
                         self.menu_layer,
+                        self.token_layer,
+                        self.debug_layer,
+                        self.notification_layer,
+                        self.cursor_layer,
                     ]
-                    # Note: VisibilityLayer uses state.visibility_mask which is ONLY updated
-                    # during SYNC_VISION, so inspection shows the last 'official' position.
+
+                    # 3. Ensure Map is full brightness
+                    self.map_layer.opacity = 1.0
+                else:
+                    # Token lost/not found, reset
+                    self.exclusive_vision_layer.set_mask(None)
+            else:
+                self.exclusive_vision_layer.set_mask(None)
 
         # We need to update tokens in map system from state
         self.map_system.ghost_tokens = state.tokens
@@ -629,7 +671,9 @@ class InteractiveApp:
                         found = True
                 if found:
                     self.visibility_engine.update_blockers(
-                        self.visibility_engine.blockers
+                        self.visibility_engine.blockers,
+                        self.fow_manager.width,
+                        self.fow_manager.height,
                     )
                     self.notifications.add_notification(f"Door {door_layer} Toggled")
                     self.save_session()  # Persist door state
@@ -679,11 +723,11 @@ class InteractiveApp:
                 self.map_config.save()
 
         # Setup Visibility Engine with correct scaling
+        spacing = entry.grid_spacing_svg if entry.grid_spacing_svg > 0 else 10.0
         self.visibility_engine = VisibilityEngine(
-            grid_spacing_svg=entry.grid_spacing_svg or 10.0,
+            grid_spacing_svg=spacing,
             grid_origin=(entry.grid_origin_svg_x, entry.grid_origin_svg_y),
         )
-        self.visibility_engine.update_blockers(blockers)
         self.current_map_path = filename
 
         # Setup FoW Logic with persistence managed by MapConfig
@@ -691,16 +735,15 @@ class InteractiveApp:
         # SVG width/height in units
         svg_w = self.map_system.svg_loader.svg.width
         svg_h = self.map_system.svg_loader.svg.height
-        mask_w = (
-            int((svg_w / entry.grid_spacing_svg) * 16)
-            if entry.grid_spacing_svg > 0
-            else self.config.width
+        mask_w = int((svg_w / spacing) * 16)
+        mask_h = int((svg_h / spacing) * 16)
+
+        logging.debug(
+            f"Calculated mask dimensions: {mask_w}x{mask_h} (SVG: {svg_w}x{svg_h}, spacing: {spacing})"
         )
-        mask_h = (
-            int((svg_h / entry.grid_spacing_svg) * 16)
-            if entry.grid_spacing_svg > 0
-            else self.config.height
-        )
+
+        # Now update blockers with the calculated mask dimensions
+        self.visibility_engine.update_blockers(blockers, mask_w, mask_h)
 
         self.fow_manager = FogOfWarManager(mask_w, mask_h)
         self.map_config.load_fow_masks(filename, self.fow_manager)
@@ -732,6 +775,15 @@ class InteractiveApp:
             self.config.height,
         )
         self.layer_stack[2] = self.visibility_layer
+        self.exclusive_vision_layer = ExclusiveVisionLayer(
+            self.state,
+            mask_w,
+            mask_h,
+            spacing,
+            origin,
+            self.config.width,
+            self.config.height,
+        )
 
         if load_session:
             session_dir = None
@@ -749,7 +801,9 @@ class InteractiveApp:
                 for blocker in self.visibility_engine.blockers:
                     if blocker.layer_name in session.door_states:
                         blocker.is_open = session.door_states[blocker.layer_name]
-                self.visibility_engine.update_blockers(self.visibility_engine.blockers)
+                self.visibility_engine.update_blockers(
+                    self.visibility_engine.blockers, mask_w, mask_h
+                )
 
                 if session.viewport:
                     self.map_system.set_state(

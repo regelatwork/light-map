@@ -65,14 +65,27 @@ class BaseMapScene(Scene):
             )
             if dist < 0.5 * grid_spacing:
                 self.context.inspected_token_id = token.id
-                self.context.notifications.add_notification(f"Inspecting: {token.id}")
+                # Resolve token name for better notification
+                map_file = (
+                    self.context.map_system.svg_loader.filename
+                    if self.context.map_system.svg_loader
+                    else None
+                )
+                resolved = self.context.map_config_manager.resolve_token_profile(
+                    token.id, map_file
+                )
+                self.context.notifications.add_notification(
+                    f"Inspecting: {resolved.name}", duration=0.5
+                )
                 return
 
         # 2. Check Doors
         door_layer = self._check_door_collision(world_x, world_y)
         if door_layer:
             self.context.selected_door = door_layer
-            self.context.notifications.add_notification(f"Selected Door: {door_layer}")
+            self.context.notifications.add_notification(
+                f"Selected Door: {door_layer}", duration=0.5
+            )
             return
 
     def _check_door_collision(self, wx: float, wy: float) -> Optional[str]:

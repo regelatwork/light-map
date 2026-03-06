@@ -273,6 +273,82 @@ class VisibilityEngine:
 
         return polygon
 
+    def _calculate_visibility_mask(
+        self,
+        source_points: List[Tuple[int, int]],
+        vision_range_px: int,
+        mask_w: int,
+        mask_h: int,
+    ) -> np.ndarray:
+        """
+        Calculates a unioned visibility mask from multiple source points.
+        Uses a polar shadow-casting approach for performance and watertightness.
+        """
+        if self.blocker_mask is None:
+            return np.zeros((mask_h, mask_w), dtype=np.uint8)
+
+        combined_mask = np.zeros((mask_h, mask_w), dtype=np.uint8)
+
+        # Optimization: Only process unique points and points within mask bounds
+        unique_sources = set()
+        for x, y in source_points:
+            if 0 <= x < mask_w and 0 <= y < mask_h:
+                unique_sources.add((x, y))
+
+        for sx, sy in unique_sources:
+            # 1. Create a local coordinate system around the source
+            # We only need to process up to vision_range_px
+            r = vision_range_px
+            # Polar warp parameters
+            # rows = number of angles, cols = distance
+            # 1440 rows for 0.25 degree resolution
+            polar_rows = 1440
+            polar_cols = r
+
+            # Warp the blocker mask to polar coordinates
+            # Use INTER_NEAREST to avoid blurring walls
+            polar_blockers = cv2.warpPolar(
+                self.blocker_mask,
+                (polar_cols, polar_rows),
+                (float(sx), float(sy)),
+                float(r),
+                cv2.WARP_FILL_OUTLIERS + cv2.INTER_NEAREST,
+            )
+
+            # 2. In polar space, find the "shadow" of each blocker
+            # For each angle (row), find the first non-zero pixel (wall)
+            # Everything after that pixel is in shadow.
+            
+            # Use argmax to find the first 255 (wall) in each row
+            # If no 255 found, it returns 0, but we need to know if it actually found one.
+            # So we check if the row has any non-zero pixels.
+            has_wall = np.any(polar_blockers > 0, axis=1)
+            first_wall = np.argmax(polar_blockers > 0, axis=1)
+            
+            # Create a visibility mask in polar space
+            # 255 for visible, 0 for shadow
+            polar_vision = np.zeros((polar_rows, polar_cols), dtype=np.uint8)
+            for row in range(polar_rows):
+                if has_wall[row]:
+                    polar_vision[row, : first_wall[row]] = 255
+                else:
+                    polar_vision[row, :] = 255
+
+            # 3. Warp back to Cartesian coordinates
+            # Use INTER_NEAREST to avoid blurred edges (light leaks)
+            source_vision = cv2.warpPolar(
+                polar_vision,
+                (mask_w, mask_h),
+                (float(sx), float(sy)),
+                float(r),
+                cv2.WARP_FILL_OUTLIERS + cv2.WARP_INVERSE_MAP + cv2.INTER_NEAREST,
+            )
+            
+            # 4. Union with combined mask
+            cv2.bitwise_or(combined_mask, source_vision, combined_mask)
+
+        return combined_mask
+
     def get_token_vision_mask(
         self,
         token_id: int,
@@ -297,50 +373,39 @@ class VisibilityEngine:
             if mask.shape == (mask_height, mask_width):
                 return mask
 
-        # 2. Origin Calculation (Starfinder 1e)
-        # Center point + (S+1)^2 grid corners
-        origins = [(origin_x, origin_y)]
+        # 2. Coordinate Conversion
+        cx_mask = int(origin_x * self.svg_to_mask_scale)
+        cy_mask = int(origin_y * self.svg_to_mask_scale)
+        vision_range_px = int(vision_range_grid * 16)  # 16px per grid unit
 
-        # Grid corners are relative to the grid centers.
-        # A size S token covers a square area.
-        half_s = size / 2.0
-        for i in range(size + 1):
-            for j in range(size + 1):
-                # Offset from center in grid units: (-S/2, -S/2) to (+S/2, +S/2)
-                off_x = (i - half_s) * self.grid_spacing_svg
-                off_y = (j - half_s) * self.grid_spacing_svg
-                origins.append((origin_x + off_x, origin_y + off_y))
+        # 3. Calculate Token Footprint (Corner Peeking)
+        footprint = self._calculate_token_footprint(cx_mask, cy_mask, size)
+        
+        # 4. Extract Source Points (Area Light Sources)
+        # We use a set of points from the footprint boundary.
+        # Find points on the edge of the footprint.
+        source_points = []
+        if np.any(footprint > 0):
+            # For efficiency, we use a subset of points:
+            # - Token Center
+            source_points.append((cx_mask, cy_mask))
+            
+            # - Corners and Midpoints of the footprint's bounding box
+            coords = np.where(footprint > 0)
+            min_y, max_y = np.min(coords[0]), np.max(coords[0])
+            min_x, max_x = np.min(coords[1]), np.max(coords[1])
+            mid_y, mid_x = (min_y + max_y) // 2, (min_x + max_x) // 2
+            
+            source_points.extend([
+                (min_x, min_y), (max_x, min_y), (min_x, max_y), (max_x, max_y), # Corners
+                (mid_x, min_y), (mid_x, max_y), (min_x, mid_y), (max_x, mid_y)  # Midpoints
+            ])
 
-        # 3. Calculate and Union Polygons
-        vision_range_svg = vision_range_grid * self.grid_spacing_svg
-        mask = np.zeros((mask_height, mask_width), dtype=np.uint8)
+        # 5. Calculate and Union Polygons (Pixel-based)
+        mask = self._calculate_visibility_mask(
+            source_points, vision_range_px, mask_width, mask_height
+        )
 
-        # Scale for SVG -> Mask (16px per grid unit)
-        svg_to_mask_scale = 16.0 / self.grid_spacing_svg
-        # SVG coordinates (x,y) to Mask coordinates (mx, my)
-        # mx = (x - origin_svg_x) * scale
-
-        for ox, oy in origins:
-            # Check OOB for origin
-            # If an origin is outside a reasonable bounds, skip it (handled by calculate_visibility anyway)
-            poly = self.calculate_visibility(
-                (ox, oy), vision_range_svg, token_id=None
-            )  # We don't use the simple cache for multi-point yet to avoid key collisions
-
-            if not poly:
-                continue
-
-            # Scale polygon to mask coordinates
-            mask_poly = []
-            for px, py in poly:
-                mx = px * svg_to_mask_scale
-                my = py * svg_to_mask_scale
-                mask_poly.append((int(mx), int(my)))
-
-            if mask_poly:
-                pts = np.array(mask_poly, dtype=np.int32).reshape((-1, 1, 2))
-                cv2.fillPoly(mask, [pts], 255)
-
-        # 4. Update Cache
+        # 6. Update Cache
         self.mask_cache[mask_cache_key] = mask
         return mask

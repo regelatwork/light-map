@@ -118,6 +118,9 @@ class VisibilityEngine:
         h, w = self.blocker_mask.shape
         footprint = np.zeros((h, w), dtype=np.uint8)
 
+        if not (0 <= cx_mask < w and 0 <= cy_mask < h):
+            return footprint
+
         # Range limit: half-size in pixels + 1px overhang
         # size 1 -> 16px wide -> 8px radius + 1px = 9px
         range_limit = (size * 16 // 2) + 1

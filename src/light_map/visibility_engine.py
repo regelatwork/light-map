@@ -104,6 +104,47 @@ class VisibilityEngine:
                             self.spatial_hash[(tx, ty)] = []
                         self.spatial_hash[(tx, ty)].append(seg_idx)
 
+    def _calculate_token_footprint(
+        self, cx_mask: int, cy_mask: int, size: int
+    ) -> np.ndarray:
+        """
+        Calculates the token's 'light source' footprint.
+        Uses BFS to find pixels within (size/2 * 16 + 1) that are not blocked by walls.
+        """
+        if self.blocker_mask is None:
+            # Fallback if no map loaded or blockers not updated
+            return np.zeros((1, 1), dtype=np.uint8)
+
+        h, w = self.blocker_mask.shape
+        footprint = np.zeros((h, w), dtype=np.uint8)
+
+        # Range limit: half-size in pixels + 1px overhang
+        # size 1 -> 16px wide -> 8px radius + 1px = 9px
+        range_limit = (size * 16 // 2) + 1
+
+        queue = [(cy_mask, cx_mask)]
+        footprint[cy_mask, cx_mask] = 255
+        idx = 0
+
+        while idx < len(queue):
+            y, x = queue[idx]
+            idx += 1
+
+            for dy, dx in [(0, 1), (0, -1), (1, 0), (-1, 0)]:
+                ny, nx = y + dy, x + dx
+
+                if 0 <= nx < w and 0 <= ny < h:
+                    if footprint[ny, nx] == 0:
+                        # Check distance constraint (Manhattan or Chebyshev is faster, 
+                        # but L-infinity/square is what we want for grid cells)
+                        if abs(nx - cx_mask) <= range_limit and abs(ny - cy_mask) <= range_limit:
+                            # Check if not a wall
+                            if self.blocker_mask[ny, nx] == 0:
+                                footprint[ny, nx] = 255
+                                queue.append((ny, nx))
+
+        return footprint
+
     def _get_relevant_segments(
         self, origin: Tuple[float, float], radius: float
     ) -> List[int]:

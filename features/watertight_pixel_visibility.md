@@ -1,4 +1,4 @@
-# Watertight Pixel-Based Visibility Engine
+# Watertight Pixel-Based Visibility Engine (Implemented)
 
 ## 1. Goal
 Replace the mathematical raycasting visibility engine with a high-resolution, pixel-based approach. This ensures "watertight" walls (no light leaks through SVG joints), prevents "grid spillover" (where light bypasses walls that aren't perfectly grid-aligned), and enables natural "corner peeking" for tokens.
@@ -16,9 +16,10 @@ Tokens are treated as area light sources rather than points.
 - **Light Sources:** The boundary pixels of this footprint act as the origins for Line-of-Sight (LOS) checks.
 
 ### 2.3 Reachability & LOS Filtering
-Vision is calculated in two stages to optimize performance:
-1. **Reachability:** A BFS identifies all pixels that can be "touched" by light without crossing a wall.
-2. **LOS Verification:** For each reachable pixel, a vectorized check confirms an unobstructed straight line to at least one Source Footprint pixel.
+Vision is calculated using an optimized polar shadow-casting approach:
+1. **Polar Warp:** The environment around each source point is warped to polar coordinates.
+2. **Shadow Casting:** For each angle, the first wall pixel blocks everything beyond it.
+3. **Inverse Warp:** Shadows are warped back to Cartesian space and unioned.
 
 ## 3. Technical Specifications
 
@@ -28,7 +29,7 @@ Vision is calculated in two stages to optimize performance:
 
 ### 3.2 API Transition
 - **Mask-Centric:** The engine directly produces a `uint8` vision mask (0=hidden, 255=visible).
-- **Deprecation:** The polygon-based `calculate_visibility` method is deprecated.
+- **Deprecation:** The polygon-based `calculate_visibility` method has been removed.
 
 ## 4. Success Criteria
 - **No Leaks:** Zero light leakage through wall joints or small SVG gaps.

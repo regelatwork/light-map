@@ -194,6 +194,7 @@ class AppConfig:
     gm_position: GmPosition = GmPosition.NONE
     projector_ppi: float = 96.0
     inspection_linger_duration: float = 10.0
+    door_thickness_multiplier: float = 3.0
 
 
 @dataclass

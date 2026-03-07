@@ -22,11 +22,13 @@ class DoorLayer(Layer):
         visibility_engine: VisibilityEngine,
         width: int,
         height: int,
+        thickness_multiplier: float = 3.0,
     ):
         super().__init__(state=state, layer_mode=LayerMode.NORMAL)
         self.visibility_engine = visibility_engine
         self.width = width
         self.height = height
+        self.thickness_multiplier = thickness_multiplier
         self._last_geometry_version = -1
 
     @property
@@ -60,10 +62,10 @@ class DoorLayer(Layer):
         # So 1 mask pixel = (spacing / 16.0) SVG pixels.
         # In screen space, that is (spacing / 16.0) * vp.zoom pixels.
         spacing = self.visibility_engine.grid_spacing_svg
-        base_wall_thickness = 2.0 * (spacing / 16.0) * vp.zoom
+        base_wall_thickness = (spacing / 16.0) * vp.zoom
 
-        # Yellow line: 1.5x thicker than the rendered wall, min 2px
-        yellow_thickness = max(2, int(base_wall_thickness * 1.5))
+        # Yellow line: Base thickness * multiplier, min 2px
+        yellow_thickness = max(2, int(base_wall_thickness * self.thickness_multiplier))
         # Black outline: Yellow + padding, min 4px
         # We add 2px in mask-space equivalent: 2.0 * (spacing / 16.0) * vp.zoom
         padding = max(2, int(2.0 * (spacing / 16.0) * vp.zoom))

@@ -139,7 +139,11 @@ class InteractiveApp:
             self.state, self.map_system, config.width, config.height
         )
         self.door_layer = DoorLayer(
-            self.state, self.visibility_engine, config.width, config.height
+            self.state,
+            self.visibility_engine,
+            config.width,
+            config.height,
+            thickness_multiplier=config.door_thickness_multiplier,
         )
         self.scene_layer = SceneLayer(
             self.state, None, config.width, config.height, is_static=False
@@ -731,7 +735,11 @@ class InteractiveApp:
         )
         # Update Door Layer
         self.door_layer = DoorLayer(
-            self.state, self.visibility_engine, self.config.width, self.config.height
+            self.state,
+            self.visibility_engine,
+            self.config.width,
+            self.config.height,
+            thickness_multiplier=self.config.door_thickness_multiplier,
         )
         self.layer_stack[1] = self.door_layer
 

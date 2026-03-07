@@ -55,19 +55,23 @@ class DoorLayer(Layer):
         m_svg_to_screen.post_translate(vp.x, vp.y)
 
         # Dynamic Thickness Calculation
-        # Walls in visibility mask are 2px thick in mask space (16px = 1 grid unit).
-        # In screen space, that translates roughly to 2.0 * vp.zoom pixels.
-        # We want doors to be thicker to avoid light leaks and ensure they are seen.
-        base_wall_thickness = 2.0 * vp.zoom
+        # Walls in visibility mask are 2px thick in mask space.
+        # Mask space is 16px per grid unit. SVG space is 'spacing' px per grid unit.
+        # So 1 mask pixel = (spacing / 16.0) SVG pixels.
+        # In screen space, that is (spacing / 16.0) * vp.zoom pixels.
+        spacing = self.visibility_engine.grid_spacing_svg
+        base_wall_thickness = 2.0 * (spacing / 16.0) * vp.zoom
 
-        # Yellow line: 1.5x thicker than wall, min 2px
+        # Yellow line: 1.5x thicker than the rendered wall, min 2px
         yellow_thickness = max(2, int(base_wall_thickness * 1.5))
-        # Black outline: Yellow + 4px extra, min 4px
-        black_thickness = yellow_thickness + max(2, int(2 * vp.zoom))
+        # Black outline: Yellow + padding, min 4px
+        # We add 2px in mask-space equivalent: 2.0 * (spacing / 16.0) * vp.zoom
+        padding = max(2, int(2.0 * (spacing / 16.0) * vp.zoom))
+        black_thickness = yellow_thickness + padding
 
-        # Circle radius: Roughly 0.75x the yellow line thickness, min 3px
+        # Circle radius: Roughly 0.8x the yellow line thickness, min 3px
         circle_radius = max(3, int(yellow_thickness * 0.8))
-        circle_outline = circle_radius + max(2, int(1 * vp.zoom))
+        circle_outline = circle_radius + max(2, int(padding / 2))
 
         # Colors (BGRA)
         YELLOW = (0, 255, 255, 255)

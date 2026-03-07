@@ -1,7 +1,12 @@
+from __future__ import annotations
 import cv2
 import numpy as np
-from typing import List, Tuple, Dict, Optional
+from typing import List, Tuple, Dict, Optional, TYPE_CHECKING
 from .visibility_types import VisibilityType, VisibilityBlocker
+
+if TYPE_CHECKING:
+    from light_map.common_types import Token
+    from light_map.map_config import MapConfigManager
 
 
 class VisibilityEngine:
@@ -25,6 +30,20 @@ class VisibilityEngine:
 
         self.blocker_mask: Optional[np.ndarray] = None
         self.svg_to_mask_scale = 16.0 / grid_spacing_svg
+
+    @property
+    def width(self) -> int:
+        """Returns the width of the visibility mask in pixels."""
+        return self.blocker_mask.shape[1] if self.blocker_mask is not None else 0
+
+    @property
+    def height(self) -> int:
+        """Returns the height of the visibility mask in pixels."""
+        return self.blocker_mask.shape[0] if self.blocker_mask is not None else 0
+
+    def calculate_mask_dimensions(self, svg_w: float, svg_h: float) -> Tuple[int, int]:
+        """Calculates mask dimensions (1/16th inch per pixel) for a given SVG size."""
+        return int(svg_w * self.svg_to_mask_scale), int(svg_h * self.svg_to_mask_scale)
 
     def update_blockers(
         self,
@@ -259,3 +278,38 @@ class VisibilityEngine:
         # 6. Update Cache
         self.mask_cache[mask_cache_key] = mask
         return mask
+
+    def get_aggregate_vision_mask(
+        self,
+        tokens: List[Token],
+        map_config: MapConfigManager,
+        mask_width: int,
+        mask_height: int,
+        vision_range_grid: float = 25.0,
+    ) -> Optional[np.ndarray]:
+        """
+        Calculates a combined vision mask for all PC tokens.
+        Useful for 'Sync Vision' actions.
+        """
+        combined_pc_mask = None
+
+        pc_tokens = [
+            t for t in tokens if map_config.resolve_token_profile(t.id).type == "PC"
+        ]
+
+        for token in pc_tokens:
+            token_mask = self.get_token_vision_mask(
+                token.id,
+                token.world_x,
+                token.world_y,
+                size=map_config.resolve_token_profile(token.id).size,
+                vision_range_grid=vision_range_grid,
+                mask_width=mask_width,
+                mask_height=mask_height,
+            )
+            if combined_pc_mask is None:
+                combined_pc_mask = token_mask.copy()
+            else:
+                cv2.bitwise_or(combined_pc_mask, token_mask, combined_pc_mask)
+
+        return combined_pc_mask

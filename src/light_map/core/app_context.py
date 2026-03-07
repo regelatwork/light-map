@@ -34,6 +34,7 @@ class AppContext:
     camera_rvec: Optional[np.ndarray] = None
     camera_tvec: Optional[np.ndarray] = None
     distortion_model: Optional[ProjectorDistortionModel] = None
+    visibility_engine: Optional[Any] = None  # Avoid circular import
     show_tokens: bool = True
     debug_mode: bool = False
     last_camera_frame: Optional[np.ndarray] = None
@@ -43,3 +44,4 @@ class AppContext:
     raw_tokens: List[Any] = field(default_factory=list)
     selected_door: Optional[str] = None
     inspected_token_id: Optional[int] = None
+    inspected_token_mask: Optional[np.ndarray] = None

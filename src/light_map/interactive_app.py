@@ -1,6 +1,5 @@
 from __future__ import annotations
 import numpy as np
-import cv2
 import time
 import os
 import sys
@@ -101,7 +100,6 @@ class InteractiveApp:
             height=config.height,
         )
         self.inspected_token_id: Optional[int] = None
-        self._latest_vision_mask: Optional[np.ndarray] = None
         self.current_map_path: Optional[str] = None
 
         # New Modular Coordinators
@@ -308,6 +306,7 @@ class InteractiveApp:
             projector_matrix=self.config.projector_matrix,
             notifications=self.notifications,
             distortion_model=self.config.distortion_model,
+            visibility_engine=self.visibility_engine,
             aruco_detector=aruco_detector,
             camera_matrix=camera_matrix,
             dist_coeffs=dist_coeffs,
@@ -490,83 +489,38 @@ class InteractiveApp:
         self.app_context.raw_tokens = state.raw_tokens
         self.inspected_token_id = self.app_context.inspected_token_id
 
-        # --- VISIBILITY CALCULATION ---
-        combined_pc_mask = None
+        # --- VISIBILITY AND LAYER STACK ---
         current_stack = self.current_scene.get_active_layers(self)
 
-        is_loaded = self.map_system.is_map_loaded()
-        if is_loaded:
-            mask_w, mask_h = self.fow_manager.width, self.fow_manager.height
-
-            # Aggregate LOS for all PC tokens
-            pc_tokens = [
-                t
-                for t in state.tokens
-                if self.map_config.resolve_token_profile(t.id).type == "PC"
-            ]
-
-            for token in pc_tokens:
-                token_mask = self.visibility_engine.get_token_vision_mask(
-                    token.id,
-                    token.world_x,
-                    token.world_y,
-                    size=self.map_config.resolve_token_profile(token.id).size,
-                    vision_range_grid=25.0,  # Default per design
-                    mask_width=mask_w,
-                    mask_height=mask_h,
+        # Handle Exclusive Vision (Token Inspection)
+        if self.inspected_token_id is not None:
+            # Use pre-calculated mask from AppContext (set by Scene during dwell trigger)
+            if self.app_context.inspected_token_mask is not None:
+                self.exclusive_vision_layer.set_mask(
+                    self.app_context.inspected_token_mask
                 )
-                if combined_pc_mask is None:
-                    combined_pc_mask = token_mask.copy()
-                else:
-                    cv2.bitwise_or(combined_pc_mask, token_mask, combined_pc_mask)
 
-            if combined_pc_mask is not None:
-                # Store the latest mask, but DO NOT apply it to the manager or state yet.
-                # This ensures vision only updates when the user chooses "Sync Vision".
-                self._latest_vision_mask = combined_pc_mask
+                # Switch to specialized Exclusive Stack:
+                # Map (Full Brightness) + Exclusive Highlight + UI
+                current_stack = [
+                    self.map_layer,
+                    self.exclusive_vision_layer,
+                    self.scene_layer,
+                    self.hand_mask_layer,
+                    self.menu_layer,
+                    self.token_layer,
+                    self.debug_layer,
+                    self.notification_layer,
+                    self.cursor_layer,
+                ]
 
-            # Check for "Exclusive Vision" (Token Inspection)
-            if self.inspected_token_id is not None:
-                # 1. Calculate REAL-TIME vision for ONLY the inspected token
-                # This ensures it updates as you move the physical mini.
-                inspected_token = next(
-                    (t for t in state.tokens if t.id == self.inspected_token_id), None
-                )
-                if inspected_token:
-                    token_mask = self.visibility_engine.get_token_vision_mask(
-                        inspected_token.id,
-                        inspected_token.world_x,
-                        inspected_token.world_y,
-                        size=self.map_config.resolve_token_profile(
-                            inspected_token.id
-                        ).size,
-                        vision_range_grid=25.0,
-                        mask_width=mask_w,
-                        mask_height=mask_h,
-                    )
-                    self.exclusive_vision_layer.set_mask(token_mask)
-
-                    # 2. Switch to specialized Exclusive Stack:
-                    # Map (Full Brightness) + Exclusive Highlight + UI
-                    current_stack = [
-                        self.map_layer,
-                        self.exclusive_vision_layer,
-                        self.scene_layer,
-                        self.hand_mask_layer,
-                        self.menu_layer,
-                        self.token_layer,
-                        self.debug_layer,
-                        self.notification_layer,
-                        self.cursor_layer,
-                    ]
-
-                    # 3. Ensure Map is full brightness
-                    self.map_layer.opacity = 1.0
-                else:
-                    # Token lost/not found, reset
-                    self.exclusive_vision_layer.set_mask(None)
+                # Ensure Map is full brightness
+                self.map_layer.opacity = 1.0
             else:
                 self.exclusive_vision_layer.set_mask(None)
+        else:
+            self.exclusive_vision_layer.set_mask(None)
+            self.app_context.inspected_token_mask = None
 
         # We need to update tokens in map system from state
         self.map_system.ghost_tokens = state.tokens
@@ -574,7 +528,7 @@ class InteractiveApp:
         # Scene Update
         transition = self.current_scene.update(inputs, current_time)
         if transition:
-            self._handle_payloads(transition.payload)
+            self._handle_payloads(transition.payload, state)
             self._switch_scene(transition)
 
         # Sync Menu State to WorldState
@@ -615,7 +569,7 @@ class InteractiveApp:
 
         return final_frame, []
 
-    def _handle_payloads(self, payload: Any):
+    def _handle_payloads(self, payload: Any, state: Optional["WorldState"] = None):
         """Handle side-effects from scene transitions, like loading maps."""
         if not isinstance(payload, dict):
             return
@@ -624,27 +578,35 @@ class InteractiveApp:
             self.load_map(payload["map_file"], payload.get("load_session", False))
 
         if payload.get("action") == "SYNC_VISION":
-            if (
-                self.fow_manager
-                and self._latest_vision_mask is not None
-                and self.current_map_path
-            ):
-                # 1. Update Persistent Fog of War (Explore new areas)
-                self.fow_manager.reveal_area(self._latest_vision_mask)
+            if self.fow_manager and self.current_map_path and state is not None:
+                # Calculate latest vision mask on-demand
+                combined_pc_mask = self.visibility_engine.get_aggregate_vision_mask(
+                    state.tokens,
+                    self.map_config,
+                    self.fow_manager.width,
+                    self.fow_manager.height,
+                    vision_range_grid=25.0,
+                )
 
-                # 2. Update Visible Line-of-Sight (the 'clear holes')
-                self.fow_manager.set_visible_mask(self._latest_vision_mask)
+                if combined_pc_mask is not None:
+                    # 1. Update Persistent Fog of War (Explore new areas)
+                    self.fow_manager.reveal_area(combined_pc_mask)
 
-                # 3. Save both to stable storage
-                self.map_config.save_fow_masks(self.current_map_path, self.fow_manager)
+                    # 2. Update Visible Line-of-Sight (the 'clear holes')
+                    self.fow_manager.set_visible_mask(combined_pc_mask)
 
-                # 4. Update VisibilityLayer (the highlight)
-                self.state.update_visibility_mask(self._latest_vision_mask)
+                    # 3. Save both to stable storage
+                    self.map_config.save_fow_masks(
+                        self.current_map_path, self.fow_manager
+                    )
 
-                # 5. Invalidate Layer Caches
-                self.fow_layer.is_dirty = True
+                    # 4. Update VisibilityLayer (the highlight)
+                    self.state.update_visibility_mask(combined_pc_mask)
 
-                self.notifications.add_notification("Vision Synchronized")
+                    # 5. Invalidate Layer Caches
+                    self.fow_layer.is_dirty = True
+
+                    self.notifications.add_notification("Vision Synchronized")
 
         if payload.get("action") == "RESET_FOW":
             if self.fow_manager and self.current_map_path:
@@ -728,15 +690,13 @@ class InteractiveApp:
             grid_spacing_svg=spacing,
             grid_origin=(entry.grid_origin_svg_x, entry.grid_origin_svg_y),
         )
+        self.app_context.visibility_engine = self.visibility_engine
         self.current_map_path = filename
 
-        # Setup FoW Logic with persistence managed by MapConfig
-        # Calculate mask dimensions based on 16x grid resolution
         # SVG width/height in units
         svg_w = self.map_system.svg_loader.svg.width
         svg_h = self.map_system.svg_loader.svg.height
-        mask_w = int((svg_w / spacing) * 16)
-        mask_h = int((svg_h / spacing) * 16)
+        mask_w, mask_h = self.visibility_engine.calculate_mask_dimensions(svg_w, svg_h)
 
         logging.debug(
             f"Calculated mask dimensions: {mask_w}x{mask_h} (SVG: {svg_w}x{svg_h}, spacing: {spacing})"

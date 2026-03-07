@@ -27,6 +27,7 @@ def mock_app():
         mask = np.zeros((10, 10), dtype=np.uint8)
         mask[0, 0] = 255
         mock_ve.get_token_vision_mask.return_value = mask
+        mock_ve.get_aggregate_vision_mask.return_value = mask
 
         app = InteractiveApp(config)
         # Manually inject a loaded map state
@@ -57,12 +58,9 @@ def test_vision_frozen_until_sync(mock_app):
 
     # 3. Check that the fow_manager's visible_mask is still empty (NOT updated)
     assert np.all(app.fow_manager.visible_mask == 0)
-    # Check that app._latest_vision_mask WAS captured
-    assert app._latest_vision_mask is not None
-    assert app._latest_vision_mask[0, 0] == 255
 
-    # 4. Trigger Sync Vision
-    app._handle_payloads({"action": "SYNC_VISION"})
+    # 4. Trigger Sync Vision (Now calculates vision on-demand)
+    app._handle_payloads({"action": "SYNC_VISION"}, state)
 
     # 5. Check that the fow_manager's visible_mask is NOW updated
     app.fow_manager.set_visible_mask.assert_called_once()

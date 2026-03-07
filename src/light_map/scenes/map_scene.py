@@ -77,6 +77,27 @@ class BaseMapScene(Scene):
                 self.context.notifications.add_notification(
                     f"Inspecting: {resolved.name}", duration=0.5
                 )
+
+                # --- NEW: Calculate LOS mask for inspection on-demand ---
+                if (
+                    self.context.visibility_engine
+                    and self.context.map_system.is_map_loaded()
+                ):
+                    engine = self.context.visibility_engine
+                    mask_w = engine.width
+                    mask_h = engine.height
+
+                    token_mask = engine.get_token_vision_mask(
+                        token.id,
+                        token.world_x,
+                        token.world_y,
+                        size=resolved.size,
+                        vision_range_grid=25.0,
+                        mask_width=mask_w,
+                        mask_height=mask_h,
+                    )
+                    self.context.inspected_token_mask = token_mask
+
                 return
 
         # 2. Check Doors

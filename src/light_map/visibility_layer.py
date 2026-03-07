@@ -48,6 +48,14 @@ class VisibilityLayer(Layer):
 
     def _render_mask_to_patches(self, mask: np.ndarray) -> List[ImagePatch]:
         """Core logic to transform a vision mask to screen space patches."""
+        if mask.shape[0] != self.mask_height or mask.shape[1] != self.mask_width:
+            import logging
+
+            logging.error(
+                f"VisibilityLayer: Shape mismatch. Mask is {mask.shape}, Layer expects ({self.mask_height}, {self.mask_width})"
+            )
+            return []
+
         # Create a light blue highlight for visible areas
         # 1. Create highlight in "Mask Space"
         highlight_full = np.zeros(
@@ -121,7 +129,7 @@ class VisibilityLayer(Layer):
 class ExclusiveVisionLayer(VisibilityLayer):
     """
     Renders the real-time Line-of-Sight (LOS) for a single inspected token.
-    Uses an explicitly provided mask instead of the global WorldState mask.
+    Acting as a 'searchlight': it masks everything outside the vision mask with darkness.
     """
 
     def __init__(self, *args, **kwargs):
@@ -139,4 +147,66 @@ class ExclusiveVisionLayer(VisibilityLayer):
     def _generate_patches(self, current_time: float) -> List[ImagePatch]:
         if self.mask_override is None:
             return []
-        return self._render_mask_to_patches(self.mask_override)
+
+        # Validate shape before rendering
+        mask = self.mask_override
+        if mask.shape[0] != self.mask_height or mask.shape[1] != self.mask_width:
+            import logging
+
+            logging.error(
+                f"ExclusiveVisionLayer: Shape mismatch. Mask is {mask.shape}, Layer expects ({self.mask_height}, {self.mask_width})"
+            )
+            return []
+
+        # Create 'Total Darkness' mask in Mask Space
+        # Everything is Opaque Black (0, 0, 0, 255)
+        # Except visible areas which are Transparent (0, 0, 0, 0)
+        bgra_full = np.zeros((self.mask_height, self.mask_width, 4), dtype=np.uint8)
+        bgra_full[:, :, 3] = 255  # Fully Opaque Black
+
+        # Punch a hole for vision
+        bgra_full[mask == 255, 3] = 0  # Fully Transparent
+
+        # Transform to Screen Space
+        if self.state.viewport:
+            vp = self.state.viewport
+            cx, cy = self.width / 2, self.height / 2
+
+            m_fow_to_svg = svgelements.Matrix()
+            m_fow_to_svg.post_scale(
+                self.grid_spacing_svg / 16.0, self.grid_spacing_svg / 16.0
+            )
+
+            m_svg_to_screen = svgelements.Matrix()
+            m_svg_to_screen.post_scale(vp.zoom, vp.zoom)
+            m_svg_to_screen.post_rotate(math.radians(vp.rotation), cx, cy)
+            m_svg_to_screen.post_translate(vp.x, vp.y)
+
+            final_m = m_fow_to_svg * m_svg_to_screen
+
+            M = np.float32(
+                [[final_m.a, final_m.c, final_m.e], [final_m.b, final_m.d, final_m.f]]
+            )
+
+            bgra_screen = cv2.warpAffine(
+                bgra_full,
+                M,
+                (self.width, self.height),
+                flags=cv2.INTER_NEAREST,
+                borderMode=cv2.BORDER_CONSTANT,
+                borderValue=(0, 0, 0, 255),  # Darkness outside the warp
+            )
+        else:
+            bgra_screen = cv2.resize(
+                bgra_full, (self.width, self.height), interpolation=cv2.INTER_NEAREST
+            )
+
+        return [
+            ImagePatch(
+                x=0,
+                y=0,
+                width=self.width,
+                height=self.height,
+                data=bgra_screen,
+            )
+        ]

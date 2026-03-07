@@ -16,7 +16,6 @@ def mock_config():
     config.distortion_model = None
     config.enable_hand_masking = False
     config.hand_mask_padding = 0
-    config.hand_mask_blur = 0
     config.camera_resolution = (100, 100)
     config.projector_matrix_resolution = (100, 100)
     config.projector_ppi = 96.0

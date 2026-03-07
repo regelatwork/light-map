@@ -13,7 +13,6 @@ def mock_config():
     config.width = 1920
     config.height = 1080
     config.hand_mask_padding = 10
-    config.hand_mask_blur = 5
     config.projector_matrix = np.eye(3)
     config.projector_ppi = 100.0
     config.distortion_model = None
@@ -96,7 +95,6 @@ def test_hand_mask_expansion_with_ppi():
         projector_matrix=np.eye(3),
         enable_hand_masking=True,
         hand_mask_padding=0,  # This shouldn't affect the mask shape anymore
-        hand_mask_blur=0,
         projector_ppi=100.0,
     )
 

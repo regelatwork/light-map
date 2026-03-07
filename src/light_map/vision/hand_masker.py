@@ -161,10 +161,6 @@ class HandMasker:
             cv2.drawContours(mask, hulls, -1, 255, thickness=padding * 2)
         cv2.fillPoly(mask, hulls, 255)
 
-        if blur > 0:
-            b = blur if blur % 2 == 1 else blur + 1
-            mask = cv2.GaussianBlur(mask, (b, b), 0)
-
         self._cached_mask = mask
         self._cached_hulls_hash = current_hash
         self._cached_params = current_params

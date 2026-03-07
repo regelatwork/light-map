@@ -240,7 +240,6 @@ def main():
         log_file=log_file,
         enable_hand_masking=gs.enable_hand_masking,
         hand_mask_padding=gs.hand_mask_padding,
-        hand_mask_blur=gs.hand_mask_blur,
         gm_position=gs.gm_position,
         projector_ppi=gs.projector_ppi,
         inspection_linger_duration=gs.inspection_linger_duration,

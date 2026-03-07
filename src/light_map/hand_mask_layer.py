@@ -102,10 +102,6 @@ class HandMaskLayer(Layer):
             )
             cv2.fillPoly(mask_patch, [local_hull.astype(np.int32)], 255)
 
-            if self.config.hand_mask_blur > 1:
-                k = self.config.hand_mask_blur * 2 + 1
-                mask_patch = cv2.GaussianBlur(mask_patch, (k, k), 0)
-
             patch_data = np.zeros((ph, pw, 4), dtype=np.uint8)
             patch_data[:, :, 3] = mask_patch  # RGB is 0 (Black)
 

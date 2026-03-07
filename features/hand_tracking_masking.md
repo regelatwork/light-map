@@ -90,7 +90,7 @@ The system supports a configurable "GM Position" to filter out accidental hand d
 
 ### Phase 3: Configuration & Tuning
 
-1. Add `enable_hand_masking`, `hand_mask_padding`, `hand_mask_blur`, and `input_mask_mode` to `AppConfig`.
+1. Add `enable_hand_masking`, `hand_mask_padding`, and `input_mask_mode` to `AppConfig`.
 1. Add toggle and selection entries in the menu system.
 
 ## Success Criteria

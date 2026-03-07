@@ -77,7 +77,6 @@ class InteractiveApp:
         gs = self.map_config.data.global_settings
         self.config.enable_hand_masking = gs.enable_hand_masking
         self.config.hand_mask_padding = gs.hand_mask_padding
-        self.config.hand_mask_blur = gs.hand_mask_blur
         self.config.gm_position = gs.gm_position
         self.config.projector_ppi = gs.projector_ppi
         self.config.inspection_linger_duration = gs.inspection_linger_duration

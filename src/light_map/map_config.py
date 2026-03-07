@@ -83,7 +83,6 @@ class GlobalMapConfig:
     # Masking Settings
     enable_hand_masking: bool = False
     hand_mask_padding: int = 30
-    hand_mask_blur: int = 15
     gm_position: GmPosition = GmPosition.NONE
     naming_style: NamingStyle = NamingStyle.SCI_FI
     inspection_linger_duration: float = 10.0
@@ -168,8 +167,7 @@ class MapConfigManager:
                 aruco_defaults=aruco_defaults,
                 enable_hand_masking=global_data.get("enable_hand_masking", False),
                 hand_mask_padding=global_data.get("hand_mask_padding", 30),
-                hand_mask_blur=global_data.get("hand_mask_blur", 15),
-                gm_position=GmPosition(global_data.get("gm_position", "None")),
+                gm_position=GmPosition(global_data.get("gm_position", "NONE")),
                 naming_style=NamingStyle(
                     global_data.get("naming_style", NamingStyle.SCI_FI)
                 ),

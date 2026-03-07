@@ -27,12 +27,11 @@ def test_visibility_layer_render():
     assert len(patches) == 1
     p = patches[0]
 
-    # Check color at (0,0) - should be light blue highlight
-    # highlight[visible_mask == 255] = [255, 100, 100]
-    # alpha[visible_mask == 255] = 150
-    assert np.array_equal(p.data[0, 0], [255, 100, 100, 150])
-    # Check outside
-    assert np.array_equal(p.data[1, 1], [0, 0, 0, 0])
+    # Check color at (0,0) - should be fully transparent (Visible LOS)
+    assert np.array_equal(p.data[0, 0], [0, 0, 0, 0])
+
+    # Check color at (1,1) - should be 60% opaque black (The Shroud)
+    assert np.array_equal(p.data[1, 1], [0, 0, 0, 150])
 
 
 def test_visibility_layer_caching():

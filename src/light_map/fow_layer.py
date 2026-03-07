@@ -71,11 +71,8 @@ class FogOfWarLayer(Layer):
             (self.manager.height, self.manager.width), 255, dtype=np.uint8
         )
 
-        # 2. Explored areas are 70% opaque (Alpha 178)
-        alpha_full[self.manager.explored_mask == 255] = 178
-
-        # 3. Currently visible areas are 0% opaque (Alpha 0)
-        alpha_full[self.manager.visible_mask == 255] = 0
+        # 2. Explored areas are 0% opaque (Alpha 0) - They are fully revealed by THIS layer
+        alpha_full[self.manager.explored_mask == 255] = 0
 
         # Combine BGR and Alpha for the full mask
         fow_bgra_full = cv2.merge(

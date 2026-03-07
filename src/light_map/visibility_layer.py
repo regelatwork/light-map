@@ -56,24 +56,14 @@ class VisibilityLayer(Layer):
             )
             return []
 
-        # Create a light blue highlight for visible areas
-        # 1. Create highlight in "Mask Space"
-        highlight_full = np.zeros(
-            (self.mask_height, self.mask_width, 3), dtype=np.uint8
-        )
-        highlight_full[mask == 255] = [255, 100, 100]
+        # Create 'The Shroud' (Dimming for non-visible areas)
+        # 1. Create shroud in "Mask Space"
+        # Start with 60% Opaque Black (Alpha 150)
+        bgra_full = np.zeros((self.mask_height, self.mask_width, 4), dtype=np.uint8)
+        bgra_full[:, :, 3] = 150  # Opaque Black
 
-        alpha_full = np.zeros((self.mask_height, self.mask_width), dtype=np.uint8)
-        alpha_full[mask == 255] = 150  # ~60% opaque
-
-        bgra_full = cv2.merge(
-            [
-                highlight_full[:, :, 0],
-                highlight_full[:, :, 1],
-                highlight_full[:, :, 2],
-                alpha_full,
-            ]
-        )
+        # Punch a hole for currently visible vision (0% opaque)
+        bgra_full[mask == 255, 3] = 0
 
         # 2. Transform to Screen Space
         if self.state.viewport:

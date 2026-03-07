@@ -23,7 +23,7 @@ class VisibilityLayer(Layer):
         width: int,
         height: int,
     ):
-        super().__init__(state=state)
+        super().__init__(state=state, is_static=True)
         self.mask_width = mask_width
         self.mask_height = mask_height
         self.grid_spacing_svg = grid_spacing_svg

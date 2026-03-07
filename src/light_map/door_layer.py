@@ -24,7 +24,7 @@ class DoorLayer(Layer):
         height: int,
         thickness_multiplier: float = 3.0,
     ):
-        super().__init__(state=state, layer_mode=LayerMode.NORMAL)
+        super().__init__(state=state, is_static=True, layer_mode=LayerMode.NORMAL)
         self.visibility_engine = visibility_engine
         self.width = width
         self.height = height

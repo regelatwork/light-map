@@ -56,8 +56,14 @@ if TYPE_CHECKING:
 
 from light_map.core.temporal_event_manager import TemporalEventManager
 
+
 class InteractiveApp:
-    def __init__(self, config: AppConfig, time_provider=time.monotonic, events: Optional[TemporalEventManager] = None):
+    def __init__(
+        self,
+        config: AppConfig,
+        time_provider=time.monotonic,
+        events: Optional[TemporalEventManager] = None,
+    ):
         self.config = config
         self.time_provider = time_provider
         self.events = events or TemporalEventManager(time_provider=time_provider)

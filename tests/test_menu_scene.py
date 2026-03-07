@@ -39,7 +39,7 @@ def mock_app_context():
         notifications=MagicMock(spec=NotificationManager),
         analytics=MagicMock(),
         events=MagicMock(),
-    )    # Mock the return value for is_map_loaded
+    )  # Mock the return value for is_map_loaded
     mock_context.map_system.is_map_loaded.return_value = True
     mock_context.map_system.svg_loader = MagicMock()
     mock_context.map_system.svg_loader.filename = "test.svg"

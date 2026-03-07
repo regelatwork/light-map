@@ -28,7 +28,7 @@ class FogOfWarLayer(Layer):
         width: int,
         height: int,
     ):
-        super().__init__(state=state)
+        super().__init__(state=state, is_static=True)
         self.manager = manager
         self.grid_spacing_svg = grid_spacing_svg
         self.grid_origin_svg = grid_origin_svg

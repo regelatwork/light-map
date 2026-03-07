@@ -43,7 +43,9 @@ class DwellTracker:
             self.is_triggered = False
             self._just_triggered = False
             if self.events:
-                self.events.schedule(self.dwell_time_threshold, self._trigger, key=self._event_key)
+                self.events.schedule(
+                    self.dwell_time_threshold, self._trigger, key=self._event_key
+                )
             return False
 
         # Calculate distance
@@ -67,7 +69,9 @@ class DwellTracker:
             self.is_triggered = False
             self._just_triggered = False
             if self.events:
-                self.events.schedule(self.dwell_time_threshold, self._trigger, key=self._event_key)
+                self.events.schedule(
+                    self.dwell_time_threshold, self._trigger, key=self._event_key
+                )
 
         # Async trigger check for TemporalEventManager
         if self._just_triggered:

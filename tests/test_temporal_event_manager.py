@@ -86,7 +86,7 @@ def test_tuple_keys():
     key = ("dwell", 123)
     manager.schedule(0.1, run, key=key)
     assert manager.has_event(key)
-    
+
     manager.cancel(key)
     assert not manager.has_event(key)
 

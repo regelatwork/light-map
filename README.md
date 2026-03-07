@@ -28,45 +28,52 @@ Light Map is an interactive Augmented Reality (AR) tabletop platform that merges
 
 ### Installation
 
-1.  **Clone the repository and enter the directory**:
-    ```bash
-    git clone https://github.com/rchandia/light_map.git
-    cd light_map
-    ```
+1. **Clone the repository and enter the directory**:
 
-1.  **Create and activate a virtual environment**:
-    ```bash
-    python -m venv .venv
-    source .venv/bin/activate
-    ```
+   ```bash
+   git clone https://github.com/rchandia/light_map.git
+   cd light_map
+   ```
 
-1.  **Install the package in editable mode**:
-    This registers the `light_map` package and provides the `light-map` command.
-    ```bash
-    pip install -e .
-    ```
+1. **Create and activate a virtual environment**:
+
+   ```bash
+   python -m venv .venv
+   source .venv/bin/activate
+   ```
+
+1. **Install the package in editable mode**:
+   This registers the `light_map` package and provides the `light-map` command.
+
+   ```bash
+   pip install -e .
+   ```
 
 ### Running the Application
 
 Once installed, you can use the `light-map` command directly or use the `python -m` syntax.
 
-1.  **Calibrate Camera**:
-    ```bash
-    python scripts/calibrate.py
-    ```
+1. **Calibrate Camera**:
 
-1.  **Calibrate Projector**:
-    ```bash
-    python scripts/projector_calibration.py
-    ```
+   ```bash
+   python scripts/calibrate.py
+   ```
 
-1.  **Run the App**:
-    ```bash
-    light-map --maps "maps/*.svg"
-    ```
-    *Alternatively:* `python -m light_map --maps "maps/*.svg"`
+1. **Calibrate Projector**:
 
-   See [Map System](docs/map_system.md) for more details on loading maps.
+   ```bash
+   python scripts/projector_calibration.py
+   ```
+
+1. **Run the App**:
+
+   ```bash
+   light-map --maps "maps/*.svg"
+   ```
+
+   *Alternatively:* `python -m light_map --maps "maps/*.svg"`
+
+See [Map System](docs/map_system.md) for more details on loading maps.
 
 ## Development
 

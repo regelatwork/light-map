@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING, Optional, Dict, Any, List, Callable
 import numpy as np
 
 from light_map.core.analytics import AnalyticsManager
+from light_map.core.temporal_event_manager import TemporalEventManager
 
 if TYPE_CHECKING:
     from .world_state import WorldState
@@ -29,6 +30,7 @@ class AppContext:
     projector_matrix: np.ndarray
     notifications: NotificationManager
     analytics: AnalyticsManager
+    events: TemporalEventManager
     aruco_detector: Optional[ArucoTokenDetector] = None
     camera_matrix: Optional[np.ndarray] = None
     dist_coeffs: Optional[np.ndarray] = None

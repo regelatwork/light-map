@@ -26,6 +26,7 @@ class MainLoopController:
         target_fps: int = 60,
         aruco_mapper: Optional[Callable[[Dict[str, Any]], List[Token]]] = None,
         state_mirror: Optional[Dict[str, Any]] = None,
+        events: Optional[TemporalEventManager] = None,
     ):
         self.state = world_state
         self.manager = process_manager
@@ -38,7 +39,7 @@ class MainLoopController:
 
         self.is_running = False
         self.instrument = LatencyInstrument()
-        self.events = TemporalEventManager()
+        self.events = events or TemporalEventManager()
         self.debug_mode = False
         self._last_report_time = 0.0
 

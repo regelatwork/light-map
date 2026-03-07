@@ -30,6 +30,10 @@ class TemporalEventManager:
 
         heapq.heappush(self._events, (target_time, callback, key))
 
+    def has_event(self, key: str) -> bool:
+        """Checks if an event with the given key is currently scheduled."""
+        return key in self._keys
+
     def cancel(self, key: str):
         """
         Cancels a scheduled event by its key.

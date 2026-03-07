@@ -335,6 +335,7 @@ def main():
                 producer,
                 aruco_mapper=app.aruco_mapper,
                 state_mirror=state_mirror,
+                events=app.events,
             )
 
             stop_event = threading.Event()

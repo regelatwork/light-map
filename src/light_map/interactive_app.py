@@ -54,10 +54,13 @@ if TYPE_CHECKING:
     from light_map.common_types import Action, Token
 
 
+from light_map.core.temporal_event_manager import TemporalEventManager
+
 class InteractiveApp:
-    def __init__(self, config: AppConfig, time_provider=time.monotonic):
+    def __init__(self, config: AppConfig, time_provider=time.monotonic, events: Optional[TemporalEventManager] = None):
         self.config = config
         self.time_provider = time_provider
+        self.events = events or TemporalEventManager(time_provider=time_provider)
         self.last_fps_time = 0.0
         self.fps = 0.0
 
@@ -336,6 +339,7 @@ class InteractiveApp:
             raw_tokens=self.state.raw_tokens,
             state=self.state,
             analytics=AnalyticsManager(self.config.storage_manager),
+            events=self.events,
             save_session=self.save_session,
         )
 

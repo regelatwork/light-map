@@ -10,6 +10,7 @@ from light_map.gestures import GestureType
 @pytest.fixture
 def map_scene_context():
     context = MagicMock(spec=AppContext)
+    context.events = MagicMock()
     context.map_system = MagicMock(spec=MapSystem)
     context.map_system.width = 1000
     context.map_system.height = 1000

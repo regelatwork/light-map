@@ -592,6 +592,34 @@ class InteractiveApp:
 
         return final_frame, []
 
+    def _sync_vision(self, state: "WorldState"):
+        """Helper to synchronize visibility mask and Fog of War."""
+        if self.fow_manager and self.current_map_path and state is not None:
+            # Calculate latest vision mask on-demand
+            combined_pc_mask = self.visibility_engine.get_aggregate_vision_mask(
+                state.tokens,
+                self.map_config,
+                self.fow_manager.width,
+                self.fow_manager.height,
+                vision_range_grid=25.0,
+            )
+
+            if combined_pc_mask is not None:
+                # 1. Update Persistent Fog of War (Explore new areas)
+                self.fow_manager.reveal_area(combined_pc_mask)
+
+                # 2. Update Visible Line-of-Sight (the 'clear holes')
+                self.fow_manager.set_visible_mask(combined_pc_mask)
+
+                # 3. Save both to stable storage
+                self.map_config.save_fow_masks(self.current_map_path, self.fow_manager)
+
+                # 4. Update VisibilityLayer (the highlight)
+                self.state.update_visibility_mask(combined_pc_mask)
+
+                # 5. Invalidate Layer Caches
+                self.fow_layer.is_dirty = True
+
     def _handle_payloads(self, payload: Any, state: Optional["WorldState"] = None):
         """Handle side-effects from scene transitions, like loading maps."""
         if not isinstance(payload, dict):
@@ -601,35 +629,9 @@ class InteractiveApp:
             self.load_map(payload["map_file"], payload.get("load_session", False))
 
         if payload.get("action") == "SYNC_VISION":
-            if self.fow_manager and self.current_map_path and state is not None:
-                # Calculate latest vision mask on-demand
-                combined_pc_mask = self.visibility_engine.get_aggregate_vision_mask(
-                    state.tokens,
-                    self.map_config,
-                    self.fow_manager.width,
-                    self.fow_manager.height,
-                    vision_range_grid=25.0,
-                )
-
-                if combined_pc_mask is not None:
-                    # 1. Update Persistent Fog of War (Explore new areas)
-                    self.fow_manager.reveal_area(combined_pc_mask)
-
-                    # 2. Update Visible Line-of-Sight (the 'clear holes')
-                    self.fow_manager.set_visible_mask(combined_pc_mask)
-
-                    # 3. Save both to stable storage
-                    self.map_config.save_fow_masks(
-                        self.current_map_path, self.fow_manager
-                    )
-
-                    # 4. Update VisibilityLayer (the highlight)
-                    self.state.update_visibility_mask(combined_pc_mask)
-
-                    # 5. Invalidate Layer Caches
-                    self.fow_layer.is_dirty = True
-
-                    self.notifications.add_notification("Vision Synchronized")
+            if state is not None:
+                self._sync_vision(state)
+                self.notifications.add_notification("Vision Synchronized")
 
         if payload.get("action") == "RESET_FOW":
             if self.fow_manager and self.current_map_path:
@@ -666,6 +668,10 @@ class InteractiveApp:
                     )
                     self.notifications.add_notification(f"Door {door_id} Toggled")
                     self.save_session()  # Persist door state
+
+                    # Sync vision immediately when a door is toggled
+                    if state is not None:
+                        self._sync_vision(state)
 
     def switch_to_viewing(self):
         """Switches the current scene to ViewingScene."""

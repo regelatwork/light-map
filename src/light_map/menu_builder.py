@@ -115,11 +115,19 @@ def build_root_menu(
                 action_id=MenuActions.SYNC_VISION,
                 should_close_on_trigger=True,
             ),
-            MenuItem(
-                title="Map Interaction Mode",
-                action_id=MenuActions.MAP_CONTROLS,
-                should_close_on_trigger=True,
-            ),
+        ]
+        + (
+            [
+                MenuItem(
+                    title=f"Toggle Door ({selected_door})",
+                    action_id=MenuActions.TOGGLE_DOOR,
+                    should_close_on_trigger=True,
+                )
+            ]
+            if selected_door
+            else []
+        )
+        + [
             MenuItem(
                 title="Map Settings",
                 children=[
@@ -163,18 +171,12 @@ def build_root_menu(
                         action_id=MenuActions.TOGGLE_FOW,
                         should_close_on_trigger=False,
                     ),
-                ]
-                + (
-                    [
-                        MenuItem(
-                            title=f"Toggle Door ({selected_door})",
-                            action_id=MenuActions.TOGGLE_DOOR,
-                            should_close_on_trigger=True,
-                        )
-                    ]
-                    if selected_door
-                    else []
-                ),
+                ],
+            ),
+            MenuItem(
+                title="Map Interaction Mode",
+                action_id=MenuActions.MAP_CONTROLS,
+                should_close_on_trigger=True,
             ),
             MenuItem(
                 title="Calibration",

@@ -74,3 +74,22 @@ def test_supersede_event():
     time.sleep(0.1)
     manager.check()
     assert results == ["second"]
+
+
+def test_tuple_keys():
+    manager = TemporalEventManager()
+    state = {"run": False}
+
+    def run():
+        state["run"] = True
+
+    key = ("dwell", 123)
+    manager.schedule(0.1, run, key=key)
+    assert manager.has_event(key)
+    
+    manager.cancel(key)
+    assert not manager.has_event(key)
+
+    time.sleep(0.15)
+    manager.check()
+    assert state["run"] is False

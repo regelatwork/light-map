@@ -143,6 +143,13 @@ class SelectionType(StrEnum):
     TOKEN = "TOKEN"
 
 
+class TimerKey(StrEnum):
+    INSPECTION_LINGER = "inspection_linger"
+    TOKEN_TOGGLE_COOLDOWN = "token_toggle_cooldown"
+    SUMMON_MENU = "summon_menu"
+    DWELL = "dwell"
+
+
 @dataclass
 class SelectionState:
     type: SelectionType = SelectionType.NONE

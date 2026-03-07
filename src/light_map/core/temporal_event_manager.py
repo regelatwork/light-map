@@ -1,6 +1,6 @@
 import heapq
 import time
-from typing import Callable, Any, List, Tuple, Dict, Optional
+from typing import Callable, Any, List, Tuple, Dict, Optional, Hashable
 
 
 class TemporalEventManager:
@@ -13,28 +13,28 @@ class TemporalEventManager:
     def __init__(self, time_provider: Callable[[], float] = time.monotonic):
         self.time_provider = time_provider
         # Priority queue: (target_time, callback, key)
-        self._events: List[Tuple[float, Callable[[], Any], Optional[str]]] = []
+        self._events: List[Tuple[float, Callable[[], Any], Optional[Hashable]]] = []
         # Index for cancellation: key -> target_time (to detect stale heap entries)
-        self._keys: Dict[str, float] = {}
+        self._keys: Dict[Hashable, float] = {}
 
     def schedule(
-        self, delay: float, callback: Callable[[], Any], key: Optional[str] = None
+        self, delay: float, callback: Callable[[], Any], key: Optional[Hashable] = None
     ):
         """
         Schedules a callback to be executed after `delay` seconds.
         If a key is provided and already exists, the old event is effectively replaced.
         """
         target_time = self.time_provider() + delay
-        if key:
+        if key is not None:
             self._keys[key] = target_time
 
         heapq.heappush(self._events, (target_time, callback, key))
 
-    def has_event(self, key: str) -> bool:
+    def has_event(self, key: Hashable) -> bool:
         """Checks if an event with the given key is currently scheduled."""
         return key in self._keys
 
-    def cancel(self, key: str):
+    def cancel(self, key: Hashable):
         """
         Cancels a scheduled event by its key.
         """

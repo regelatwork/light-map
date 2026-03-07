@@ -1,6 +1,7 @@
 import math
 from typing import Tuple, Optional, Callable
 from light_map.core.temporal_event_manager import TemporalEventManager
+from light_map.common_types import TimerKey
 
 
 class DwellTracker:
@@ -25,7 +26,7 @@ class DwellTracker:
         self.accumulated_time = 0.0
         self.is_triggered = False
         self._just_triggered = False
-        self._event_key = f"dwell_{id(self)}"
+        self._event_key = (TimerKey.DWELL, id(self))
 
     def update(self, point: Optional[Tuple[float, float]], dt: float) -> bool:
         """

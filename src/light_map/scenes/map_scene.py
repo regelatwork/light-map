@@ -9,7 +9,7 @@ import light_map.menu_config as config_vars
 from light_map.core.map_interaction import MapInteractionController
 from light_map.core.scene import Scene, SceneTransition
 from light_map.gestures import GestureType
-from light_map.common_types import SceneId, SelectionType
+from light_map.common_types import SceneId, SelectionType, TimerKey
 from light_map.dwell_tracker import DwellTracker
 
 from light_map.map_system import MapSystem
@@ -171,21 +171,21 @@ class BaseMapScene(Scene):
         if primary_gesture == GestureType.POINTING and cursor_pos is not None:
             if self.dwell_tracker.update(cursor_pos, dt):
                 self._handle_dwell_trigger(cursor_pos)
-                self.context.events.cancel("inspection_linger")
+                self.context.events.cancel(TimerKey.INSPECTION_LINGER)
         else:
             self.dwell_tracker.reset()
 
             # Start linger timer if we were inspecting
             if (
                 self.context.inspected_token_id is not None
-                and not self.context.events.has_event("inspection_linger")
+                and not self.context.events.has_event(TimerKey.INSPECTION_LINGER)
             ):
                 duration = getattr(
                     self.context.app_config, "inspection_linger_duration", 10.0
                 )
                 def clear_inspection():
                     self.context.inspected_token_id = None
-                self.context.events.schedule(duration, clear_inspection, key="inspection_linger")
+                self.context.events.schedule(duration, clear_inspection, key=TimerKey.INSPECTION_LINGER)
 
 
 class ViewingScene(BaseMapScene):
@@ -231,19 +231,19 @@ class ViewingScene(BaseMapScene):
 
         # Toggle token visibility
         if primary_gesture == GestureType.SHAKA:
-            if not self.context.events.has_event("token_toggle_cooldown"):
+            if not self.context.events.has_event(TimerKey.TOKEN_TOGGLE_COOLDOWN):
                 self.context.show_tokens = not self.context.show_tokens
-                self.context.events.schedule(1.0, lambda: None, key="token_toggle_cooldown")
+                self.context.events.schedule(1.0, lambda: None, key=TimerKey.TOKEN_TOGGLE_COOLDOWN)
 
         if primary_gesture == config_vars.SUMMON_GESTURE:
-            if not self.context.events.has_event("summon_menu"):
+            if not self.context.events.has_event(TimerKey.SUMMON_MENU):
                 logging.debug("Summon gesture started")
                 def trigger_menu():
                     self._transition_to = SceneId.MENU
-                self.context.events.schedule(config_vars.SUMMON_TIME, trigger_menu, key="summon_menu")
+                self.context.events.schedule(config_vars.SUMMON_TIME, trigger_menu, key=TimerKey.SUMMON_MENU)
         else:
-            if self.context.events.has_event("summon_menu"):
-                self.context.events.cancel("summon_menu")
+            if self.context.events.has_event(TimerKey.SUMMON_MENU):
+                self.context.events.cancel(TimerKey.SUMMON_MENU)
 
         if getattr(self, "_transition_to", None) is not None:
             t = self._transition_to
@@ -300,18 +300,18 @@ class MapScene(BaseMapScene):
 
         # Toggle token visibility
         if primary_gesture == GestureType.SHAKA:
-            if not self.context.events.has_event("token_toggle_cooldown"):
+            if not self.context.events.has_event(TimerKey.TOKEN_TOGGLE_COOLDOWN):
                 self.context.show_tokens = not self.context.show_tokens
-                self.context.events.schedule(1.0, lambda: None, key="token_toggle_cooldown")
+                self.context.events.schedule(1.0, lambda: None, key=TimerKey.TOKEN_TOGGLE_COOLDOWN)
 
         if primary_gesture == config_vars.SUMMON_GESTURE:
-            if not self.context.events.has_event("summon_menu"):
+            if not self.context.events.has_event(TimerKey.SUMMON_MENU):
                 def trigger_menu():
                     self._transition_to = SceneId.MENU
-                self.context.events.schedule(config_vars.SUMMON_TIME, trigger_menu, key="summon_menu")
+                self.context.events.schedule(config_vars.SUMMON_TIME, trigger_menu, key=TimerKey.SUMMON_MENU)
         else:
-            if self.context.events.has_event("summon_menu"):
-                self.context.events.cancel("summon_menu")
+            if self.context.events.has_event(TimerKey.SUMMON_MENU):
+                self.context.events.cancel(TimerKey.SUMMON_MENU)
                 
         if getattr(self, "_transition_to", None) is not None:
             t = self._transition_to

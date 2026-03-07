@@ -786,9 +786,10 @@ class InteractiveApp:
                 self.state.tokens = session.tokens
                 self.state.tokens_timestamp += 1
 
+                from light_map.visibility_types import VisibilityType
                 # Restore door states
                 for blocker in self.visibility_engine.blockers:
-                    if blocker.id in session.door_states:
+                    if blocker.type == VisibilityType.DOOR and blocker.id in session.door_states:
                         blocker.is_open = session.door_states[blocker.id]
                 self.visibility_engine.update_blockers(
                     self.visibility_engine.blockers, mask_w, mask_h
@@ -866,11 +867,12 @@ class InteractiveApp:
 
         from light_map.common_types import SessionData, ViewportState
 
+        from light_map.visibility_types import VisibilityType, VisibilityBlocker
         # Collect current door states
         door_states = {
             b.id: b.is_open
             for b in self.visibility_engine.blockers
-            if b.type == "door"
+            if b.type == VisibilityType.DOOR
         }
 
         session = SessionData(

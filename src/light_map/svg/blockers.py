@@ -61,6 +61,10 @@ def get_visibility_blockers(svg: svgelements.SVG) -> List[VisibilityBlocker]:
     blockers, id_counts = [], {}
 
     def traverse(element, v_type=None, layer_name="", is_unbreakable=False):
+        tag = element.values.get("tag")
+        if tag in ("symbol", "defs"):
+            return
+
         label = get_element_label(element)
         if label:
             new_type, new_unbreakable = get_visibility_type(label)
@@ -74,7 +78,8 @@ def get_visibility_blockers(svg: svgelements.SVG) -> List[VisibilityBlocker]:
             if blocker:
                 blockers.append(blocker)
 
-        if isinstance(element, (svgelements.Group, svgelements.SVG)):
+        # Recurse into containers (Groups, SVG, and Use elements)
+        if isinstance(element, list):
             for child in element:
                 traverse(child, v_type, layer_name, is_unbreakable)
 

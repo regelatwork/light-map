@@ -32,6 +32,10 @@ class SVGLoader:
         door_element_ids = set()
 
         def find_doors(elem, in_door=False):
+            tag = elem.values.get("tag")
+            if tag in ("symbol", "defs"):
+                return
+
             is_this_door = in_door
             if not is_this_door:
                 label = get_element_label(elem)
@@ -41,7 +45,7 @@ class SVGLoader:
             if is_this_door:
                 door_element_ids.add(id(elem))
 
-            if isinstance(elem, (svgelements.Group, svgelements.SVG)):
+            if isinstance(elem, list):
                 for child in elem:
                     find_doors(child, is_this_door)
 
@@ -124,22 +128,33 @@ class SVGLoader:
         )
         door_element_ids = self._find_door_ids()
 
-        for element in self.svg.elements():
-            if id(element) in door_element_ids:
-                continue
+        def traverse(elem):
+            tag = elem.values.get("tag")
+            if tag in ("symbol", "defs"):
+                return
+
+            if id(elem) in door_element_ids:
+                return
+
             try:
-                if isinstance(element, svgelements.Image):
+                if isinstance(elem, svgelements.Image):
                     render_image_element(
-                        element, image, final_vp_matrix, render_w, render_h
+                        elem, image, final_vp_matrix, render_w, render_h
                     )
-                elif isinstance(element, svgelements.Text):
-                    render_text_element(element, image, final_vp_matrix)
-                elif isinstance(element, svgelements.Shape):
+                elif isinstance(elem, svgelements.Text):
+                    render_text_element(elem, image, final_vp_matrix)
+                elif isinstance(elem, svgelements.Shape):
                     render_shape_element(
-                        element, image, final_vp_matrix, scale_factor, quality
+                        elem, image, final_vp_matrix, scale_factor, quality
                     )
             except Exception:
-                continue
+                pass
+
+            if isinstance(elem, list):
+                for child in elem:
+                    traverse(child)
+
+        traverse(self.svg)
 
         return (
             cv2.resize(image, (target_width, target_height)) if quality < 1.0 else image

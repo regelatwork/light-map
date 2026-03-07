@@ -3,7 +3,7 @@ import numpy as np
 import cv2
 import base64
 from io import BytesIO
-from typing import List
+from typing import List, Tuple
 from PIL import Image
 from .utils import get_element_opacity
 from .geometry import convert_path_to_points
@@ -118,6 +118,61 @@ def apply_fill(
         cv2.addWeighted(overlay, fill_opacity, image, 1.0 - fill_opacity, 0, image)
 
 
+def draw_dashed_polyline(
+    image: np.ndarray,
+    polyline: np.ndarray,
+    color: Tuple[int, int, int],
+    thickness: int,
+    dash_array: List[float],
+    is_closed: bool = False,
+):
+    """Draws a dashed polyline using OpenCV."""
+    if not dash_array:
+        cv2.polylines(image, [polyline], is_closed, color, thickness)
+        return
+
+    # Flatten the points from (N, 1, 2) to (N, 2)
+    pts = polyline.reshape(-1, 2)
+    if is_closed:
+        pts = np.vstack([pts, pts[0]])
+
+    dash_idx = 0
+    dash_remaining = dash_array[0]
+    dash_state = True  # True = Draw, False = Gap
+
+    for i in range(len(pts) - 1):
+        p1 = pts[i]
+        p2 = pts[i + 1]
+        vec = p2 - p1
+        segment_len = np.linalg.norm(vec)
+        if segment_len < 1e-6:
+            continue
+
+        unit_vec = vec / segment_len
+        dist_traversed = 0.0
+
+        while dist_traversed < segment_len:
+            draw_len = min(segment_len - dist_traversed, dash_remaining)
+            if dash_state:
+                start_pt = p1 + unit_vec * dist_traversed
+                end_pt = start_pt + unit_vec * draw_len
+                cv2.line(
+                    image,
+                    tuple(start_pt.astype(int)),
+                    tuple(end_pt.astype(int)),
+                    color,
+                    thickness,
+                )
+
+            dist_traversed += draw_len
+            dash_remaining -= draw_len
+
+            if dash_remaining < 1e-6:
+                dash_idx = (dash_idx + 1) % len(dash_array)
+                dash_remaining = dash_array[dash_idx]
+                dash_state = not dash_state
+
+
 def apply_stroke(
     element: svgelements.Shape,
     image: np.ndarray,
@@ -136,21 +191,45 @@ def apply_stroke(
 
     stroke_opacity = element_opacity * float(getattr(c, "opacity", 1.0) or 1.0)
     thickness = 1
+    avg_scale = (abs(final_vp_matrix.a) + abs(final_vp_matrix.d)) / 2
     if element.stroke_width is not None:
-        avg_scale = (abs(final_vp_matrix.a) + abs(final_vp_matrix.d)) / 2
         thickness = max(1, int(element.stroke_width * avg_scale))
 
+    # Dash support
+    dash_array = []
+    if "stroke-dasharray" in element.values:
+        try:
+            val = str(element.values["stroke-dasharray"])
+            # Split by comma or space
+            parts = val.replace(",", " ").split()
+            dash_array = [float(p) * avg_scale for p in parts if p.strip()]
+            # If odd number of elements, SVG specs say repeat it
+            if len(dash_array) % 2 == 1:
+                dash_array.extend(dash_array)
+        except (ValueError, TypeError):
+            dash_array = []
+
+    def draw_all(img_target, alpha):
+        for sub in closed_subpaths:
+            if dash_array:
+                draw_dashed_polyline(
+                    img_target, sub, color, thickness, dash_array, is_closed=True
+                )
+            else:
+                cv2.polylines(img_target, [sub], True, color, thickness)
+        for sub in open_subpaths:
+            if dash_array:
+                draw_dashed_polyline(
+                    img_target, sub, color, thickness, dash_array, is_closed=False
+                )
+            else:
+                cv2.polylines(img_target, [sub], False, color, thickness)
+
     if stroke_opacity >= 0.99:
-        if closed_subpaths:
-            cv2.polylines(image, closed_subpaths, True, color, thickness)
-        if open_subpaths:
-            cv2.polylines(image, open_subpaths, False, color, thickness)
+        draw_all(image, 1.0)
     elif stroke_opacity > 0:
         overlay = image.copy()
-        if closed_subpaths:
-            cv2.polylines(overlay, closed_subpaths, True, color, thickness)
-        if open_subpaths:
-            cv2.polylines(overlay, open_subpaths, False, color, thickness)
+        draw_all(overlay, stroke_opacity)
         cv2.addWeighted(overlay, stroke_opacity, image, 1.0 - stroke_opacity, 0, image)
 
 

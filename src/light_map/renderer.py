@@ -138,19 +138,16 @@ class Renderer:
                 if not np.any(alpha_channel):
                     return
 
-                # If all pixels are opaque, do blocking copy
-                if np.all(alpha_channel == 255):
-                    buffer[y1:y2, x1:x2] = patch_slice[:, :, :3]
-                    return
+                # Standard Alpha blending: (Patch * Alpha) + (Buffer * (255 - Alpha)) / 255
+                # Using uint16 to avoid overflow (255 * 255 = 65025 < 65535)
+                # and then back to uint8
+                alpha = alpha_channel[:, :, np.newaxis].astype(np.uint16)
+                roi = buffer[y1:y2, x1:x2].astype(np.uint16)
+                patch_bgr = patch_slice[:, :, :3].astype(np.uint16)
 
-                # Standard Alpha blending: (Patch * Alpha) + (Buffer * (1 - Alpha))
-                # Using float32 for blending to avoid overflow and then back to uint8
-                alpha = alpha_channel[:, :, np.newaxis].astype(np.float32) / 255.0
-                roi = buffer[y1:y2, x1:x2].astype(np.float32)
-                patch_bgr = patch_slice[:, :, :3].astype(np.float32)
-
-                blended = (patch_bgr * alpha + roi * (1.0 - alpha)).astype(np.uint8)
-                buffer[y1:y2, x1:x2] = blended
+                # Integer blending formula: (src * alpha + dst * (255 - alpha)) // 255
+                blended = (patch_bgr * alpha + roi * (255 - alpha)) // 255
+                buffer[y1:y2, x1:x2] = blended.astype(np.uint8)
             else:
                 # No alpha channel, treat as blocking
                 buffer[y1:y2, x1:x2] = patch_slice[:, :, :3]

@@ -43,6 +43,7 @@ def test_input_processor_virtual_pointer_offset(mocker):
     config.height = 1080
     config.projector_matrix = np.eye(3)
     config.projector_ppi = 100.0  # 100 pixels per inch
+    config.pointer_extension_inches = 2.0
     config.distortion_model = None
     config.gm_position = "None"
 
@@ -73,7 +74,12 @@ def test_input_processor_virtual_pointer_offset(mocker):
     # Pointing UP in cam space should roughly be pointing UP in projector space with identity matrix
     # uy should be negative
     assert inp.unit_direction[0] == pytest.approx(0.0, abs=0.01)
-    assert inp.unit_direction[1] < 0
+    assert inp.unit_direction[1] == pytest.approx(-1.0, abs=0.01)
     # Should be unit vector
     mag = np.sqrt(inp.unit_direction[0] ** 2 + inp.unit_direction[1] ** 2)
     assert pytest.approx(mag) == 1.0
+
+    # cursor_pos = proj_pos + direction * ppi * extension
+    # cx = 960 + 0 * 100 * 2 = 960
+    # cy = 432 + (-1) * 100 * 2 = 232
+    assert inp.cursor_pos == (960, 232)

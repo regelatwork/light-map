@@ -138,8 +138,9 @@ class InputProcessor:
             cursor_pos = None
             if gesture == GestureType.POINTING:
                 ppi = getattr(self.config, "projector_ppi", 96.0)
-                cx = int(px + ux * ppi)
-                cy = int(py + uy * ppi)
+                ext = getattr(self.config, "pointer_extension_inches", 2.0)
+                cx = int(px + ux * ppi * ext)
+                cy = int(py + uy * ppi * ext)
                 cursor_pos = (cx, cy)
 
             # Input Masking (Filter by GM Position)

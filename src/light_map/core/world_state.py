@@ -1,6 +1,12 @@
 import numpy as np
 from typing import List, Optional, Callable, Any, Dict
-from light_map.common_types import Token, DetectionResult, ResultType, ViewportState
+from light_map.common_types import (
+    Token,
+    DetectionResult,
+    ResultType,
+    ViewportState,
+    SelectionState,
+)
 from light_map.menu_system import MenuState
 from light_map.core.scene import HandInput
 
@@ -33,6 +39,7 @@ class WorldState:
         self.current_scene_name: str = ""
         self.effective_show_tokens: bool = True
         self.visibility_mask: Optional[np.ndarray] = None
+        self.selection: SelectionState = SelectionState()
 
         # Granular Timestamps (Monotonic counters for caching)
         self.map_timestamp: int = 0

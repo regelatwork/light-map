@@ -8,6 +8,7 @@ import numpy as np
 from light_map.core.analytics import AnalyticsManager
 
 if TYPE_CHECKING:
+    from .world_state import WorldState
     from light_map.map_config import MapConfigManager
     from light_map.map_system import MapSystem
     from .notification import NotificationManager
@@ -42,7 +43,7 @@ class AppContext:
         default_factory=lambda: {"corners": [], "ids": []}
     )
     raw_tokens: List[Any] = field(default_factory=list)
-    selected_door: Optional[str] = None
+    state: Optional[WorldState] = None
     inspected_token_id: Optional[int] = None
     inspected_token_mask: Optional[np.ndarray] = None
     save_session: Optional[Callable[[], None]] = None

@@ -137,6 +137,19 @@ class SceneId(StrEnum):
     CALIBRATE_EXTRINSICS = "CALIBRATE_EXTRINSICS"
 
 
+class SelectionType(StrEnum):
+    NONE = "NONE"
+    DOOR = "DOOR"
+    TOKEN = "TOKEN"
+
+
+@dataclass
+class SelectionState:
+    type: SelectionType = SelectionType.NONE
+    id: Optional[str] = None
+    metadata: Dict[str, Any] = field(default_factory=dict)
+
+
 class ResultType(StrEnum):
     ARUCO = "ARUCO"
     HANDS = "HANDS"

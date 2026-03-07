@@ -9,7 +9,7 @@ import light_map.menu_config as config_vars
 from light_map.core.map_interaction import MapInteractionController
 from light_map.core.scene import Scene, SceneTransition
 from light_map.gestures import GestureType
-from light_map.common_types import SceneId
+from light_map.common_types import SceneId, SelectionType
 from light_map.dwell_tracker import DwellTracker
 
 from light_map.map_system import MapSystem
@@ -66,6 +66,10 @@ class BaseMapScene(Scene):
             )
             if dist < 0.5 * grid_spacing:
                 self.context.inspected_token_id = token.id
+                if self.context.state:
+                    self.context.state.selection.type = SelectionType.TOKEN
+                    self.context.state.selection.id = str(token.id)
+
                 # Resolve token name for better notification
                 map_file = (
                     self.context.map_system.svg_loader.filename
@@ -105,6 +109,10 @@ class BaseMapScene(Scene):
         door_id = self._check_door_collision(world_x, world_y)
         if door_id:
             self.context.selected_door = door_id
+            if self.context.state:
+                self.context.state.selection.type = SelectionType.DOOR
+                self.context.state.selection.id = door_id
+
             self.context.notifications.add_notification(
                 f"Selected Door: {door_id}", duration=0.5
             )

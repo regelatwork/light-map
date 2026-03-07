@@ -323,6 +323,8 @@ class InteractiveApp:
             camera_tvec=tvec,
             debug_mode=debug_mode,
             show_tokens=show_tokens,
+            raw_tokens=self.state.raw_tokens,
+            state=self.state,
             analytics=AnalyticsManager(self.config.storage_manager),
             save_session=self.save_session,
         )
@@ -634,8 +636,12 @@ class InteractiveApp:
                 self.notifications.add_notification(f"GM: Fog of War {state}")
 
         if payload.get("action") == "TOGGLE_DOOR":
-            door_id = payload.get("door")
-            if door_id:
+            from light_map.common_types import SelectionType
+            if (
+                self.state.selection.type == SelectionType.DOOR
+                and self.state.selection.id
+            ):
+                door_id = self.state.selection.id
                 # Toggle door in visibility engine
                 found = False
                 for blocker in self.visibility_engine.blockers:

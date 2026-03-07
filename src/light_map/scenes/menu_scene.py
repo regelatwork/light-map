@@ -28,13 +28,16 @@ class MenuScene(Scene):
     def __init__(self, context: AppContext):
         super().__init__(context)
 
-        selected_door = getattr(self.context, "selected_door", None)
+        from light_map.common_types import SelectionType
+        selected_door = None
         door_is_open = False
-        if selected_door:
-            for blocker in self.context.visibility_engine.blockers:
-                if blocker.layer_name == selected_door:
-                    door_is_open = blocker.is_open
-                    break
+        if self.context.state and self.context.state.selection.type == SelectionType.DOOR:
+            selected_door = self.context.state.selection.id
+            if selected_door:
+                for blocker in self.context.visibility_engine.blockers:
+                    if blocker.id == selected_door:
+                        door_is_open = blocker.is_open
+                        break
 
         dynamic_root = build_root_menu(
             self.context.map_config_manager,
@@ -54,13 +57,18 @@ class MenuScene(Scene):
         """Called once when the scene becomes active."""
         self.menu_system.state = MenuSystemState.ACTIVE
         # Rebuild menu in case of changes (e.g., map list, debug state)
-        selected_door = getattr(self.context, "selected_door", None)
+        from light_map.common_types import SelectionType
+        
+        selected_door = None
         door_is_open = False
-        if selected_door:
-            for blocker in self.context.visibility_engine.blockers:
-                if blocker.layer_name == selected_door:
-                    door_is_open = blocker.is_open
-                    break
+        
+        if self.context.state and self.context.state.selection.type == SelectionType.DOOR:
+            selected_door = self.context.state.selection.id
+            if selected_door:
+                for blocker in self.context.visibility_engine.blockers:
+                    if blocker.id == selected_door:
+                        door_is_open = blocker.is_open
+                        break
 
         new_root = build_root_menu(
             self.context.map_config_manager,
@@ -161,13 +169,16 @@ class MenuScene(Scene):
 
             self.context.map_config_manager.set_detection_algorithm(new_algo)
             # Rebuild menu to update title
-            selected_door = getattr(self.context, "selected_door", None)
+            from light_map.common_types import SelectionType
+            selected_door = None
             door_is_open = False
-            if selected_door:
-                for blocker in self.context.visibility_engine.blockers:
-                    if blocker.layer_name == selected_door:
-                        door_is_open = blocker.is_open
-                        break
+            if self.context.state and self.context.state.selection.type == SelectionType.DOOR:
+                selected_door = self.context.state.selection.id
+                if selected_door:
+                    for blocker in self.context.visibility_engine.blockers:
+                        if blocker.id == selected_door:
+                            door_is_open = blocker.is_open
+                            break
 
             new_root = build_root_menu(
                 self.context.map_config_manager,

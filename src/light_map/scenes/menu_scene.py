@@ -28,7 +28,19 @@ class MenuScene(Scene):
     def __init__(self, context: AppContext):
         super().__init__(context)
 
-        dynamic_root = build_root_menu(self.context.map_config_manager)
+        selected_door = getattr(self.context, "selected_door", None)
+        door_is_open = False
+        if selected_door:
+            for blocker in self.context.visibility_engine.blockers:
+                if blocker.layer_name == selected_door:
+                    door_is_open = blocker.is_open
+                    break
+
+        dynamic_root = build_root_menu(
+            self.context.map_config_manager,
+            selected_door=selected_door,
+            door_is_open=door_is_open,
+        )
 
         self.menu_system = MenuSystem(
             self.context.app_config.width,
@@ -43,8 +55,17 @@ class MenuScene(Scene):
         self.menu_system.state = MenuSystemState.ACTIVE
         # Rebuild menu in case of changes (e.g., map list, debug state)
         selected_door = getattr(self.context, "selected_door", None)
+        door_is_open = False
+        if selected_door:
+            for blocker in self.context.visibility_engine.blockers:
+                if blocker.layer_name == selected_door:
+                    door_is_open = blocker.is_open
+                    break
+
         new_root = build_root_menu(
-            self.context.map_config_manager, selected_door=selected_door
+            self.context.map_config_manager,
+            selected_door=selected_door,
+            door_is_open=door_is_open,
         )
         self.menu_system.set_root_menu(new_root)
         self._is_dirty = True
@@ -140,7 +161,19 @@ class MenuScene(Scene):
 
             self.context.map_config_manager.set_detection_algorithm(new_algo)
             # Rebuild menu to update title
-            new_root = build_root_menu(self.context.map_config_manager)
+            selected_door = getattr(self.context, "selected_door", None)
+            door_is_open = False
+            if selected_door:
+                for blocker in self.context.visibility_engine.blockers:
+                    if blocker.layer_name == selected_door:
+                        door_is_open = blocker.is_open
+                        break
+
+            new_root = build_root_menu(
+                self.context.map_config_manager,
+                selected_door=selected_door,
+                door_is_open=door_is_open,
+            )
             self.menu_system.set_root_menu(new_root)
         elif action == MenuActions.EXIT:
             sys.exit(0)

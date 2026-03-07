@@ -48,7 +48,9 @@ def build_map_actions_submenu(filename: str, has_session: bool) -> List[MenuItem
 
 
 def build_root_menu(
-    map_config: MapConfigManager, selected_door: Optional[str] = None
+    map_config: MapConfigManager,
+    selected_door: Optional[str] = None,
+    door_is_open: bool = False,
 ) -> MenuItem:
 
     # Build Maps Submenu
@@ -119,7 +121,7 @@ def build_root_menu(
         + (
             [
                 MenuItem(
-                    title=f"Toggle Door ({selected_door})",
+                    title=f"{'Close' if door_is_open else 'Open'} Door ({selected_door})",
                     action_id=MenuActions.TOGGLE_DOOR,
                     should_close_on_trigger=True,
                 )

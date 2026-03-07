@@ -98,7 +98,14 @@ def verify():
         httpx.post(f"{base_url}/map/zoom", params={"delta": -0.1})
         time.sleep(2)
 
-        # 9. Observe stability again and wait for Performance Statistics (logged every 10s)
+        # 9. Trigger Vision Actions
+        print("Testing Vision Actions (SYNC_VISION, RESET_FOW)...")
+        httpx.post(f"{base_url}/input/action", params={"action": "SYNC_VISION"})
+        time.sleep(2)
+        httpx.post(f"{base_url}/input/action", params={"action": "RESET_FOW"})
+        time.sleep(2)
+
+        # 10. Observe stability again and wait for Performance Statistics (logged every 10s)
         print("Waiting for final stability and performance report (approx 15s)...")
         time.sleep(15)
 

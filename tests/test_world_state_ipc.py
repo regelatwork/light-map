@@ -115,6 +115,28 @@ def test_world_state_apply_results():
     assert state.hands_timestamp > 0
 
 
+def test_world_state_apply_actions():
+    state = WorldState()
+
+    # 1. Apply Action result
+    action_data = {"action": "SYNC_VISION", "payload": None}
+    result = DetectionResult(timestamp=3000, type=ResultType.ACTION, data=action_data)
+
+    state.apply(result)
+    assert len(state.pending_actions) == 1
+    assert state.pending_actions[0] == action_data
+
+    # 2. Apply another one
+    action_data_2 = {"action": "ZOOM", "delta": 0.1}
+    result_2 = DetectionResult(
+        timestamp=3010, type=ResultType.ACTION, data=action_data_2
+    )
+
+    state.apply(result_2)
+    assert len(state.pending_actions) == 2
+    assert state.pending_actions[1] == action_data_2
+
+
 def test_world_state_timestamp_sync():
     state = WorldState()
     state.last_frame_timestamp = 5000

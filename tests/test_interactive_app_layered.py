@@ -97,3 +97,40 @@ def test_interactive_app_process_state_skips_render_when_not_dirty(
 
     frame2, _ = app.process_state(ws, [])
     assert frame2 is None
+
+
+def test_interactive_app_process_state_actions(mock_config, monkeypatch):
+    monkeypatch.setattr(
+        InteractiveApp,
+        "_load_camera_calibration",
+        lambda self: (np.eye(3), np.zeros(5), np.zeros(3), np.zeros(3)),
+    )
+
+    app = InteractiveApp(mock_config)
+    ws = app.state
+
+    # 1. Setup mock scene
+    app.current_scene = MagicMock()
+    app.current_scene.is_dirty = True
+    app.current_scene.update.return_value = None
+    app.current_scene.get_active_layers.return_value = app.layer_stack
+    app.current_scene.render.side_effect = lambda f: f  # Return the buffer passed in
+
+    # 2. Inject ZOOM action
+    initial_zoom = app.map_system.state.zoom
+    ws.pending_actions.append({"action": "ZOOM", "delta": 0.5})
+
+    app.process_state(ws, [])
+
+    # Expected: zoom * (1.0 + 0.5)
+    assert app.map_system.state.zoom == initial_zoom * 1.5
+    assert len(ws.pending_actions) == 0
+
+    # 3. Inject Generic Action (SYNC_VISION)
+    app._sync_vision = MagicMock()
+    ws.pending_actions.append({"action": "SYNC_VISION"})
+
+    app.process_state(ws, [])
+
+    app._sync_vision.assert_called_once_with(ws)
+    assert len(ws.pending_actions) == 0

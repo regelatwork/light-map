@@ -4,7 +4,7 @@ import logging
 import uvicorn
 from fastapi import FastAPI
 from pydantic import BaseModel
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 from multiprocessing import Queue, Event
 
 from light_map.common_types import DetectionResult, ResultType, Token, GestureType
@@ -77,6 +77,28 @@ def create_app(results_queue: Queue, stop_event: Event, state_mirror: Dict[str, 
         )
         results_queue.put(res)
         return {"status": "injected", "count": len(processed_tokens)}
+
+    @app.post("/input/action")
+    def inject_action(action: str, payload: Optional[str] = None):
+        """Injects a manual application action (like SYNC_VISION)."""
+        res = DetectionResult(
+            timestamp=time.perf_counter_ns(),
+            type=ResultType.ACTION,
+            data={"action": action, "payload": payload},
+        )
+        results_queue.put(res)
+        return {"status": "injected", "action": action}
+
+    @app.post("/map/zoom")
+    def zoom_map(delta: float):
+        """Injects a zoom action for the map system."""
+        res = DetectionResult(
+            timestamp=time.perf_counter_ns(),
+            type=ResultType.ACTION,
+            data={"action": "ZOOM", "delta": delta},
+        )
+        results_queue.put(res)
+        return {"status": "injected", "delta": delta}
 
     @app.get("/config")
     def get_config():

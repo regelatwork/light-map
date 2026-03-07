@@ -74,3 +74,49 @@ def test_remote_driver_state_inspection():
     response = client.get("/state/menu")
     assert response.status_code == 200
     assert response.json()["title"] == "Main Menu"
+
+
+def test_remote_driver_action_endpoint():
+    results_queue = Queue()
+    stop_event = Event()
+    state_mirror = {}
+
+    app = create_app(results_queue, stop_event, state_mirror)
+    client = TestClient(app)
+
+    # 1. Action without payload
+    response = client.post("/input/action", params={"action": "SYNC_VISION"})
+    assert response.status_code == 200
+
+    result = results_queue.get(timeout=1.0)
+    assert result.type == ResultType.ACTION
+    assert result.data["action"] == "SYNC_VISION"
+    assert result.data["payload"] is None
+
+    # 2. Action with payload
+    response = client.post(
+        "/input/action", params={"action": "LOAD_MAP", "payload": "maps/test.svg"}
+    )
+    assert response.status_code == 200
+
+    result = results_queue.get(timeout=1.0)
+    assert result.type == ResultType.ACTION
+    assert result.data["action"] == "LOAD_MAP"
+    assert result.data["payload"] == "maps/test.svg"
+
+
+def test_remote_driver_zoom_endpoint():
+    results_queue = Queue()
+    stop_event = Event()
+    state_mirror = {}
+
+    app = create_app(results_queue, stop_event, state_mirror)
+    client = TestClient(app)
+
+    response = client.post("/map/zoom", params={"delta": 0.5})
+    assert response.status_code == 200
+
+    result = results_queue.get(timeout=1.0)
+    assert result.type == ResultType.ACTION
+    assert result.data["action"] == "ZOOM"
+    assert result.data["delta"] == 0.5

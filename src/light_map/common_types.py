@@ -161,6 +161,7 @@ class ResultType(StrEnum):
     ARUCO = "ARUCO"
     HANDS = "HANDS"
     GESTURE = "GESTURE"
+    ACTION = "ACTION"
 
 
 class Action(StrEnum):

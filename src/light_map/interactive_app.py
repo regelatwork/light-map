@@ -485,6 +485,20 @@ class InteractiveApp:
 
         state.update_viewport(self.map_system.state.to_viewport())
 
+        # Process Remote Actions
+        if state.pending_actions:
+            for action_data in state.pending_actions:
+                action_name = action_data.get("action")
+                if action_name == "ZOOM":
+                    delta = action_data.get("delta", 0.0)
+                    self.map_system.zoom_pinned(
+                        1.0 + delta, (self.config.width // 2, self.config.height // 2)
+                    )
+                else:
+                    # Generic action/payload for SYNC_VISION, etc.
+                    self._handle_payloads(action_data, state)
+            state.pending_actions.clear()
+
         # Update context frame if available
         if state.background is not None:
             self.app_context.last_camera_frame = state.background

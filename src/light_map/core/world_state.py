@@ -41,6 +41,9 @@ class WorldState:
         self.visibility_mask: Optional[np.ndarray] = None
         self.selection: SelectionState = SelectionState()
 
+        # Remote Action Queuing
+        self.pending_actions: List[Dict[str, Any]] = []
+
         # Granular Timestamps (Monotonic counters for caching)
         self.map_timestamp: int = 0
         self.menu_timestamp: int = 0
@@ -211,6 +214,9 @@ class WorldState:
             if self.gesture != new_gesture:
                 self.gesture = new_gesture
                 self.hands_timestamp += 1
+
+        elif result.type == ResultType.ACTION:
+            self.pending_actions.append(result.data)
 
     def _hands_equal(self, h1, hn1, h2, hn2) -> bool:
         """Heuristic check for hand landmark equality."""

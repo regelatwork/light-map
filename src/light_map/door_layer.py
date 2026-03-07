@@ -72,24 +72,20 @@ class DoorLayer(Layer):
                 continue
 
             if blocker.is_open:
-                # Render endpoints as 3px yellow circles with black outlines
+                # Render endpoints as 5px yellow circles with 8px black outlines
                 for pt in points:
-                    # Black outline (4px)
-                    cv2.circle(image, pt, 4, BLACK, -1, lineType=cv2.LINE_AA)
-                    # Yellow center (3px)
-                    cv2.circle(image, pt, 3, YELLOW, -1, lineType=cv2.LINE_AA)
+                    # Black outline (8px)
+                    cv2.circle(image, pt, 8, BLACK, -1, lineType=cv2.LINE_AA)
+                    # Yellow center (5px)
+                    cv2.circle(image, pt, 5, YELLOW, -1, lineType=cv2.LINE_AA)
             else:
-                # Render as yellow line with black outline
+                # Render as thick yellow line with black outline
                 pts_array = np.array(points, dtype=np.int32).reshape((-1, 1, 2))
 
-                # Black outline (3px)
-                cv2.polylines(
-                    image, [pts_array], False, BLACK, thickness=3, lineType=cv2.LINE_AA
-                )
-                # Yellow line (1px)
-                cv2.polylines(
-                    image, [pts_array], False, YELLOW, thickness=1, lineType=cv2.LINE_AA
-                )
+                # Black outline (10px)
+                cv2.polylines(image, [pts_array], False, BLACK, thickness=10, lineType=cv2.LINE_AA)
+                # Yellow line (6px)
+                cv2.polylines(image, [pts_array], False, YELLOW, thickness=6, lineType=cv2.LINE_AA)
 
         self._last_geometry_version = self.visibility_engine.geometry_version
         self._update_timestamp()

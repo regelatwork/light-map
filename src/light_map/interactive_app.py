@@ -154,9 +154,9 @@ class InteractiveApp:
         # Layer Stack (Bottom to Top)
         self.layer_stack = [
             self.map_layer,
+            self.door_layer,
             self.fow_layer,
             self.visibility_layer,
-            self.door_layer,
             self.scene_layer,
             self.hand_mask_layer,
             self.menu_layer,
@@ -506,11 +506,11 @@ class InteractiveApp:
                 )
 
                 # Switch to specialized Exclusive Stack:
-                # Map (Full Brightness) + Exclusive Highlight + Door Highlights + UI
+                # Map (Full Brightness) + Door Highlights + Exclusive Highlight + UI
                 current_stack = [
                     self.map_layer,
-                    self.exclusive_vision_layer,
                     self.door_layer,
+                    self.exclusive_vision_layer,
                     self.scene_layer,
                     self.hand_mask_layer,
                     self.menu_layer,
@@ -729,8 +729,22 @@ class InteractiveApp:
             self.config.width,
             self.config.height,
         )
+        # Update Door Layer
+        self.door_layer = DoorLayer(
+            self.state, self.visibility_engine, self.config.width, self.config.height
+        )
+        self.layer_stack[1] = self.door_layer
+
+        self.fow_layer = FogOfWarLayer(
+            self.state,
+            self.fow_manager,
+            spacing,
+            origin,
+            self.config.width,
+            self.config.height,
+        )
         # Update layer in stack (it might have been replaced)
-        self.layer_stack[1] = self.fow_layer
+        self.layer_stack[2] = self.fow_layer
         self.visibility_layer = VisibilityLayer(
             self.state,
             mask_w,
@@ -740,13 +754,7 @@ class InteractiveApp:
             self.config.width,
             self.config.height,
         )
-        self.layer_stack[2] = self.visibility_layer
-
-        # Update Door Layer
-        self.door_layer = DoorLayer(
-            self.state, self.visibility_engine, self.config.width, self.config.height
-        )
-        self.layer_stack[3] = self.door_layer
+        self.layer_stack[3] = self.visibility_layer
         self.exclusive_vision_layer = ExclusiveVisionLayer(
             self.state,
             mask_w,

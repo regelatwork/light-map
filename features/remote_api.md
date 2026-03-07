@@ -46,10 +46,10 @@ Input modes are configured at startup via CLI flags:
 
 ### 3.2 CLI Integration
 
-The driver is integrated into `hand_tracker.py` and managed by the `ProcessManager`.
+The driver is integrated into the main application and managed by the `ProcessManager`.
 
 ```bash
-python3 hand_tracker.py --remote-hands exclusive --remote-port 8000
+python3 -m light_map --remote-hands exclusive --remote-port 8000
 ```
 
 ## 4. Implementation Details

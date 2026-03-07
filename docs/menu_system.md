@@ -1,6 +1,6 @@
 # Hierarchical Menu System
 
-The `hand_tracker.py` application features a hierarchical, gesture-controlled menu system for hands-free operation.
+The main application features a hierarchical, gesture-controlled menu system for hands-free operation.
 
 ## Menu Interaction
 

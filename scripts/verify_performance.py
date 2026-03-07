@@ -12,14 +12,15 @@ def verify():
     project_root = os.path.dirname(script_dir)
     os.chdir(project_root)
 
-    # 2. Start hand_tracker.py
+    # 2. Start the main application
     # We use --debug to get the performance report in the logs (every 5s)
     # We use --remote-hands exclusive to avoid issues with missing hardware camera for hands
     # We use --remote-tokens merge
     # We use --map to load a specific map
     cmd = [
         "python3",
-        "hand_tracker.py",
+        "-m",
+        "light_map",
         "--debug",
         "--remote-hands",
         "exclusive",

@@ -8,26 +8,23 @@ import time
 import logging
 import multiprocessing as mp
 
-# Ensure we can import the local package
-sys.path.insert(0, os.path.abspath("src"))
-
-from light_map.camera import Camera
-from light_map.common_types import Action, MenuActions, SceneId, TokenDetectionAlgorithm
-from light_map.interactive_app import InteractiveApp, AppConfig
-from light_map.map_config import MapConfigManager
-from light_map.display_utils import (
+from .camera import Camera
+from .common_types import Action, MenuActions, SceneId, TokenDetectionAlgorithm
+from .interactive_app import InteractiveApp, AppConfig
+from .map_config import MapConfigManager
+from .display_utils import (
     get_screen_resolution,
     setup_logging,
     ProjectorWindow,
 )
-from light_map.core.storage import StorageManager
+from .core.storage import StorageManager
 
-from light_map.projector import ProjectorDistortionModel
+from .projector import ProjectorDistortionModel
 import threading
-from light_map.vision.process_manager import VisionProcessManager
-from light_map.core.main_loop import MainLoopController
-from light_map.vision.frame_producer import FrameProducer
-from light_map.input_manager import InputManager
+from .vision.process_manager import VisionProcessManager
+from .core.main_loop import MainLoopController
+from .vision.frame_producer import FrameProducer
+from .input_manager import InputManager
 
 
 def camera_capture_loop(cam, operator, stop_event):
@@ -165,7 +162,7 @@ def main():
                 "CRITICAL ERROR: Projector Calibration Missing!\n"
                 f"  File not found: {calibration_file}\n"
                 "  The system cannot project correctly without this.\n"
-                "  PLEASE RUN: python3 projector_calibration.py\n"
+                "  PLEASE RUN: python3 scripts/projector_calibration.py\n"
                 "!" * 60 + "\n"
             )
             logger.critical(msg)
@@ -291,7 +288,7 @@ def main():
                     f"  Runtime:     {cam_w}x{cam_h}\n"
                     f"  Calibration: {calib_w}x{calib_h}\n"
                     "  The projector matrix will map points incorrectly.\n"
-                    "  PLEASE RE-CALIBRATE: python3 projector_calibration.py\n"
+                    "  PLEASE RE-CALIBRATE: python3 scripts/projector_calibration.py\n"
                     "!" * 60 + "\n"
                 )
                 logger.critical(msg)

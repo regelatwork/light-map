@@ -50,7 +50,7 @@ This step maps camera pixels directly to projector pixels and can sequentially c
 1. Ensure `camera_calibration.npz` exists (see Step 2).
 1. Run the standalone calibration utility:
    ```bash
-   python projector_calibration.py
+   python scripts/projector_calibration.py
    ```
 1. **Sequential Steps**: By default, the script runs three calibrations one after the other:
    - **Step 1: Projector Homography**: The system projects a fullscreen checkerboard. Ensure the camera sees the entire pattern.
@@ -63,7 +63,7 @@ This step maps camera pixels directly to projector pixels and can sequentially c
    - **Controls**: **Space** to Accept/Save, **Q** to Skip.
 1. **Overrides**: Use the `--steps` argument to run specific calibrations:
    ```bash
-   python projector_calibration.py --steps projector ppi
+   python scripts/projector_calibration.py --steps projector ppi
    ```
 
 The resulting matrices and raw calibration points are saved to `projector_calibration.npz`, PPI is saved to the global configuration, and pose data is saved to `camera_extrinsics.npz`.

@@ -268,7 +268,7 @@ class InteractiveApp:
                 "CRITICAL ERROR: Camera Calibration Files Missing!\n"
                 f"  Missing files: {', '.join(missing)}\n"
                 "  The system cannot map tokens without camera calibration.\n"
-                "  PLEASE RUN: python3 projector_calibration.py\n"
+                "  PLEASE RUN: python3 scripts/projector_calibration.py\n"
                 "!" * 60 + "\n"
             )
             logging.critical(msg)

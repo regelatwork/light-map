@@ -7,13 +7,13 @@ The system can load and project SVG map files (e.g., floor plans). Map settings 
 To start the application and register one or more maps, use the `--maps` argument with files or globs:
 
 ```bash
-python hand_tracker.py --maps "maps/*.svg" "maps/*.png"
+python -m light_map --maps "maps/*.svg" "maps/*.png"
 ```
 
 You can also use the legacy `--map` argument to load a specific map immediately:
 
 ```bash
-python hand_tracker.py --map path/to/your/map.svg
+python -m light_map --map path/to/your/map.svg
 ```
 
 ## Map Selection

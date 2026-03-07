@@ -94,7 +94,7 @@ When a map is selected, a new submenu is generated for it.
 
 ### 5. Interaction Flow
 
-1. **User**: Runs `python hand_tracker.py --maps "my_campaign/maps/*.svg"`
+1. **User**: Runs `python -m light_map --maps "my_campaign/maps/*.svg"`
 1. **System**: `MapConfigManager` expands glob, updates `map_state.json`, pruning missing maps.
 1. **User**: Selects "Maps" -> "Dungeon Level 1 (!)".
 1. **System**: Shows Action Menu for "Dungeon Level 1".

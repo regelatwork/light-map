@@ -30,7 +30,7 @@ This feature enables a gesture-controlled hierarchical menu system projected ont
 
 The system is divided into layers to separate hardware I/O from application logic:
 
-#### Layer 1: Hardware & Entry Point (`hand_tracker.py`)
+#### Layer 1: Hardware & Entry Point (the main application entry point)
 
 - **Responsibility:** "God Script" no more. It handles **only** the physical world.
   - Initializes the Camera (GStreamer/OpenCV).
@@ -184,11 +184,11 @@ class MenuSystem:
 
 #### Phase 1: Logic Extraction (Refactoring) [DONE]
 
-**Goal:** Move logic out of `hand_tracker.py` into `InteractiveApp`.
+**Goal:** Move logic out of the main application entry point into `InteractiveApp`.
 
 #### Phase 2: Hardware Entry Point Cleanup [DONE]
 
-**Goal:** Simplify `hand_tracker.py`.
+**Goal:** Simplify the main application entry point.
 
 #### Phase 3: Testing [DONE]
 

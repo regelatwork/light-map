@@ -10,7 +10,7 @@ This document outlines the design for implementing real-world scale (1:1) mappin
 
 ## Core Concepts
 
-- **PPI (Projector Pixels Per Inch)**: A global constant derived from `projector_calibration.py` (ArUco markers). It tells us how many pixels span 1 physical inch.
+- **PPI (Projector Pixels Per Inch)**: A global constant derived from `scripts/projector_calibration.py` (ArUco markers). It tells us how many pixels span 1 physical inch.
 - **SVG Unit**: The internal coordinate system of the SVG file (unitless, px, cm, etc.).
 - **Map Scale Factor ($S$)**: The zoom level applied during rendering.
   - $S = \\frac{\\text{Projector Pixels}}{\\text{SVG Units}}$

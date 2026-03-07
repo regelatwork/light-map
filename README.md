@@ -47,20 +47,20 @@ Light Map is an interactive Augmented Reality (AR) tabletop platform that merges
    Follow the [Calibration Guide](docs/calibration.md) to generate `camera_calibration.npz`.
 
    ```bash
-   python calibrate.py
+   python scripts/calibrate.py
    ```
 
 1. **Calibrate Projector**:
    Follow the [Calibration Guide](docs/calibration.md) to generate `projector_calibration.npz`.
 
    ```bash
-   python projector_calibration.py
+   python scripts/projector_calibration.py
    ```
 
 1. **Run the App**:
 
    ```bash
-   python hand_tracker.py --maps "maps/*.svg"
+   python -m light_map --maps "maps/*.svg"
    ```
 
    See [Map System](docs/map_system.md) for more details on loading maps.

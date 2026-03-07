@@ -7,7 +7,9 @@ def visualize_distortion(
     calib_file="projector_calibration.npz", output_file="distortion_field.png"
 ):
     if not os.path.exists(calib_file):
-        print(f"Error: {calib_file} not found. Run projector_calibration.py first.")
+        print(
+            f"Error: {calib_file} not found. Run scripts/projector_calibration.py first."
+        )
         return
 
     # 1. Load Data

@@ -31,7 +31,7 @@ The system currently recognizes the following gestures:
 To visualize hand tracking, gestures, and system stats (FPS), run the tracker with the debug flag:
 
 ```bash
-python hand_tracker.py --debug
+python -m light_map --debug
 ```
 
 You can also toggle debug mode at runtime via **Main Menu > Options > Toggle Debug**.

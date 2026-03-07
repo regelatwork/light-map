@@ -52,7 +52,7 @@ To avoid repeated configuration for every map, the system will maintain a global
 
 ## 3. Expanded Projector Calibration
 
-The `projector_calibration.py` script will be expanded into a multi-step interactive wizard.
+The `scripts/projector_calibration.py` script will be expanded into a multi-step interactive wizard.
 
 ### 3.1 Step 1: Homography (Table Alignment)
 
@@ -120,7 +120,7 @@ To ensure a smooth user experience during Step 3, the following interactive sequ
 - Update `GlobalMapConfig` and `MapEntry` in `src/light_map/map_config.py`.
 - Add `aruco_defaults` and `aruco_overrides` fields.
 
-### 4.2 Calibration Wizard (`projector_calibration.py`)
+### 4.2 Calibration Wizard (`scripts/projector_calibration.py`)
 
 - Transition from a single-shot script to a loop-based interactive CLI (or reuse scenes from `InteractiveApp` if possible).
 - Add functions:

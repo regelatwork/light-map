@@ -2,7 +2,9 @@ import sys
 import os
 
 # Ensure we can import the local package
-sys.path.insert(0, os.path.abspath("src"))
+sys.path.insert(
+    0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "src"))
+)
 
 import logging
 import argparse

@@ -74,7 +74,7 @@ Stores global token definitions, including size profiles and default ArUco marke
 
 ### `light_map.log`
 
-Log output from all Light Map applications (`hand_tracker.py`, `calibrate.py`, `projector_calibration.py`). Stored in the XDG-compliant state directory (usually `~/.local/state/light_map/`). Uses `RotatingFileHandler` with 10MB max size and 5 backups. Entries are attributed to their originating file and line number (e.g., `[hand_tracker.py:123]`).
+Log output from all Light Map applications (`python -m light_map`, `scripts/calibrate.py`, `scripts/projector_calibration.py`). Stored in the XDG-compliant state directory (usually `~/.local/state/light_map/`). Uses `RotatingFileHandler` with 10MB max size and 5 backups. Entries are attributed to their originating file and line number (e.g., `[__main__.py:123]`).
 
 ### `session.json`
 

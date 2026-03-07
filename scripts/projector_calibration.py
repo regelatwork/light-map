@@ -8,7 +8,9 @@ import time
 import math
 
 # Ensure we can import the local package
-sys.path.insert(0, os.path.abspath("src"))
+sys.path.insert(
+    0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "src"))
+)
 
 from light_map.camera import Camera
 from light_map.calibration_logic import (

@@ -21,7 +21,7 @@ Currently, the project uses `print()` statements for debugging, error reporting,
 
 ### 1. Centralized Initialization
 
-A new utility function `setup_logging` is located in `src/light_map/display_utils.py`. It provides a unified entry point for all Light Map applications (`hand_tracker.py`, `calibrate.py`, `projector_calibration.py`).
+A new utility function `setup_logging` is located in `src/light_map/display_utils.py`. It provides a unified entry point for all Light Map applications (`python -m light_map`, `scripts/calibrate.py`, `scripts/projector_calibration.py`).
 
 ```python
 import logging
@@ -33,7 +33,7 @@ def setup_logging(level=logging.INFO, log_file=None):
     if log_file is None:
         log_file = _DEFAULT_STORAGE.get_state_path("light_map.log")
 
-    # Format: 2026-02-23 02:23:03,009 - INFO - [hand_tracker.py:123] - Message
+    # Format: 2026-02-23 02:23:03,009 - INFO - [python -m light_map:123] - Message
     formatter = logging.Formatter(
         "%(asctime)s - %(levelname)s - [%(filename)s:%(lineno)d] - %(message)s"
     )
@@ -66,8 +66,8 @@ To ensure clear debugging across multiple scripts, all entry points use **named 
 
 ### 3. Application Integration
 
-- **`hand_tracker.py`**: Uses `--log-level` and `--log-file` arguments.
-- **`calibrate.py` & `projector_calibration.py`**: Automatically initialize logging to the shared `light_map.log` at the start of `main()`.
+- **`python -m light_map`**: Uses `--log-level` and `--log-file` arguments.
+- **`scripts/calibrate.py` & `scripts/projector_calibration.py`**: Automatically initialize logging to the shared `light_map.log` at the start of `main()`.
 
 ### 3. Systematic Replacement of `print()`
 
@@ -80,7 +80,7 @@ All existing `print()` calls in `src/light_map/` will be replaced with appropria
 
 ### 4. Crash Handling
 
-Update the `try...except` block in `hand_tracker.py` to use `logging.critical` for unhandled exceptions.
+Update the `try...except` block in `python -m light_map` to use `logging.critical` for unhandled exceptions.
 
 ```python
 try:
@@ -96,7 +96,7 @@ finally:
 ### Phase 1: Infrastructure (Inquiry light_map-40s.3)
 
 - Create `setup_logging` utility.
-- Add CLI arguments to `hand_tracker.py`.
+- Add CLI arguments to `python -m light_map`.
 - Initialize logging at startup.
 
 ### Phase 2: Core Systems Migration (Inquiry light_map-40s.5.2)

@@ -4,7 +4,7 @@ The Remote Application Driver provides a REST API to control the Light Map appli
 
 ## 1. Starting the Driver
 
-The driver is integrated into `hand_tracker.py` and can be enabled using CLI flags.
+The driver is integrated into the main application and can be enabled using CLI flags.
 
 ### CLI Flags
 
@@ -19,13 +19,13 @@ The driver is integrated into `hand_tracker.py` and can be enabled using CLI fla
 Start with exclusive remote hand control (disables physical camera for hands):
 
 ```bash
-python3 hand_tracker.py --remote-hands exclusive
+python3 -m light_map --remote-hands exclusive
 ```
 
 Start with merged control (both physical camera and remote API are active):
 
 ```bash
-python3 hand_tracker.py --remote-hands merge --remote-tokens merge
+python3 -m light_map --remote-hands merge --remote-tokens merge
 ```
 
 ## 2. API Reference

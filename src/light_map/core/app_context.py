@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Optional, Dict, Any, List
+from typing import TYPE_CHECKING, Optional, Dict, Any, List, Callable
 
 import numpy as np
 
@@ -45,3 +45,4 @@ class AppContext:
     selected_door: Optional[str] = None
     inspected_token_id: Optional[int] = None
     inspected_token_mask: Optional[np.ndarray] = None
+    save_session: Optional[Callable[[], None]] = None

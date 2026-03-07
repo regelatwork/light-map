@@ -341,41 +341,10 @@ class MapScene(BaseMapScene):
         )
 
         if was_interacting and not self.is_interacting:
-            self._save_session()
+            if self.context.save_session:
+                self.context.save_session()
 
         return None
-
-    def _save_session(self):
-        map_system = self.context.map_system
-        if map_system.svg_loader:
-            from light_map.session_manager import SessionManager
-            from light_map.common_types import SessionData, ViewportState
-            import os
-
-            map_file = map_system.svg_loader.filename
-            session_dir = None
-            if self.context.app_config.storage_manager:
-                session_dir = os.path.join(
-                    self.context.app_config.storage_manager.get_data_dir(), "sessions"
-                )
-            session = SessionData(
-                map_file=map_file,
-                viewport=ViewportState(
-                    x=map_system.state.x,
-                    y=map_system.state.y,
-                    zoom=map_system.state.zoom,
-                    rotation=map_system.state.rotation,
-                ),
-                tokens=map_system.ghost_tokens,
-            )
-            SessionManager.save_for_map(map_file, session, session_dir=session_dir)
-            self.context.map_config_manager.save_map_viewport(
-                map_file,
-                map_system.state.x,
-                map_system.state.y,
-                map_system.state.zoom,
-                map_system.state.rotation,
-            )
 
     def render(self, frame: np.ndarray) -> np.ndarray:
         return frame

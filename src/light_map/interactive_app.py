@@ -324,6 +324,7 @@ class InteractiveApp:
             debug_mode=debug_mode,
             show_tokens=show_tokens,
             analytics=AnalyticsManager(self.config.storage_manager),
+            save_session=self.save_session,
         )
 
     @property

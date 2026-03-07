@@ -54,6 +54,21 @@ class DoorLayer(Layer):
         m_svg_to_screen.post_rotate(math.radians(vp.rotation), cx, cy)
         m_svg_to_screen.post_translate(vp.x, vp.y)
 
+        # Dynamic Thickness Calculation
+        # Walls in visibility mask are 2px thick in mask space (16px = 1 grid unit).
+        # In screen space, that translates roughly to 2.0 * vp.zoom pixels.
+        # We want doors to be thicker to avoid light leaks and ensure they are seen.
+        base_wall_thickness = 2.0 * vp.zoom
+
+        # Yellow line: 1.5x thicker than wall, min 2px
+        yellow_thickness = max(2, int(base_wall_thickness * 1.5))
+        # Black outline: Yellow + 4px extra, min 4px
+        black_thickness = yellow_thickness + max(2, int(2 * vp.zoom))
+
+        # Circle radius: Roughly 0.75x the yellow line thickness, min 3px
+        circle_radius = max(3, int(yellow_thickness * 0.8))
+        circle_outline = circle_radius + max(2, int(1 * vp.zoom))
+
         # Colors (BGRA)
         YELLOW = (0, 255, 255, 255)
         BLACK = (0, 0, 0, 255)
@@ -72,21 +87,20 @@ class DoorLayer(Layer):
                 continue
 
             if blocker.is_open:
-                # Render endpoints as 5px yellow circles with 8px black outlines
+                # Render endpoints as circles
                 for pt in points:
-                    # Black outline (8px)
-                    cv2.circle(image, pt, 8, BLACK, -1, lineType=cv2.LINE_AA)
-                    # Yellow center (5px)
-                    cv2.circle(image, pt, 5, YELLOW, -1, lineType=cv2.LINE_AA)
+                    # Black outline
+                    cv2.circle(image, pt, circle_outline, BLACK, -1, lineType=cv2.LINE_AA)
+                    # Yellow center
+                    cv2.circle(image, pt, circle_radius, YELLOW, -1, lineType=cv2.LINE_AA)
             else:
                 # Render as thick yellow line with black outline
                 pts_array = np.array(points, dtype=np.int32).reshape((-1, 1, 2))
 
-                # Black outline (10px)
-                cv2.polylines(image, [pts_array], False, BLACK, thickness=10, lineType=cv2.LINE_AA)
-                # Yellow line (6px)
-                cv2.polylines(image, [pts_array], False, YELLOW, thickness=6, lineType=cv2.LINE_AA)
-
+                # Black outline
+                cv2.polylines(image, [pts_array], False, BLACK, thickness=black_thickness, lineType=cv2.LINE_AA)
+                # Yellow line
+                cv2.polylines(image, [pts_array], False, YELLOW, thickness=yellow_thickness, lineType=cv2.LINE_AA)
         self._last_geometry_version = self.visibility_engine.geometry_version
         self._update_timestamp()
 

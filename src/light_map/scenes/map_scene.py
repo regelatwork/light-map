@@ -80,7 +80,7 @@ class BaseMapScene(Scene):
                     token.id, map_file
                 )
                 self.context.notifications.add_notification(
-                    f"Inspecting: {resolved.name}", duration=0.5
+                    f"Inspecting: {resolved.name}", duration=2.0
                 )
 
                 # --- NEW: Calculate LOS mask for inspection on-demand ---
@@ -114,7 +114,7 @@ class BaseMapScene(Scene):
                 self.context.state.selection.id = door_id
 
             self.context.notifications.add_notification(
-                f"Selected Door: {door_id}", duration=0.5
+                f"Selected Door: {door_id}", duration=2.0
             )
             return
 
@@ -131,6 +131,7 @@ class BaseMapScene(Scene):
         threshold = 0.3 * grid_spacing
 
         from light_map.visibility_types import VisibilityType
+
         for blocker in blockers:
             if blocker.type != VisibilityType.DOOR:
                 continue

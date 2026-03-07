@@ -174,7 +174,11 @@ class OverlayRenderer:
         patches = []
         notifications = self.context.notifications.get_active_notifications()
         if not notifications:
-            return []
+            # Return an empty patch at the notification location to clear it
+            # This is critical for the layered renderer to know it should clear the cache.
+            empty = np.zeros((1, 1, 3), dtype=np.uint8)
+            patches.append(self._create_patch_from_buffer(empty, 50, 100))
+            return patches
 
         # For simplicity, render all active notifications in one patch
         # starting at fixed position

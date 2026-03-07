@@ -96,17 +96,35 @@ class DoorLayer(Layer):
                 # Render endpoints as circles
                 for pt in points:
                     # Black outline
-                    cv2.circle(image, pt, circle_outline, BLACK, -1, lineType=cv2.LINE_AA)
+                    cv2.circle(
+                        image, pt, circle_outline, BLACK, -1, lineType=cv2.LINE_AA
+                    )
                     # Yellow center
-                    cv2.circle(image, pt, circle_radius, YELLOW, -1, lineType=cv2.LINE_AA)
+                    cv2.circle(
+                        image, pt, circle_radius, YELLOW, -1, lineType=cv2.LINE_AA
+                    )
             else:
                 # Render as thick yellow line with black outline
                 pts_array = np.array(points, dtype=np.int32).reshape((-1, 1, 2))
 
                 # Black outline
-                cv2.polylines(image, [pts_array], False, BLACK, thickness=black_thickness, lineType=cv2.LINE_AA)
+                cv2.polylines(
+                    image,
+                    [pts_array],
+                    False,
+                    BLACK,
+                    thickness=black_thickness,
+                    lineType=cv2.LINE_AA,
+                )
                 # Yellow line
-                cv2.polylines(image, [pts_array], False, YELLOW, thickness=yellow_thickness, lineType=cv2.LINE_AA)
+                cv2.polylines(
+                    image,
+                    [pts_array],
+                    False,
+                    YELLOW,
+                    thickness=yellow_thickness,
+                    lineType=cv2.LINE_AA,
+                )
         self._last_geometry_version = self.visibility_engine.geometry_version
         self._update_timestamp()
 

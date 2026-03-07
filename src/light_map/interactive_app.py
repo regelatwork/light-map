@@ -420,10 +420,10 @@ class InteractiveApp:
             show_tokens=self.app_context.show_tokens,
         )
 
-        # Re-initialize scenes with new context
         self.scenes = self._initialize_scenes()
         self.current_scene = self.scenes[SceneId.MENU]
         self.current_scene.on_enter()
+        self.notifications.add_notification("Configuration Reloaded")
 
     def _switch_scene(self, transition):
         target_id = transition.target_scene
@@ -469,7 +469,11 @@ class InteractiveApp:
         self.current_scene_name = self.current_scene.__class__.__name__
         state.current_scene_name = self.current_scene_name
         state.effective_show_tokens = self.effective_show_tokens
+
+        # Trigger pruning and update timestamp
+        self.app_context.notifications.get_active_notifications()
         state.notifications_timestamp = self.app_context.notifications.timestamp
+
         state.update_viewport(self.map_system.state.to_viewport())
 
         # Update context frame if available
@@ -649,6 +653,7 @@ class InteractiveApp:
 
         if payload.get("action") == "TOGGLE_DOOR":
             from light_map.common_types import SelectionType
+
             if (
                 self.state.selection.type == SelectionType.DOOR
                 and self.state.selection.id
@@ -672,6 +677,8 @@ class InteractiveApp:
                     # Sync vision immediately when a door is toggled
                     if state is not None:
                         self._sync_vision(state)
+            else:
+                self.notifications.add_notification("No door selected to toggle")
 
     def switch_to_viewing(self):
         """Switches the current scene to ViewingScene."""
@@ -809,9 +816,13 @@ class InteractiveApp:
                 self.state.tokens_timestamp += 1
 
                 from light_map.visibility_types import VisibilityType
+
                 # Restore door states
                 for blocker in self.visibility_engine.blockers:
-                    if blocker.type == VisibilityType.DOOR and blocker.id in session.door_states:
+                    if (
+                        blocker.type == VisibilityType.DOOR
+                        and blocker.id in session.door_states
+                    ):
                         blocker.is_open = session.door_states[blocker.id]
                 self.visibility_engine.update_blockers(
                     self.visibility_engine.blockers, mask_w, mask_h
@@ -889,7 +900,8 @@ class InteractiveApp:
 
         from light_map.common_types import SessionData, ViewportState
 
-        from light_map.visibility_types import VisibilityType, VisibilityBlocker
+        from light_map.visibility_types import VisibilityType
+
         # Collect current door states
         door_states = {
             b.id: b.is_open

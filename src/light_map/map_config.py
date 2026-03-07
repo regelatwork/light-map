@@ -173,7 +173,9 @@ class MapConfigManager:
                 naming_style=NamingStyle(
                     global_data.get("naming_style", NamingStyle.SCI_FI)
                 ),
-                door_thickness_multiplier=global_data.get("door_thickness_multiplier", 3.0),
+                door_thickness_multiplier=global_data.get(
+                    "door_thickness_multiplier", 3.0
+                ),
             )
 
             # Deserialize Maps

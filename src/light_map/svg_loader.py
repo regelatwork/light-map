@@ -676,8 +676,15 @@ class SVGLoader:
                 element_id = None
                 if "inkscape:label" in element.values:
                     element_id = str(element.values["inkscape:label"])
-                elif "{http://www.inkscape.org/namespaces/inkscape}label" in element.values:
-                    element_id = str(element.values["{http://www.inkscape.org/namespaces/inkscape}label"])
+                elif (
+                    "{http://www.inkscape.org/namespaces/inkscape}label"
+                    in element.values
+                ):
+                    element_id = str(
+                        element.values[
+                            "{http://www.inkscape.org/namespaces/inkscape}label"
+                        ]
+                    )
                 elif "id" in element.values:
                     element_id = str(element.values["id"])
                 elif hasattr(element, "id") and element.id:

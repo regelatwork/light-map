@@ -29,9 +29,13 @@ class MenuScene(Scene):
         super().__init__(context)
 
         from light_map.common_types import SelectionType
+
         selected_door = None
         door_is_open = False
-        if self.context.state and self.context.state.selection.type == SelectionType.DOOR:
+        if (
+            self.context.state
+            and self.context.state.selection.type == SelectionType.DOOR
+        ):
             selected_door = self.context.state.selection.id
             if selected_door:
                 for blocker in self.context.visibility_engine.blockers:
@@ -58,11 +62,14 @@ class MenuScene(Scene):
         self.menu_system.state = MenuSystemState.ACTIVE
         # Rebuild menu in case of changes (e.g., map list, debug state)
         from light_map.common_types import SelectionType
-        
+
         selected_door = None
         door_is_open = False
-        
-        if self.context.state and self.context.state.selection.type == SelectionType.DOOR:
+
+        if (
+            self.context.state
+            and self.context.state.selection.type == SelectionType.DOOR
+        ):
             selected_door = self.context.state.selection.id
             if selected_door:
                 for blocker in self.context.visibility_engine.blockers:
@@ -170,9 +177,13 @@ class MenuScene(Scene):
             self.context.map_config_manager.set_detection_algorithm(new_algo)
             # Rebuild menu to update title
             from light_map.common_types import SelectionType
+
             selected_door = None
             door_is_open = False
-            if self.context.state and self.context.state.selection.type == SelectionType.DOOR:
+            if (
+                self.context.state
+                and self.context.state.selection.type == SelectionType.DOOR
+            ):
                 selected_door = self.context.state.selection.id
                 if selected_door:
                     for blocker in self.context.visibility_engine.blockers:

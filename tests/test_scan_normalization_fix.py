@@ -5,7 +5,7 @@ from light_map.interactive_app import InteractiveApp
 
 
 def test_svg_loader_path_normalization(tmp_path):
-    from light_map.svg_loader import SVGLoader
+    from light_map.svg import SVGLoader
 
     # Create a dummy svg file
     svg_file = tmp_path / "test.svg"

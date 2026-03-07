@@ -3,7 +3,7 @@ from typing import Dict, Any, Optional, Tuple, List, TYPE_CHECKING
 import svgelements
 import math
 
-from light_map.svg_loader import SVGLoader
+from light_map.svg import SVGLoader
 from light_map.common_types import Token
 
 if TYPE_CHECKING:

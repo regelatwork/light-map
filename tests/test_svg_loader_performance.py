@@ -7,7 +7,7 @@ import sys
 # Ensure we can import the local package
 sys.path.insert(0, os.path.abspath("src"))
 
-from light_map.svg_loader import SVGLoader
+from light_map.svg import SVGLoader
 
 
 class TestSVGLoaderPerformance(unittest.TestCase):

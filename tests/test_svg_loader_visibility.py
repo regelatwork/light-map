@@ -1,4 +1,4 @@
-from light_map.svg_loader import SVGLoader
+from light_map.svg import SVGLoader
 from light_map.visibility_types import VisibilityType
 
 

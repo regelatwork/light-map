@@ -1,6 +1,6 @@
 import pytest
 import numpy as np
-from light_map.svg_loader import SVGLoader
+from light_map.svg import SVGLoader
 from light_map.visibility_types import VisibilityType
 
 

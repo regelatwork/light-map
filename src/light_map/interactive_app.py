@@ -18,7 +18,7 @@ from light_map.scene_layer import SceneLayer
 from light_map.hand_mask_layer import HandMaskLayer
 from light_map.overlay_layer import TokenLayer, NotificationLayer, DebugLayer
 from light_map.map_system import MapSystem
-from light_map.svg_loader import SVGLoader
+from light_map.svg import SVGLoader
 from light_map.map_config import MapConfigManager
 from light_map.session_manager import SessionManager
 from light_map.fow_manager import FogOfWarManager

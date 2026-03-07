@@ -2,7 +2,7 @@ import pytest
 import base64
 import cv2
 import numpy as np
-from light_map.svg_loader import SVGLoader
+from light_map.svg import SVGLoader
 
 
 @pytest.fixture

@@ -25,3 +25,4 @@ docs/whitepaper/*.pdf
 docs/whitepaper/*.gz
 docs/whitepaper/*.toc
 .worktrees/
+src/light_map.egg-info/

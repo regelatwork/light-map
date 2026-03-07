@@ -43,6 +43,7 @@ class BaseMapScene(Scene):
         self.summon_gesture_start_time = 0.0
         self.last_token_toggle_time = 0.0
         self.last_update_time = 0.0
+        self.inspection_end_time = 0.0
         ppi = getattr(self.context.app_config, "projector_ppi", 96.0)
         self.dwell_tracker = DwellTracker(
             radius_pixels=ppi * 0.5, dwell_time_threshold=2.0
@@ -152,6 +153,39 @@ class BaseMapScene(Scene):
         closest_y = y1 + t * dy
         return np.sqrt((px - closest_x) ** 2 + (py - closest_y) ** 2)
 
+    def _update_dwell_and_linger(
+        self,
+        primary_gesture: GestureType,
+        cursor_pos: Optional[Tuple[int, int]],
+        dt: float,
+        current_time: float,
+    ) -> None:
+        """Centralized logic for dwell triggering and inspection linger."""
+        if primary_gesture == GestureType.POINTING and cursor_pos is not None:
+            if self.dwell_tracker.update(cursor_pos, dt):
+                self._handle_dwell_trigger(cursor_pos)
+                self.inspection_end_time = 0.0  # Reset while actively pointing
+        else:
+            self.dwell_tracker.reset()
+
+            # Start linger timer if we were inspecting
+            if (
+                self.context.inspected_token_id is not None
+                and self.inspection_end_time == 0.0
+            ):
+                duration = getattr(
+                    self.context.app_config, "inspection_linger_duration", 10.0
+                )
+                self.inspection_end_time = current_time + duration
+
+            # Clear inspection if linger expired
+            if (
+                self.inspection_end_time > 0
+                and current_time >= self.inspection_end_time
+            ):
+                self.context.inspected_token_id = None
+                self.inspection_end_time = 0.0
+
 
 class ViewingScene(BaseMapScene):
     """Handles the read-only map view."""
@@ -182,8 +216,7 @@ class ViewingScene(BaseMapScene):
 
         if not inputs:
             self.summon_gesture_start_time = 0.0
-            self.dwell_tracker.reset()
-            self.context.inspected_token_id = None
+            self._update_dwell_and_linger(GestureType.NONE, None, dt, current_time)
             return None
 
         primary_gesture = inputs[0].gesture
@@ -194,13 +227,8 @@ class ViewingScene(BaseMapScene):
         ppi = getattr(self.context.app_config, "projector_ppi", 96.0)
         cursor_pos = (int(px + ux * ppi), int(py + uy * ppi))
 
-        # --- DWELL LOGIC ---
-        if primary_gesture == GestureType.POINTING:
-            if self.dwell_tracker.update(cursor_pos, dt):
-                self._handle_dwell_trigger(cursor_pos)
-        else:
-            self.dwell_tracker.reset()
-            self.context.inspected_token_id = None
+        # --- DWELL AND LINGER ---
+        self._update_dwell_and_linger(primary_gesture, cursor_pos, dt, current_time)
 
         # Toggle token visibility
         if primary_gesture == GestureType.SHAKA:
@@ -270,13 +298,8 @@ class MapScene(BaseMapScene):
             ppi = getattr(self.context.app_config, "projector_ppi", 96.0)
             cursor_pos = (int(px + ux * ppi), int(py + uy * ppi))
 
-        # --- DWELL LOGIC ---
-        if primary_gesture == GestureType.POINTING:
-            if self.dwell_tracker.update(cursor_pos, dt):
-                self._handle_dwell_trigger(cursor_pos)
-        else:
-            self.dwell_tracker.reset()
-            self.context.inspected_token_id = None
+        # --- DWELL AND LINGER ---
+        self._update_dwell_and_linger(primary_gesture, cursor_pos, dt, current_time)
 
         # Toggle token visibility
         if primary_gesture == GestureType.SHAKA:

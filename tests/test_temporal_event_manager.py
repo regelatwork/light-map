@@ -45,5 +45,32 @@ def test_multiple_events_order():
 
 
 def test_cancel_event():
-    # If we need cancellation (design didn't specify, but good to have)
-    pass
+    manager = TemporalEventManager()
+    state = {"run": False}
+
+    def run():
+        state["run"] = True
+
+    manager.schedule(0.1, run, key="test_event")
+    manager.cancel("test_event")
+
+    time.sleep(0.2)
+    manager.check()
+    assert state["run"] is False
+
+
+def test_supersede_event():
+    manager = TemporalEventManager()
+    results = []
+
+    manager.schedule(0.1, lambda: results.append("first"), key="exclusive")
+    manager.schedule(0.2, lambda: results.append("second"), key="exclusive")
+
+    time.sleep(0.15)
+    manager.check()
+    # First should have been superseded and not run
+    assert results == []
+
+    time.sleep(0.1)
+    manager.check()
+    assert results == ["second"]

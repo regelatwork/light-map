@@ -86,6 +86,7 @@ class GlobalMapConfig:
     hand_mask_blur: int = 15
     gm_position: GmPosition = GmPosition.NONE
     naming_style: NamingStyle = NamingStyle.SCI_FI
+    inspection_linger_duration: float = 10.0
 
 
 @dataclass

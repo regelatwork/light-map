@@ -246,6 +246,7 @@ def main():
         hand_mask_blur=gs.hand_mask_blur,
         gm_position=gs.gm_position,
         projector_ppi=gs.projector_ppi,
+        inspection_linger_duration=gs.inspection_linger_duration,
     )
     app = InteractiveApp(config)
     app.set_debug_mode(args.debug)

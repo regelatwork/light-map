@@ -193,6 +193,7 @@ class AppConfig:
     hand_mask_blur: int = 15
     gm_position: GmPosition = GmPosition.NONE
     projector_ppi: float = 96.0
+    inspection_linger_duration: float = 10.0
 
 
 @dataclass

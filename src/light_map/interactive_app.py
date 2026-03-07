@@ -12,6 +12,7 @@ from light_map.common_types import (
 )
 from light_map.renderer import Renderer
 from light_map.map_layer import MapLayer
+from light_map.door_layer import DoorLayer
 from light_map.menu_layer import MenuLayer
 from light_map.scene_layer import SceneLayer
 from light_map.hand_mask_layer import HandMaskLayer
@@ -137,6 +138,9 @@ class InteractiveApp:
         self.map_layer = MapLayer(
             self.state, self.map_system, config.width, config.height
         )
+        self.door_layer = DoorLayer(
+            self.state, self.visibility_engine, config.width, config.height
+        )
         self.scene_layer = SceneLayer(
             self.state, None, config.width, config.height, is_static=False
         )
@@ -150,6 +154,7 @@ class InteractiveApp:
         # Layer Stack (Bottom to Top)
         self.layer_stack = [
             self.map_layer,
+            self.door_layer,
             self.fow_layer,
             self.visibility_layer,
             self.scene_layer,
@@ -501,9 +506,10 @@ class InteractiveApp:
                 )
 
                 # Switch to specialized Exclusive Stack:
-                # Map (Full Brightness) + Exclusive Highlight + UI
+                # Map (Full Brightness) + Door Highlights + Exclusive Highlight + UI
                 current_stack = [
                     self.map_layer,
+                    self.door_layer,
                     self.exclusive_vision_layer,
                     self.scene_layer,
                     self.hand_mask_layer,

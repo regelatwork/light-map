@@ -354,8 +354,46 @@ class SVGLoader:
         # Combine: Apply user transform first, then scale down for buffer
         final_vp_matrix = vp_matrix * q_matrix
 
+        # Identify door elements (including children of door groups)
+        door_element_ids = set()
+
+        def find_doors(elem, in_door=False):
+            is_this_door = in_door
+            if not is_this_door:
+                label = None
+                if "inkscape:label" in elem.values:
+                    label = str(elem.values["inkscape:label"])
+                elif (
+                    "{http://www.inkscape.org/namespaces/inkscape}label" in elem.values
+                ):
+                    label = str(
+                        elem.values[
+                            "{http://www.inkscape.org/namespaces/inkscape}label"
+                        ]
+                    )
+                elif "id" in elem.values:
+                    label = str(elem.values["id"])
+                elif hasattr(elem, "id") and elem.id:
+                    label = str(elem.id)
+
+                if label and "door" in label.lower():
+                    is_this_door = True
+
+            if is_this_door:
+                door_element_ids.add(id(elem))
+
+            if isinstance(elem, (svgelements.Group, svgelements.SVG)):
+                for child in elem:
+                    find_doors(child, is_this_door)
+
+        find_doors(self.svg)
+
         # Iterate through SVG elements
         for element in self.svg.elements():
+            # Skip door elements (they are handled by DoorLayer with special highlights)
+            if id(element) in door_element_ids:
+                continue
+
             try:
                 # --- 1. Handle Raster Images ---
                 if isinstance(element, svgelements.Image):

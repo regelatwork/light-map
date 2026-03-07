@@ -102,11 +102,11 @@ class BaseMapScene(Scene):
                 return
 
         # 2. Check Doors
-        door_layer = self._check_door_collision(world_x, world_y)
-        if door_layer:
-            self.context.selected_door = door_layer
+        door_id = self._check_door_collision(world_x, world_y)
+        if door_id:
+            self.context.selected_door = door_id
             self.context.notifications.add_notification(
-                f"Selected Door: {door_layer}", duration=0.5
+                f"Selected Door: {door_id}", duration=0.5
             )
             return
 
@@ -122,8 +122,9 @@ class BaseMapScene(Scene):
         )
         threshold = 0.3 * grid_spacing
 
+        from light_map.visibility_types import VisibilityType
         for blocker in blockers:
-            if blocker.type != "door":
+            if blocker.type != VisibilityType.DOOR:
                 continue
 
             # Check proximity to any segment
@@ -135,7 +136,7 @@ class BaseMapScene(Scene):
                 # Distance from point to segment
                 d = self._point_to_segment_dist((wx, wy), p1, p2)
                 if d < threshold:
-                    return blocker.layer_name
+                    return blocker.id
         return None
 
     def _point_to_segment_dist(self, p, s1, s2):

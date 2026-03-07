@@ -630,6 +630,7 @@ class SVGLoader:
             return []
 
         blockers = []
+        id_counts = {}
 
         def traverse(
             element,
@@ -642,8 +643,6 @@ class SVGLoader:
             is_unbreakable = current_unbreakable
 
             # Check if this element defines a new visibility context (layer)
-            # Support both standard id and inkscape:label (including namespaced)
-            # Prioritize label as it is usually more descriptive in Inkscape
             label = None
             if "inkscape:label" in element.values:
                 label = str(element.values["inkscape:label"])
@@ -651,6 +650,8 @@ class SVGLoader:
                 label = str(
                     element.values["{http://www.inkscape.org/namespaces/inkscape}label"]
                 )
+            elif "id" in element.values:
+                label = str(element.values["id"])
             elif hasattr(element, "id") and element.id:
                 label = str(element.id)
 
@@ -669,14 +670,28 @@ class SVGLoader:
                         is_unbreakable = True
 
             if isinstance(element, svgelements.Shape) and v_type:
-                # In svgelements, Path(element) creates a path and usually applies the element's transform.
-                # However, for visibility, we want the absolute coordinates in the SVG.
-                # element.transform should be the cumulative transform if the SVG was parsed.
+                # Identification logic:
+                # 1. Use element's own ID/Label if it exists and is different from layer
+                # 2. Otherwise use layer_name + index
+                element_id = None
+                if "inkscape:label" in element.values:
+                    element_id = str(element.values["inkscape:label"])
+                elif "{http://www.inkscape.org/namespaces/inkscape}label" in element.values:
+                    element_id = str(element.values["{http://www.inkscape.org/namespaces/inkscape}label"])
+                elif "id" in element.values:
+                    element_id = str(element.values["id"])
+                elif hasattr(element, "id") and element.id:
+                    element_id = str(element.id)
+
+                if not element_id or element_id == layer_name:
+                    # Generic child of a layer/group
+                    count = id_counts.get(layer_name, 0) + 1
+                    id_counts[layer_name] = count
+                    final_id = f"{layer_name}_{count}"
+                else:
+                    final_id = element_id
 
                 path = svgelements.Path(element)
-                # To be absolutely sure we have global coordinates, we can reify the path
-                # but Path(element) already includes element.transform.
-
                 segments: List[Tuple[float, float]] = []
                 for segment in path:
                     if isinstance(segment, svgelements.Move):
@@ -698,16 +713,13 @@ class SVGLoader:
                             p = segment.point(i / 10.0)
                             segments.append((p.x, p.y))
                     elif isinstance(segment, svgelements.Close):
-                        # Close back to the first point of this subpath
                         if segments:
-                            # We need to find the start of the current subpath.
-                            # For simplicity, if we only have one subpath, it's segments[0].
-                            # svgelements.Close has .start and .end too.
                             segments.append((segment.end.x, segment.end.y))
 
                 if segments:
                     blockers.append(
                         VisibilityBlocker(
+                            id=final_id,
                             segments=segments,
                             type=v_type,
                             layer_name=layer_name,

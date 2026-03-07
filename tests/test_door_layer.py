@@ -30,6 +30,7 @@ def test_door_layer_init(state, engine):
 def test_door_layer_render_closed_door(state, engine):
     # Add a closed door blocker
     door = VisibilityBlocker(
+        id="door1",
         segments=[(10, 10), (20, 10)],
         type=VisibilityType.DOOR,
         layer_name="Door 1",
@@ -67,6 +68,7 @@ def test_door_layer_render_closed_door(state, engine):
 def test_door_layer_render_open_door(state, engine):
     # Add an open door blocker
     door = VisibilityBlocker(
+        id="door2",
         segments=[(10, 10), (20, 10)],
         type=VisibilityType.DOOR,
         layer_name="Door 1",

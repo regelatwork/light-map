@@ -634,12 +634,12 @@ class InteractiveApp:
                 self.notifications.add_notification(f"GM: Fog of War {state}")
 
         if payload.get("action") == "TOGGLE_DOOR":
-            door_layer = payload.get("door")
-            if door_layer:
+            door_id = payload.get("door")
+            if door_id:
                 # Toggle door in visibility engine
                 found = False
                 for blocker in self.visibility_engine.blockers:
-                    if blocker.layer_name == door_layer:
+                    if blocker.id == door_id:
                         blocker.is_open = not blocker.is_open
                         found = True
                 if found:
@@ -648,7 +648,7 @@ class InteractiveApp:
                         self.fow_manager.width,
                         self.fow_manager.height,
                     )
-                    self.notifications.add_notification(f"Door {door_layer} Toggled")
+                    self.notifications.add_notification(f"Door {door_id} Toggled")
                     self.save_session()  # Persist door state
 
     def switch_to_viewing(self):
@@ -788,8 +788,8 @@ class InteractiveApp:
 
                 # Restore door states
                 for blocker in self.visibility_engine.blockers:
-                    if blocker.layer_name in session.door_states:
-                        blocker.is_open = session.door_states[blocker.layer_name]
+                    if blocker.id in session.door_states:
+                        blocker.is_open = session.door_states[blocker.id]
                 self.visibility_engine.update_blockers(
                     self.visibility_engine.blockers, mask_w, mask_h
                 )
@@ -868,7 +868,7 @@ class InteractiveApp:
 
         # Collect current door states
         door_states = {
-            b.layer_name: b.is_open
+            b.id: b.is_open
             for b in self.visibility_engine.blockers
             if b.type == "door"
         }

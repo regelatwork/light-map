@@ -87,6 +87,7 @@ class GlobalMapConfig:
     gm_position: GmPosition = GmPosition.NONE
     naming_style: NamingStyle = NamingStyle.SCI_FI
     inspection_linger_duration: float = 10.0
+    door_thickness_multiplier: float = 3.0
 
 
 @dataclass
@@ -172,6 +173,7 @@ class MapConfigManager:
                 naming_style=NamingStyle(
                     global_data.get("naming_style", NamingStyle.SCI_FI)
                 ),
+                door_thickness_multiplier=global_data.get("door_thickness_multiplier", 3.0),
             )
 
             # Deserialize Maps

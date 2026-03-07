@@ -70,6 +70,16 @@ class InteractiveApp:
         self.map_config = MapConfigManager(storage=config.storage_manager)
         self.notifications = NotificationManager()
 
+        # Sync AppConfig with MapConfig global settings
+        gs = self.map_config.data.global_settings
+        self.config.enable_hand_masking = gs.enable_hand_masking
+        self.config.hand_mask_padding = gs.hand_mask_padding
+        self.config.hand_mask_blur = gs.hand_mask_blur
+        self.config.gm_position = gs.gm_position
+        self.config.projector_ppi = gs.projector_ppi
+        self.config.inspection_linger_duration = gs.inspection_linger_duration
+        self.config.door_thickness_multiplier = gs.door_thickness_multiplier
+
         # Visibility and FoW Systems
         # Use a temporary engine until map is loaded
         self.visibility_engine = VisibilityEngine(grid_spacing_svg=10.0)

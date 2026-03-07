@@ -1,0 +1,40 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "light-map"
+version = "0.4.1"
+description = "Interactive AR tabletop platform for physical gaming"
+authors = [
+    {name = "Rodrigo Chandia", email = "rodrigo.chandia@gmail.com"}
+]
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "opencv-python",
+    "numpy",
+    "mediapipe",
+    "svgelements",
+    "Pillow",
+    "fastapi",
+    "uvicorn",
+    "pydantic",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "pytest-mock",
+    "pytest-cov",
+    "ruff",
+    "mdformat",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[project.scripts]
+light-map = "light_map.__main__:main"
+light-map-calibrate = "scripts.calibrate:main"
+light-map-projector-calibrate = "scripts.projector_calibration:main"

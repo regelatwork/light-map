@@ -1,5 +1,20 @@
 import numpy as np
 from light_map.common_types import GestureType
+from .constants import (
+    WRIST,
+    THUMB_TIP,
+    THUMB_IP,
+    INDEX_TIP,
+    INDEX_PIP,
+    INDEX_MCP,
+    MIDDLE_TIP,
+    MIDDLE_PIP,
+    RING_TIP,
+    RING_PIP,
+    PINKY_TIP,
+    PINKY_PIP,
+    PINKY_MCP,
+)
 
 
 def is_finger_extended(landmarks, finger_name, hand_label="Right"):
@@ -7,20 +22,12 @@ def is_finger_extended(landmarks, finger_name, hand_label="Right"):
     Determines if a finger is extended based on landmark positions.
     Using a simplified distance-from-wrist heuristic which is robust for 2D.
     """
-    # Landmarks map
-    # Thumb: 1-4
-    # Index: 5-8
-    # Middle: 9-12
-    # Ring: 13-16
-    # Pinky: 17-20
-
     # 0 is Wrist
-    wrist = landmarks[0]
+    wrist = landmarks[WRIST]
 
     if finger_name == "Thumb":
-        tip = landmarks[4]
-        ip = landmarks[3]
-        landmarks[2]
+        tip = landmarks[THUMB_TIP]
+        ip = landmarks[THUMB_IP]
 
         # Thumb is extended if the tip is further from the index finger MCP (5)
         # than the IP joint is? Or simple distance from wrist?
@@ -29,8 +36,8 @@ def is_finger_extended(landmarks, finger_name, hand_label="Right"):
 
         # Thumb is extended if the tip is further from the pinky MCP than the IP joint
         # AND it must be far enough from the index MCP to be considered "spread out"
-        pinky_mcp = landmarks[17]
-        index_mcp = landmarks[5]
+        pinky_mcp = landmarks[PINKY_MCP]
+        index_mcp = landmarks[INDEX_MCP]
 
         d_tip_pinky = np.linalg.norm(
             np.array([tip.x, tip.y]) - np.array([pinky_mcp.x, pinky_mcp.y])
@@ -53,10 +60,10 @@ def is_finger_extended(landmarks, finger_name, hand_label="Right"):
         # This works well for "Open" vs "Fist"
 
         indices = {
-            "Index": (8, 6),  # Tip, PIP
-            "Middle": (12, 10),
-            "Ring": (16, 14),
-            "Pinky": (20, 18),
+            "Index": (INDEX_TIP, INDEX_PIP),  # Tip, PIP
+            "Middle": (MIDDLE_TIP, MIDDLE_PIP),
+            "Ring": (RING_TIP, RING_PIP),
+            "Pinky": (PINKY_TIP, PINKY_PIP),
         }
 
         tip_idx, pip_idx = indices[finger_name]

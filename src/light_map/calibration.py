@@ -3,9 +3,10 @@ import numpy as np
 import glob
 import os
 import logging
+from .constants import DEFAULT_CHECKERBOARD_DIMS
 
 
-CHECKERBOARD_DIMS = (6, 9)  # Standard chessboard dimensions
+CHECKERBOARD_DIMS = DEFAULT_CHECKERBOARD_DIMS  # Standard chessboard dimensions
 CALIBRATION_FILE = "camera_calibration.npz"
 
 
@@ -116,7 +117,9 @@ def save_camera_extrinsics(
     logging.info("Camera extrinsics saved to %s", output_file)
 
 
-def calibrate_camera_from_images(image_paths, checkerboard_dims=(6, 9)):
+def calibrate_camera_from_images(
+    image_paths, checkerboard_dims=DEFAULT_CHECKERBOARD_DIMS
+):
     """
     Performs camera calibration using a list of image paths.
     """

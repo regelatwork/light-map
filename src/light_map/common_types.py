@@ -6,6 +6,14 @@ from abc import ABC, abstractmethod
 
 import numpy as np
 from light_map.core.storage import StorageManager
+from .constants import (
+    DEFAULT_PROJECTOR_RESOLUTION,
+    DEFAULT_HAND_MASK_PADDING,
+    DEFAULT_PROJECTOR_PPI,
+    DEFAULT_POINTER_EXTENSION_INCHES,
+    DEFAULT_INSPECTION_LINGER_DURATION,
+    DEFAULT_DOOR_THICKNESS_MULTIPLIER,
+)
 
 if TYPE_CHECKING:
     from light_map.core.world_state import WorldState
@@ -200,7 +208,7 @@ class AppConfig:
     width: int
     height: int
     projector_matrix: np.ndarray
-    projector_matrix_resolution: Tuple[int, int] = (4608, 2592)
+    projector_matrix_resolution: Tuple[int, int] = DEFAULT_PROJECTOR_RESOLUTION
     camera_resolution: Tuple[int, int] = (0, 0)  # Runtime camera resolution
     map_search_patterns: List[str] = field(default_factory=list)
     distortion_model: Optional[Any] = None
@@ -210,12 +218,12 @@ class AppConfig:
 
     # Masking settings
     enable_hand_masking: bool = False
-    hand_mask_padding: int = 30
+    hand_mask_padding: int = DEFAULT_HAND_MASK_PADDING
     gm_position: GmPosition = GmPosition.NONE
-    projector_ppi: float = 96.0
-    pointer_extension_inches: float = 2.0
-    inspection_linger_duration: float = 10.0
-    door_thickness_multiplier: float = 3.0
+    projector_ppi: float = DEFAULT_PROJECTOR_PPI
+    pointer_extension_inches: float = DEFAULT_POINTER_EXTENSION_INCHES
+    inspection_linger_duration: float = DEFAULT_INSPECTION_LINGER_DURATION
+    door_thickness_multiplier: float = DEFAULT_DOOR_THICKNESS_MULTIPLIER
 
 
 @dataclass

@@ -7,6 +7,13 @@ import numpy as np
 from logging.handlers import RotatingFileHandler
 from typing import Tuple, Optional
 from light_map.core.storage import StorageManager
+from .constants import (
+    LOG_MAX_BYTES,
+    LOG_BACKUP_COUNT,
+    WINDOW_CLOSE_CHECK_DELAY_FRAMES,
+    FALLBACK_SCREEN_RESOLUTION,
+    DASHED_CIRCLE_DASH_DEG,
+)
 
 _DEFAULT_STORAGE = StorageManager()
 
@@ -55,7 +62,7 @@ class ProjectorWindow:
             return True
 
         # Only check window properties after a few frames have been shown
-        if self._frames_shown < 100:
+        if self._frames_shown < WINDOW_CLOSE_CHECK_DELAY_FRAMES:
             return False
 
         try:
@@ -154,7 +161,7 @@ def setup_logging(level=logging.INFO, log_file: Optional[str] = None):
             os.makedirs(log_dir, exist_ok=True)
 
         file_handler = RotatingFileHandler(
-            log_file, maxBytes=10 * 1024 * 1024, backupCount=5
+            log_file, maxBytes=LOG_MAX_BYTES, backupCount=LOG_BACKUP_COUNT
         )
         file_handler.setFormatter(formatter)
         root_logger.addHandler(file_handler)
@@ -177,12 +184,17 @@ def get_screen_resolution() -> Tuple[int, int]:
         return width, height
     except Exception as e:
         logging.warning(
-            "Failed to detect screen resolution: %s. Falling back to 1920x1080.", e
+            "Failed to detect screen resolution: %s. Falling back to %dx%d.",
+            e,
+            FALLBACK_SCREEN_RESOLUTION[0],
+            FALLBACK_SCREEN_RESOLUTION[1],
         )
-        return 1920, 1080
+        return FALLBACK_SCREEN_RESOLUTION
 
 
-def draw_dashed_circle(img, center, radius, color, thickness=1, dash_length_deg=12):
+def draw_dashed_circle(
+    img, center, radius, color, thickness=1, dash_length_deg=DASHED_CIRCLE_DASH_DEG
+):
     """Draws a dashed circle using multiple ellipse arcs."""
     for i in range(0, 360, dash_length_deg * 2):
         cv2.ellipse(

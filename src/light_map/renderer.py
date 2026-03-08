@@ -4,6 +4,7 @@ import numpy as np
 
 from .common_types import ImagePatch, Layer, LayerMode
 from .core.analytics import LatencyInstrument, track_wait
+from .constants import ALPHA_OPAQUE
 
 
 class Renderer:
@@ -138,15 +139,17 @@ class Renderer:
                 if not np.any(alpha_channel):
                     return
 
-                # Standard Alpha blending: (Patch * Alpha) + (Buffer * (255 - Alpha)) / 255
+                # Standard Alpha blending: (Patch * Alpha) + (Buffer * (ALPHA_OPAQUE - Alpha)) / ALPHA_OPAQUE
                 # Using uint16 to avoid overflow (255 * 255 = 65025 < 65535)
                 # and then back to uint8
                 alpha = alpha_channel[:, :, np.newaxis].astype(np.uint16)
                 roi = buffer[y1:y2, x1:x2].astype(np.uint16)
                 patch_bgr = patch_slice[:, :, :3].astype(np.uint16)
 
-                # Integer blending formula: (src * alpha + dst * (255 - alpha)) // 255
-                blended = (patch_bgr * alpha + roi * (255 - alpha)) // 255
+                # Integer blending formula: (src * alpha + dst * (ALPHA_OPAQUE - alpha)) // ALPHA_OPAQUE
+                blended = (
+                    patch_bgr * alpha + roi * (ALPHA_OPAQUE - alpha)
+                ) // ALPHA_OPAQUE
                 buffer[y1:y2, x1:x2] = blended.astype(np.uint8)
             else:
                 # No alpha channel, treat as blocking

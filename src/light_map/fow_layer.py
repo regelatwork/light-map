@@ -6,6 +6,7 @@ from typing import List, Tuple
 from .common_types import Layer, ImagePatch
 from .fow_manager import FogOfWarManager
 from .core.world_state import WorldState
+from .constants import ALPHA_OPAQUE, ALPHA_TRANSPARENT, GRID_MASK_PPI
 
 
 class FogOfWarLayer(Layer):
@@ -66,13 +67,13 @@ class FogOfWarLayer(Layer):
         )
 
         # Calculate Alpha mask:
-        # 1. Start with 255 (Unexplored = Opaque Black)
+        # 1. Start with ALPHA_OPAQUE (Unexplored = Opaque Black)
         alpha_full = np.full(
-            (self.manager.height, self.manager.width), 255, dtype=np.uint8
+            (self.manager.height, self.manager.width), ALPHA_OPAQUE, dtype=np.uint8
         )
 
         # 2. Explored areas are 0% opaque (Alpha 0) - They are fully revealed by THIS layer
-        alpha_full[self.manager.explored_mask == 255] = 0
+        alpha_full[self.manager.explored_mask == ALPHA_OPAQUE] = ALPHA_TRANSPARENT
 
         # Combine BGR and Alpha for the full mask
         fow_bgra_full = cv2.merge(
@@ -90,11 +91,12 @@ class FogOfWarLayer(Layer):
             cx, cy = self.width / 2, self.height / 2
 
             # M_fow_to_svg:
-            # Scale by grid_spacing_svg / 16.0 (since 16px = 1 grid unit)
+            # Scale by grid_spacing_svg / GRID_MASK_PPI
             # Mask (0,0) now corresponds to SVG (0,0)
             m_fow_to_svg = svgelements.Matrix()
             m_fow_to_svg.post_scale(
-                self.grid_spacing_svg / 16.0, self.grid_spacing_svg / 16.0
+                self.grid_spacing_svg / GRID_MASK_PPI,
+                self.grid_spacing_svg / GRID_MASK_PPI,
             )
             # No translation: (0,0) in mask is (0,0) in SVG
             # m_fow_to_svg.post_translate(self.grid_origin_svg[0], self.grid_origin_svg[1])
@@ -124,7 +126,7 @@ class FogOfWarLayer(Layer):
                 (self.width, self.height),
                 flags=cv2.INTER_NEAREST,
                 borderMode=cv2.BORDER_CONSTANT,
-                borderValue=(0, 0, 0, 255),  # Opaque black for out-of-bounds
+                borderValue=(0, 0, 0, ALPHA_OPAQUE),  # Opaque black for out-of-bounds
             )
         else:
             # Fallback (should not happen if state is present)

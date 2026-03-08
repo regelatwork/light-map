@@ -4,6 +4,12 @@ from typing import List, Tuple
 from .common_types import Layer, ImagePatch
 from .core.world_state import WorldState
 from .core.app_context import AppContext
+from .constants import (
+    CURSOR_RADIUS,
+    CURSOR_COLOR_BGRA,
+    CURSOR_THICKNESS,
+    CURSOR_CROSSHAIR_SIZE,
+)
 
 
 class CursorLayer(Layer):
@@ -45,23 +51,31 @@ class CursorLayer(Layer):
             current_positions.append((cx, cy))
 
             # Render a small reticle or dot
-            radius = 12
+            radius = CURSOR_RADIUS
             # Buffer size to contain the cursor
             w, h = radius * 2 + 4, radius * 2 + 4
             buffer = np.zeros((h, w, 4), dtype=np.uint8)
 
             # Draw cursor (Yellow crosshair/circle)
             center = (w // 2, h // 2)
-            color = (0, 255, 255, 255)  # BGRA Yellow
-            cv2.circle(buffer, center, radius, color, 2)
+            color = CURSOR_COLOR_BGRA
+            cv2.circle(buffer, center, radius, color, CURSOR_THICKNESS)
             cv2.circle(buffer, center, 2, color, -1)
 
             # Crosshair lines
             cv2.line(
-                buffer, (center[0] - 5, center[1]), (center[0] + 5, center[1]), color, 1
+                buffer,
+                (center[0] - CURSOR_CROSSHAIR_SIZE, center[1]),
+                (center[0] + CURSOR_CROSSHAIR_SIZE, center[1]),
+                color,
+                1,
             )
             cv2.line(
-                buffer, (center[0], center[1] - 5), (center[0], center[1] + 5), color, 1
+                buffer,
+                (center[0], center[1] - CURSOR_CROSSHAIR_SIZE),
+                (center[0], center[1] + CURSOR_CROSSHAIR_SIZE),
+                color,
+                1,
             )
 
             patches.append(

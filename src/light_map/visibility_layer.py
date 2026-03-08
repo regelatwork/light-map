@@ -5,6 +5,12 @@ import svgelements
 from typing import List, Tuple, Optional
 from .common_types import Layer, ImagePatch
 from .core.world_state import WorldState
+from .constants import (
+    VISIBILITY_SHROUD_ALPHA,
+    ALPHA_OPAQUE,
+    ALPHA_TRANSPARENT,
+    GRID_MASK_PPI,
+)
 
 
 class VisibilityLayer(Layer):
@@ -58,12 +64,12 @@ class VisibilityLayer(Layer):
 
         # Create 'The Shroud' (Dimming for non-visible areas)
         # 1. Create shroud in "Mask Space"
-        # Start with 60% Opaque Black (Alpha 150)
+        # Start with Shroud Alpha (e.g. 150)
         bgra_full = np.zeros((self.mask_height, self.mask_width, 4), dtype=np.uint8)
-        bgra_full[:, :, 3] = 150  # Opaque Black
+        bgra_full[:, :, 3] = VISIBILITY_SHROUD_ALPHA
 
-        # Punch a hole for currently visible vision (0% opaque)
-        bgra_full[mask == 255, 3] = 0
+        # Punch a hole for currently visible vision (Transparent)
+        bgra_full[mask == ALPHA_OPAQUE, 3] = ALPHA_TRANSPARENT
 
         # 2. Transform to Screen Space
         if self.state.viewport:
@@ -72,7 +78,8 @@ class VisibilityLayer(Layer):
 
             m_fow_to_svg = svgelements.Matrix()
             m_fow_to_svg.post_scale(
-                self.grid_spacing_svg / 16.0, self.grid_spacing_svg / 16.0
+                self.grid_spacing_svg / GRID_MASK_PPI,
+                self.grid_spacing_svg / GRID_MASK_PPI,
             )
 
             m_svg_to_screen = svgelements.Matrix()
@@ -152,10 +159,10 @@ class ExclusiveVisionLayer(VisibilityLayer):
         # Everything is Opaque Black (0, 0, 0, 255)
         # Except visible areas which are Transparent (0, 0, 0, 0)
         bgra_full = np.zeros((self.mask_height, self.mask_width, 4), dtype=np.uint8)
-        bgra_full[:, :, 3] = 255  # Fully Opaque Black
+        bgra_full[:, :, 3] = ALPHA_OPAQUE  # Fully Opaque Black
 
         # Punch a hole for vision
-        bgra_full[mask == 255, 3] = 0  # Fully Transparent
+        bgra_full[mask == ALPHA_OPAQUE, 3] = ALPHA_TRANSPARENT  # Fully Transparent
 
         # Transform to Screen Space
         if self.state.viewport:
@@ -164,7 +171,8 @@ class ExclusiveVisionLayer(VisibilityLayer):
 
             m_fow_to_svg = svgelements.Matrix()
             m_fow_to_svg.post_scale(
-                self.grid_spacing_svg / 16.0, self.grid_spacing_svg / 16.0
+                self.grid_spacing_svg / GRID_MASK_PPI,
+                self.grid_spacing_svg / GRID_MASK_PPI,
             )
 
             m_svg_to_screen = svgelements.Matrix()
@@ -184,7 +192,7 @@ class ExclusiveVisionLayer(VisibilityLayer):
                 (self.width, self.height),
                 flags=cv2.INTER_NEAREST,
                 borderMode=cv2.BORDER_CONSTANT,
-                borderValue=(0, 0, 0, 255),  # Darkness outside the warp
+                borderValue=(0, 0, 0, ALPHA_OPAQUE),  # Darkness outside the warp
             )
         else:
             bgra_screen = cv2.resize(

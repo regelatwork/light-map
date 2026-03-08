@@ -12,10 +12,10 @@ class FogOfWarManager:
         self.width = width
         self.height = height
 
-        # Persistent mask (255 = explored, 0 = unexplored)
+        # Persistent mask (ALPHA_OPAQUE = explored, 0 = unexplored)
         self.explored_mask = np.zeros((height, width), dtype=np.uint8)
 
-        # Current LOS mask (255 = visible, 0 = hidden)
+        # Current LOS mask (ALPHA_OPAQUE = visible, 0 = hidden)
         self.visible_mask = np.zeros((height, width), dtype=np.uint8)
 
         # GM Override: If True, everything is visible

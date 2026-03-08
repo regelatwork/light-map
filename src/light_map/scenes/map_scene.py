@@ -140,7 +140,7 @@ class BaseMapScene(Scene):
         grid_spacing = self.context.map_config_manager.get_map_grid_spacing(
             self.context.map_system.svg_loader.filename
         )
-        threshold = 0.5 * grid_spacing
+        threshold = max(0.5 * grid_spacing, 10.0)
 
         from light_map.visibility_types import VisibilityType
 
@@ -175,6 +175,46 @@ class BaseMapScene(Scene):
         closest_y = y1 + t * dy
         return np.sqrt((px - closest_x) ** 2 + (py - closest_y) ** 2)
 
+    def _find_target_at_point(self, cursor_pos: Tuple[int, int]) -> Optional[str]:
+        """Finds the ID of a token or door at the given screen point."""
+        world_x, world_y = self.context.map_system.screen_to_world(
+            cursor_pos[0], cursor_pos[1]
+        )
+
+        # 1. Check Tokens
+        all_candidate_tokens = []
+        if self.context.state:
+            all_candidate_tokens.extend(self.context.state.tokens)
+
+        existing_ids = {t.id for t in all_candidate_tokens}
+        for rt in self.context.raw_tokens:
+            if rt.id not in existing_ids:
+                all_candidate_tokens.append(rt)
+
+        map_file = (
+            self.context.map_system.svg_loader.filename
+            if self.context.map_system.svg_loader
+            else None
+        )
+        grid_spacing = self.context.map_config_manager.get_map_grid_spacing(map_file)
+        threshold = max(
+            0.5 * grid_spacing, 10.0
+        )  # Ensure at least 10 units for new maps
+
+        for token in all_candidate_tokens:
+            dist = np.sqrt(
+                (token.world_x - world_x) ** 2 + (token.world_y - world_y) ** 2
+            )
+            if dist < threshold:
+                return str(token.id)
+
+        # 2. Check Doors
+        door_id = self._check_door_collision(world_x, world_y)
+        if door_id:
+            return door_id
+
+        return None
+
     def _update_dwell_and_linger(
         self,
         primary_gesture: GestureType,
@@ -184,8 +224,9 @@ class BaseMapScene(Scene):
     ) -> bool:
         """Centralized logic for dwell triggering and inspection linger."""
         if primary_gesture == GestureType.POINTING and cursor_pos is not None:
+            target_id = self._find_target_at_point(cursor_pos)
             # Check if dwell triggered (handles both polling and event-based triggers)
-            if self.dwell_tracker.update(cursor_pos, dt):
+            if self.dwell_tracker.update(cursor_pos, dt, target_id=target_id):
                 return True
         else:
             self.dwell_tracker.reset()

@@ -542,7 +542,7 @@ class InteractiveApp:
                 "accumulated_time": dwell_tracker.accumulated_time,
                 "is_triggered": dwell_tracker.is_triggered,
                 "last_point": dwell_tracker.last_point,
-                "target_id": self.app_context.inspected_token_id,  # Use inspected_token_id as proxy for target
+                "target_id": dwell_tracker.target_id,  # Use internal tracker's target_id
             }
         else:
             state.dwell_state = {}
@@ -766,7 +766,7 @@ class InteractiveApp:
                 "id": b.id,
                 "type": b.type.value if hasattr(b.type, "value") else str(b.type),
                 "is_open": b.is_open,
-                "points": b.points,
+                "points": b.segments,
             }
             for b in blockers
         ]

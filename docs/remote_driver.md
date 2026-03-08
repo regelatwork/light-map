@@ -38,7 +38,7 @@ These endpoints allow you to "mock" physical interactions.
 
 #### `POST /input/hands`
 
-Injects virtual hand gestures at specific projector coordinates.
+Injects virtual hand gestures at specific projector (screen) coordinates.
 
 **Payload Schema:**
 
@@ -53,6 +53,30 @@ Injects virtual hand gestures at specific projector coordinates.
 ```
 
 - `gesture` options: `Pointing`, `Open Palm`, `Closed Fist`, `Gun`, `Victory`, `Rock`, `Shaka`, `None`.
+
+#### `POST /input/hands/world`
+
+Injects virtual hand gestures at specific **world (map) coordinates**. The application automatically translates these to projector coordinates using the current viewport.
+
+**Payload Schema:**
+
+```json
+[
+  {
+    "world_x": 100.5,
+    "world_y": 200.5,
+    "gesture": "Pointing"
+  }
+]
+```
+
+**Example (`curl`):**
+
+```bash
+curl -X POST http://127.0.0.1:8000/input/hands/world \
+     -H "Content-Type: application/json" \
+     -d '[{"world_x": 10.0, "world_y": 10.0, "gesture": "Pointing"}]'
+```
 
 **Example (`curl`):**
 
@@ -90,6 +114,27 @@ curl -X POST http://127.0.0.1:8000/input/tokens
      -d '[{"id": 1, "x": 100.0, "y": 100.0}]'
 ```
 
+#### `POST /map/zoom`
+
+Injects a zoom action for the map system.
+
+#### `POST /config/viewport`
+
+Directly sets the map's zoom, pan, and rotation.
+
+**Payload Schema:**
+
+```json
+{
+  "zoom": 1.0,
+  "pan_x": 0.0,
+  "pan_y": 0.0,
+  "rotation": 0.0
+}
+```
+
+- All fields are optional.
+
 ### 2.2 State Inspection (GET)
 
 These endpoints allow you to query the current state of the application.
@@ -110,6 +155,30 @@ Returns information about the active menu.
 #### `GET /state/tokens`
 
 Returns the current list of detected tokens (physical and virtual).
+
+- **Enhanced Fields:** Includes `screen_x` and `screen_y` (projector coordinates) for every token, allowing remote drivers to target tokens with virtual hands.
+
+#### `GET /state/blockers`
+
+Returns the current visibility geometry (doors, walls) loaded from the SVG. Useful for determining target coordinates for testing.
+
+#### `GET /state/dwell`
+
+Exposes the internal state of the interaction `DwellTracker`.
+
+- **Fields:** `accumulated_time`, `is_triggered`, `last_point`, `target_id`.
+
+#### `GET /state/logs`
+
+Retrieves the most recent application logs.
+
+- **Query Param:** `lines` (default: 100).
+
+#### `GET /state/clock`
+
+Returns the application's current `time.monotonic()` value.
+
+- **Benefit:** Allows remote clients to synchronize their internal timers with the application logic.
 
 #### `GET /config`
 

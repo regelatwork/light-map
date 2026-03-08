@@ -14,9 +14,15 @@ def map_scene_context():
     context.map_system = MagicMock(spec=MapSystem)
     context.map_system.width = 1000
     context.map_system.height = 1000
+    context.map_system.screen_to_world.return_value = (0.0, 0.0)
+    context.map_system.svg_loader = None
+    context.raw_tokens = []
+    context.state = MagicMock()
+    context.state.tokens = []
     context.app_config = MagicMock()
     context.app_config.projector_ppi = 96.0
     context.map_config_manager = MagicMock()
+    context.map_config_manager.get_map_grid_spacing.return_value = 0.0
     context.map_config_manager.get_ppi.return_value = 96.0
     return context
 

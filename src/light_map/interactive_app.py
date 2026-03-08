@@ -517,17 +517,8 @@ class InteractiveApp:
         # Priority 2: Use existing inputs (might be from Remote Driver)
         else:
             inputs = state.inputs
-            # If we are in 'ignore' or 'merge' remote mode, and physical lost hand,
-            # we should ensure inputs is cleared if it was a physical hand.
-            # TrackingCoordinator/VisionProcessManager already handles this split
-            # by either sending HandInput objects or Landmarks.
-            if self.config.storage_manager:  # check if we are in a real app context
-                # For now, let's trust state.inputs is the source of truth if hands is empty.
-                pass
-
-            # BUG-FIX: Expire inputs if no update received for > 200ms
-            if inputs and (current_time - state.last_hand_timestamp > 0.2):
-                logging.debug("Expiring hand inputs after 200ms of inactivity.")
+            # BUG-FIX: Expire inputs if no update received for > 0.5s
+            if inputs and (current_time - state.last_hand_timestamp > 0.5):
                 state.inputs = []
                 state.hands_timestamp += 1
                 inputs = []

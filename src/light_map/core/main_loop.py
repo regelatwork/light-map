@@ -7,7 +7,7 @@ from light_map.core.temporal_event_manager import TemporalEventManager
 from light_map.vision.process_manager import VisionProcessManager
 from light_map.vision.frame_producer import FrameProducer
 from light_map.input_manager import InputManager
-from light_map.common_types import DetectionResult, Action, Token
+from light_map.common_types import DetectionResult, ResultType, Action, Token
 from light_map.core.analytics import LatencyInstrument, track_wait
 
 
@@ -27,6 +27,7 @@ class MainLoopController:
         aruco_mapper: Optional[Callable[[Dict[str, Any]], List[Token]]] = None,
         state_mirror: Optional[Dict[str, Any]] = None,
         events: Optional[TemporalEventManager] = None,
+        time_provider=time.monotonic,
     ):
         self.state = world_state
         self.manager = process_manager
@@ -36,15 +37,18 @@ class MainLoopController:
         self.frame_time = 1.0 / target_fps
         self.aruco_mapper = aruco_mapper
         self.state_mirror = state_mirror
+        self.time_provider = time_provider
 
         self.is_running = False
         self.instrument = LatencyInstrument()
-        self.events = events or TemporalEventManager()
+        self.events = events or TemporalEventManager(time_provider=time_provider)
         self.debug_mode = False
         self._last_report_time = 0.0
 
     def tick(self) -> List[Action]:
         """Performs one iteration of the main loop."""
+        current_mono = self.time_provider()
+
         # 1. Update Background from SHM
         if self.producer:
             # Check for new frame
@@ -71,7 +75,7 @@ class MainLoopController:
 
         # 2. Drain Vision Results from Queues
         with track_wait("queue_wait_main", self.instrument):
-            self._drain_queues()
+            self._drain_queues(current_mono)
 
         # 3. Map Raw ArUco if available
         if self.state.raw_aruco["ids"]:
@@ -84,14 +88,12 @@ class MainLoopController:
                     # Only apply if we actually found something, OR if there's no remote tokens.
                     # But the simplest is to only apply non-empty physical results to avoid flickering.
                     if new_tokens or new_raw_tokens:
-                        from light_map.common_types import DetectionResult, ResultType
-
                         res = DetectionResult(
                             timestamp=time.perf_counter_ns(),
                             type=ResultType.ARUCO,
                             data={"tokens": new_tokens, "raw_tokens": new_raw_tokens},
                         )
-                        self.state.apply(res)
+                        self.state.apply(res, current_time=current_mono)
 
                 # NOTE: We DO NOT clear raw_aruco here anymore.
                 # Calibration scenes (e.g. Extrinsics) rely on the raw corners
@@ -152,13 +154,15 @@ class MainLoopController:
 
         return actions
 
-    def _drain_queues(self):
+    def _drain_queues(self, current_time: float) -> set[ResultType]:
         """Pulls all pending results from detector queues and applies them to WorldState."""
+        seen_types = set()
         # Check combined results queue
         while not self.manager.results_queue.empty():
             try:
                 res = self.manager.results_queue.get_nowait()
                 if isinstance(res, DetectionResult):
+                    seen_types.add(res.type)
                     # Record hops from metadata
                     md = res.metadata
                     ts = res.timestamp
@@ -187,10 +191,11 @@ class MainLoopController:
                             time.perf_counter_ns() - md["ts_queue_pushed"],
                         )
 
-                    self.state.apply(res)
+                    self.state.apply(res, current_time=current_time)
                     self.instrument.record_detection(res.timestamp)
             except Exception:
                 break
+        return seen_types
 
     def run(self, render_callback):
         """Starts the high-frequency polling loop."""

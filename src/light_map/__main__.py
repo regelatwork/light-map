@@ -326,7 +326,9 @@ def main():
             )
             producer.lock = manager.lock
 
-            input_manager = InputManager()
+            input_manager = InputManager(
+                flicker_timeout=1.5, time_provider=app.time_provider
+            )
             main_loop = MainLoopController(
                 state,
                 manager,
@@ -335,6 +337,7 @@ def main():
                 aruco_mapper=app.aruco_mapper,
                 state_mirror=state_mirror,
                 events=app.events,
+                time_provider=app.time_provider,
             )
 
             stop_event = threading.Event()

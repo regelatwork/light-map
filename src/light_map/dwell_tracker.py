@@ -33,8 +33,12 @@ class DwellTracker:
         Updates the tracker with a new point.
         Returns True if the dwell threshold has just been reached.
         """
+        # We MUST check background trigger first
+        if self._just_triggered:
+            self._just_triggered = False
+            return True
+
         if point is None:
-            self.reset()
             return False
 
         if self.last_point is None:
@@ -62,6 +66,11 @@ class DwellTracker:
                 ):
                     self.is_triggered = True
                     return True
+            else:
+                if not self.is_triggered and not self.events.has_event(self._event_key):
+                    self.events.schedule(
+                        self.dwell_time_threshold, self._trigger, key=self._event_key
+                    )
         else:
             # Reset if moved outside radius
             self.last_point = point
@@ -69,14 +78,10 @@ class DwellTracker:
             self.is_triggered = False
             self._just_triggered = False
             if self.events:
+                self.events.cancel(self._event_key)
                 self.events.schedule(
                     self.dwell_time_threshold, self._trigger, key=self._event_key
                 )
-
-        # Async trigger check for TemporalEventManager
-        if self._just_triggered:
-            self._just_triggered = False
-            return True
 
         return False
 

@@ -34,6 +34,12 @@ class InputManager:
             if now - self.last_present_time < self.flicker_timeout:
                 self.is_present = True
             else:
+                if self.is_present:
+                    import logging
+
+                    logging.debug(
+                        f"InputManager: Gesture CLEARED due to timeout (now={now:.2f}, last={self.last_present_time:.2f}, timeout={self.flicker_timeout})"
+                    )
                 self.is_present = False
                 self._gesture = GestureType.NONE
 

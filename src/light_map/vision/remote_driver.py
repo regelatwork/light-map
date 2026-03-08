@@ -53,7 +53,7 @@ def create_app(results_queue: Queue, stop_event: Event, state_mirror: Dict[str, 
             )
 
         res = DetectionResult(
-            timestamp=time.perf_counter_ns(),
+            timestamp=time.monotonic_ns(),
             type=ResultType.HANDS,
             data=processed_hands,
         )
@@ -71,7 +71,7 @@ def create_app(results_queue: Queue, stop_event: Event, state_mirror: Dict[str, 
 
         # Wrapped as ARUCO result type
         res = DetectionResult(
-            timestamp=time.perf_counter_ns(),
+            timestamp=time.monotonic_ns(),
             type=ResultType.ARUCO,
             data={"tokens": processed_tokens, "raw_tokens": processed_tokens},
         )
@@ -82,7 +82,7 @@ def create_app(results_queue: Queue, stop_event: Event, state_mirror: Dict[str, 
     def inject_action(action: str, payload: Optional[str] = None):
         """Injects a manual application action (like SYNC_VISION)."""
         res = DetectionResult(
-            timestamp=time.perf_counter_ns(),
+            timestamp=time.monotonic_ns(),
             type=ResultType.ACTION,
             data={"action": action, "payload": payload},
         )
@@ -93,7 +93,7 @@ def create_app(results_queue: Queue, stop_event: Event, state_mirror: Dict[str, 
     def zoom_map(delta: float):
         """Injects a zoom action for the map system."""
         res = DetectionResult(
-            timestamp=time.perf_counter_ns(),
+            timestamp=time.monotonic_ns(),
             type=ResultType.ACTION,
             data={"action": "ZOOM", "delta": delta},
         )

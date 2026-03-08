@@ -152,11 +152,14 @@ class WorldState:
                 return False
         return True
 
-    def apply(self, result: DetectionResult):
+    def apply(self, result: DetectionResult, current_time: Optional[float] = None):
         """
         Applies a detection result from a worker process to the state.
         Ensures synchronization via timestamp.
         """
+        if current_time is None:
+            current_time = time.monotonic()
+
         if result.type == ResultType.ARUCO:
             changed = False
             if "tokens" in result.data:
@@ -198,8 +201,13 @@ class WorldState:
                 if not self._inputs_equal(self.inputs, result.data):
                     self.inputs = result.data
                     self.hands_timestamp += 1
-                    # Update timestamp to prevent immediate expiration
-                    self.last_hand_timestamp = time.perf_counter()
+
+                # BUG-FIX: Even if inputs didn't change, we MUST set is_dirty=True
+                # because scenes need to process time-based events (dwell, linger)
+                # every frame that hands are present.
+                self.is_dirty = True
+                # Update timestamp to prevent immediate expiration
+                self.last_hand_timestamp = current_time
             else:
                 # Raw landmarks from MediaPipe worker
                 new_landmarks = result.data.get("landmarks", [])
@@ -211,6 +219,8 @@ class WorldState:
                     self.hands = new_landmarks
                     self.handedness = new_handedness
                     self.hands_timestamp += 1
+                    # Update timestamp for raw landmarks too
+                    self.last_hand_timestamp = current_time
 
         elif result.type == ResultType.GESTURE:
             new_gesture = result.data.get("gesture")
@@ -289,6 +299,7 @@ class WorldState:
             "tokens_count": len(self.tokens),
             "hands_count": len(self.inputs),
             "timestamp": self.last_frame_timestamp,
+            "last_hand_timestamp": self.last_hand_timestamp,
             "selection": {
                 "type": str(self.selection.type),
                 "id": self.selection.id,

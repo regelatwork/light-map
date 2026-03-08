@@ -14,7 +14,7 @@ from light_map.core.scene import HandInput
 class RemoteHandInput(BaseModel):
     x: int
     y: int
-    gesture: str = "None"
+    gesture: GestureType = GestureType.NONE
 
 
 class RemoteToken(BaseModel):
@@ -37,15 +37,9 @@ def create_app(results_queue: Queue, stop_event: Event, state_mirror: Dict[str, 
         """Injects virtual hand inputs into the results queue."""
         processed_hands = []
         for h in hands:
-            # Map string gesture to GestureType enum if possible, else use UNKNOWN or NONE
-            try:
-                g = GestureType(h.gesture)
-            except ValueError:
-                g = GestureType.UNKNOWN
-
             processed_hands.append(
                 HandInput(
-                    gesture=g,
+                    gesture=h.gesture,
                     proj_pos=(h.x, h.y),
                     unit_direction=(0.0, 0.0),  # Default to no specific direction
                     raw_landmarks=None,  # Virtual hands don't have landmarks

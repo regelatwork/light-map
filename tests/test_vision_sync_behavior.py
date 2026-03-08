@@ -32,6 +32,7 @@ def mock_app():
         app = InteractiveApp(config)
         # Manually inject a loaded map state
         app.map_system.is_map_loaded.return_value = True
+        app.map_system.world_to_screen.return_value = (0.0, 0.0)
         app.fow_manager = MagicMock()
         app.fow_manager.width = 10
         app.fow_manager.height = 10

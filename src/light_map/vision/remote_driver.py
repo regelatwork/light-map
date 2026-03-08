@@ -17,12 +17,25 @@ class RemoteHandInput(BaseModel):
     gesture: GestureType = GestureType.NONE
 
 
+class RemoteWorldHandInput(BaseModel):
+    world_x: float
+    world_y: float
+    gesture: GestureType = GestureType.NONE
+
+
 class RemoteToken(BaseModel):
     id: int
     x: float
     y: float
     z: float = 0.0
     angle: float = 0.0
+
+
+class ViewportConfig(BaseModel):
+    zoom: Optional[float] = None
+    pan_x: Optional[float] = None
+    pan_y: Optional[float] = None
+    rotation: Optional[float] = None
 
 
 def create_app(results_queue: Queue, stop_event: Event, state_mirror: Dict[str, Any]):
@@ -53,6 +66,20 @@ def create_app(results_queue: Queue, stop_event: Event, state_mirror: Dict[str, 
         )
         results_queue.put(res)
         return {"status": "injected", "count": len(processed_hands)}
+
+    @app.post("/input/hands/world")
+    def inject_hands_world(hands: List[RemoteWorldHandInput]):
+        """Injects virtual hand inputs using world coordinates."""
+        hands_data = [
+            h.model_dump() if hasattr(h, "model_dump") else h.dict() for h in hands
+        ]
+        res = DetectionResult(
+            timestamp=time.monotonic_ns(),
+            type=ResultType.ACTION,
+            data={"action": "INJECT_HANDS_WORLD", "hands": hands_data},
+        )
+        results_queue.put(res)
+        return {"status": "injected", "count": len(hands)}
 
     @app.post("/input/tokens")
     def inject_tokens(tokens: List[RemoteToken]):
@@ -94,6 +121,26 @@ def create_app(results_queue: Queue, stop_event: Event, state_mirror: Dict[str, 
         results_queue.put(res)
         return {"status": "injected", "delta": delta}
 
+    @app.post("/config/viewport")
+    def set_viewport(config: ViewportConfig):
+        data = {"action": "SET_VIEWPORT"}
+        if config.zoom is not None:
+            data["zoom"] = config.zoom
+        if config.pan_x is not None:
+            data["pan_x"] = config.pan_x
+        if config.pan_y is not None:
+            data["pan_y"] = config.pan_y
+        if config.rotation is not None:
+            data["rotation"] = config.rotation
+
+        res = DetectionResult(
+            timestamp=time.monotonic_ns(),
+            type=ResultType.ACTION,
+            data=data,
+        )
+        results_queue.put(res)
+        return {"status": "injected"}
+
     @app.get("/config")
     def get_config():
         return state_mirror.get("config", {})
@@ -109,6 +156,33 @@ def create_app(results_queue: Queue, stop_event: Event, state_mirror: Dict[str, 
     @app.get("/state/tokens")
     def get_tokens():
         return state_mirror.get("tokens", [])
+
+    @app.get("/state/blockers")
+    def get_blockers():
+        return state_mirror.get("world", {}).get("blockers", [])
+
+    @app.get("/state/dwell")
+    def get_dwell():
+        return state_mirror.get("world", {}).get("dwell_state", {})
+
+    @app.get("/state/logs")
+    def get_logs(lines: int = 100):
+        try:
+            from light_map.core.storage import StorageManager
+            import os
+
+            log_path = StorageManager().get_state_path("light_map.log")
+            if not os.path.exists(log_path):
+                return {"logs": []}
+            with open(log_path, "r") as f:
+                all_lines = f.readlines()
+                return {"logs": [line.strip() for line in all_lines[-lines:]]}
+        except Exception as e:
+            return {"error": str(e)}
+
+    @app.get("/state/clock")
+    def get_clock():
+        return {"time_monotonic": time.monotonic()}
 
     return app
 

@@ -27,8 +27,14 @@ class DwellTracker:
         self.is_triggered = False
         self._just_triggered = False
         self._event_key = (TimerKey.DWELL, id(self))
+        self.target_id: Optional[str] = None
 
-    def update(self, point: Optional[Tuple[float, float]], dt: float) -> bool:
+    def update(
+        self,
+        point: Optional[Tuple[float, float]],
+        dt: float,
+        target_id: Optional[str] = None,
+    ) -> bool:
         """
         Updates the tracker with a new point.
         Returns True if the dwell threshold has just been reached.
@@ -41,8 +47,9 @@ class DwellTracker:
         if point is None:
             return False
 
-        if self.last_point is None:
+        if self.last_point is None or target_id != self.target_id:
             self.last_point = point
+            self.target_id = target_id
             self.accumulated_time = 0.0
             self.is_triggered = False
             self._just_triggered = False

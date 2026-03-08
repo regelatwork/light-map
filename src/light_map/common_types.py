@@ -260,6 +260,8 @@ class Token:
     marker_z: float = 0.0  # Height of the marker in mm (h)
     grid_x: Optional[int] = None
     grid_y: Optional[int] = None
+    screen_x: Optional[float] = None
+    screen_y: Optional[float] = None
     confidence: float = 1.0
     is_occluded: bool = False
     is_duplicate: bool = False
@@ -270,8 +272,13 @@ class Token:
             "world_x": self.world_x,
             "world_y": self.world_y,
             "world_z": self.world_z,
+            "marker_x": self.marker_x,
+            "marker_y": self.marker_y,
+            "marker_z": self.marker_z,
             "grid_x": self.grid_x,
             "grid_y": self.grid_y,
+            "screen_x": self.screen_x,
+            "screen_y": self.screen_y,
             "confidence": self.confidence,
             "is_occluded": self.is_occluded,
             "is_duplicate": self.is_duplicate,

@@ -76,7 +76,7 @@ br ready              # or: bd ready
 
 # List and search
 br list --status=open # All open issues
-br show <id>          # Full issue details with dependencies
+br show <id> --wrap   # Full issue details with dependencies
 br search "keyword"   # Full-text search
 
 # Create and update

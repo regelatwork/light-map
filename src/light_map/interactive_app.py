@@ -485,6 +485,12 @@ class InteractiveApp:
 
         state.update_viewport(self.map_system.state.to_viewport())
 
+        # Update token screen coordinates for external consumers (like remote driver)
+        for token in state.tokens:
+            token.screen_x, token.screen_y = self.map_system.world_to_screen(
+                token.world_x, token.world_y
+            )
+
         # Process Remote Actions
         if state.pending_actions:
             for action_data in state.pending_actions:
@@ -528,6 +534,18 @@ class InteractiveApp:
         self.app_context.raw_aruco = state.raw_aruco
         self.app_context.raw_tokens = state.raw_tokens
         self.inspected_token_id = self.app_context.inspected_token_id
+
+        # Update dwell state if available in current scene
+        dwell_tracker = getattr(self.current_scene, "dwell_tracker", None)
+        if dwell_tracker:
+            state.dwell_state = {
+                "accumulated_time": dwell_tracker.accumulated_time,
+                "is_triggered": dwell_tracker.is_triggered,
+                "last_point": dwell_tracker.last_point,
+                "target_id": self.app_context.inspected_token_id,  # Use inspected_token_id as proxy for target
+            }
+        else:
+            state.dwell_state = {}
 
         # --- VISIBILITY AND LAYER STACK ---
         current_stack = self.current_scene.get_active_layers(self)
@@ -646,10 +664,42 @@ class InteractiveApp:
         if "map_file" in payload:
             self.load_map(payload["map_file"], payload.get("load_session", False))
 
-        if payload.get("action") == "SYNC_VISION":
+        action_name = payload.get("action")
+        if action_name == "SYNC_VISION":
             if state is not None:
                 self._sync_vision(state)
-                self.notifications.add_notification("Vision Synchronized")
+            self.app_context.notifications.add_notification("Vision Synchronized")
+        elif action_name == "INJECT_HANDS_WORLD":
+            from .core.scene import HandInput
+            from .common_types import GestureType
+
+            hands_data = payload.get("hands", [])
+            processed_hands = []
+            for h in hands_data:
+                sx, sy = self.map_system.world_to_screen(h["world_x"], h["world_y"])
+                gesture_str = h.get("gesture", "NONE").upper()
+                try:
+                    gesture = GestureType[gesture_str]
+                except KeyError:
+                    gesture = GestureType.NONE
+                processed_hands.append(
+                    HandInput(
+                        gesture=gesture,
+                        proj_pos=(int(sx), int(sy)),
+                        unit_direction=(0.0, 0.0),
+                        raw_landmarks=None,
+                    )
+                )
+            if state is not None:
+                state.update_inputs(processed_hands, self.time_provider())
+        elif action_name == "SET_VIEWPORT":
+            if "zoom" in payload:
+                self.map_system.state.zoom = payload["zoom"]
+            if "pan_x" in payload and "pan_y" in payload:
+                self.map_system.state.pan_x = payload["pan_x"]
+                self.map_system.state.pan_y = payload["pan_y"]
+            if "rotation" in payload:
+                self.map_system.state.rotation = payload["rotation"]
 
         if payload.get("action") == "RESET_FOW":
             if self.fow_manager and self.current_map_path:
@@ -711,6 +761,15 @@ class InteractiveApp:
 
         # Update Visibility Engine with blockers
         blockers = self.map_system.svg_loader.get_visibility_blockers()
+        self.state.blockers = [
+            {
+                "id": b.id,
+                "type": b.type.value if hasattr(b.type, "value") else str(b.type),
+                "is_open": b.is_open,
+                "points": b.points,
+            }
+            for b in blockers
+        ]
 
         entry = self.map_config.data.maps.get(filename)
         if entry is None:

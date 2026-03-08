@@ -41,6 +41,8 @@ class WorldState:
         self.effective_show_tokens: bool = True
         self.visibility_mask: Optional[np.ndarray] = None
         self.selection: SelectionState = SelectionState()
+        self.blockers: List[Dict[str, Any]] = []
+        self.dwell_state: Dict[str, Any] = {}
 
         # Remote Action Queuing
         self.pending_actions: List[Dict[str, Any]] = []
@@ -304,6 +306,8 @@ class WorldState:
                 "type": str(self.selection.type),
                 "id": self.selection.id,
             },
+            "blockers": self.blockers,
+            "dwell_state": self.dwell_state,
         }
 
     def clear_raw_aruco(self):

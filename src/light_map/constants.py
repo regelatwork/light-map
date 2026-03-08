@@ -3,7 +3,6 @@ Global constants for the Light Map project.
 Contains magic numbers and shared configuration defaults.
 """
 
-
 # --- Visual / Rendering Constants ---
 VISIBILITY_SHROUD_ALPHA = 150  # Default dimming for non-visible explored areas
 ALPHA_OPAQUE = 255

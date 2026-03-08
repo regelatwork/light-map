@@ -3,7 +3,7 @@ from unittest.mock import MagicMock, patch
 import numpy as np
 import pytest
 
-from light_map.common_types import SceneId, GestureType
+from light_map.common_types import GestureType, SceneId
 from light_map.scenes.calibration_scenes import PpiCalibrationScene
 from light_map.core.scene import HandInput, SceneTransition
 
@@ -63,7 +63,7 @@ def test_ppi_calibration_scene_confirming_to_done(mock_app_context):
             raw_landmarks=MagicMock(),
         )
     ]
-    transition = scene.update(inputs, 0.0)
+    transition = scene.update(inputs, [], 0.0)
 
     assert isinstance(transition, SceneTransition)
     assert transition.target_scene == SceneId.MENU
@@ -85,7 +85,7 @@ def test_ppi_calibration_scene_confirming_to_detecting(mock_app_context):
             raw_landmarks=MagicMock(),
         )
     ]
-    scene.update(inputs, 0.0)
+    scene.update(inputs, [], 0.0)
 
     assert scene._stage == "DETECTING"
 

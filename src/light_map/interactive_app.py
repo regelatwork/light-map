@@ -576,7 +576,7 @@ class InteractiveApp:
         self.map_system.ghost_tokens = state.tokens
 
         # Scene Update
-        transition = self.current_scene.update(inputs, current_time)
+        transition = self.current_scene.update(inputs, actions, current_time)
         if transition:
             self._handle_payloads(transition.payload, state)
             self._switch_scene(transition)

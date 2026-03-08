@@ -41,12 +41,14 @@ class TemporalEventManager:
         if key in self._keys:
             del self._keys[key]
 
-    def check(self):
+    def check(self) -> List[Any]:
         """
         Checks for expired events and executes them.
+        Returns a list of values returned by the callbacks.
         Should be called every tick of the main loop.
         """
         current_time = self.time_provider()
+        results = []
 
         while self._events and self._events[0][0] <= current_time:
             # Pop the earliest event
@@ -61,12 +63,16 @@ class TemporalEventManager:
                 del self._keys[key]
 
             try:
-                callback()
+                res = callback()
+                if res is not None:
+                    results.append(res)
             except Exception as e:
                 # Log but don't stop the main loop
                 import logging
 
                 logging.error(f"Error executing temporal event: {e}")
+
+        return results
 
     def clear(self):
         """Clears all pending events."""

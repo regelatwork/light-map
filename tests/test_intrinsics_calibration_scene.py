@@ -63,6 +63,7 @@ def test_intrinsics_calibration_capture_and_process(
                             raw_landmarks=MagicMock(),
                         )
                     ],
+                    [],
                     0.0,
                 )
             assert (
@@ -74,7 +75,7 @@ def test_intrinsics_calibration_capture_and_process(
             mock_app_context.notifications.reset_mock()  # Reset before processing update
 
             # Now call update again to trigger the PROCESSING stage logic
-            intrinsics_calib_scene.update([], 0.0)
+            intrinsics_calib_scene.update([], [], 0.0)
 
             mock_process_images.assert_called_once()
             mock_save_calibration.assert_called_once()
@@ -107,6 +108,7 @@ def test_intrinsics_calibration_process_failure(
                         raw_landmarks=MagicMock(),
                     )
                 ],
+                [],
                 0.0,
             )
         assert intrinsics_calib_scene._stage == "PROCESSING"
@@ -114,7 +116,7 @@ def test_intrinsics_calibration_process_failure(
         mock_app_context.notifications.reset_mock()  # Reset before processing update
 
         # Now call update again to trigger the PROCESSING stage logic
-        intrinsics_calib_scene.update([], 0.0)
+        intrinsics_calib_scene.update([], [], 0.0)
 
         mock_process_images.assert_called_once()
         assert intrinsics_calib_scene._stage == "ERROR"
@@ -129,12 +131,12 @@ def test_intrinsics_calibration_transition_to_menu(intrinsics_calib_scene):
 
     # Simulate DONE state
     intrinsics_calib_scene._stage = "DONE"
-    transition = intrinsics_calib_scene.update([], 0.0)
+    transition = intrinsics_calib_scene.update([], [], 0.0)
     assert isinstance(transition, SceneTransition)
     assert transition.target_scene == SceneId.MENU
 
     # Simulate ERROR state
     intrinsics_calib_scene._stage = "ERROR"
-    transition = intrinsics_calib_scene.update([], 0.0)
+    transition = intrinsics_calib_scene.update([], [], 0.0)
     assert isinstance(transition, SceneTransition)
     assert transition.target_scene == SceneId.MENU

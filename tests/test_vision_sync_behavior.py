@@ -54,7 +54,7 @@ def test_vision_frozen_until_sync(mock_app):
     app.map_config.resolve_token_profile.return_value.size = 1
 
     # 2. Run a processing cycle (simulates token movement detection)
-    app.process_state(state, 1.0)
+    app.process_state(state, [])
 
     # 3. Check that the fow_manager's visible_mask is still empty (NOT updated)
     assert np.all(app.fow_manager.visible_mask == 0)

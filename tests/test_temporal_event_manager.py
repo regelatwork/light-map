@@ -1,5 +1,6 @@
 import time
 from light_map.core.temporal_event_manager import TemporalEventManager
+from light_map.common_types import Action
 
 
 def test_schedule_and_check():
@@ -93,3 +94,20 @@ def test_tuple_keys():
     time.sleep(0.15)
     manager.check()
     assert state["run"] is False
+
+
+def test_event_manager_produces_actions():
+    manager = TemporalEventManager()
+
+    manager.schedule(0.1, lambda: Action.TRIGGER_MENU)
+    manager.schedule(0.2, lambda: [Action.SELECT, Action.BACK])
+
+    # Wait 0.15s
+    time.sleep(0.15)
+    results = manager.check()
+    assert results == [Action.TRIGGER_MENU]
+
+    # Wait 0.1s more
+    time.sleep(0.1)
+    results = manager.check()
+    assert results == [[Action.SELECT, Action.BACK]]

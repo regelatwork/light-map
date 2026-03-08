@@ -1,3 +1,4 @@
+import time
 import numpy as np
 from typing import List, Optional, Callable, Any, Dict
 from light_map.common_types import (
@@ -197,6 +198,8 @@ class WorldState:
                 if not self._inputs_equal(self.inputs, result.data):
                     self.inputs = result.data
                     self.hands_timestamp += 1
+                    # Update timestamp to prevent immediate expiration
+                    self.last_hand_timestamp = time.perf_counter()
             else:
                 # Raw landmarks from MediaPipe worker
                 new_landmarks = result.data.get("landmarks", [])
@@ -286,6 +289,10 @@ class WorldState:
             "tokens_count": len(self.tokens),
             "hands_count": len(self.inputs),
             "timestamp": self.last_frame_timestamp,
+            "selection": {
+                "type": str(self.selection.type),
+                "id": self.selection.id,
+            },
         }
 
     def clear_raw_aruco(self):

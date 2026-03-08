@@ -43,16 +43,16 @@ def test_projector_calibration_flow_success(mock_app_context):
 
         # Advance to SETTLE
         mock_time += 1.1
-        scene.update([], mock_time)
+        scene.update([], [], mock_time)
         assert scene._stage == "SETTLE"
 
         # Advance to CAPTURE
         mock_time += 2.1
-        scene.update([], mock_time)
+        scene.update([], [], mock_time)
         assert scene._stage == "CAPTURE"
 
         # Advance to PROCESSING/DONE
-        transition = scene.update([], mock_time)
+        transition = scene.update([], [], mock_time)
 
         assert scene._stage == "DONE"
         assert isinstance(transition, SceneTransition)
@@ -78,14 +78,14 @@ def test_projector_calibration_no_camera_error(mock_app_context):
 
         # To SETTLE
         mock_time += 1.1
-        scene.update([], mock_time)
+        scene.update([], [], mock_time)
 
         # To CAPTURE
         mock_time += 2.1
-        scene.update([], mock_time)
+        scene.update([], [], mock_time)
 
         # Process and fail
-        transition = scene.update([], mock_time)
+        transition = scene.update([], [], mock_time)
 
         assert scene._stage == "ERROR"
         assert isinstance(transition, SceneTransition)

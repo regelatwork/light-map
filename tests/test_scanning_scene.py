@@ -48,17 +48,17 @@ def test_scanning_scene_state_machine(mock_app_context):
 
         # START -> FLASH
         mock_time += 0.1
-        scene.update([], mock_time)
+        scene.update([], [], mock_time)
         assert scene._stage == ScanStage.FLASH
 
         # FLASH -> CAPTURE_FLASH (after delay)
         mock_time += 1.6  # 1.7s total
-        scene.update([], mock_time)
+        scene.update([], [], mock_time)
         assert scene._stage == ScanStage.CAPTURE_FLASH
 
         # CAPTURE_FLASH -> PROCESS
         mock_time += 0.1  # 0.1s total
-        scene.update([], mock_time)
+        scene.update([], [], mock_time)
         assert scene._stage == ScanStage.PROCESS
 
         # PROCESS -> SHOW_RESULT (happens within render)
@@ -69,7 +69,7 @@ def test_scanning_scene_state_machine(mock_app_context):
 
         # SHOW_RESULT -> DONE (after delay)
         mock_time += 2.01  # 2.81s total, 2.01s elapsed since SHOW_RESULT
-        transition = scene.update([], mock_time)
+        transition = scene.update([], [], mock_time)
         assert scene._stage == ScanStage.DONE
         assert isinstance(transition, SceneTransition)
         assert transition.target_scene == SceneId.MAP
@@ -81,7 +81,7 @@ def test_render_flash(mock_app_context):
     mock_time = 0.0
     with patch("time.monotonic", return_value=mock_time):
         scene.on_enter()
-        scene.update([], mock_time)  # Move to FLASH stage
+        scene.update([], [], mock_time)  # Move to FLASH stage
         frame = np.zeros((100, 100, 3), dtype=np.uint8)
         rendered_frame = scene.render(frame)
         assert np.all(rendered_frame == 255)

@@ -101,7 +101,7 @@ class MainLoopController:
                 # raw_aruco will be cleared in WorldState.clear_dirty() after the render.
 
         # 4. Process Temporal Events
-        self.events.check()
+        event_actions = self.events.check()
 
         # 5. Poll Hardware Input
         key = cv2.waitKey(1)
@@ -109,6 +109,17 @@ class MainLoopController:
 
         # 6. Get Semantic Actions
         actions = self.input.get_actions()
+
+        # Merge in actions produced by temporal events
+        for res in event_actions:
+            if isinstance(res, list):
+                # Handle batch return if any callback returns multiple actions
+                for r in res:
+                    if r:
+                        actions.append(r)
+            elif res:
+                # Add any truthy result (Action enum, string, etc.)
+                actions.append(res)
 
         # 6.5 Update State Mirror for Remote Driver
         if self.state_mirror is not None:

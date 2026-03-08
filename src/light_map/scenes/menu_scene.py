@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING, Any, List, Optional
 import numpy as np
 
 from light_map.common_types import (
+    Action,
     GestureType,
     MenuActions,
     SceneId,
@@ -86,8 +87,10 @@ class MenuScene(Scene):
         self._is_dirty = True
 
     def update(
-        self, inputs: List[HandInput], current_time: float
+        self, inputs: List[HandInput], actions: List[Action], current_time: float
     ) -> Optional[SceneTransition]:
+        if Action.QUIT in actions:
+            sys.exit(0)
         px, py = -1, -1
         gesture = GestureType.NONE
         is_present = bool(inputs)

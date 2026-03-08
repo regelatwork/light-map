@@ -32,7 +32,7 @@ def test_map_scene_uses_adapter(map_scene_context):
 
     # Mock interaction controller process_gestures
     with patch.object(scene.interaction_controller, "process_gestures") as mock_process:
-        scene.update(inputs, 0.0)
+        scene.update(inputs, [], 0.0)
 
         # Verify it was called with an adapter, not the raw map system
         args, _ = mock_process.call_args

@@ -11,7 +11,7 @@ from light_map.common_types import GestureType, SceneId
 if TYPE_CHECKING:
     from .app_context import AppContext
     from light_map.interactive_app import InteractiveApp
-    from light_map.common_types import Layer
+    from light_map.common_types import Layer, Action
 
 
 @dataclass
@@ -95,7 +95,7 @@ class Scene(ABC):
 
     @abstractmethod
     def update(
-        self, inputs: List[HandInput], current_time: float
+        self, inputs: List[HandInput], actions: List[Action], current_time: float
     ) -> Optional[SceneTransition]:
         """Processes input and returns a transition request if any."""
         raise NotImplementedError

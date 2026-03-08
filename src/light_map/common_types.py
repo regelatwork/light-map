@@ -178,6 +178,11 @@ class Action(StrEnum):
     MOVE = "MOVE"
     QUIT = "QUIT"
     TOGGLE_DEBUG = "TOGGLE_DEBUG"
+    # Action triggers from temporal events or complex logic
+    TRIGGER_MENU = "TRIGGER_MENU"
+    TOGGLE_TOKEN_VISIBILITY = "TOGGLE_TOKEN_VISIBILITY"
+    CLEAR_INSPECTION = "CLEAR_INSPECTION"
+    DWELL_TRIGGER = "DWELL_TRIGGER"
 
 
 @dataclass

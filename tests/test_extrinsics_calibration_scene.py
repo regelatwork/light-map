@@ -87,13 +87,13 @@ def test_extrinsics_scene_uses_ground_points(
     # Call update to trigger detection and transition to CAPTURE (implied logic check)
     # The update loop logic:
     # 1. PLACEMENT: detect markers. If valid_count >= 3 and FIST -> CAPTURE.
-    scene.update(inputs, 1.0)
+    scene.update(inputs, [], 1.0)
 
     # Now stage should be CAPTURE
     assert scene._stage == "CAPTURE"
 
     # Call update again to execute CAPTURE logic
-    scene.update(inputs, 1.1)
+    scene.update(inputs, [], 1.1)
 
     # Verify calibrate_extrinsics was called
     assert mock_calibrate.called
@@ -140,7 +140,7 @@ def test_extrinsics_scene_validation_flow(mock_save, mock_calibrate, mock_contex
     scene._stage = "CAPTURE"  # Force stage
 
     # 1. Update (CAPTURE -> VALIDATION)
-    scene.update([], 1.0)
+    scene.update([], [], 1.0)
 
     assert scene._stage == "VALIDATION"
     assert scene._reprojection_error >= 0.0
@@ -149,22 +149,22 @@ def test_extrinsics_scene_validation_flow(mock_save, mock_calibrate, mock_contex
     # 2. Validation - Retry Flow
     # Hold Fist for 1.0s (not enough)
     inputs = [HandInput(GestureType.CLOSED_FIST, (0, 0), (0.0, 0.0), None)]
-    scene.update(inputs, 2.0)  # Start retry
+    scene.update(inputs, [], 2.0)  # Start retry
     assert scene._retry_gesture_start_time == 2.0
     assert scene._stage == "VALIDATION"
 
     # Hold for another 2.5s (> 2s total)
-    scene.update(inputs, 4.6)
+    scene.update(inputs, [], 4.6)
     assert scene._stage == "PLACEMENT"  # Should reset
     assert scene._retry_gesture_start_time == 0.0
 
     # 3. Validation - Accept Flow
     scene._stage = "CAPTURE"  # Reset manually for test
-    scene.update([], 5.0)  # CAPTURE -> VALIDATION
+    scene.update([], [], 5.0)  # CAPTURE -> VALIDATION
     assert scene._stage == "VALIDATION"
 
     inputs = [HandInput(GestureType.VICTORY, (0, 0), (0.0, 0.0), None)]
-    transition = scene.update(inputs, 6.0)
+    transition = scene.update(inputs, [], 6.0)
 
     assert transition is not None
     assert transition.target_scene == SceneId.MENU

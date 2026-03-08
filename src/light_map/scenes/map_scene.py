@@ -9,7 +9,7 @@ import light_map.menu_config as config_vars
 from light_map.core.map_interaction import MapInteractionController
 from light_map.core.scene import Scene, SceneTransition
 from light_map.gestures import GestureType
-from light_map.common_types import SceneId, SelectionType, TimerKey
+from light_map.common_types import SceneId, SelectionType, TimerKey, Action
 from light_map.dwell_tracker import DwellTracker
 
 from light_map.map_system import MapSystem
@@ -54,8 +54,21 @@ class BaseMapScene(Scene):
             cursor_pos[0], cursor_pos[1]
         )
 
+        # Combine physical and logical tokens for inspection check
+        # logical 'tokens' take precedence if they have the same ID?
+        # Actually, let's just combine them and iterate.
+        all_candidate_tokens = []
+        if self.context.state:
+            all_candidate_tokens.extend(self.context.state.tokens)
+
+        # Add raw tokens, avoiding duplicates if possible (simple ID check)
+        existing_ids = {t.id for t in all_candidate_tokens}
+        for rt in self.context.raw_tokens:
+            if rt.id not in existing_ids:
+                all_candidate_tokens.append(rt)
+
         # 1. Check Tokens
-        for token in self.context.raw_tokens:
+        for token in all_candidate_tokens:
             dist = np.sqrt(
                 (token.world_x - world_x) ** 2 + (token.world_y - world_y) ** 2
             )
@@ -123,11 +136,11 @@ class BaseMapScene(Scene):
             return None
 
         blockers = self.context.map_system.svg_loader.get_visibility_blockers()
-        # Radius for selection (e.g. 0.3 grid cells)
+        # Radius for selection (e.g. 0.5 grid cells)
         grid_spacing = self.context.map_config_manager.get_map_grid_spacing(
             self.context.map_system.svg_loader.filename
         )
-        threshold = 0.3 * grid_spacing
+        threshold = 0.5 * grid_spacing
 
         from light_map.visibility_types import VisibilityType
 
@@ -168,12 +181,12 @@ class BaseMapScene(Scene):
         cursor_pos: Optional[Tuple[int, int]],
         dt: float,
         current_time: float,
-    ) -> None:
+    ) -> bool:
         """Centralized logic for dwell triggering and inspection linger."""
         if primary_gesture == GestureType.POINTING and cursor_pos is not None:
+            # Check if dwell triggered (handles both polling and event-based triggers)
             if self.dwell_tracker.update(cursor_pos, dt):
-                self._handle_dwell_trigger(cursor_pos)
-                self.context.events.cancel(TimerKey.INSPECTION_LINGER)
+                return True
         else:
             self.dwell_tracker.reset()
 
@@ -185,13 +198,12 @@ class BaseMapScene(Scene):
                 duration = getattr(
                     self.context.app_config, "inspection_linger_duration", 10.0
                 )
-
-                def clear_inspection():
-                    self.context.inspected_token_id = None
-
                 self.context.events.schedule(
-                    duration, clear_inspection, key=TimerKey.INSPECTION_LINGER
+                    duration,
+                    lambda: Action.CLEAR_INSPECTION,
+                    key=TimerKey.INSPECTION_LINGER,
                 )
+        return False
 
 
 class ViewingScene(BaseMapScene):
@@ -211,9 +223,18 @@ class ViewingScene(BaseMapScene):
         return False
 
     def update(
-        self, inputs: List[HandInput], current_time: float
+        self, inputs: List[HandInput], actions: List[Action], current_time: float
     ) -> Optional[SceneTransition]:
         """In Viewing mode, we only check for the gesture to summon the menu."""
+        if Action.TRIGGER_MENU in actions:
+            return SceneTransition(SceneId.MENU)
+
+        if Action.TOGGLE_TOKEN_VISIBILITY in actions:
+            self.context.show_tokens = not self.context.show_tokens
+
+        if Action.CLEAR_INSPECTION in actions:
+            self.context.inspected_token_id = None
+
         dt = (
             current_time - self.last_update_time if self.last_update_time > 0 else 0.033
         )
@@ -233,34 +254,34 @@ class ViewingScene(BaseMapScene):
         cursor_pos = (int(px + ux * ppi), int(py + uy * ppi))
 
         # --- DWELL AND LINGER ---
-        self._update_dwell_and_linger(primary_gesture, cursor_pos, dt, current_time)
+        dwell_just_triggered = self._update_dwell_and_linger(
+            primary_gesture, cursor_pos, dt, current_time
+        )
 
-        # Toggle token visibility
+        if (dwell_just_triggered or Action.DWELL_TRIGGER in actions) and cursor_pos:
+            self._handle_dwell_trigger(cursor_pos)
+            self.context.events.cancel(TimerKey.INSPECTION_LINGER)
+
+        # Toggle token visibility (using Action trigger)
         if primary_gesture == GestureType.SHAKA:
             if not self.context.events.has_event(TimerKey.TOKEN_TOGGLE_COOLDOWN):
-                self.context.show_tokens = not self.context.show_tokens
                 self.context.events.schedule(
-                    1.0, lambda: None, key=TimerKey.TOKEN_TOGGLE_COOLDOWN
+                    1.0,
+                    lambda: Action.TOGGLE_TOKEN_VISIBILITY,
+                    key=TimerKey.TOKEN_TOGGLE_COOLDOWN,
                 )
 
         if primary_gesture == config_vars.SUMMON_GESTURE:
             if not self.context.events.has_event(TimerKey.SUMMON_MENU):
                 logging.debug("Summon gesture started")
-
-                def trigger_menu():
-                    self._transition_to = SceneId.MENU
-
                 self.context.events.schedule(
-                    config_vars.SUMMON_TIME, trigger_menu, key=TimerKey.SUMMON_MENU
+                    config_vars.SUMMON_TIME,
+                    lambda: Action.TRIGGER_MENU,
+                    key=TimerKey.SUMMON_MENU,
                 )
         else:
             if self.context.events.has_event(TimerKey.SUMMON_MENU):
                 self.context.events.cancel(TimerKey.SUMMON_MENU)
-
-        if getattr(self, "_transition_to", None) is not None:
-            t = self._transition_to
-            self._transition_to = None
-            return SceneTransition(t)
 
         return None
 
@@ -291,9 +312,18 @@ class MapScene(BaseMapScene):
         return False
 
     def update(
-        self, inputs: List[HandInput], current_time: float
+        self, inputs: List[HandInput], actions: List[Action], current_time: float
     ) -> Optional[SceneTransition]:
         """Processes gestures for map interaction and menu summoning."""
+        if Action.TRIGGER_MENU in actions:
+            return SceneTransition(SceneId.MENU)
+
+        if Action.TOGGLE_TOKEN_VISIBILITY in actions:
+            self.context.show_tokens = not self.context.show_tokens
+
+        if Action.CLEAR_INSPECTION in actions:
+            self.context.inspected_token_id = None
+
         dt = (
             current_time - self.last_update_time if self.last_update_time > 0 else 0.033
         )
@@ -308,33 +338,33 @@ class MapScene(BaseMapScene):
             cursor_pos = (int(px + ux * ppi), int(py + uy * ppi))
 
         # --- DWELL AND LINGER ---
-        self._update_dwell_and_linger(primary_gesture, cursor_pos, dt, current_time)
+        dwell_just_triggered = self._update_dwell_and_linger(
+            primary_gesture, cursor_pos, dt, current_time
+        )
 
-        # Toggle token visibility
+        if (dwell_just_triggered or Action.DWELL_TRIGGER in actions) and cursor_pos:
+            self._handle_dwell_trigger(cursor_pos)
+            self.context.events.cancel(TimerKey.INSPECTION_LINGER)
+
+        # Toggle token visibility (using Action trigger)
         if primary_gesture == GestureType.SHAKA:
             if not self.context.events.has_event(TimerKey.TOKEN_TOGGLE_COOLDOWN):
-                self.context.show_tokens = not self.context.show_tokens
                 self.context.events.schedule(
-                    1.0, lambda: None, key=TimerKey.TOKEN_TOGGLE_COOLDOWN
+                    1.0,
+                    lambda: Action.TOGGLE_TOKEN_VISIBILITY,
+                    key=TimerKey.TOKEN_TOGGLE_COOLDOWN,
                 )
 
         if primary_gesture == config_vars.SUMMON_GESTURE:
             if not self.context.events.has_event(TimerKey.SUMMON_MENU):
-
-                def trigger_menu():
-                    self._transition_to = SceneId.MENU
-
                 self.context.events.schedule(
-                    config_vars.SUMMON_TIME, trigger_menu, key=TimerKey.SUMMON_MENU
+                    config_vars.SUMMON_TIME,
+                    lambda: Action.TRIGGER_MENU,
+                    key=TimerKey.SUMMON_MENU,
                 )
         else:
             if self.context.events.has_event(TimerKey.SUMMON_MENU):
                 self.context.events.cancel(TimerKey.SUMMON_MENU)
-
-        if getattr(self, "_transition_to", None) is not None:
-            t = self._transition_to
-            self._transition_to = None
-            return SceneTransition(t)
 
         # Process map interactions
         grid_size = None

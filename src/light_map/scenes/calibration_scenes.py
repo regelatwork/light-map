@@ -16,7 +16,7 @@ from light_map.core.map_interaction import MapInteractionController
 from light_map.gestures import GestureType
 from light_map.token_tracker import TokenTracker
 from light_map.calibration_logic import calculate_ppi_from_frame, calibrate_extrinsics
-from light_map.common_types import SceneId
+from light_map.common_types import SceneId, Action
 from light_map.calibration import (
     process_chessboard_images,
     save_camera_calibration,
@@ -61,7 +61,7 @@ class FlashCalibrationScene(Scene):
         self.is_dirty = True
 
     def update(
-        self, inputs: List[HandInput], current_time: float
+        self, inputs: List[HandInput], actions: List[Action], current_time: float
     ) -> Optional[SceneTransition]:
         elapsed = current_time - self._stage_start_time
 
@@ -184,7 +184,7 @@ class IntrinsicsCalibrationScene(Scene):
         )
 
     def update(
-        self, inputs: List[HandInput], current_time: float
+        self, inputs: List[HandInput], actions: List[Action], current_time: float
     ) -> Optional[SceneTransition]:
         if self._stage == "CAPTURE":
             if inputs and inputs[0].gesture == GestureType.CLOSED_FIST:
@@ -308,7 +308,7 @@ class ProjectorCalibrationScene(Scene):
         self.context.notifications.add_notification("Projecting calibration pattern...")
 
     def update(
-        self, inputs: List[HandInput], current_time: float
+        self, inputs: List[HandInput], actions: List[Action], current_time: float
     ) -> Optional[SceneTransition]:
         elapsed = current_time - self._start_time
 
@@ -490,7 +490,7 @@ class ExtrinsicsCalibrationScene(Scene):
         self.context.notifications.add_notification("Place tokens on target zones.")
 
     def update(
-        self, inputs: List[HandInput], current_time: float
+        self, inputs: List[HandInput], actions: List[Action], current_time: float
     ) -> Optional[SceneTransition]:
         self._current_time = current_time
         if self._stage == "PLACEMENT":
@@ -903,7 +903,7 @@ class PpiCalibrationScene(Scene):
         self._candidate_ppi = 0.0
 
     def update(
-        self, inputs: List[HandInput], current_time: float
+        self, inputs: List[HandInput], actions: List[Action], current_time: float
     ) -> Optional[SceneTransition]:
         if self._stage == "CONFIRMING" and inputs:
             gesture = inputs[0].gesture
@@ -1142,7 +1142,7 @@ class MapGridCalibrationScene(Scene):
         pass
 
     def update(
-        self, inputs: List[HandInput], current_time: float
+        self, inputs: List[HandInput], actions: List[Action], current_time: float
     ) -> Optional[SceneTransition]:
         primary_gesture = inputs[0].gesture if inputs else GestureType.NONE
 

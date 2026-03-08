@@ -119,9 +119,9 @@ def test_map_grid_calibration_confirm_saves_config(
     ]
 
     # First call sets start time
-    map_grid_calib_scene.update(inputs, mock_monotonic())
+    map_grid_calib_scene.update(inputs, [], mock_monotonic())
     # Second call triggers save
-    transition = map_grid_calib_scene.update(inputs, mock_monotonic())
+    transition = map_grid_calib_scene.update(inputs, [], mock_monotonic())
 
     assert isinstance(transition, SceneTransition)
     assert transition.target_scene == SceneId.MENU
@@ -159,7 +159,7 @@ def test_map_grid_calibration_interaction_updates_overlay(
                 raw_landmarks=None,
             )
         ]
-        map_grid_calib_scene.update(inputs, 0.0)
+        map_grid_calib_scene.update(inputs, [], 0.0)
 
         # Should call process_gestures with the grid_overlay as target
         mock_process.assert_called_once_with(inputs, map_grid_calib_scene.grid_overlay)

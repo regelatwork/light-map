@@ -76,7 +76,7 @@ def test_extrinsics_scene_passes_known_targets(
     mock_context.raw_aruco = {"ids": ids, "corners": corners}
 
     # 1. Update during PLACEMENT to detect markers
-    scene.update([], 1.0)
+    scene.update([], [], 1.0)
 
     assert scene._target_status[0] == "VALID"
     assert scene._target_status[1] == "VALID"
@@ -84,10 +84,10 @@ def test_extrinsics_scene_passes_known_targets(
 
     # 2. Trigger Capture with Fist
     inputs = [HandInput(GestureType.CLOSED_FIST, (0, 0), (0.0, 0.0), None)]
-    scene.update(inputs, 1.1)
+    scene.update(inputs, [], 1.1)
 
     # 3. Update again to run CAPTURE logic
-    scene.update(inputs, 1.2)
+    scene.update(inputs, [], 1.2)
 
     # 4. Verify calibrate_extrinsics call
     assert mock_calibrate.called

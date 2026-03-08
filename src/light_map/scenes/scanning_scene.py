@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING, List, Optional
 import numpy as np
 
 from light_map.common_types import (
+    Action,
     SceneId,
     SessionData,
     ViewportState,
@@ -88,7 +89,7 @@ class ScanningScene(Scene):
         self._cached_pattern_points = []
 
     def update(
-        self, inputs: List[HandInput], current_time: float
+        self, inputs: List[HandInput], actions: List[Action], current_time: float
     ) -> Optional[SceneTransition]:
         """Runs the state machine for the scanning sequence."""
         elapsed_time = current_time - self._stage_start_time

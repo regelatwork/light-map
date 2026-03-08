@@ -1,8 +1,12 @@
-import pytest
-from light_map.dwell_tracker import DwellTracker
-from light_map.vision.input_processor import InputProcessor, DummyResults
-from light_map.common_types import AppConfig, GestureType
+import time
+
 import numpy as np
+import pytest
+
+from light_map.common_types import Action, AppConfig, GestureType, TimerKey
+from light_map.core.temporal_event_manager import TemporalEventManager
+from light_map.dwell_tracker import DwellTracker
+from light_map.vision.input_processor import DummyResults, InputProcessor
 
 
 def test_dwell_tracker_basic():
@@ -26,14 +30,30 @@ def test_dwell_tracker_basic():
     assert tracker.update((100, 100), 0.5) is False
 
 
-def test_dwell_tracker_reset():
-    tracker = DwellTracker(radius_pixels=10, dwell_time_threshold=2.0)
-    tracker.update((100, 100), 1.5)
+def test_dwell_tracker_with_events():
+    events = TemporalEventManager()
+    # 10 pixel radius, 2 second threshold
+    tracker = DwellTracker(radius_pixels=10, dwell_time_threshold=2.0, events=events)
 
-    # Move outside radius
-    assert tracker.update((120, 120), 0.1) is False
-    assert tracker.accumulated_time == 0.0
-    assert tracker.last_point == (120, 120)
+    # First update: should schedule event
+    assert tracker.update((100, 100), 0.5) is False
+    assert events.has_event((TimerKey.DWELL, id(tracker)))
+
+    # Stable update: should NOT return true yet, and should NOT reschedule
+    # We simulate some time passing but not enough
+    assert tracker.update((102, 102), 1.0) is False
+
+    # Now simulate event firing.
+    # Instead of real time, let's mock the callback execution or just wait.
+    # Actually, let's just wait a bit and check.
+    time.sleep(2.1)
+    results = events.check()
+    assert Action.DWELL_TRIGGER in results
+
+    # Now the NEXT update() should return True
+    assert tracker.update((101, 101), 0.1) is True
+    # And subsequently False
+    assert tracker.update((101, 101), 0.1) is False
 
 
 def test_input_processor_virtual_pointer_offset(mocker):

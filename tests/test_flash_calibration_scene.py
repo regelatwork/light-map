@@ -50,14 +50,14 @@ def test_flash_calibration_scene_state_machine(mock_app_context):
 
             # START -> TESTING
             mock_time += 0.1
-            scene.update([], mock_time)
+            scene.update([], [], mock_time)
             assert scene._stage == FlashCalibStage.TESTING
 
             # Iterate through test levels
             for i, intensity in enumerate(scene._test_levels):
                 # Settle time
                 mock_time += 1.51
-                scene.update([], mock_time)
+                scene.update([], [], mock_time)
                 assert scene._stage == FlashCalibStage.TESTING
                 assert scene._capture_frame is True
 
@@ -80,7 +80,7 @@ def test_flash_calibration_scene_state_machine(mock_app_context):
 
             # ANALYZING -> SHOW_RESULT
             mock_time += 0.1
-            scene.update([], mock_time)
+            scene.update([], [], mock_time)
             assert scene._stage == FlashCalibStage.SHOW_RESULT
             mock_app_context.map_config_manager.set_flash_intensity.assert_called_once_with(
                 105
@@ -91,7 +91,7 @@ def test_flash_calibration_scene_state_machine(mock_app_context):
 
             # SHOW_RESULT -> DONE (after delay)
             mock_time += 2.01
-            transition = scene.update([], mock_time)
+            transition = scene.update([], [], mock_time)
             assert scene._stage == FlashCalibStage.DONE
             assert isinstance(transition, SceneTransition)
             assert transition.target_scene == SceneId.MENU
@@ -112,12 +112,12 @@ def test_render_flash_levels(mock_full_like, mock_app_context):
             scene.token_tracker, "detect_tokens"
         ):  # Don't care about detection here
             scene.on_enter()
-            scene.update([], mock_time)
+            scene.update([], [], mock_time)
 
             for i in range(len(scene._test_levels) - 1):
                 # Advance time and update to trigger capture_frame
                 mock_time += 1.51
-                scene.update([], mock_time)
+                scene.update([], [], mock_time)
 
                 frame = np.zeros((100, 100, 3), dtype=np.uint8)
                 scene.render(frame)
@@ -132,7 +132,7 @@ def test_render_flash_levels(mock_full_like, mock_app_context):
 
             # Handle the last test level separately
             mock_time += 1.51
-            scene.update([], mock_time)
+            scene.update([], [], mock_time)
 
             frame = np.zeros((100, 100, 3), dtype=np.uint8)
             scene.render(frame)

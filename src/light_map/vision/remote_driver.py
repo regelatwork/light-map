@@ -73,7 +73,7 @@ def create_app(results_queue: Queue, stop_event: Event, state_mirror: Dict[str, 
         res = DetectionResult(
             timestamp=time.perf_counter_ns(),
             type=ResultType.ARUCO,
-            data={"tokens": processed_tokens, "raw_tokens": []},
+            data={"tokens": processed_tokens, "raw_tokens": processed_tokens},
         )
         results_queue.put(res)
         return {"status": "injected", "count": len(processed_tokens)}

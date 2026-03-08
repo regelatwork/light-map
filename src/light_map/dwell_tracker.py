@@ -1,7 +1,7 @@
 import math
 from typing import Tuple, Optional, Callable
 from light_map.core.temporal_event_manager import TemporalEventManager
-from light_map.common_types import TimerKey
+from light_map.common_types import TimerKey, Action
 
 
 class DwellTracker:
@@ -95,3 +95,4 @@ class DwellTracker:
             self._just_triggered = True
             if self.on_trigger:
                 self.on_trigger()
+            return Action.DWELL_TRIGGER

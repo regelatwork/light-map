@@ -1,5 +1,6 @@
 import React, { useState, useRef, type ReactNode } from 'react';
 import { GridLayer } from './GridLayer';
+import { TokenLayer } from './TokenLayer';
 
 interface SchematicCanvasProps {
   children?: ReactNode;
@@ -88,6 +89,7 @@ export const SchematicCanvas: React.FC<SchematicCanvasProps> = ({ children }) =>
         <rect x={viewBox.x} y={viewBox.y} width={viewBox.w} height={viewBox.h} fill="#f9fafb" />
         
         <GridLayer />
+        <TokenLayer />
 
         {/* Layers will be rendered as children */}
         {children}

@@ -44,6 +44,11 @@ class WorldState:
         self.blockers: List[Dict[str, Any]] = []
         self.dwell_state: Dict[str, Any] = {}
 
+        # Grid Metadata
+        self.grid_spacing_svg: float = 0.0
+        self.grid_origin_svg_x: float = 0.0
+        self.grid_origin_svg_y: float = 0.0
+
         # Remote Action Queuing
         self.pending_actions: List[Dict[str, Any]] = []
 
@@ -308,6 +313,9 @@ class WorldState:
             },
             "blockers": self.blockers,
             "dwell_state": self.dwell_state,
+            "grid_spacing_svg": self.grid_spacing_svg,
+            "grid_origin_svg_x": self.grid_origin_svg_x,
+            "grid_origin_svg_y": self.grid_origin_svg_y,
         }
 
     def clear_raw_aruco(self):

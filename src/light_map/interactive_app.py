@@ -629,8 +629,8 @@ class InteractiveApp:
         return final_frame, []
 
     def _sync_vision(self, state: "WorldState"):
-        """Helper to synchronize visibility mask and Fog of War."""
-        if self.fow_manager and self.current_map_path and state is not None:
+        """Forces a line-of-sight visibility sync."""
+        if self.visibility_engine and self.fow_manager and self.current_map_path and state is not None:
             # Calculate latest vision mask on-demand
             combined_pc_mask = self.visibility_engine.get_aggregate_vision_mask(
                 state.tokens,
@@ -656,6 +656,80 @@ class InteractiveApp:
                 # 5. Invalidate Layer Caches
                 self.fow_layer.is_dirty = True
 
+    def _rebuild_visibility_stack(self, entry: Any):
+        """Re-initializes visibility engine and layers based on map configuration."""
+        spacing = entry.grid_spacing_svg if entry.grid_spacing_svg > 0 else 10.0
+        origin = (entry.grid_origin_svg_x, entry.grid_origin_svg_y)
+
+        self.visibility_engine = VisibilityEngine(
+            grid_spacing_svg=spacing,
+            grid_origin=origin,
+        )
+        self.app_context.visibility_engine = self.visibility_engine
+
+        # Sync to WorldState
+        self.state.grid_spacing_svg = spacing
+        self.state.grid_origin_svg_x = entry.grid_origin_svg_x
+        self.state.grid_origin_svg_y = entry.grid_origin_svg_y
+
+        # Re-initialize blockers with new visibility engine parameters
+        blockers = self.map_system.svg_loader.get_visibility_blockers()
+        svg_w = self.map_system.svg_loader.svg.width
+        svg_h = self.map_system.svg_loader.svg.height
+        mask_w, mask_h = self.visibility_engine.calculate_mask_dimensions(svg_w, svg_h)
+        self.visibility_engine.update_blockers(blockers, mask_w, mask_h)
+
+        # Initialize Fog of War Manager if not already done for this map
+        # Or if dimensions changed (which shouldn't happen for same map file)
+        if (
+            self.fow_manager is None
+            or self.fow_manager.width != mask_w
+            or self.fow_manager.height != mask_h
+        ):
+            self.fow_manager = FogOfWarManager(mask_w, mask_h)
+            if self.current_map_path:
+                self.map_config.load_fow_masks(self.current_map_path, self.fow_manager)
+
+        # Update layers
+        self.fow_layer = FogOfWarLayer(
+            self.state,
+            self.fow_manager,
+            spacing,
+            origin,
+            self.config.width,
+            self.config.height,
+        )
+        self.visibility_layer = VisibilityLayer(
+            self.state,
+            mask_w,
+            mask_h,
+            spacing,
+            origin,
+            self.config.width,
+            self.config.height,
+        )
+        self.exclusive_vision_layer = ExclusiveVisionLayer(
+            self.state,
+            mask_w,
+            mask_h,
+            spacing,
+            origin,
+            self.config.width,
+            self.config.height,
+        )
+        self.door_layer = DoorLayer(
+            self.state,
+            self.visibility_engine,
+            self.config.width,
+            self.config.height,
+            thickness_multiplier=self.config.door_thickness_multiplier,
+        )
+
+        # Update layer stack
+        self.layer_stack[1] = self.door_layer
+        self.layer_stack[2] = self.fow_layer
+        self.layer_stack[3] = self.visibility_layer
+
     def _handle_payloads(self, payload: Any, state: Optional["WorldState"] = None):
         """Handle side-effects from scene transitions, like loading maps."""
         if not isinstance(payload, dict):
@@ -669,6 +743,21 @@ class InteractiveApp:
             if state is not None:
                 self._sync_vision(state)
             self.app_context.notifications.add_notification("Vision Synchronized")
+        elif action_name == "UPDATE_GRID":
+            if self.current_map_path:
+                entry = self.map_config.data.maps.get(self.current_map_path)
+                if entry:
+                    entry.grid_origin_svg_x = payload.get("offset_x", 0.0)
+                    entry.grid_origin_svg_y = payload.get("offset_y", 0.0)
+                    self.map_config.save()
+
+                    # Update WorldState
+                    self.state.grid_origin_svg_x = entry.grid_origin_svg_x
+                    self.state.grid_origin_svg_y = entry.grid_origin_svg_y
+
+                    # Re-setup visibility stack
+                    self._rebuild_visibility_stack(entry)
+                    self.notifications.add_notification("Grid Offset Updated")
         elif action_name == "INJECT_HANDS_WORLD":
             from .core.scene import HandInput
             from .common_types import GestureType
@@ -756,6 +845,7 @@ class InteractiveApp:
     def load_map(self, filename: str, load_session: bool = False):
         """Loads an SVG map file and restores its state."""
         filename = os.path.abspath(filename)
+        self.current_map_path = filename
         self.map_system.svg_loader = SVGLoader(filename)
         self.state.increment_map_timestamp()
 
@@ -797,84 +887,12 @@ class InteractiveApp:
                     ) / spacing
                 self.map_config.save()
 
-        # Setup Visibility Engine with correct scaling
-        spacing = entry.grid_spacing_svg if entry.grid_spacing_svg > 0 else 10.0
-        self.visibility_engine = VisibilityEngine(
-            grid_spacing_svg=spacing,
-            grid_origin=(entry.grid_origin_svg_x, entry.grid_origin_svg_y),
-        )
-        self.app_context.visibility_engine = self.visibility_engine
-        self.current_map_path = filename
-
-        # SVG width/height in units
-        svg_w = self.map_system.svg_loader.svg.width
-        svg_h = self.map_system.svg_loader.svg.height
-        mask_w, mask_h = self.visibility_engine.calculate_mask_dimensions(svg_w, svg_h)
-
-        logging.debug(
-            f"Calculated mask dimensions: {mask_w}x{mask_h} (SVG: {svg_w}x{svg_h}, spacing: {spacing})"
-        )
-
-        # Now update blockers with the calculated mask dimensions
-        self.visibility_engine.update_blockers(blockers, mask_w, mask_h)
-
-        self.fow_manager = FogOfWarManager(mask_w, mask_h)
-        self.map_config.load_fow_masks(filename, self.fow_manager)
+        # setup Visibility Engine and layers
+        self._rebuild_visibility_stack(entry)
 
         # Restore Visibility Highlight in state if loaded from persistence
         if np.any(self.fow_manager.visible_mask):
             self.state.update_visibility_mask(self.fow_manager.visible_mask)
-
-        spacing = entry.grid_spacing_svg if entry.grid_spacing_svg > 0 else 10.0
-        origin = (entry.grid_origin_svg_x, entry.grid_origin_svg_y)
-
-        self.fow_layer = FogOfWarLayer(
-            self.state,
-            self.fow_manager,
-            spacing,
-            origin,
-            self.config.width,
-            self.config.height,
-        )
-        # Update Door Layer
-        self.door_layer = DoorLayer(
-            self.state,
-            self.visibility_engine,
-            self.config.width,
-            self.config.height,
-            thickness_multiplier=self.config.door_thickness_multiplier,
-        )
-        self.layer_stack[1] = self.door_layer
-
-        self.fow_layer = FogOfWarLayer(
-            self.state,
-            self.fow_manager,
-            spacing,
-            origin,
-            self.config.width,
-            self.config.height,
-        )
-        # Update layer in stack (it might have been replaced)
-        self.layer_stack[2] = self.fow_layer
-        self.visibility_layer = VisibilityLayer(
-            self.state,
-            mask_w,
-            mask_h,
-            spacing,
-            origin,
-            self.config.width,
-            self.config.height,
-        )
-        self.layer_stack[3] = self.visibility_layer
-        self.exclusive_vision_layer = ExclusiveVisionLayer(
-            self.state,
-            mask_w,
-            mask_h,
-            spacing,
-            origin,
-            self.config.width,
-            self.config.height,
-        )
 
         if load_session:
             session_dir = None
@@ -898,7 +916,9 @@ class InteractiveApp:
                     ):
                         blocker.is_open = session.door_states[blocker.id]
                 self.visibility_engine.update_blockers(
-                    self.visibility_engine.blockers, mask_w, mask_h
+                    self.visibility_engine.blockers,
+                    self.fow_manager.width,
+                    self.fow_manager.height,
                 )
 
                 if session.viewport:

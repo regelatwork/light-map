@@ -269,6 +269,31 @@ def create_app(results_queue: Queue, stop_event: Event, state_mirror: Dict[str, 
         except Exception as e:
             return {"error": str(e)}
 
+    @app.get("/maps")
+    def get_maps():
+        """Returns a list of registered maps from the MapConfigManager."""
+        maps_dict = state_mirror.get("maps", {})
+        return [
+            {"path": path, "name": info.get("name", os.path.basename(path))}
+            for path in maps_dict.keys()
+            for info in [maps_dict[path]]
+        ]
+
+    @app.post("/map/load")
+    def load_map(path: str, load_session: bool = True):
+        """Triggers a map load action in the main application."""
+        res = DetectionResult(
+            timestamp=time.monotonic_ns(),
+            type=ResultType.ACTION,
+            data={
+                "action": "LOAD_MAP",
+                "map_file": path,
+                "load_session": load_session,
+            },
+        )
+        results_queue.put(res)
+        return {"status": "injected", "map": path}
+
     @app.get("/state/clock")
     def get_clock():
         return {"time_monotonic": time.monotonic()}

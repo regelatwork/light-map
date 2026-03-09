@@ -1,6 +1,7 @@
 import { useSystemState } from '../hooks/useSystemState';
 import { SchematicCanvas } from './SchematicCanvas';
 import { ConfigurationSidebar } from './ConfigurationSidebar';
+import { MapLibrary } from './MapLibrary';
 
 export const Dashboard = () => {
   const { isConnected, world, tokens } = useSystemState();
@@ -31,6 +32,9 @@ export const Dashboard = () => {
                 <span className="text-gray-500">Tokens:</span> {tokens.length}
               </p>
             </div>
+          </div>
+          <div className="mb-6">
+            <MapLibrary />
           </div>
           <div>
             <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-2">

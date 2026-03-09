@@ -364,6 +364,10 @@ def main():
                         if app.fow_manager
                         else True,
                     }
+                    state_mirror["maps"] = {
+                        path: {"name": os.path.basename(path)}
+                        for path in app.map_config.data.maps.keys()
+                    }
 
                 # B. Handle Startup Actions (Execute once)
                 if args.action and not startup_action_executed:

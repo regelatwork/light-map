@@ -3,6 +3,6 @@ function App() {
     <div className="bg-blue-500 text-white p-4">
       <h1 className="text-2xl font-bold">Tailwind is Active</h1>
     </div>
-  )
+  );
 }
-export default App
+export default App;

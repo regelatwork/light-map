@@ -4,9 +4,9 @@ import React, {
   useEffect,
   useReducer,
   useRef,
-  ReactNode,
+  type ReactNode,
 } from 'react';
-import { SystemState, INITIAL_STATE } from '../types/system';
+import { type SystemState, INITIAL_STATE } from '../types/system';
 
 type Action =
   | { type: 'UPDATE_STATE'; payload: Partial<SystemState> }

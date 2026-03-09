@@ -1,9 +1,11 @@
+/* eslint-disable react-refresh/only-export-components */
 import React, {
   createContext,
   useContext,
   useEffect,
   useReducer,
   useRef,
+  useCallback,
   type ReactNode,
 } from 'react';
 import { type SystemState, INITIAL_STATE } from '../types/system';
@@ -30,7 +32,6 @@ const SystemStateContext = createContext<SystemState>(INITIAL_STATE);
 
 const getWsUrl = () => {
   const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-  // Use a relative path in production, and point to 8000 in dev if not served by FastAPI
   const host = import.meta.env.DEV ? 'localhost:8000' : window.location.host;
   return `${protocol}//${host}/ws/state`;
 };
@@ -39,8 +40,9 @@ export const SystemStateProvider: React.FC<{ children: ReactNode }> = ({ childre
   const [state, dispatch] = useReducer(systemReducer, INITIAL_STATE);
   const socketRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<number | null>(null);
+  const connectRef = useRef<() => void>(() => {});
 
-  const connect = () => {
+  const connect = useCallback(() => {
     if (socketRef.current?.readyState === WebSocket.OPEN) return;
 
     const url = getWsUrl();
@@ -67,7 +69,9 @@ export const SystemStateProvider: React.FC<{ children: ReactNode }> = ({ childre
     socket.onclose = () => {
       console.log('WebSocket disconnected. Reconnecting in 3s...');
       dispatch({ type: 'SET_CONNECTED', payload: false });
-      reconnectTimeoutRef.current = window.setTimeout(connect, 3000);
+      reconnectTimeoutRef.current = window.setTimeout(() => {
+        connectRef.current();
+      }, 3000);
     };
 
     socket.onerror = (err) => {
@@ -77,7 +81,12 @@ export const SystemStateProvider: React.FC<{ children: ReactNode }> = ({ childre
     };
 
     socketRef.current = socket;
-  };
+  }, []);
+
+  // Update the ref so it always points to the stable connect function
+  useEffect(() => {
+    connectRef.current = connect;
+  }, [connect]);
 
   useEffect(() => {
     connect();
@@ -89,7 +98,7 @@ export const SystemStateProvider: React.FC<{ children: ReactNode }> = ({ childre
         clearTimeout(reconnectTimeoutRef.current);
       }
     };
-  }, []);
+  }, [connect]);
 
   return <SystemStateContext.Provider value={state}>{children}</SystemStateContext.Provider>;
 };

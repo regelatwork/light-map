@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useSystemState } from '../hooks/useSystemState';
 import { useCanvas } from './CanvasContext';
 import { saveGridConfig } from '../services/api';
@@ -9,45 +9,40 @@ export const GridLayer: React.FC = () => {
 
   // Local state for dragging
   const [isDragging, setIsDragging] = useState(false);
-  const [localOrigin, setLocalOrigin] = useState({ x: 0, y: 0 });
+  const [dragOrigin, setDragOrigin] = useState({ x: 0, y: 0 });
 
-  // Sync local state when world state changes (if not dragging)
-  useEffect(() => {
-    if (!isDragging) {
-      setLocalOrigin({ x: grid_origin_svg_x, y: grid_origin_svg_y });
-    }
-  }, [grid_origin_svg_x, grid_origin_svg_y, isDragging]);
-
-  if (!isConnected || grid_spacing_svg <= 0) {
-    return null;
-  }
+  const displayedOrigin = isDragging
+    ? dragOrigin
+    : { x: grid_origin_svg_x, y: grid_origin_svg_y };
 
   const handleMouseDown = (e: React.MouseEvent) => {
     e.stopPropagation(); // Prevent panning the canvas
     setIsDragging(true);
+    setDragOrigin({ x: grid_origin_svg_x, y: grid_origin_svg_y });
   };
 
-  const handleMouseMove = (e: MouseEvent) => {
-    if (!isDragging) return;
+  const handleMouseMove = useCallback(
+    (e: MouseEvent) => {
+      if (!isDragging) return;
 
-    const worldPos = screenToWorld(e.clientX, e.clientY);
-    if (worldPos) {
-      setLocalOrigin(worldPos);
-    }
-  };
+      const worldPos = screenToWorld(e.clientX, e.clientY);
+      if (worldPos) {
+        setDragOrigin(worldPos);
+      }
+    },
+    [isDragging, screenToWorld]
+  );
 
-  const handleMouseUp = async () => {
+  const handleMouseUp = useCallback(async () => {
     if (!isDragging) return;
     setIsDragging(false);
 
     try {
-      await saveGridConfig(localOrigin.x, localOrigin.y);
+      await saveGridConfig(dragOrigin.x, dragOrigin.y);
     } catch (err) {
       console.error('Failed to save grid config:', err);
-      // Revert to world state
-      setLocalOrigin({ x: grid_origin_svg_x, y: grid_origin_svg_y });
     }
-  };
+  }, [isDragging, dragOrigin.x, dragOrigin.y]);
 
   // Add global mouse listeners during drag
   useEffect(() => {
@@ -59,7 +54,11 @@ export const GridLayer: React.FC = () => {
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('mouseup', handleMouseUp);
     };
-  }, [isDragging, localOrigin]);
+  }, [isDragging, handleMouseMove, handleMouseUp]);
+
+  if (!isConnected || grid_spacing_svg <= 0) {
+    return null;
+  }
 
   const lines: React.ReactNode[] = [];
   const numLines = 50;
@@ -67,14 +66,14 @@ export const GridLayer: React.FC = () => {
 
   // Vertical lines
   for (let i = -half; i <= half; i++) {
-    const x = localOrigin.x + i * grid_spacing_svg;
+    const x = displayedOrigin.x + i * grid_spacing_svg;
     lines.push(
       <line
         key={`v-${i}`}
         x1={x}
-        y1={localOrigin.y - half * grid_spacing_svg}
+        y1={displayedOrigin.y - half * grid_spacing_svg}
         x2={x}
-        y2={localOrigin.y + half * grid_spacing_svg}
+        y2={displayedOrigin.y + half * grid_spacing_svg}
         stroke="#e5e7eb"
         strokeWidth="1"
       />
@@ -83,13 +82,13 @@ export const GridLayer: React.FC = () => {
 
   // Horizontal lines
   for (let i = -half; i <= half; i++) {
-    const y = localOrigin.y + i * grid_spacing_svg;
+    const y = displayedOrigin.y + i * grid_spacing_svg;
     lines.push(
       <line
         key={`h-${i}`}
-        x1={localOrigin.x - half * grid_spacing_svg}
+        x1={displayedOrigin.x - half * grid_spacing_svg}
         y1={y}
-        x2={localOrigin.x + half * grid_spacing_svg}
+        x2={displayedOrigin.x + half * grid_spacing_svg}
         y2={y}
         stroke="#e5e7eb"
         strokeWidth="1"
@@ -102,8 +101,8 @@ export const GridLayer: React.FC = () => {
       {lines}
       {/* Draggable Origin handle */}
       <circle
-        cx={localOrigin.x}
-        cy={localOrigin.y}
+        cx={displayedOrigin.x}
+        cy={displayedOrigin.y}
         r={grid_spacing_svg / 3}
         fill={isDragging ? 'rgba(59, 130, 246, 0.5)' : 'rgba(59, 130, 246, 0.2)'}
         stroke="#3b82f6"
@@ -112,11 +111,11 @@ export const GridLayer: React.FC = () => {
         onMouseDown={handleMouseDown}
       />
       <text
-        x={localOrigin.x + grid_spacing_svg / 2}
-        y={localOrigin.y - 10}
+        x={displayedOrigin.x + grid_spacing_svg / 2}
+        y={displayedOrigin.y - 10}
         className="fill-blue-500 text-[10px] font-mono select-none pointer-events-none"
       >
-        {Math.round(localOrigin.x)}, {Math.round(localOrigin.y)}
+        {Math.round(displayedOrigin.x)}, {Math.round(displayedOrigin.y)}
       </text>
     </g>
   );

@@ -1,20 +1,20 @@
 export interface WorldState {
   scene: string;
   fps: number;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 export interface Token {
   id: number;
   world_x: number;
   world_y: number;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 export interface SystemState {
   world: WorldState;
   tokens: Token[];
-  menu: any;
+  menu: Record<string, unknown>;
   timestamp: number;
   isConnected: boolean;
   error: string | null;

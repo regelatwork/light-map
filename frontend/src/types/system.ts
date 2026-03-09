@@ -18,6 +18,9 @@ export interface SystemState {
   timestamp: number;
   isConnected: boolean;
   error: string | null;
+  grid_spacing_svg: number;
+  grid_origin_svg_x: number;
+  grid_origin_svg_y: number;
 }
 
 export const INITIAL_STATE: SystemState = {
@@ -27,4 +30,7 @@ export const INITIAL_STATE: SystemState = {
   timestamp: 0,
   isConnected: false,
   error: null,
+  grid_spacing_svg: 0,
+  grid_origin_svg_x: 0,
+  grid_origin_svg_y: 0,
 };

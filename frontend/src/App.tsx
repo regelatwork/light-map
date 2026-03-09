@@ -1,7 +1,12 @@
 import { Dashboard } from './components/Dashboard';
+import { SelectionProvider } from './components/SelectionContext';
 
 function App() {
-  return <Dashboard />;
+  return (
+    <SelectionProvider>
+      <Dashboard />
+    </SelectionProvider>
+  );
 }
 
 export default App;

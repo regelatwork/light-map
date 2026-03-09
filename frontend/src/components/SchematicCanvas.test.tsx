@@ -2,6 +2,7 @@ import { render, screen } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
 import { SchematicCanvas } from './SchematicCanvas';
 import { SystemStateProvider } from '../hooks/useSystemState';
+import { SelectionProvider } from './SelectionContext';
 
 // Mock the WebSocket
 vi.mock('../hooks/useSystemState', async (importOriginal) => {
@@ -26,7 +27,9 @@ describe('SchematicCanvas', () => {
   it('renders the background rect', () => {
     const { container } = render(
       <SystemStateProvider>
-        <SchematicCanvas />
+        <SelectionProvider>
+          <SchematicCanvas />
+        </SelectionProvider>
       </SystemStateProvider>
     );
     const rect = container.querySelector('rect');
@@ -36,7 +39,9 @@ describe('SchematicCanvas', () => {
   it('renders tokens', () => {
     render(
       <SystemStateProvider>
-        <SchematicCanvas />
+        <SelectionProvider>
+          <SchematicCanvas />
+        </SelectionProvider>
       </SystemStateProvider>
     );
     expect(screen.getByText('1')).toBeInTheDocument();
@@ -46,7 +51,9 @@ describe('SchematicCanvas', () => {
   it('renders reset button', () => {
     render(
       <SystemStateProvider>
-        <SchematicCanvas />
+        <SelectionProvider>
+          <SchematicCanvas />
+        </SelectionProvider>
       </SystemStateProvider>
     );
     expect(screen.getByText(/Reset View/i)).toBeInTheDocument();

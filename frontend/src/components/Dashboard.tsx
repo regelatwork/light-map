@@ -1,12 +1,13 @@
 import { useSystemState } from '../hooks/useSystemState';
 import { SchematicCanvas } from './SchematicCanvas';
+import { ConfigurationSidebar } from './ConfigurationSidebar';
 
 export const Dashboard = () => {
   const { isConnected, world, tokens } = useSystemState();
 
   return (
     <div className="flex h-screen bg-gray-100 overflow-hidden">
-      <aside className="w-64 bg-white shadow-md flex flex-col">
+      <aside className="w-64 bg-white shadow-md flex flex-col z-10">
         <div className="flex items-center justify-between border-b p-4">
           <span className="font-bold text-black">Light Map Control</span>
           <div
@@ -41,7 +42,7 @@ export const Dashboard = () => {
       </aside>
       <main className="flex-1 p-6 flex flex-col min-h-0">
         <h2 className="mb-4 text-xl font-semibold text-gray-800">Schematic View</h2>
-        <div className="flex-1 min-h-0">
+        <div className="flex-1 min-h-0 bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
           <SchematicCanvas>
             {/* Layers will be added here */}
             <text
@@ -55,6 +56,7 @@ export const Dashboard = () => {
           </SchematicCanvas>
         </div>
       </main>
+      <ConfigurationSidebar />
     </div>
   );
 };

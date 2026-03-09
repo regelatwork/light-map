@@ -56,7 +56,7 @@ describe('useSystemState', () => {
       timestamp: Date.now(),
     };
 
-    // server.send in vitest-websocket-mock can handle objects if configured, 
+    // server.send in vitest-websocket-mock can handle objects if configured,
     // but the hook expects a string to JSON.parse.
     act(() => {
       server.send(JSON.stringify(newState));
@@ -79,7 +79,7 @@ describe('useSystemState', () => {
     act(() => {
       server.close();
     });
-    
+
     await waitFor(() => expect(screen.getByTestId('connected')).toHaveTextContent('false'));
   });
 });

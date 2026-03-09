@@ -11,9 +11,7 @@ export const GridLayer: React.FC = () => {
   const [isDragging, setIsDragging] = useState(false);
   const [dragOrigin, setDragOrigin] = useState({ x: 0, y: 0 });
 
-  const displayedOrigin = isDragging
-    ? dragOrigin
-    : { x: grid_origin_svg_x, y: grid_origin_svg_y };
+  const displayedOrigin = isDragging ? dragOrigin : { x: grid_origin_svg_x, y: grid_origin_svg_y };
 
   const handleMouseDown = (e: React.MouseEvent) => {
     e.stopPropagation(); // Prevent panning the canvas

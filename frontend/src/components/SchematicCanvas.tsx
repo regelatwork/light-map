@@ -2,6 +2,7 @@ import React, { useState, useRef, type ReactNode } from 'react';
 import { GridLayer } from './GridLayer';
 import { TokenLayer } from './TokenLayer';
 import { CanvasProvider } from './CanvasContext';
+import { useSelection } from './SelectionContext';
 
 interface SchematicCanvasProps {
   children?: ReactNode;
@@ -13,6 +14,7 @@ export const SchematicCanvas: React.FC<SchematicCanvasProps> = ({ children }) =>
   const [isPanning, setIsPanning] = useState(false);
   const svgRef = useRef<SVGSVGElement>(null);
   const startPoint = useRef({ x: 0, y: 0 });
+  const { setSelection } = useSelection();
 
   const handleMouseDown = (e: React.MouseEvent) => {
     // Only pan if we didn't click an interactive element (handled by layers)
@@ -20,6 +22,11 @@ export const SchematicCanvas: React.FC<SchematicCanvasProps> = ({ children }) =>
       setIsPanning(true);
       startPoint.current = { x: e.clientX, y: e.clientY };
     }
+  };
+
+  const handleBackgroundClick = () => {
+    // Clear selection when clicking the background
+    setSelection({ type: 'none', id: null });
   };
 
   const handleMouseMove = (e: React.MouseEvent) => {
@@ -89,8 +96,15 @@ export const SchematicCanvas: React.FC<SchematicCanvasProps> = ({ children }) =>
           onWheel={handleWheel}
         >
           {/* Background layer */}
-          <rect x={viewBox.x} y={viewBox.y} width={viewBox.w} height={viewBox.h} fill="#f9fafb" />
-          
+          <rect
+            x={viewBox.x}
+            y={viewBox.y}
+            width={viewBox.w}
+            height={viewBox.h}
+            fill="#f9fafb"
+            onClick={handleBackgroundClick}
+          />
+
           <GridLayer />
           <TokenLayer />
 

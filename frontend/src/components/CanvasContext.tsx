@@ -36,9 +36,5 @@ export const CanvasProvider: React.FC<CanvasProviderProps> = ({ children, svgRef
     return { x, y };
   };
 
-  return (
-    <CanvasContext.Provider value={{ screenToWorld }}>
-      {children}
-    </CanvasContext.Provider>
-  );
+  return <CanvasContext.Provider value={{ screenToWorld }}>{children}</CanvasContext.Provider>;
 };

@@ -502,7 +502,9 @@ class InteractiveApp:
                     )
                 else:
                     # Generic action/payload for SYNC_VISION, etc.
-                    self._handle_payloads(action_data, state)
+                    transition = self._handle_payloads(action_data, state)
+                    if transition:
+                        self._switch_scene(transition)
             state.pending_actions.clear()
 
         # Update context frame if available
@@ -857,6 +859,33 @@ class InteractiveApp:
                         self._sync_vision(state)
             else:
                 self.notifications.add_notification("No door selected to toggle")
+
+        from .common_types import MenuActions, SceneId
+        from .core.scene import SceneTransition
+        
+        action_name = payload.get("action")
+        if action_name in [
+            MenuActions.CALIBRATE_INTRINSICS,
+            MenuActions.CALIBRATE_PROJECTOR,
+            MenuActions.CALIBRATE_PPI,
+            MenuActions.CALIBRATE_EXTRINSICS,
+            MenuActions.CALIBRATE_FLASH,
+            "SCAN_SESSION",
+        ]:
+            scene_map = {
+                MenuActions.CALIBRATE_INTRINSICS: SceneId.CALIBRATE_INTRINSICS,
+                MenuActions.CALIBRATE_PROJECTOR: SceneId.CALIBRATE_PROJECTOR,
+                MenuActions.CALIBRATE_PPI: SceneId.CALIBRATE_PPI,
+                MenuActions.CALIBRATE_EXTRINSICS: SceneId.CALIBRATE_EXTRINSICS,
+                MenuActions.CALIBRATE_FLASH: SceneId.CALIBRATE_FLASH,
+                "SCAN_SESSION": SceneId.SCANNING,
+            }
+            if action_name == "SCAN_SESSION" and not self.map_system.is_map_loaded():
+                self.notifications.add_notification("Load a map before scanning.")
+                return None
+            return SceneTransition(scene_map[action_name])
+            
+        return None
 
     def switch_to_viewing(self):
         """Switches the current scene to ViewingScene."""

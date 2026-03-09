@@ -75,6 +75,7 @@ The renderer provides real-time feedback on the tracking state:
 - **Unknown Marker**: A **dashed outline** or question mark indicates a detected ArUco ID that is not in the configuration.
 - **Duplicate IDs**: If the same ArUco ID is detected in multiple locations, the system selects the most stable (largest area) detection. Duplicates are ignored to prevent "flickering" between positions.
 - **Ghost Tokens**: When loading a session, cyan outlines show the *saved* positions of tokens, helping you place physical minis back where they were. Toggle their visibility with the **Shaka** gesture.
+- **Exclusive Vision**: Dwell-point at a token to visualize its Line-of-Sight. (See [Exclusive Vision Mode](exclusive_vision.md)).
 
 ______________________________________________________________________
 

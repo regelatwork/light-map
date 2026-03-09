@@ -47,6 +47,7 @@ In this mode:
 - The map is fully opaque (1.0).
 - Pan/Zoom gestures are **disabled** to ensure stability during gameplay.
 - **Toggle Tokens**: Use the **Shaka** gesture to show/hide ghost tokens.
+- **Exclusive Vision**: Perform the **Pointing** gesture and dwell on a token for 2 seconds to see its Line-of-Sight. (See [Exclusive Vision Mode](exclusive_vision.md)).
 - **Summon Menu**: Use the **Victory** gesture to open the menu.
 
 ## Scale Calibration (Manual Alignment)

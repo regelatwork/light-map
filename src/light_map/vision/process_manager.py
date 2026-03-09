@@ -113,8 +113,19 @@ class VisionProcessManager:
         if self.remote_mode_hands != "ignore" or self.remote_mode_tokens != "ignore":
             p_remote = mp.Process(
                 target=remote_driver_worker,
-                args=(self.results_queue, self.stop_event, self.state_mirror),
-                kwargs={"port": self.remote_port},
+                args=(
+                    self.results_queue,
+                    self.stop_event,
+                    self.state_mirror,
+                    self.shm_name,
+                    self.lock,
+                ),
+                kwargs={
+                    "port": self.remote_port,
+                    "width": self.width,
+                    "height": self.height,
+                    "num_consumers": self.num_consumers,
+                },
                 name="RemoteDriverWorker",
             )
             self.processes.append(p_remote)

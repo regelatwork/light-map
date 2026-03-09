@@ -7,6 +7,10 @@ import os
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, WebSocket
 from fastapi.staticfiles import StaticFiles
+from fastapi.responses import StreamingResponse
+import threading
+import cv2
+from light_map.vision.frame_producer import FrameProducer
 from pydantic import BaseModel
 from typing import List, Dict, Any, Optional
 from multiprocessing import Queue, Event
@@ -54,12 +58,16 @@ class ConnectionManager:
     async def connect(self, websocket: WebSocket):
         await websocket.accept()
         self.active_connections.append(websocket)
-        logging.info(f"WebSocket client connected. Total: {len(self.active_connections)}")
+        logging.info(
+            f"WebSocket client connected. Total: {len(self.active_connections)}"
+        )
 
     def disconnect(self, websocket: WebSocket):
         if websocket in self.active_connections:
             self.active_connections.remove(websocket)
-            logging.info(f"WebSocket client disconnected. Total: {len(self.active_connections)}")
+            logging.info(
+                f"WebSocket client disconnected. Total: {len(self.active_connections)}"
+            )
 
     async def broadcast(self, message: dict):
         # Iterate over a copy to allow safe removal during iteration
@@ -70,12 +78,87 @@ class ConnectionManager:
                 self.disconnect(connection)
 
 
-def create_app(results_queue: Queue, stop_event: Event, state_mirror: Dict[str, Any]):
+def create_app(
+    results_queue: Queue,
+    stop_event: Event,
+    state_mirror: Dict[str, Any],
+    shm_name: str = None,
+    lock: Any = None,
+    width: int = 1920,
+    height: int = 1080,
+    num_consumers: int = 2,
+):
     manager = ConnectionManager()
+
+    # Shared state for video feed
+    video_state = {"latest_jpeg": b"", "new_frame_event": None, "loop": None}
 
     @asynccontextmanager
     async def lifespan(app: FastAPI):
+        video_state["loop"] = asyncio.get_running_loop()
+        video_state["new_frame_event"] = asyncio.Event()
+
+        def frame_capture_loop():
+            if not shm_name or not lock:
+                logging.info("Video feed disabled (no SHM provided).")
+                return
+
+            try:
+                producer = FrameProducer(
+                    shm_name=shm_name,
+                    width=width,
+                    height=height,
+                    num_consumers=num_consumers,
+                )
+                producer.lock = lock
+                last_processed_ts = -1
+
+                logging.info(f"Video stream capture loop started (SHM: {shm_name})")
+                while not stop_event.is_set():
+                    latest_ts = producer.get_latest_timestamp()
+                    if latest_ts is None or latest_ts <= last_processed_ts:
+                        time.sleep(0.01)
+                        continue
+
+                    try:
+                        frame_view = producer.get_latest_frame()
+                        if frame_view is None:
+                            time.sleep(0.01)
+                            continue
+
+                        # Resize for web stream to reduce bandwidth
+                        h, w = frame_view.shape[:2]
+                        scale = min(1280 / w, 720 / h)
+                        new_w, new_h = int(w * scale), int(h * scale)
+                        frame_copy = cv2.resize(frame_view, (new_w, new_h))
+                    finally:
+                        producer.release()
+                        frame_view = None
+
+                    ret, jpeg = cv2.imencode(
+                        ".jpg", frame_copy, [int(cv2.IMWRITE_JPEG_QUALITY), 60]
+                    )
+                    if ret:
+                        video_state["latest_jpeg"] = jpeg.tobytes()
+                        # Safely notify async clients
+                        if video_state["loop"] and not video_state["loop"].is_closed():
+                            video_state["loop"].call_soon_threadsafe(
+                                video_state["new_frame_event"].set
+                            )
+
+                    last_processed_ts = latest_ts
+            except Exception as e:
+                logging.error(f"Video capture loop error: {e}", exc_info=True)
+            finally:
+                if "producer" in locals():
+                    producer.close()
+                logging.info("Video stream capture loop stopped.")
+
+        video_thread = threading.Thread(target=frame_capture_loop, daemon=True)
+        video_thread.start()
+
         # Startup: Start the broadcast loop
+
         async def broadcast_loop():
             logging.info("Starting WebSocket state broadcast loop.")
             while not stop_event.is_set():
@@ -105,6 +188,31 @@ def create_app(results_queue: Queue, stop_event: Event, state_mirror: Dict[str, 
                 pass
 
     app = FastAPI(title="Light Map Remote Driver", lifespan=lifespan)
+
+    @app.get("/video_feed")
+    async def video_feed():
+        async def frame_generator():
+            while not stop_event.is_set():
+                if not video_state["new_frame_event"]:
+                    await asyncio.sleep(0.1)
+                    continue
+
+                await video_state["new_frame_event"].wait()
+                video_state["new_frame_event"].clear()
+
+                jpeg_bytes = video_state["latest_jpeg"]
+                if jpeg_bytes:
+                    yield (
+                        b"--frame\r\n"
+                        b"Content-Type: image/jpeg\r\n\r\n" + jpeg_bytes + b"\r\n"
+                    )
+
+        if not shm_name:
+            return {"error": "Video feed not available"}
+
+        return StreamingResponse(
+            frame_generator(), media_type="multipart/x-mixed-replace; boundary=frame"
+        )
 
     @app.get("/health")
     def health():
@@ -317,12 +425,26 @@ def remote_driver_worker(
     results_queue: Queue,
     stop_event: Event,
     state_mirror: Dict[str, Any],
+    shm_name: str = None,
+    lock: Any = None,
     port: int = 8000,
     host: str = "127.0.0.1",
+    width: int = 1920,
+    height: int = 1080,
+    num_consumers: int = 2,
 ):
     """Worker process entry point for the Remote Driver."""
     logging.info(f"Starting Remote Driver on {host}:{port}")
-    app = create_app(results_queue, stop_event, state_mirror)
+    app = create_app(
+        results_queue,
+        stop_event,
+        state_mirror,
+        shm_name,
+        lock,
+        width,
+        height,
+        num_consumers,
+    )
 
     config = uvicorn.Config(
         app, host=host, port=port, log_level="info", access_log=False

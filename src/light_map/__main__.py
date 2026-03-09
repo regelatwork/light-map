@@ -301,11 +301,21 @@ def main():
                 "remote_port": args.remote_port,
             }
 
+            # Calculate number of consumers for the camera frames
+            # 1 for ArucoWorker, 1 for HandWorker, 1 for RemoteDriverWorker if enabled
+            active_consumers = 0
+            if args.remote_tokens != "exclusive":
+                active_consumers += 1
+            if args.remote_hands != "exclusive":
+                active_consumers += 1
+            if args.remote_hands != "ignore" or args.remote_tokens != "ignore":
+                active_consumers += 1
+
             # Start Process Manager
             manager = VisionProcessManager(
                 width=cam_w,
                 height=cam_h,
-                num_consumers=2,
+                num_consumers=active_consumers,
                 projector_matrix=app.config.projector_matrix,
                 map_dims=(app.config.width, app.config.height),
                 intrinsics_path=intrinsics_path,

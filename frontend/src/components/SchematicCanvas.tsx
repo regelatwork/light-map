@@ -1,6 +1,7 @@
 import React, { useState, useRef, type ReactNode } from 'react';
 import { GridLayer } from './GridLayer';
 import { TokenLayer } from './TokenLayer';
+import { CanvasProvider } from './CanvasContext';
 
 interface SchematicCanvasProps {
   children?: ReactNode;
@@ -14,7 +15,8 @@ export const SchematicCanvas: React.FC<SchematicCanvasProps> = ({ children }) =>
   const startPoint = useRef({ x: 0, y: 0 });
 
   const handleMouseDown = (e: React.MouseEvent) => {
-    if (e.button === 0) { // Left click for panning
+    // Only pan if we didn't click an interactive element (handled by layers)
+    if (e.button === 0 && e.target === svgRef.current) {
       setIsPanning(true);
       startPoint.current = { x: e.clientX, y: e.clientY };
     }
@@ -74,26 +76,28 @@ export const SchematicCanvas: React.FC<SchematicCanvasProps> = ({ children }) =>
   };
 
   return (
-    <div className="relative h-full w-full overflow-hidden bg-white border-2 border-gray-200 rounded-lg shadow-inner">
-      <svg
-        ref={svgRef}
-        className="h-full w-full cursor-move select-none"
-        viewBox={`${viewBox.x} ${viewBox.y} ${viewBox.w} ${viewBox.h}`}
-        onMouseDown={handleMouseDown}
-        onMouseMove={handleMouseMove}
-        onMouseUp={handleMouseUp}
-        onMouseLeave={handleMouseUp}
-        onWheel={handleWheel}
-      >
-        {/* Background layer */}
-        <rect x={viewBox.x} y={viewBox.y} width={viewBox.w} height={viewBox.h} fill="#f9fafb" />
-        
-        <GridLayer />
-        <TokenLayer />
+    <div className="relative h-full w-full overflow-hidden bg-white border-2 border-gray-200 rounded-lg shadow-inner text-black">
+      <CanvasProvider svgRef={svgRef} viewBox={viewBox}>
+        <svg
+          ref={svgRef}
+          className="h-full w-full cursor-move select-none"
+          viewBox={`${viewBox.x} ${viewBox.y} ${viewBox.w} ${viewBox.h}`}
+          onMouseDown={handleMouseDown}
+          onMouseMove={handleMouseMove}
+          onMouseUp={handleMouseUp}
+          onMouseLeave={handleMouseUp}
+          onWheel={handleWheel}
+        >
+          {/* Background layer */}
+          <rect x={viewBox.x} y={viewBox.y} width={viewBox.w} height={viewBox.h} fill="#f9fafb" />
+          
+          <GridLayer />
+          <TokenLayer />
 
-        {/* Layers will be rendered as children */}
-        {children}
-      </svg>
+          {/* Layers will be rendered as children */}
+          {children}
+        </svg>
+      </CanvasProvider>
 
       {/* Control overlay */}
       <div className="absolute bottom-4 right-4 flex flex-col gap-2">

@@ -2,7 +2,11 @@ from __future__ import annotations
 import time
 import logging
 import uvicorn
-from fastapi import FastAPI
+import asyncio
+import os
+from contextlib import asynccontextmanager
+from fastapi import FastAPI, WebSocket
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from typing import List, Dict, Any, Optional
 from multiprocessing import Queue, Event
@@ -38,12 +42,83 @@ class ViewportConfig(BaseModel):
     rotation: Optional[float] = None
 
 
+class GridConfig(BaseModel):
+    offset_x: float
+    offset_y: float
+
+
+class ConnectionManager:
+    def __init__(self):
+        self.active_connections: list[WebSocket] = []
+
+    async def connect(self, websocket: WebSocket):
+        await websocket.accept()
+        self.active_connections.append(websocket)
+        logging.info(f"WebSocket client connected. Total: {len(self.active_connections)}")
+
+    def disconnect(self, websocket: WebSocket):
+        if websocket in self.active_connections:
+            self.active_connections.remove(websocket)
+            logging.info(f"WebSocket client disconnected. Total: {len(self.active_connections)}")
+
+    async def broadcast(self, message: dict):
+        # Iterate over a copy to allow safe removal during iteration
+        for connection in list(self.active_connections):
+            try:
+                await connection.send_json(message)
+            except Exception:
+                self.disconnect(connection)
+
+
 def create_app(results_queue: Queue, stop_event: Event, state_mirror: Dict[str, Any]):
-    app = FastAPI(title="Light Map Remote Driver")
+    manager = ConnectionManager()
+
+    @asynccontextmanager
+    async def lifespan(app: FastAPI):
+        # Startup: Start the broadcast loop
+        async def broadcast_loop():
+            logging.info("Starting WebSocket state broadcast loop.")
+            while not stop_event.is_set():
+                if manager.active_connections:
+                    state = {
+                        "world": state_mirror.get("world", {}),
+                        "tokens": state_mirror.get("tokens", []),
+                        "menu": state_mirror.get("menu", {}),
+                        "timestamp": time.monotonic(),
+                    }
+                    await manager.broadcast(state)
+                await asyncio.sleep(0.033)  # ~30Hz
+            logging.info("WebSocket state broadcast loop stopped.")
+
+        broadcast_task = asyncio.create_task(broadcast_loop())
+        yield
+        # Shutdown: Stop the broadcast loop and wait for it to finish
+        stop_event.set()
+        try:
+            await asyncio.wait_for(broadcast_task, timeout=1.0)
+        except asyncio.TimeoutError:
+            logging.warning("Broadcast task did not stop in time, cancelling.")
+            broadcast_task.cancel()
+            try:
+                await broadcast_task
+            except asyncio.CancelledError:
+                pass
+
+    app = FastAPI(title="Light Map Remote Driver", lifespan=lifespan)
 
     @app.get("/health")
     def health():
         return {"status": "ok", "stop_event": stop_event.is_set()}
+
+    @app.websocket("/ws/state")
+    async def websocket_endpoint(websocket: WebSocket):
+        await manager.connect(websocket)
+        try:
+            while True:
+                # Keep connection open, handle incoming heartbeat/messages
+                await websocket.receive_text()
+        except Exception:
+            manager.disconnect(websocket)
 
     @app.post("/input/hands")
     def inject_hands(hands: List[RemoteHandInput]):
@@ -141,6 +216,21 @@ def create_app(results_queue: Queue, stop_event: Event, state_mirror: Dict[str, 
         results_queue.put(res)
         return {"status": "injected"}
 
+    @app.post("/config/grid")
+    def set_grid_config(config: GridConfig):
+        """Update grid offset configuration."""
+        res = DetectionResult(
+            timestamp=time.monotonic_ns(),
+            type=ResultType.ACTION,
+            data={
+                "action": "UPDATE_GRID",
+                "offset_x": config.offset_x,
+                "offset_y": config.offset_y,
+            },
+        )
+        results_queue.put(res)
+        return {"status": "injected"}
+
     @app.get("/config")
     def get_config():
         return state_mirror.get("config", {})
@@ -169,7 +259,6 @@ def create_app(results_queue: Queue, stop_event: Event, state_mirror: Dict[str, 
     def get_logs(lines: int = 100):
         try:
             from light_map.core.storage import StorageManager
-            import os
 
             log_path = StorageManager().get_state_path("light_map.log")
             if not os.path.exists(log_path):
@@ -183,6 +272,18 @@ def create_app(results_queue: Queue, stop_event: Event, state_mirror: Dict[str, 
     @app.get("/state/clock")
     def get_clock():
         return {"time_monotonic": time.monotonic()}
+
+    # Mount static files for the frontend dashboard
+    # MUST BE LAST to avoid overriding API routes
+    frontend_dist = os.path.abspath(
+        os.path.join(os.path.dirname(__file__), "../../../frontend/dist")
+    )
+    if os.path.exists(frontend_dist):
+        app.mount("/", StaticFiles(directory=frontend_dist, html=True), name="frontend")
+    else:
+        logging.warning(
+            f"Frontend dist directory not found at {frontend_dist}. Dashboard UI will not be available."
+        )
 
     return app
 

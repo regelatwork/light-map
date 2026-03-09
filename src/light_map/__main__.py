@@ -349,6 +349,22 @@ def main():
             def render_cb(state, actions):
                 nonlocal startup_action_executed
 
+                # A. Update State Mirror for Remote Driver
+                if state_mirror is not None:
+                    state_mirror["config"] = {
+                        "cam_res": (cam_w, cam_h),
+                        "proj_res": (native_screen_w, native_screen_h),
+                        "remote_hands": args.remote_hands,
+                        "remote_tokens": args.remote_tokens,
+                        "remote_port": args.remote_port,
+                        "enable_hand_masking": app.config.enable_hand_masking,
+                        "gm_position": str(app.config.gm_position),
+                        "debug_mode": app.debug_mode,
+                        "fow_disabled": app.fow_manager.is_disabled
+                        if app.fow_manager
+                        else True,
+                    }
+
                 # B. Handle Startup Actions (Execute once)
                 if args.action and not startup_action_executed:
                     logger.info("Executing Startup Action: %s", args.action)

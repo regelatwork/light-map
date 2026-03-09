@@ -11,10 +11,21 @@ export interface Token {
   [key: string]: unknown;
 }
 
+export interface SystemConfig {
+  cam_res: [number, number];
+  proj_res: [number, number];
+  enable_hand_masking: boolean;
+  gm_position: string;
+  debug_mode: boolean;
+  fow_disabled: boolean;
+  [key: string]: unknown;
+}
+
 export interface SystemState {
   world: WorldState;
   tokens: Token[];
-  menu: Record<string, unknown>;
+  menu: Record<string, unknown> | null;
+  config: SystemConfig;
   timestamp: number;
   isConnected: boolean;
   error: string | null;
@@ -26,7 +37,15 @@ export interface SystemState {
 export const INITIAL_STATE: SystemState = {
   world: { scene: 'LOADING', fps: 0 },
   tokens: [],
-  menu: {},
+  menu: null,
+  config: {
+    cam_res: [0, 0],
+    proj_res: [0, 0],
+    enable_hand_masking: false,
+    gm_position: 'None',
+    debug_mode: false,
+    fow_disabled: false,
+  },
   timestamp: 0,
   isConnected: false,
   error: null,

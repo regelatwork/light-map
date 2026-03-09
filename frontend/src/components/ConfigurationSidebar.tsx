@@ -3,6 +3,7 @@ import { useSystemState } from '../hooks/useSystemState';
 import { useSelection } from './SelectionContext';
 import { saveGridConfig } from '../services/api';
 import type { Token } from '../types/system';
+import { VisionControl } from './VisionControl';
 
 export const ConfigurationSidebar: React.FC = () => {
   const { tokens, grid_origin_svg_x, grid_origin_svg_y } = useSystemState();
@@ -65,6 +66,16 @@ export const ConfigurationSidebar: React.FC = () => {
               Update Grid
             </button>
           </div>
+        </section>
+
+        <hr className="border-gray-200" />
+
+        {/* Vision Control */}
+        <section>
+          <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-3">
+            Vision & Display
+          </h3>
+          <VisionControl />
         </section>
 
         <hr className="border-gray-200" />

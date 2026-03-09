@@ -804,6 +804,31 @@ class InteractiveApp:
                 state = "OFF" if self.fow_manager.is_disabled else "ON"
                 self.notifications.add_notification(f"GM: Fog of War {state}")
 
+        if payload.get("action") == "TOGGLE_HAND_MASKING":
+            gs = self.map_config.data.global_settings
+            gs.enable_hand_masking = not gs.enable_hand_masking
+            self.map_config.save()
+            self.config.enable_hand_masking = gs.enable_hand_masking
+            state_str = "ON" if gs.enable_hand_masking else "OFF"
+            self.notifications.add_notification(f"Projection Masking {state_str}")
+
+        if payload.get("action") == "SET_GM_POSITION":
+            from light_map.common_types import GmPosition
+            try:
+                new_pos = GmPosition(payload.get("payload", "None"))
+                gs = self.map_config.data.global_settings
+                gs.gm_position = new_pos
+                self.map_config.save()
+                self.config.gm_position = gs.gm_position
+                self.notifications.add_notification(f"GM Position: {new_pos}")
+            except (ValueError, KeyError):
+                self.notifications.add_notification("Invalid GM Position")
+
+        if payload.get("action") == "TOGGLE_DEBUG_MODE":
+            self.app_context.debug_mode = not self.app_context.debug_mode
+            state_str = "ON" if self.app_context.debug_mode else "OFF"
+            self.notifications.add_notification(f"Debug Mode {state_str}")
+
         if payload.get("action") == "TOGGLE_DOOR":
             from light_map.common_types import SelectionType
 

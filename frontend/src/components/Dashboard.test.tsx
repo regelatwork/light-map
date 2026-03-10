@@ -25,7 +25,7 @@ describe('Dashboard', () => {
         </SelectionProvider>
       </SystemStateProvider>
     );
-    const placeholder = screen.getByText(/Schematic View/i);
+    const placeholder = screen.getByRole('heading', { name: /Schematic View/i });
     expect(placeholder).toBeInTheDocument();
   });
 });

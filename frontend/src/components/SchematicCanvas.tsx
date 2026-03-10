@@ -18,7 +18,7 @@ export const SchematicCanvas: React.FC<SchematicCanvasProps> = ({ children }) =>
 
   const handleMouseDown = (e: React.MouseEvent) => {
     // Only pan if we didn't click an interactive element (handled by layers)
-    if (e.button === 0 && e.target === svgRef.current) {
+    if (e.button === 0 && (e.target === svgRef.current || (e.target as Element).tagName === 'rect')) {
       setIsPanning(true);
       startPoint.current = { x: e.clientX, y: e.clientY };
     }

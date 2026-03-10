@@ -17,6 +17,10 @@ export const VisionControl: React.FC = () => {
     injectAction('RESET_FOW');
   };
 
+  const handleSyncVision = () => {
+    injectAction('SYNC_VISION');
+  };
+
   const handleToggleDebug = () => {
     injectAction('TOGGLE_DEBUG_MODE');
   };
@@ -72,6 +76,13 @@ export const VisionControl: React.FC = () => {
         className="w-full bg-orange-50 hover:bg-orange-100 text-orange-700 text-xs font-semibold py-1.5 px-3 rounded border border-orange-200 transition-colors"
       >
         Reset Fog of War
+      </button>
+
+      <button
+        onClick={handleSyncVision}
+        className="w-full bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-semibold py-1.5 px-3 rounded border border-blue-200 transition-colors"
+      >
+        Sync Vision
       </button>
 
       <div className="flex items-center justify-between">

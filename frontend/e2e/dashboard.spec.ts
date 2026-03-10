@@ -39,7 +39,7 @@ test.describe('Dashboard E2E', () => {
     // Check title/header
     await expect(page.getByText('Light Map Control')).toBeVisible();
     await expect(page.getByText('System Status')).toBeVisible();
-    
+
     // Check maps are loaded from the mock API
     await expect(page.getByText('test1.jpg').first()).toBeVisible();
     await expect(page.getByText('test2.jpg').first()).toBeVisible();
@@ -84,7 +84,7 @@ test.describe('Dashboard E2E', () => {
 
     // Verify Schematic View is hidden and Calibration Wizard is visible
     await expect(page.getByText('[Interactive Canvas Active]')).not.toBeVisible();
-    await expect(page.getByText('Camera Intrinsics')).toBeVisible(); 
+    await expect(page.getByText('Camera Intrinsics')).toBeVisible();
   });
 
   test('pans the schematic canvas', async ({ page }) => {
@@ -112,7 +112,7 @@ test.describe('Dashboard E2E', () => {
     // Get new viewBox
     const newViewBox = await svg.getAttribute('viewBox');
     expect(newViewBox).not.toBe('0 0 1000 750');
-    
+
     const [x, y, w, h] = newViewBox!.split(' ').map(Number);
     expect(x).toBeGreaterThan(0);
     expect(y).toBeGreaterThan(0);
@@ -127,9 +127,13 @@ test.describe('Dashboard E2E', () => {
         static OPEN = 1;
         readyState = 1;
         url: string;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         onopen: any = null;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         onmessage: any = null;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         onclose: any = null;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         onerror: any = null;
         constructor(url: string) {
           super();
@@ -137,7 +141,7 @@ test.describe('Dashboard E2E', () => {
           setTimeout(() => {
             if (this.onopen) this.onopen(new Event('open'));
             this.dispatchEvent(new Event('open'));
-            
+
             // Send initial state message
             const initialData = JSON.stringify({
               world: { scene: 'test-scene', fps: 60.5 },
@@ -152,6 +156,7 @@ test.describe('Dashboard E2E', () => {
         send() {}
         close() {}
       }
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (window as any).WebSocket = MockWebSocket;
     });
 

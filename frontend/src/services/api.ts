@@ -1,5 +1,5 @@
 export const injectAction = async (action: string, payload?: string) => {
-  const host = import.meta.env.DEV ? 'http://localhost:8000' : '';
+  const host = import.meta.env.DEV ? 'http://localhost:8000' : window.location.origin;
   const url = new URL(`${host}/input/action`);
   url.searchParams.append('action', action);
   if (payload) {
@@ -18,7 +18,7 @@ export const injectAction = async (action: string, payload?: string) => {
 };
 
 export const getMaps = async () => {
-  const host = import.meta.env.DEV ? 'http://localhost:8000' : '';
+  const host = import.meta.env.DEV ? 'http://localhost:8000' : window.location.origin;
   const response = await fetch(`${host}/maps`);
 
   if (!response.ok) {
@@ -29,7 +29,7 @@ export const getMaps = async () => {
 };
 
 export const loadMap = async (path: string, loadSession: boolean = true) => {
-  const host = import.meta.env.DEV ? 'http://localhost:8000' : '';
+  const host = import.meta.env.DEV ? 'http://localhost:8000' : window.location.origin;
   const url = new URL(`${host}/map/load`);
   url.searchParams.append('path', path);
   url.searchParams.append('load_session', loadSession.toString());
@@ -46,7 +46,7 @@ export const loadMap = async (path: string, loadSession: boolean = true) => {
 };
 
 export const saveGridConfig = async (offset_x: number, offset_y: number) => {
-  const host = import.meta.env.DEV ? 'http://localhost:8000' : '';
+  const host = import.meta.env.DEV ? 'http://localhost:8000' : window.location.origin;
   const response = await fetch(`${host}/config/grid`, {
     method: 'POST',
     headers: {

@@ -1,6 +1,14 @@
+export interface VisibilityBlocker {
+  id: number;
+  type: string;
+  is_open: boolean;
+  points: [number, number][];
+}
+
 export interface WorldState {
   scene: string;
   fps: number;
+  blockers?: VisibilityBlocker[];
   [key: string]: unknown;
 }
 
@@ -18,6 +26,9 @@ export interface SystemConfig {
   gm_position: string;
   debug_mode: boolean;
   fow_disabled: boolean;
+  current_map_path?: string;
+  map_width?: number;
+  map_height?: number;
   [key: string]: unknown;
 }
 

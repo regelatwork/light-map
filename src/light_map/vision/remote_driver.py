@@ -377,6 +377,28 @@ def create_app(
         except Exception as e:
             return {"error": str(e)}
 
+    @app.get("/map/svg")
+    def get_map_svg():
+        current_map = state_mirror.get("config", {}).get("current_map_path")
+        if current_map and os.path.exists(current_map):
+            from fastapi.responses import FileResponse
+            return FileResponse(current_map, media_type="image/svg+xml")
+        return {"error": "No map loaded"}
+
+    @app.get("/map/fow")
+    def get_map_fow():
+        current_map = state_mirror.get("config", {}).get("current_map_path")
+        if current_map:
+            from light_map.core.storage import StorageManager
+            import hashlib
+            stem = os.path.splitext(os.path.basename(current_map))[0]
+            path_hash = hashlib.md5(current_map.encode()).hexdigest()[:8]
+            fow_path = os.path.join(StorageManager().get_data_dir(), "fow", f"{stem}_{path_hash}", "fow.png")
+            if os.path.exists(fow_path):
+                from fastapi.responses import FileResponse
+                return FileResponse(fow_path, media_type="image/png", headers={"Cache-Control": "no-cache, no-store, must-revalidate"})
+        return {"error": "No FOW available"}
+
     @app.get("/maps")
     def get_maps():
         """Returns a list of registered maps from the MapConfigManager."""

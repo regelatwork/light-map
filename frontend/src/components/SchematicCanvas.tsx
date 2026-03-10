@@ -1,6 +1,9 @@
 import React, { useState, useRef, type ReactNode } from 'react';
 import { GridLayer } from './GridLayer';
 import { TokenLayer } from './TokenLayer';
+import { MapLayer } from './MapLayer';
+import { DoorLayer } from './DoorLayer';
+import { FowLayer } from './FowLayer';
 import { CanvasProvider } from './CanvasContext';
 import { useSelection } from './SelectionContext';
 
@@ -105,8 +108,11 @@ export const SchematicCanvas: React.FC<SchematicCanvasProps> = ({ children }) =>
             onClick={handleBackgroundClick}
           />
 
+          <MapLayer />
+          <DoorLayer />
           <GridLayer />
           <TokenLayer />
+          <FowLayer />
 
           {/* Layers will be rendered as children */}
           {children}

@@ -373,6 +373,9 @@ def main():
                         "fow_disabled": app.fow_manager.is_disabled
                         if app.fow_manager
                         else True,
+                        "current_map_path": app.current_map_path,
+                        "map_width": app.map_system.svg_loader.svg.width if app.map_system.svg_loader and app.map_system.svg_loader.svg else 0,
+                        "map_height": app.map_system.svg_loader.svg.height if app.map_system.svg_loader and app.map_system.svg_loader.svg else 0,
                     }
                     state_mirror["maps"] = {
                         path: {"name": os.path.basename(path)}

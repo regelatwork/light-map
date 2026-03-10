@@ -8,6 +8,10 @@ ______________________________________________________________________
 
 For reliable tracking and projection, your hardware environment must be stable.
 
+### Web Calibration Wizards
+
+As a user-friendly alternative to gesture-based menus or command-line scripts, you can use the **Light Map Control Dashboard** (available at `http://localhost:8000`) while the app is running. It provides a guided interface for all calibration routines described below, including a real-time camera preview.
+
 ### Stability
 
 - **Tripod/Mount**: The camera and projector MUST be securely mounted. Any movement after calibration will invalidate the results.

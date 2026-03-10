@@ -9,6 +9,7 @@ Light Map is an interactive Augmented Reality (AR) tabletop platform that merges
 - **Dynamic Map System**: Support for SVG and image maps with pan, zoom, and rotation.
 - **Token Tracking**: Detects physical tokens and saves/restores session state.
 - **Hierarchical Menu**: Hands-free control system.
+- **Web Dashboard**: Real-time monitoring and configuration via a browser-based interface.
 
 ## Documentation
 
@@ -17,7 +18,7 @@ Light Map is an interactive Augmented Reality (AR) tabletop platform that merges
 - [Map System](docs/map_system.md)
 - [Menu System](docs/menu_system.md)
 - [Token Tracking](docs/token_tracking.md)
-- [Remote Application Driver (WebDriver)](docs/remote_driver.md)
+- [Remote Application Driver & Web Dashboard](docs/remote_driver.md)
 
 ## Quick Start
 
@@ -72,6 +73,10 @@ Once installed, you can use the `light-map` command directly or use the `python 
    ```
 
    *Alternatively:* `python -m light_map --maps "maps/*.svg"`
+
+1. **Access the Web Dashboard**:
+   While the application is running, open your browser and navigate to:
+   `http://localhost:8000`
 
 See [Map System](docs/map_system.md) for more details on loading maps.
 

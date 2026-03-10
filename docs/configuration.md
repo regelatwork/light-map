@@ -2,6 +2,24 @@
 
 This document describes the various configuration and state files used in the Light Map project.
 
+## Visual Configuration via Web Dashboard
+
+While most settings can be manually edited in JSON files, the **Light Map Control Dashboard** (available at `http://localhost:8000`) provides a more intuitive way to manage configuration.
+
+### 1. Map Browser
+Instead of manually updating `last_used_map`, you can browse and load maps from the **Asset Library** in the sidebar.
+
+### 2. Grid Origin Calibration
+The **Configuration Sidebar** in the dashboard allows you to manually enter and update the `grid_origin_svg_x` and `grid_origin_svg_y` offsets for the active map with immediate visual feedback.
+
+### 3. Vision and Display
+Use the **Vision Control** module to toggle "Exclusive Vision" (projector masking) and "Hand/Token Masking" modes without needing to navigate the in-projection menu system.
+
+### 4. Calibration Wizards
+The dashboard's **Calibration Wizards** provide a guided, step-by-step experience for all calibration routines, including a live video feed for better visualization during setup.
+
+---
+
 ## Environment & Development
 
 ### `.python-version`

@@ -1,8 +1,28 @@
-# Remote Application Driver (Light-Map WebDriver)
+# Remote Application Driver & Web Dashboard
 
-The Remote Application Driver provides a REST API to control the Light Map application and inspect its internal state. This is primarily used for automated testing, remote diagnostics, and distributed control.
+The Remote Application Driver provides a REST API and WebSocket stream to control the Light Map application, inspect its internal state, and serve the **Light Map Control Dashboard**.
 
-## 1. Starting the Driver
+## 1. Web Dashboard
+
+The easiest way to interact with the system remotely is through the built-in web dashboard. It provides a visual "Schematic View" of the tabletop, real-time token tracking, and interactive calibration wizards.
+
+### Accessing the Dashboard
+
+While the Light Map application is running, navigate to the following URL in any modern web browser:
+
+`http://127.0.0.1:8000` (or the IP address of the machine running the app)
+
+### Key Features
+
+- **Schematic View**: A live SVG-based representation of the map, grid, and tokens.
+- **Calibration Wizards**: Step-by-step UI for Camera Intrinsics, Projector Homography, and PPI calibration.
+- **Asset Library**: Browse and load SVG maps directly from the UI.
+- **Configuration Sidebar**: Adjust grid offsets and token properties with live preview.
+- **Vision Control**: Toggle "Exclusive Vision" and "Hand/Token Masking" modes.
+
+---
+
+## 2. Starting the Driver
 
 The driver is integrated into the main application and can be enabled using CLI flags.
 

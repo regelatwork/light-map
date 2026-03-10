@@ -163,12 +163,19 @@ def create_app(
             logging.info("Starting WebSocket state broadcast loop.")
             while not stop_event.is_set():
                 if manager.active_connections:
+                    world = state_mirror.get("world", {})
                     state = {
-                        "world": state_mirror.get("world", {}),
+                        "world": world,
                         "tokens": state_mirror.get("tokens", []),
                         "menu": state_mirror.get("menu", {}),
+                        "config": state_mirror.get("config", {}),
                         "timestamp": time.monotonic(),
                     }
+                    # Hoist grid metadata to top level for frontend SystemState compatibility
+                    for key in ["grid_spacing_svg", "grid_origin_svg_x", "grid_origin_svg_y"]:
+                        if key in world:
+                            state[key] = world[key]
+                            
                     await manager.broadcast(state)
                 await asyncio.sleep(0.033)  # ~30Hz
             logging.info("WebSocket state broadcast loop stopped.")

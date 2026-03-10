@@ -1,5 +1,5 @@
 export interface VisibilityBlocker {
-  id: number;
+  id: string;
   type: string;
   is_open: boolean;
   points: [number, number][];

@@ -24,7 +24,7 @@ export const DoorLayer: React.FC = () => {
   return (
     <g id="door-layer">
       {world.blockers
-        .filter((b) => b.type === 'DOOR')
+        .filter((b) => b.type.toUpperCase() === 'DOOR')
         .map((door) => {
           if (door.points.length < 2) return null;
 

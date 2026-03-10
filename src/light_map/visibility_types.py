@@ -1,4 +1,7 @@
 from dataclasses import dataclass
+# NOTE: Enums in this file are mirrored in frontend/src/types/system.ts
+# Changes here MUST be kept in sync with the frontend.
+# This is enforced by tests/test_enum_sync.py.
 from enum import StrEnum
 from typing import List, Tuple
 

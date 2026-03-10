@@ -1,3 +1,11 @@
+/**
+ * NOTE: Enums in this file are mirrored from the Python backend 
+ * (src/light_map/common_types.py and visibility_types.py).
+ * 
+ * Changes here MUST be kept in sync with the backend.
+ * This is enforced by the backend test: tests/test_enum_sync.py
+ */
+
 export enum VisibilityType {
   WALL = 'wall',
   DOOR = 'door',

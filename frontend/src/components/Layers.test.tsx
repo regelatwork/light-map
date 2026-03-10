@@ -21,7 +21,15 @@ vi.mock('../hooks/useSystemState', async (importOriginal) => {
       },
       world: {
         blockers: [
-          { id: '1', type: VisibilityType.DOOR, is_open: false, points: [[10, 10], [20, 20]] },
+          {
+            id: '1',
+            type: VisibilityType.DOOR,
+            is_open: false,
+            points: [
+              [10, 10],
+              [20, 20],
+            ],
+          },
         ],
       },
       grid_spacing_svg: 50,
@@ -33,7 +41,9 @@ describe('Layers', () => {
   it('renders MapLayer as an image', () => {
     const { container } = render(
       <SystemStateProvider>
-        <svg><MapLayer /></svg>
+        <svg>
+          <MapLayer />
+        </svg>
       </SystemStateProvider>
     );
     const img = container.querySelector('image');
@@ -44,7 +54,9 @@ describe('Layers', () => {
   it('renders DoorLayer with polyline for closed door', () => {
     const { container } = render(
       <SystemStateProvider>
-        <svg><DoorLayer /></svg>
+        <svg>
+          <DoorLayer />
+        </svg>
       </SystemStateProvider>
     );
     const polyline = container.querySelector('polyline');
@@ -54,7 +66,9 @@ describe('Layers', () => {
   it('renders FowLayer as an image with filter', () => {
     const { container } = render(
       <SystemStateProvider>
-        <svg><FowLayer /></svg>
+        <svg>
+          <FowLayer />
+        </svg>
       </SystemStateProvider>
     );
     const img = container.querySelector('image');

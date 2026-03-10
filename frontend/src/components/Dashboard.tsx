@@ -21,7 +21,7 @@ export const Dashboard = () => {
             className={`h-3 w-3 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`}
           />
         </div>
-        
+
         <div className="p-4 border-b">
           <nav className="flex flex-col space-y-2">
             <button

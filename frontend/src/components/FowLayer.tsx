@@ -4,7 +4,13 @@ import { useSystemState } from '../hooks/useSystemState';
 export const FowLayer: React.FC = () => {
   const { config, isConnected } = useSystemState();
 
-  if (!isConnected || !config.current_map_path || !config.map_width || !config.map_height || config.fow_disabled) {
+  if (
+    !isConnected ||
+    !config.current_map_path ||
+    !config.map_width ||
+    !config.map_height ||
+    config.fow_disabled
+  ) {
     return null;
   }
 
@@ -20,12 +26,12 @@ export const FowLayer: React.FC = () => {
             White (255) -> Alpha 0 (Revealed)
             Black (0) -> Alpha 1 (Opaque Fog)
           */}
-          <feColorMatrix 
-            type="matrix" 
+          <feColorMatrix
+            type="matrix"
             values="0 0 0 0 0  
                     0 0 0 0 0  
                     0 0 0 0 0  
-                    -1 -1 -1 0 1" 
+                    -1 -1 -1 0 1"
           />
         </filter>
       </defs>

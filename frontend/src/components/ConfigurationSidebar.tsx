@@ -95,7 +95,9 @@ export const ConfigurationSidebar: React.FC = () => {
           {selectedToken && (
             <div className="space-y-4 text-black">
               <div className="bg-blue-50 p-3 rounded-md border border-blue-100">
-                <p className="text-sm font-semibold text-blue-800">Token #{selectedToken.id}</p>
+                <p className="text-sm font-semibold text-blue-800">
+                  {selectedToken.name ? `${selectedToken.name} (#${selectedToken.id})` : `Token #${selectedToken.id}`}
+                </p>
                 <p className="text-xs text-blue-600 mt-1">
                   Status: {selectedToken.is_occluded ? 'Occluded' : 'Visible'}
                 </p>

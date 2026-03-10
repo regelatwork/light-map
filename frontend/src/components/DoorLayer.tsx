@@ -15,7 +15,7 @@ export const DoorLayer: React.FC = () => {
   const yellowThickness = Math.max(2, baseWallThickness * 3.0);
   const padding = Math.max(2, 2.0 * baseWallThickness);
   const blackThickness = yellowThickness + padding;
-  
+
   const circleRadius = Math.max(3, yellowThickness * 0.8);
   const circleOutline = circleRadius + Math.max(2, padding / 2);
 

@@ -17,8 +17,8 @@ export const FowLayer: React.FC = () => {
         <filter id="fow-invert-alpha">
           {/* 
             Inverts grayscale to alpha: 
-            White (255) -> Alpha 0
-            Black (0) -> Alpha 1 (Opaque Black)
+            White (255) -> Alpha 0 (Revealed)
+            Black (0) -> Alpha 1 (Opaque Fog)
           */}
           <feColorMatrix 
             type="matrix" 

@@ -196,6 +196,15 @@ def create_app(
 
     app = FastAPI(title="Light Map Remote Driver", lifespan=lifespan)
 
+    from fastapi.middleware.cors import CORSMiddleware
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+
     @app.get("/video_feed")
     async def video_feed():
         async def frame_generator():

@@ -1,12 +1,100 @@
+export enum VisibilityType {
+  WALL = 'wall',
+  DOOR = 'door',
+  WINDOW = 'window',
+}
+
+export enum ResultType {
+  ARUCO = 'ARUCO',
+  HANDS = 'HANDS',
+  GESTURE = 'GESTURE',
+  ACTION = 'ACTION',
+}
+
+export enum GestureType {
+  OPEN_PALM = 'Open Palm',
+  CLOSED_FIST = 'Closed Fist',
+  GUN = 'Gun',
+  POINTING = 'Pointing',
+  VICTORY = 'Victory',
+  ROCK = 'Rock',
+  SHAKA = 'Shaka',
+  UNKNOWN = 'Unknown',
+  NONE = 'None',
+}
+
+export enum SceneId {
+  MENU = 'MENU',
+  VIEWING = 'VIEWING',
+  MAP = 'MAP',
+  SCANNING = 'SCANNING',
+  CALIBRATE_FLASH = 'CALIBRATE_FLASH',
+  CALIBRATE_PPI = 'CALIBRATE_PPI',
+  CALIBRATE_MAP_GRID = 'CALIBRATE_MAP_GRID',
+  CALIBRATE_INTRINSICS = 'CALIBRATE_INTRINSICS',
+  CALIBRATE_PROJECTOR = 'CALIBRATE_PROJECTOR',
+  CALIBRATE_EXTRINSICS = 'CALIBRATE_EXTRINSICS',
+}
+
+export enum SelectionType {
+  NONE = 'NONE',
+  DOOR = 'DOOR',
+  TOKEN = 'TOKEN',
+}
+
+export enum MenuActions {
+  TOGGLE_DEBUG_MODE = 'TOGGLE_DEBUG_MODE',
+  TOGGLE_DEBUG = 'TOGGLE_DEBUG',
+  EXIT = 'EXIT',
+  CLOSE_MENU = 'CLOSE_MENU',
+  CALIBRATE = 'CALIBRATE',
+  CALIBRATE_INTRINSICS = 'CALIBRATE_INTRINSICS',
+  CALIBRATE_PROJECTOR = 'CALIBRATE_PROJECTOR',
+  CALIBRATE_PPI = 'CALIBRATE_PPI',
+  CALIBRATE_EXTRINSICS = 'CALIBRATE_EXTRINSICS',
+  NAV_BACK = 'NAV_BACK',
+  MAP_CONTROLS = 'MAP_CONTROLS',
+  ROTATE_CW = 'ROTATE_CW',
+  ROTATE_CCW = 'ROTATE_CCW',
+  RESET_VIEW = 'RESET_VIEW',
+  CALIBRATE_SCALE = 'CALIBRATE_SCALE',
+  SET_MAP_SCALE = 'SET_MAP_SCALE',
+  RESET_ZOOM = 'RESET_ZOOM',
+  PAGE_NEXT = 'PAGE_NEXT',
+  PAGE_PREV = 'PAGE_PREV',
+  SCAN_SESSION = 'SCAN_SESSION',
+  LOAD_SESSION = 'LOAD_SESSION',
+  CALIBRATE_FLASH = 'CALIBRATE_FLASH',
+  SCAN_ALGORITHM = 'SCAN_ALGORITHM',
+  TOGGLE_HAND_MASKING = 'TOGGLE_HAND_MASKING',
+  SET_GM_POSITION = 'SET_GM_POSITION',
+  SYNC_VISION = 'SYNC_VISION',
+  RESET_FOW = 'RESET_FOW',
+  TOGGLE_FOW = 'TOGGLE_FOW',
+  TOGGLE_DOOR = 'TOGGLE_DOOR',
+}
+
+export enum GmPosition {
+  NONE = 'None',
+  NORTH = 'North',
+  SOUTH = 'South',
+  EAST = 'East',
+  WEST = 'West',
+  NORTH_WEST = 'North West',
+  NORTH_EAST = 'North East',
+  SOUTH_WEST = 'South West',
+  SOUTH_EAST = 'South East',
+}
+
 export interface VisibilityBlocker {
   id: string;
-  type: string;
+  type: VisibilityType;
   is_open: boolean;
   points: [number, number][];
 }
 
 export interface WorldState {
-  scene: string;
+  scene: SceneId | string;
   fps: number;
   blockers?: VisibilityBlocker[];
   [key: string]: unknown;
@@ -23,7 +111,7 @@ export interface SystemConfig {
   cam_res: [number, number];
   proj_res: [number, number];
   enable_hand_masking: boolean;
-  gm_position: string;
+  gm_position: GmPosition;
   debug_mode: boolean;
   fow_disabled: boolean;
   current_map_path?: string;
@@ -53,7 +141,7 @@ export const INITIAL_STATE: SystemState = {
     cam_res: [0, 0],
     proj_res: [0, 0],
     enable_hand_masking: false,
-    gm_position: 'None',
+    gm_position: GmPosition.NONE,
     debug_mode: false,
     fow_disabled: false,
   },

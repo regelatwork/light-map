@@ -1,10 +1,11 @@
 import React from 'react';
 import { useSystemState } from '../hooks/useSystemState';
+import { SceneId, MenuActions } from '../types/system';
 
 export const CalibrationWizard: React.FC = () => {
   const { world } = useSystemState();
 
-  const handleStartCalibration = async (actionId: string) => {
+  const handleStartCalibration = async (actionId: MenuActions) => {
     try {
       await fetch(`/input/action?action=${actionId}`, {
         method: 'POST',
@@ -14,7 +15,7 @@ export const CalibrationWizard: React.FC = () => {
     }
   };
 
-  const isCalibrating = world.scene?.startsWith('CALIBRATE_');
+  const isCalibrating = typeof world.scene === 'string' && world.scene.startsWith('CALIBRATE_');
 
   return (
     <div className="flex flex-col h-full bg-white rounded-lg shadow-sm border border-gray-200 p-4 overflow-y-auto">
@@ -44,7 +45,7 @@ export const CalibrationWizard: React.FC = () => {
           
           <button 
             className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-left transition-colors"
-            onClick={() => handleStartCalibration('CALIBRATE_INTRINSICS')}
+            onClick={() => handleStartCalibration(MenuActions.CALIBRATE_INTRINSICS)}
             disabled={isCalibrating}
           >
             1. Camera Intrinsics
@@ -52,7 +53,7 @@ export const CalibrationWizard: React.FC = () => {
           
           <button 
             className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-left transition-colors"
-            onClick={() => handleStartCalibration('CALIBRATE_PROJECTOR')}
+            onClick={() => handleStartCalibration(MenuActions.CALIBRATE_PROJECTOR)}
             disabled={isCalibrating}
           >
             2. Projector Homography
@@ -60,7 +61,7 @@ export const CalibrationWizard: React.FC = () => {
           
           <button 
             className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-left transition-colors"
-            onClick={() => handleStartCalibration('CALIBRATE_PPI')}
+            onClick={() => handleStartCalibration(MenuActions.CALIBRATE_PPI)}
             disabled={isCalibrating}
           >
             3. Physical Scale (PPI)
@@ -68,7 +69,7 @@ export const CalibrationWizard: React.FC = () => {
           
           <button 
             className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-left transition-colors"
-            onClick={() => handleStartCalibration('CALIBRATE_EXTRINSICS')}
+            onClick={() => handleStartCalibration(MenuActions.CALIBRATE_EXTRINSICS)}
             disabled={isCalibrating}
           >
             4. Camera Extrinsics
@@ -76,7 +77,7 @@ export const CalibrationWizard: React.FC = () => {
 
           <button 
             className="px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700 text-left mt-4 transition-colors"
-            onClick={() => handleStartCalibration('CALIBRATE_FLASH')}
+            onClick={() => handleStartCalibration(MenuActions.CALIBRATE_FLASH)}
             disabled={isCalibrating}
           >
             Aux: Flash Calibration
@@ -84,7 +85,7 @@ export const CalibrationWizard: React.FC = () => {
 
           <button 
             className="px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700 text-left transition-colors"
-            onClick={() => handleStartCalibration('SET_MAP_SCALE')}
+            onClick={() => handleStartCalibration(MenuActions.SET_MAP_SCALE)}
             disabled={isCalibrating}
           >
             Aux: Map Grid Offset
@@ -94,22 +95,22 @@ export const CalibrationWizard: React.FC = () => {
 
       <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
         <h3 className="font-semibold text-gray-800 mb-2">Instructions</h3>
-        {world.scene === 'CALIBRATE_INTRINSICS' && (
+        {world.scene === SceneId.CALIBRATE_INTRINSICS && (
           <p className="text-gray-600">Hold the checkerboard pattern in front of the camera and move it around. The system will automatically capture frames. When enough frames are captured, it will process and return to the main menu.</p>
         )}
-        {world.scene === 'CALIBRATE_PROJECTOR' && (
+        {world.scene === SceneId.CALIBRATE_PROJECTOR && (
           <p className="text-gray-600">The projector is displaying a calibration pattern. Ensure the camera can see the projected area clearly. The system will automatically detect the pattern and align the projector.</p>
         )}
-        {world.scene === 'CALIBRATE_EXTRINSICS' && (
+        {world.scene === SceneId.CALIBRATE_EXTRINSICS && (
           <p className="text-gray-600">Place ArUco tokens on the designated target zones shown in the camera view. Once all tokens are valid, use a "Closed Fist" gesture to confirm or wait for automatic validation if applicable.</p>
         )}
-        {world.scene === 'CALIBRATE_PPI' && (
+        {world.scene === SceneId.CALIBRATE_PPI && (
           <p className="text-gray-600">Place two tokens next to a ruler or known measurement. The system will detect them. Use gestures to confirm the scale.</p>
         )}
-        {world.scene === 'MENU' && (
+        {world.scene === SceneId.MENU && (
           <p className="text-gray-600">Select a calibration routine from the list above to begin. The video feed will show you the camera's perspective to assist with placement.</p>
         )}
-        {!isCalibrating && world.scene !== 'MENU' && (
+        {!isCalibrating && world.scene !== SceneId.MENU && (
           <p className="text-gray-600">Return to the Menu or trigger a calibration routine to begin.</p>
         )}
       </div>

@@ -1,5 +1,6 @@
 import React from 'react';
 import { useSystemState } from '../hooks/useSystemState';
+import { VisibilityType } from '../types/system';
 
 export const DoorLayer: React.FC = () => {
   const { world, grid_spacing_svg, isConnected } = useSystemState();
@@ -24,7 +25,7 @@ export const DoorLayer: React.FC = () => {
   return (
     <g id="door-layer">
       {world.blockers
-        .filter((b) => b.type.toUpperCase() === 'DOOR')
+        .filter((b) => b.type === VisibilityType.DOOR)
         .map((door) => {
           if (door.points.length < 2) return null;
 

@@ -4,6 +4,7 @@ import { MapLayer } from './MapLayer';
 import { DoorLayer } from './DoorLayer';
 import { FowLayer } from './FowLayer';
 import { SystemStateProvider } from '../hooks/useSystemState';
+import { VisibilityType } from '../types/system';
 
 // Mock the hook
 vi.mock('../hooks/useSystemState', async (importOriginal) => {
@@ -20,7 +21,7 @@ vi.mock('../hooks/useSystemState', async (importOriginal) => {
       },
       world: {
         blockers: [
-          { id: 1, type: 'DOOR', is_open: false, points: [[10, 10], [20, 20]] },
+          { id: '1', type: VisibilityType.DOOR, is_open: false, points: [[10, 10], [20, 20]] },
         ],
       },
       grid_spacing_svg: 50,

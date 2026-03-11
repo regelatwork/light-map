@@ -219,3 +219,34 @@ def test_overflow_layout(menu_system, mock_time):
     # Page 0 should show Items 0-5 + "Next Page >" = 7 items.
     assert len(state.active_items) == 7
     assert state.active_items[-1].title == "Next Page >"
+
+
+def test_trigger_index(menu_system, mock_time):
+    # 1. Hidden menu should NOT trigger index (as per user preference)
+    menu_system.trigger_index(0)
+    state = menu_system.update(500, 500, GestureType.NONE)
+    assert state.just_triggered_action is None
+    assert menu_system.state == MenuSystemState.HIDDEN
+
+    # 2. Force Active
+    menu_system.state = MenuSystemState.ACTIVE
+
+    # Trigger first item (Item 1 with ACTION_1)
+    menu_system.trigger_index(0)
+    state = menu_system.update(500, 500, GestureType.NONE)
+
+    assert state.just_triggered_action == "ACTION_1"
+    assert state.feedback_item_index is None  # Cleared by _reset_to_hidden
+    assert menu_system.state == MenuSystemState.HIDDEN  # Closed on trigger
+
+
+def test_trigger_index_submenu(menu_system, mock_time):
+    menu_system.state = MenuSystemState.ACTIVE
+
+    # Trigger Submenu (Index 2)
+    menu_system.trigger_index(2)
+    state = menu_system.update(500, 500, GestureType.NONE)
+
+    assert menu_system.state == MenuSystemState.ACTIVE
+    assert menu_system.current_node.title == "Submenu"
+    assert state.feedback_item_index == 2

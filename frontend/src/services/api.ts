@@ -61,3 +61,19 @@ export const saveGridConfig = async (offset_x: number, offset_y: number) => {
 
   return response.json();
 };
+
+export const interactMenu = async (index: number) => {
+  const host = import.meta.env.DEV ? 'http://localhost:8000' : window.location.origin;
+  const url = new URL(`${host}/menu/interact`);
+  url.searchParams.append('index', index.toString());
+
+  const response = await fetch(url.toString(), {
+    method: 'POST',
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to interact with menu at index: ${index}`);
+  }
+
+  return response.json();
+};

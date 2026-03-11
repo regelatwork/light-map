@@ -107,7 +107,10 @@ class MenuScene(Scene):
             self.input_manager.get_gesture(),
         )
 
-        if self._menu_state.hovered_item_index != new_state.hovered_item_index:
+        if (
+            self._menu_state.hovered_item_index != new_state.hovered_item_index
+            or self._menu_state.node_stack_titles != new_state.node_stack_titles
+        ):
             self._is_dirty = True
 
         self._menu_state = new_state

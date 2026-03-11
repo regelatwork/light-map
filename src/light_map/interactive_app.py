@@ -500,8 +500,33 @@ class InteractiveApp:
                     self.map_system.zoom_pinned(
                         1.0 + delta, (self.config.width // 2, self.config.height // 2)
                     )
+                elif action_name == "MENU_INTERACT":
+                    # Use class name check to avoid potential double-import/instance-check issues
+                    is_menu_scene = self.current_scene.__class__.__name__ == "MenuScene"
+
+                    logging.debug(
+                        f"InteractiveApp: Received MENU_INTERACT index={action_data.get('index')}, current_scene={self.current_scene.__class__.__name__}"
+                    )
+
+                    if is_menu_scene:
+                        index = action_data.get("index")
+                        if index is not None:
+                            # Safely access menu_system (expected on MenuScene)
+                            menu_sys = getattr(self.current_scene, "menu_system", None)
+                            if menu_sys:
+                                menu_sys.trigger_index(index)
+                                self.current_scene.is_dirty = True
+                            else:
+                                logging.error(
+                                    "InteractiveApp: Current scene is MenuScene but has no menu_system"
+                                )
+                    else:
+                        logging.warning(
+                            f"InteractiveApp: MENU_INTERACT ignored - current scene {self.current_scene.__class__.__name__} is not MenuScene"
+                        )
                 else:
                     # Generic action/payload for SYNC_VISION, etc.
+
                     transition = self._handle_payloads(action_data, state)
                     if transition:
                         self._switch_scene(transition)

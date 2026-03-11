@@ -1,7 +1,7 @@
 from typing import List, Tuple, Optional, Deque
 from collections import deque
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import StrEnum
 
 from light_map.common_types import MenuItem, MenuActions, GestureType
@@ -36,6 +36,7 @@ class MenuState:
     just_triggered_action: Optional[str]
     cursor_pos: Optional[Tuple[int, int]]
     is_visible: bool
+    node_stack_titles: List[str] = field(default_factory=list)
     debug_info: str = ""
 
 
@@ -70,7 +71,11 @@ class MenuSystem:
         self.pinned_cursor: Optional[Tuple[int, int]] = None
         self.is_pinning: bool = False
 
+        self.pending_external_index: Optional[int] = None
+
+        # Populate initial state so get_current_state() returns valid data immediately
         self._last_state: Optional[MenuState] = None
+        self._last_state = self.get_current_state()
 
     def get_current_state(self) -> MenuState:
         """Returns the last computed state of the menu."""
@@ -88,10 +93,17 @@ class MenuSystem:
                 just_triggered_action=None,
                 cursor_pos=None,
                 is_visible=False,
+                node_stack_titles=[n.title for n in self.node_stack],
             )
         return self._last_state
 
+    def trigger_index(self, index: int):
+        """Schedules a menu item to be triggered on the next update."""
+        self.pending_external_index = index
+
     def set_root_menu(self, new_root: MenuItem):
+        # ... (rest of set_root_menu remains unchanged)
+
         # If hidden, just reset completely
         if self.state == MenuSystemState.HIDDEN:
             self.root = new_root
@@ -160,6 +172,25 @@ class MenuSystem:
 
         # 3. State Machine
         just_triggered_action = None
+
+        if self.pending_external_index is not None:
+            if self.state in [
+                MenuSystemState.ACTIVE,
+                MenuSystemState.WAITING_FOR_NEUTRAL,
+            ]:
+                self.last_hovered_index = self.pending_external_index
+                triggering_index = self.last_hovered_index
+                just_triggered_action = self._trigger_selection()
+
+                # If we didn't just hide the menu, show feedback
+                if self.state != MenuSystemState.HIDDEN:
+                    self.feedback_item_index = triggering_index
+                    self.feedback_start_time = now
+                else:
+                    # Even if hidden, we might want the returned state to show it once
+                    # but _reset_to_hidden cleared it. For now, let's just let it be None if hidden.
+                    pass
+            self.pending_external_index = None
 
         if self.state == MenuSystemState.HIDDEN:
             if gesture == SUMMON_GESTURE:
@@ -279,6 +310,7 @@ class MenuSystem:
             just_triggered_action=just_triggered_action,
             cursor_pos=active_cursor if self.state == MenuSystemState.ACTIVE else None,
             is_visible=(self.state != MenuSystemState.HIDDEN),
+            node_stack_titles=[n.title for n in self.node_stack],
             debug_info=f"State: {self.state}",
         )
         return self._last_state

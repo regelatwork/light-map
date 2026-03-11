@@ -5,7 +5,7 @@ import uvicorn
 import asyncio
 import os
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, WebSocket, Header, Response
+from fastapi import FastAPI, WebSocket, Header, Response, Query
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import StreamingResponse
 import threading
@@ -359,6 +359,18 @@ def create_app(
         )
         results_queue.put(res)
         return {"status": "injected"}
+
+    @app.post("/menu/interact")
+    def interact_menu(index: int = Query(...)):
+        """Trigger a menu item by index."""
+        logging.debug(f"RemoteDriver: Received /menu/interact?index={index}")
+        res = DetectionResult(
+            timestamp=time.monotonic_ns(),
+            type=ResultType.ACTION,
+            data={"action": "MENU_INTERACT", "index": index},
+        )
+        results_queue.put(res)
+        return {"status": "injected", "index": index}
 
     @app.get("/config")
     def get_config():

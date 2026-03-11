@@ -4,7 +4,7 @@ import { SchematicCanvas } from './SchematicCanvas';
 import { ConfigurationSidebar } from './ConfigurationSidebar';
 import { MapLibrary } from './MapLibrary';
 import { CalibrationWizard } from './CalibrationWizard';
-import { injectAction } from '../services/api';
+import { injectAction, interactMenu } from '../services/api';
 
 type ActiveTab = 'schematic' | 'calibration';
 
@@ -17,6 +17,14 @@ export const Dashboard = () => {
       await injectAction('TRIGGER_MENU');
     } catch (err) {
       console.error('Failed to summon menu:', err);
+    }
+  };
+
+  const handleInteractMenu = async (index: number) => {
+    try {
+      await interactMenu(index);
+    } catch (err) {
+      console.error('Failed to interact with menu:', err);
     }
   };
 
@@ -93,7 +101,12 @@ export const Dashboard = () => {
                 <p className="text-sm font-medium text-blue-600">{menu.title}</p>
                 <ul className="text-xs space-y-1 pl-2 border-l border-gray-100 max-h-48 overflow-y-auto">
                   {menu.items.map((item, idx) => (
-                    <li key={idx} className="text-gray-700 truncate" title={item}>
+                    <li
+                      key={idx}
+                      onClick={() => handleInteractMenu(idx)}
+                      className="text-gray-700 truncate cursor-pointer hover:bg-blue-50 hover:text-blue-700 px-1 rounded transition-colors"
+                      title={item}
+                    >
                       {item}
                     </li>
                   ))}

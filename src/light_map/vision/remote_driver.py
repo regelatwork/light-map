@@ -5,7 +5,7 @@ import uvicorn
 import asyncio
 import os
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, WebSocket
+from fastapi import FastAPI, WebSocket, Header, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import StreamingResponse
 import threading
@@ -399,16 +399,25 @@ def create_app(
             return {"error": str(e)}
 
     @app.get("/map/svg")
-    def get_map_svg():
+    def get_map_svg(if_none_match: str = Header(None)):
         current_map = state_mirror.get("config", {}).get("current_map_path")
         if current_map and os.path.exists(current_map):
             from fastapi.responses import FileResponse
 
-            return FileResponse(current_map, media_type="image/svg+xml")
+            stat = os.stat(current_map)
+            etag = f'"{int(stat.st_mtime)}-{stat.st_size}"'
+            if if_none_match == etag:
+                return Response(status_code=304)
+
+            return FileResponse(
+                current_map,
+                media_type="image/svg+xml",
+                headers={"ETag": etag, "Cache-Control": "no-cache"},
+            )
         return {"error": "No map loaded"}
 
     @app.get("/map/fow")
-    def get_map_fow():
+    def get_map_fow(if_none_match: str = Header(None)):
         current_map = state_mirror.get("config", {}).get("current_map_path")
         if current_map:
             from light_map.core.storage import StorageManager
@@ -422,10 +431,15 @@ def create_app(
             if os.path.exists(fow_path):
                 from fastapi.responses import FileResponse
 
+                stat = os.stat(fow_path)
+                etag = f'"{int(stat.st_mtime)}-{stat.st_size}"'
+                if if_none_match == etag:
+                    return Response(status_code=304)
+
                 return FileResponse(
                     fow_path,
                     media_type="image/png",
-                    headers={"Cache-Control": "no-cache, no-store, must-revalidate"},
+                    headers={"ETag": etag, "Cache-Control": "no-cache"},
                 )
         return {"error": "No FOW available"}
 

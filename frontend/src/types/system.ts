@@ -145,6 +145,7 @@ export interface SystemState {
   grid_spacing_svg: number;
   grid_origin_svg_x: number;
   grid_origin_svg_y: number;
+  visibility_timestamp: number;
 }
 
 export const INITIAL_STATE: SystemState = {
@@ -165,4 +166,5 @@ export const INITIAL_STATE: SystemState = {
   grid_spacing_svg: 0,
   grid_origin_svg_x: 0,
   grid_origin_svg_y: 0,
+  visibility_timestamp: 0,
 };

@@ -41,13 +41,14 @@ export const DoorLayer: React.FC = () => {
           const isSelected = selection.type === SelectionType.DOOR && selection.id === door.id;
 
           if (door.is_open) {
+            const endpoints = [door.points[0], door.points[door.points.length - 1]];
             return (
               <g
                 key={`door-${door.id}`}
                 onClick={(e) => handleDoorClick(e, door.id)}
                 className="cursor-pointer"
               >
-                {door.points.map((pt, i) => (
+                {endpoints.map((pt, i) => (
                   <g key={`pt-${i}`}>
                     {isSelected && (
                       <circle

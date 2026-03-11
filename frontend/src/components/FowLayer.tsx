@@ -2,7 +2,7 @@ import React from 'react';
 import { useSystemState } from '../hooks/useSystemState';
 
 export const FowLayer: React.FC = () => {
-  const { config, isConnected } = useSystemState();
+  const { config, isConnected, visibility_timestamp } = useSystemState();
 
   if (
     !isConnected ||
@@ -15,7 +15,7 @@ export const FowLayer: React.FC = () => {
   }
 
   const host = import.meta.env.DEV ? 'http://localhost:8000' : window.location.origin;
-  const fowUrl = `${host}/map/fow?map=${encodeURIComponent(config.current_map_path)}`;
+  const fowUrl = `${host}/map/fow?map=${encodeURIComponent(config.current_map_path)}&v=${visibility_timestamp}`;
 
   return (
     <g id="fow-layer">
@@ -36,7 +36,7 @@ export const FowLayer: React.FC = () => {
         </filter>
       </defs>
       <image
-        key={config.current_map_path}
+        key={`${config.current_map_path}-${visibility_timestamp}`}
         href={fowUrl}
         x={0}
         y={0}

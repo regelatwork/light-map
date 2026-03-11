@@ -947,6 +947,19 @@ class InteractiveApp:
                         self.fow_manager.width,
                         self.fow_manager.height,
                     )
+                    # Sync state.blockers so frontend gets updated is_open status
+                    self.state.blockers = [
+                        {
+                            "id": b.id,
+                            "type": b.type.value if hasattr(b.type, "value") else str(b.type),
+                            "is_open": b.is_open,
+                            "points": b.segments,
+                        }
+                        for b in self.visibility_engine.blockers
+                    ]
+                    # Increment visibility_timestamp so frontend knows to refresh FoW
+                    self.state.visibility_timestamp += 1
+
                     self.notifications.add_notification(f"Door {door_id} Toggled")
                     self.save_session()  # Persist door state
 

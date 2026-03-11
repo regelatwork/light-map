@@ -316,6 +316,7 @@ class WorldState:
             "grid_spacing_svg": self.grid_spacing_svg,
             "grid_origin_svg_x": self.grid_origin_svg_x,
             "grid_origin_svg_y": self.grid_origin_svg_y,
+            "visibility_timestamp": self.visibility_timestamp,
         }
 
     def clear_raw_aruco(self):

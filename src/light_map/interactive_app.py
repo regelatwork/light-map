@@ -754,6 +754,9 @@ class InteractiveApp:
             if state is not None:
                 self._sync_vision(state)
             self.app_context.notifications.add_notification("Vision Synchronized")
+        elif action_name == "RESET_ZOOM":
+            self.map_system.reset_zoom_to_base()
+            self.notifications.add_notification("Zoom Reset to 1:1")
         elif action_name == "UPDATE_GRID":
             if self.current_map_path:
                 entry = self.map_config.data.maps.get(self.current_map_path)

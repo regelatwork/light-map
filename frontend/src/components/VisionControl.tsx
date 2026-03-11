@@ -21,6 +21,10 @@ export const VisionControl: React.FC = () => {
     injectAction('SYNC_VISION');
   };
 
+  const handleResetZoom = () => {
+    injectAction('RESET_ZOOM');
+  };
+
   const handleToggleDebug = () => {
     injectAction('TOGGLE_DEBUG_MODE');
   };
@@ -83,6 +87,13 @@ export const VisionControl: React.FC = () => {
         className="w-full bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-semibold py-1.5 px-3 rounded border border-blue-200 transition-colors"
       >
         Sync Vision
+      </button>
+
+      <button
+        onClick={handleResetZoom}
+        className="w-full bg-green-50 hover:bg-green-100 text-green-700 text-xs font-semibold py-1.5 px-3 rounded border border-green-200 transition-colors"
+      >
+        Reset Zoom to 1:1
       </button>
 
       <div className="flex items-center justify-between">

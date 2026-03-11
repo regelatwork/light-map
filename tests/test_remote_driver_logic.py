@@ -105,6 +105,23 @@ def test_remote_driver_action_endpoint():
     assert result.data["payload"] == "maps/test.svg"
 
 
+def test_remote_driver_reset_zoom_action():
+    results_queue = Queue()
+    stop_event = Event()
+    state_mirror = {}
+
+    app = create_app(results_queue, stop_event, state_mirror)
+    client = TestClient(app)
+
+    response = client.post("/input/action", params={"action": "RESET_ZOOM"})
+    assert response.status_code == 200
+
+    result = results_queue.get(timeout=1.0)
+    assert result.type == ResultType.ACTION
+    assert result.data["action"] == "RESET_ZOOM"
+    assert result.data["payload"] is None
+
+
 def test_remote_driver_zoom_endpoint():
     results_queue = Queue()
     stop_event = Event()

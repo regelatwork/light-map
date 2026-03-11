@@ -6,6 +6,7 @@ import { DoorLayer } from './DoorLayer';
 import { FowLayer } from './FowLayer';
 import { CanvasProvider } from './CanvasContext';
 import { useSelection } from './SelectionContext';
+import { SelectionType } from '../types/system';
 
 interface SchematicCanvasProps {
   children?: ReactNode;
@@ -32,7 +33,7 @@ export const SchematicCanvas: React.FC<SchematicCanvasProps> = ({ children }) =>
 
   const handleBackgroundClick = () => {
     // Clear selection when clicking the background
-    setSelection({ type: 'none', id: null });
+    setSelection({ type: SelectionType.NONE, id: null });
   };
 
   const handleMouseMove = (e: React.MouseEvent) => {

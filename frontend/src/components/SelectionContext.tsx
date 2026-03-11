@@ -1,12 +1,11 @@
 /* eslint-disable react-refresh/only-export-components */
 import { createContext, useContext, useState } from 'react';
 import type { ReactNode } from 'react';
-
-type SelectionType = 'token' | 'none';
+import { SelectionType } from '../types/system';
 
 interface SelectionState {
   type: SelectionType;
-  id: number | null;
+  id: string | number | null;
 }
 
 interface SelectionContextType {
@@ -17,7 +16,7 @@ interface SelectionContextType {
 const SelectionContext = createContext<SelectionContextType | undefined>(undefined);
 
 export const SelectionProvider = ({ children }: { children: ReactNode }) => {
-  const [selection, setSelection] = useState<SelectionState>({ type: 'none', id: null });
+  const [selection, setSelection] = useState<SelectionState>({ type: SelectionType.NONE, id: null });
   return (
     <SelectionContext.Provider value={{ selection, setSelection }}>
       {children}

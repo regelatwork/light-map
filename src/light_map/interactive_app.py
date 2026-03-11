@@ -923,6 +923,13 @@ class InteractiveApp:
         if payload.get("action") == "TOGGLE_DOOR":
             from light_map.common_types import SelectionType
 
+            # If a specific door is passed in the payload, select it first
+            # RemoteDriver's inject_action puts the payload in the 'payload' field
+            door_id = payload.get("door_id") or payload.get("payload")
+            if door_id:
+                self.state.selection.type = SelectionType.DOOR
+                self.state.selection.id = door_id
+
             if (
                 self.state.selection.type == SelectionType.DOOR
                 and self.state.selection.id

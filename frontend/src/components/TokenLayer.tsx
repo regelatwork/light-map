@@ -1,6 +1,7 @@
 import React from 'react';
 import { useSystemState } from '../hooks/useSystemState';
 import { useSelection } from './SelectionContext';
+import { SelectionType } from '../types/system';
 
 export const TokenLayer: React.FC = () => {
   const { tokens, isConnected } = useSystemState();
@@ -13,14 +14,14 @@ export const TokenLayer: React.FC = () => {
   return (
     <g>
       {tokens.map((token) => {
-        const isSelected = selection.type === 'token' && selection.id === token.id;
+        const isSelected = selection.type === SelectionType.TOKEN && selection.id === token.id;
         return (
           <g
             key={token.id}
             transform={`translate(${token.world_x}, ${token.world_y})`}
             onClick={(e) => {
               e.stopPropagation(); // prevent canvas click from clearing
-              setSelection({ type: 'token', id: token.id });
+              setSelection({ type: SelectionType.TOKEN, id: token.id });
             }}
             className="cursor-pointer"
           >

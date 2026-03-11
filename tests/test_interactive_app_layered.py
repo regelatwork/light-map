@@ -134,3 +134,26 @@ def test_interactive_app_process_state_actions(mock_config, monkeypatch):
 
     app._sync_vision.assert_called_once_with(ws)
     assert len(ws.pending_actions) == 0
+
+    # 4. Inject TOGGLE_DOOR action with door_id
+    from light_map.visibility_types import VisibilityBlocker, VisibilityType
+    from light_map.common_types import SelectionType
+
+    door = VisibilityBlocker(
+        segments=[(0, 0), (10, 10)],
+        type=VisibilityType.DOOR,
+        layer_name="doors",
+        id="door123",
+        is_open=False,
+    )
+    app.visibility_engine.blockers = [door]
+    app.fow_manager = MagicMock()
+    app.fow_manager.width = 100
+    app.fow_manager.height = 100
+
+    ws.pending_actions.append({"action": "TOGGLE_DOOR", "door_id": "door123"})
+    app.process_state(ws, [])
+
+    assert app.state.selection.type == SelectionType.DOOR
+    assert app.state.selection.id == "door123"
+    assert door.is_open is True

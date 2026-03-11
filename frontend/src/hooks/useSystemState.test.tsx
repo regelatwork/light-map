@@ -52,7 +52,7 @@ describe('useSystemState', () => {
     const newState = {
       world: { scene: 'MAP', fps: 60.5 },
       tokens: [],
-      menu: {},
+      menu: { title: 'Main Menu', items: ['Item 1', 'Item 2'] },
       timestamp: Date.now(),
     };
 

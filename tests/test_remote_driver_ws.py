@@ -1,4 +1,3 @@
-import pytest
 from multiprocessing import Queue, Event
 from fastapi.testclient import TestClient
 from light_map.vision.remote_driver import create_app
@@ -33,7 +32,7 @@ def test_remote_driver_websocket_broadcast():
 
             # Update the state mirror and check for another broadcast
             state_mirror["world"]["scene"] = "CALIBRATION"
-            
+
             # Wait for the next broadcast (max 100ms)
             start_time = time.time()
             received_update = False
@@ -42,7 +41,7 @@ def test_remote_driver_websocket_broadcast():
                 if data["world"]["scene"] == "CALIBRATION":
                     received_update = True
                     break
-            
+
             assert received_update, "Did not receive updated state via WebSocket"
 
 
@@ -55,9 +54,9 @@ def test_remote_driver_websocket_disconnect_handling():
 
     with TestClient(app) as client:
         # Connect and immediately disconnect
-        with client.websocket_connect("/ws/state") as websocket:
+        with client.websocket_connect("/ws/state") as _:
             pass
-        
+
         # The manager should handle the disconnect without crashing
         # We can't easily inspect the internal manager state from here,
         # but we can verify the app is still healthy.

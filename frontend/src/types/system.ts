@@ -128,10 +128,16 @@ export interface SystemConfig {
   [key: string]: unknown;
 }
 
+export interface MenuState {
+  title: string;
+  items: string[];
+  depth?: number;
+}
+
 export interface SystemState {
   world: WorldState;
   tokens: Token[];
-  menu: Record<string, unknown> | null;
+  menu: MenuState | null;
   config: SystemConfig;
   timestamp: number;
   isConnected: boolean;

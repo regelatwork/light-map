@@ -65,15 +65,15 @@ def test_enums_sync():
 
         # Check that all Python values exist in TypeScript and match
         for name, value in py_values.items():
-            assert (
-                name in ts_values
-            ), f"Enum member {name} missing from frontend {ts_name}. Please add it to system.ts"
-            assert (
-                ts_values[name] == value
-            ), f"Enum member {name} value mismatch in {ts_name}: TS={ts_values[name]}, PY={value}"
+            assert name in ts_values, (
+                f"Enum member {name} missing from frontend {ts_name}. Please add it to system.ts"
+            )
+            assert ts_values[name] == value, (
+                f"Enum member {name} value mismatch in {ts_name}: TS={ts_values[name]}, PY={value}"
+            )
 
         # Check that TypeScript doesn't have extra values (strict sync)
         for name in ts_values:
-            assert (
-                name in py_values
-            ), f"Frontend enum {ts_name} has extra member {name} not in Python. Remove it or add to backend."
+            assert name in py_values, (
+                f"Frontend enum {ts_name} has extra member {name} not in Python. Remove it or add to backend."
+            )

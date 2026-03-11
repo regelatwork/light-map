@@ -4,12 +4,21 @@ import { SchematicCanvas } from './SchematicCanvas';
 import { ConfigurationSidebar } from './ConfigurationSidebar';
 import { MapLibrary } from './MapLibrary';
 import { CalibrationWizard } from './CalibrationWizard';
+import { injectAction } from '../services/api';
 
 type ActiveTab = 'schematic' | 'calibration';
 
 export const Dashboard = () => {
-  const { isConnected, world, tokens } = useSystemState();
+  const { isConnected, world, tokens, menu } = useSystemState();
   const [activeTab, setActiveTab] = useState<ActiveTab>('schematic');
+
+  const handleSummonMenu = async () => {
+    try {
+      await injectAction('TRIGGER_MENU');
+    } catch (err) {
+      console.error('Failed to summon menu:', err);
+    }
+  };
 
   return (
     <div className="flex h-screen bg-gray-100 overflow-hidden">
@@ -62,6 +71,12 @@ export const Dashboard = () => {
               <p className="text-sm">
                 <span className="text-gray-500">Tokens:</span> {tokens.length}
               </p>
+              <button
+                onClick={handleSummonMenu}
+                className="mt-2 w-full px-2 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+              >
+                Summon Menu
+              </button>
             </div>
           </div>
           <div className="mb-6">
@@ -71,7 +86,20 @@ export const Dashboard = () => {
             <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-2">
               Menu
             </h3>
-            <p className="text-sm italic text-gray-400">No active menu</p>
+            {menu ? (
+              <div className="space-y-1">
+                <p className="text-sm font-medium text-blue-600">{menu.title}</p>
+                <ul className="text-xs space-y-1 pl-2 border-l border-gray-100 max-h-48 overflow-y-auto">
+                  {menu.items.map((item, idx) => (
+                    <li key={idx} className="text-gray-700 truncate" title={item}>
+                      {item}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : (
+              <p className="text-sm italic text-gray-400">No active menu</p>
+            )}
           </div>
         </nav>
       </aside>

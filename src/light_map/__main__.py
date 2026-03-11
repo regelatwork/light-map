@@ -374,8 +374,12 @@ def main():
                         if app.fow_manager
                         else True,
                         "current_map_path": app.current_map_path,
-                        "map_width": float(app.map_system.svg_loader.svg.width) if app.map_system.svg_loader and app.map_system.svg_loader.svg else 0,
-                        "map_height": float(app.map_system.svg_loader.svg.height) if app.map_system.svg_loader and app.map_system.svg_loader.svg else 0,
+                        "map_width": float(app.map_system.svg_loader.svg.width)
+                        if app.map_system.svg_loader and app.map_system.svg_loader.svg
+                        else 0,
+                        "map_height": float(app.map_system.svg_loader.svg.height)
+                        if app.map_system.svg_loader and app.map_system.svg_loader.svg
+                        else 0,
                     }
                     state_mirror["maps"] = {
                         path: {"name": os.path.basename(path)}

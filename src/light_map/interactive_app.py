@@ -505,6 +505,10 @@ class InteractiveApp:
                     transition = self._handle_payloads(action_data, state)
                     if transition:
                         self._switch_scene(transition)
+                    else:
+                        # If not handled by _handle_payloads, pass it as a semantic action to the scene
+                        if actions is not None:
+                            actions.append(action_name)
             state.pending_actions.clear()
 
         # Update context frame if available
@@ -632,7 +636,12 @@ class InteractiveApp:
 
     def _sync_vision(self, state: "WorldState"):
         """Forces a line-of-sight visibility sync."""
-        if self.visibility_engine and self.fow_manager and self.current_map_path and state is not None:
+        if (
+            self.visibility_engine
+            and self.fow_manager
+            and self.current_map_path
+            and state is not None
+        ):
             # Calculate latest vision mask on-demand
             combined_pc_mask = self.visibility_engine.get_aggregate_vision_mask(
                 state.tokens,
@@ -816,6 +825,7 @@ class InteractiveApp:
 
         if payload.get("action") == "SET_GM_POSITION":
             from light_map.common_types import GmPosition
+
             try:
                 new_pos = GmPosition(payload.get("payload", "None"))
                 gs = self.map_config.data.global_settings
@@ -862,7 +872,7 @@ class InteractiveApp:
 
         from .common_types import MenuActions, SceneId
         from .core.scene import SceneTransition
-        
+
         action_name = payload.get("action")
         if action_name in [
             MenuActions.CALIBRATE_INTRINSICS,
@@ -884,7 +894,7 @@ class InteractiveApp:
                 self.notifications.add_notification("Load a map before scanning.")
                 return None
             return SceneTransition(scene_map[action_name])
-            
+
         return None
 
     def switch_to_viewing(self):

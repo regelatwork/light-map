@@ -172,10 +172,14 @@ def create_app(
                         "timestamp": time.monotonic(),
                     }
                     # Hoist grid metadata to top level for frontend SystemState compatibility
-                    for key in ["grid_spacing_svg", "grid_origin_svg_x", "grid_origin_svg_y"]:
+                    for key in [
+                        "grid_spacing_svg",
+                        "grid_origin_svg_x",
+                        "grid_origin_svg_y",
+                    ]:
                         if key in world:
                             state[key] = world[key]
-                            
+
                     await manager.broadcast(state)
                 await asyncio.sleep(0.033)  # ~30Hz
             logging.info("WebSocket state broadcast loop stopped.")
@@ -197,6 +201,7 @@ def create_app(
     app = FastAPI(title="Light Map Remote Driver", lifespan=lifespan)
 
     from fastapi.middleware.cors import CORSMiddleware
+
     app.add_middleware(
         CORSMiddleware,
         allow_origins=["*"],
@@ -398,6 +403,7 @@ def create_app(
         current_map = state_mirror.get("config", {}).get("current_map_path")
         if current_map and os.path.exists(current_map):
             from fastapi.responses import FileResponse
+
             return FileResponse(current_map, media_type="image/svg+xml")
         return {"error": "No map loaded"}
 
@@ -407,12 +413,20 @@ def create_app(
         if current_map:
             from light_map.core.storage import StorageManager
             import hashlib
+
             stem = os.path.splitext(os.path.basename(current_map))[0]
             path_hash = hashlib.md5(current_map.encode()).hexdigest()[:8]
-            fow_path = os.path.join(StorageManager().get_data_dir(), "fow", f"{stem}_{path_hash}", "fow.png")
+            fow_path = os.path.join(
+                StorageManager().get_data_dir(), "fow", f"{stem}_{path_hash}", "fow.png"
+            )
             if os.path.exists(fow_path):
                 from fastapi.responses import FileResponse
-                return FileResponse(fow_path, media_type="image/png", headers={"Cache-Control": "no-cache, no-store, must-revalidate"})
+
+                return FileResponse(
+                    fow_path,
+                    media_type="image/png",
+                    headers={"Cache-Control": "no-cache, no-store, must-revalidate"},
+                )
         return {"error": "No FOW available"}
 
     @app.get("/maps")

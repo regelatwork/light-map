@@ -2,11 +2,11 @@ import React, { useState } from 'react';
 import { useSystemState } from '../hooks/useSystemState';
 import { useSelection } from './SelectionContext';
 import { saveGridConfig, injectAction } from '../services/api';
-import type { Token } from '../types/system';
+import { type Token, SelectionType } from '../types/system';
 import { VisionControl } from './VisionControl';
 
 export const ConfigurationSidebar: React.FC = () => {
-  const { tokens, grid_origin_svg_x, grid_origin_svg_y } = useSystemState();
+  const { tokens, world, grid_origin_svg_x, grid_origin_svg_y } = useSystemState();
   const { selection } = useSelection();
 
   const [localGridX, setLocalGridX] = useState<number | null>(null);
@@ -26,7 +26,12 @@ export const ConfigurationSidebar: React.FC = () => {
   };
 
   const selectedToken =
-    selection.type === 'token' ? tokens.find((t: Token) => t.id === selection.id) : null;
+    selection.type === SelectionType.TOKEN ? tokens.find((t: Token) => t.id === selection.id) : null;
+
+  const selectedDoor =
+    selection.type === SelectionType.DOOR
+      ? world.blockers?.find((b) => b.id === selection.id)
+      : null;
 
   return (
     <aside className="w-80 bg-white shadow-md flex flex-col border-l border-gray-200 z-10">
@@ -86,9 +91,9 @@ export const ConfigurationSidebar: React.FC = () => {
             Selection Properties
           </h3>
 
-          {!selectedToken && (
+          {!selectedToken && !selectedDoor && (
             <div className="text-sm text-gray-400 italic p-4 text-center border-2 border-dashed rounded-md">
-              Select a token on the canvas to view its properties
+              Select a token or door on the canvas to view its properties
             </div>
           )}
 
@@ -144,6 +149,26 @@ export const ConfigurationSidebar: React.FC = () => {
                     Note: Editing token properties (name, color) via API is pending backend support.
                   </em>
                 </p>
+              </div>
+            </div>
+          )}
+
+          {selectedDoor && (
+            <div className="space-y-4 text-black">
+              <div className="bg-yellow-50 p-3 rounded-md border border-yellow-200">
+                <p className="text-sm font-semibold text-yellow-800">Door: {selectedDoor.id}</p>
+                <p className="text-xs text-yellow-600 mt-1">
+                  Status: {selectedDoor.is_open ? 'Open' : 'Closed'}
+                </p>
+              </div>
+
+              <div className="pt-2">
+                <button
+                  onClick={() => injectAction('TOGGLE_DOOR', selectedDoor.id)}
+                  className="w-full bg-yellow-100 hover:bg-yellow-200 text-yellow-800 text-xs font-semibold py-1.5 px-3 rounded border border-yellow-300 transition-colors"
+                >
+                  {selectedDoor.is_open ? 'Close Door' : 'Open Door'}
+                </button>
               </div>
             </div>
           )}

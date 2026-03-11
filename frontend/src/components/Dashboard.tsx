@@ -71,21 +71,23 @@ export const Dashboard = () => {
               <p className="text-sm">
                 <span className="text-gray-500">Tokens:</span> {tokens.length}
               </p>
-              <button
-                onClick={handleSummonMenu}
-                className="mt-2 w-full px-2 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
-              >
-                Summon Menu
-              </button>
             </div>
           </div>
           <div className="mb-6">
             <MapLibrary />
           </div>
           <div>
-            <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-2">
-              Menu
-            </h3>
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-500">
+                Menu
+              </h3>
+              <button
+                onClick={handleSummonMenu}
+                className="px-2 py-0.5 text-[10px] font-bold bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors uppercase"
+              >
+                Summon
+              </button>
+            </div>
             {menu ? (
               <div className="space-y-1">
                 <p className="text-sm font-medium text-blue-600">{menu.title}</p>

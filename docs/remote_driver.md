@@ -20,7 +20,7 @@ While the Light Map application is running, navigate to the following URL in any
 - **Configuration Sidebar**: Adjust grid offsets and token properties with live preview.
 - **Vision Control**: Toggle "Exclusive Vision" and "Hand/Token Masking" modes.
 
----
+______________________________________________________________________
 
 ## 2. Starting the Driver
 

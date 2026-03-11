@@ -8,15 +8,17 @@
 
 **Tech Stack:** React (TypeScript), WebSocket API.
 
----
+______________________________________________________________________
 
 ### Task 1: Define System State Types & Initial State
 
 **Files:**
+
 - Create: `frontend/src/types/system.ts`
 
 **Step 1: Define the TypeScript interfaces**
 Create `frontend/src/types/system.ts` matching the backend broadcast structure.
+
 ```typescript
 export interface WorldState {
   scene: string;
@@ -53,15 +55,17 @@ export const INITIAL_STATE: SystemState = {
 **Step 2: Commit**
 Run: `git add frontend/src/types && git commit -m "feat(frontend): define system state types and initial state"`
 
----
+______________________________________________________________________
 
 ### Task 2: Implement WebSocket URL Utility & SystemStateProvider
 
 **Files:**
+
 - Create: `frontend/src/hooks/useSystemState.tsx`
 
 **Step 1: Implement WebSocket URL resolution**
 Add logic to determine the WS URL:
+
 ```typescript
 const getWsUrl = () => {
   const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -72,6 +76,7 @@ const getWsUrl = () => {
 
 **Step 2: Create the Context and Provider**
 Implement `SystemStateProvider` with:
+
 - `useReducer` for state management.
 - `useEffect` for WebSocket lifecycle.
 - **Reconnection Logic**: Use `setTimeout` with a fixed interval (e.g., 3s) if the socket closes.
@@ -83,11 +88,12 @@ Export a simple hook to consume the context.
 **Step 4: Commit**
 Run: `git add frontend/src/hooks && git commit -m "feat(frontend): implement system state context provider and hook with reconnection logic"`
 
----
+______________________________________________________________________
 
 ### Task 3: Integration and Visual Feedback (TDD)
 
 **Files:**
+
 - Modify: `frontend/src/main.tsx`
 - Modify: `frontend/src/components/Dashboard.tsx`
 - Create: `frontend/src/hooks/useSystemState.test.tsx`
@@ -97,15 +103,17 @@ Modify `frontend/src/main.tsx` to include `<SystemStateProvider>`.
 
 **Step 2: Update Dashboard with visual indicators**
 Modify `Dashboard.tsx` to:
+
 - Show a status dot (green/red) based on `isConnected`.
 - Display live `world.scene` and `world.fps` in the sidebar or header.
 
 **Step 3: Write tests (TDD)**
 Create `frontend/src/hooks/useSystemState.test.tsx` using `vitest-websocket-mock` (or similar) to verify:
+
 1. Initial state is correct.
-2. `isConnected` becomes `true` on connection.
-3. State updates correctly when JSON is received.
-4. `isConnected` becomes `false` on disconnect.
+1. `isConnected` becomes `true` on connection.
+1. State updates correctly when JSON is received.
+1. `isConnected` becomes `false` on disconnect.
 
 **Step 4: Commit**
 Run: `git add frontend && git commit -m "feat(frontend): integrate live state sync and visual status indicators"`

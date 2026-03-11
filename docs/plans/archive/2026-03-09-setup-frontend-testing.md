@@ -8,11 +8,12 @@
 
 **Tech Stack:** Vitest, React Testing Library, `jsdom`, `@vitejs/plugin-react`.
 
----
+______________________________________________________________________
 
 ### Task 1: Install Testing Dependencies
 
 **Files:**
+
 - Modify: `frontend/package.json`
 
 **Step 1: Install dependencies**
@@ -22,16 +23,18 @@ Expected: `package.json` updated.
 **Step 2: Commit**
 Run: `git add frontend/package.json && git commit -m "chore(frontend): install vitest and react testing library"`
 
----
+______________________________________________________________________
 
 ### Task 2: Configure Vitest
 
 **Files:**
+
 - Create: `frontend/vitest.config.ts`
 - Create: `frontend/src/test/setup.ts`
 
 **Step 1: Create Vitest configuration**
 Create: `frontend/vitest.config.ts`
+
 ```typescript
 import { defineConfig, mergeConfig } from 'vitest/config';
 import viteConfig from './vite.config';
@@ -51,6 +54,7 @@ export default mergeConfig(
 
 **Step 2: Create test setup file**
 Create: `frontend/src/test/setup.ts`
+
 ```typescript
 import '@testing-library/jest-dom/vitest';
 import { cleanup } from '@testing-library/react';
@@ -64,6 +68,7 @@ afterEach(() => {
 
 **Step 3: Update `package.json` with test script**
 Modify: `frontend/package.json`
+
 ```json
 "scripts": {
   "test": "vitest run",
@@ -75,15 +80,17 @@ Modify: `frontend/package.json`
 **Step 4: Commit**
 Run: `git add frontend && git commit -m "chore(frontend): configure vitest and setup tests"`
 
----
+______________________________________________________________________
 
 ### Task 3: Implement Initial Dashboard Test (TDD)
 
 **Files:**
+
 - Create: `frontend/src/components/Dashboard.test.tsx`
 
 **Step 1: Write failing test**
 Create: `frontend/src/components/Dashboard.test.tsx`
+
 ```tsx
 import { render, screen } from '@testing-library/react';
 import { describe, it, expect } from 'vitest';

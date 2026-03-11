@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useSystemState } from '../hooks/useSystemState';
 import { useSelection } from './SelectionContext';
-import { saveGridConfig } from '../services/api';
+import { saveGridConfig, injectAction } from '../services/api';
 import type { Token } from '../types/system';
 import { VisionControl } from './VisionControl';
 
@@ -124,7 +124,21 @@ export const ConfigurationSidebar: React.FC = () => {
                 </div>
               </div>
 
-              <div className="pt-2">
+              <div className="pt-2 space-y-2">
+                <div className="flex space-x-2">
+                  <button
+                    onClick={() => injectAction('INSPECT_TOKEN', selectedToken.id.toString())}
+                    className="flex-1 bg-purple-100 hover:bg-purple-200 text-purple-800 text-xs font-semibold py-1.5 px-3 rounded border border-purple-300 transition-colors"
+                  >
+                    Inspect Vision
+                  </button>
+                  <button
+                    onClick={() => injectAction('CLEAR_INSPECTION')}
+                    className="bg-gray-100 hover:bg-gray-200 text-gray-800 text-xs font-semibold py-1.5 px-3 rounded border border-gray-300 transition-colors"
+                  >
+                    Clear Vision
+                  </button>
+                </div>
                 <p className="text-xs text-gray-500">
                   <em>
                     Note: Editing token properties (name, color) via API is pending backend support.

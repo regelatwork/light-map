@@ -8,14 +8,16 @@
 
 **Tech Stack:** React (TypeScript), SVG, Tailwind CSS, FastAPI (Python).
 
----
+______________________________________________________________________
 
 ### Task 0: Backend - Add Grid Config Endpoint
 
 **Files:**
+
 - Modify: `src/light_map/vision/remote_driver.py`
 
 **Step 1: Add GridConfig model**
+
 ```python
 class GridConfig(BaseModel):
     offset_x: float
@@ -23,6 +25,7 @@ class GridConfig(BaseModel):
 ```
 
 **Step 2: Add POST /config/grid endpoint**
+
 ```python
 @app.post("/config/grid")
 def set_grid_config(config: GridConfig):
@@ -38,11 +41,12 @@ def set_grid_config(config: GridConfig):
 **Step 3: Commit**
 Run: `git add src/light_map/vision/remote_driver.py && git commit -m "feat(remote-driver): add grid config update endpoint"`
 
----
+______________________________________________________________________
 
 ### Task 1: Basic Canvas Structure and Pan/Zoom
 
 **Files:**
+
 - Create: `frontend/src/components/SchematicCanvas.tsx`
 - Modify: `frontend/src/components/Dashboard.tsx`
 
@@ -58,11 +62,12 @@ Replace the placeholder in `Dashboard.tsx` with the new `SchematicCanvas`.
 **Step 4: Commit**
 Run: `git add frontend/src/components && git commit -m "feat(frontend): implement basic schematic canvas with pan and zoom"`
 
----
+______________________________________________________________________
 
 ### Task 2: Implement Grid Layer
 
 **Files:**
+
 - Create: `frontend/src/components/GridLayer.tsx`
 - Modify: `frontend/src/components/SchematicCanvas.tsx`
 
@@ -75,11 +80,12 @@ Ensure it stays aligned during pan and zoom.
 **Step 3: Commit**
 Run: `git add frontend/src/components && git commit -m "feat(frontend): add grid rendering layer to canvas"`
 
----
+______________________________________________________________________
 
 ### Task 4: Implement Token Layer
 
 **Files:**
+
 - Create: `frontend/src/components/TokenLayer.tsx`
 - Modify: `frontend/src/components/SchematicCanvas.tsx`
 
@@ -92,11 +98,12 @@ Verify that tokens move in real-time as the WebSocket state updates.
 **Step 3: Commit**
 Run: `git add frontend/src/components && git commit -m "feat(frontend): add token visualization layer to canvas"`
 
----
+______________________________________________________________________
 
 ### Task 5: Draggable Grid Interaction
 
 **Files:**
+
 - Modify: `frontend/src/components/GridLayer.tsx`
 - Create: `frontend/src/services/api.ts`
 
@@ -112,11 +119,12 @@ When the handle is dropped, send the new offsets to the FastAPI backend.
 **Step 4: Commit**
 Run: `git add frontend/src && git commit -m "feat(frontend): implement draggable grid and persistence API"`
 
----
+______________________________________________________________________
 
 ### Task 6: Verification and Final Polishing
 
 **Files:**
+
 - Create: `frontend/src/components/SchematicCanvas.test.tsx`
 
 **Step 1: Write integration tests**

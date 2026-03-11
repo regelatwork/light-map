@@ -8,15 +8,17 @@
 
 **Tech Stack:** FastAPI, WebSockets, Python `asyncio`.
 
----
+______________________________________________________________________
 
 ### Task 1: Implement WebSocket Connection Manager
 
 **Files:**
+
 - Modify: `src/light_map/vision/remote_driver.py`
 
 **Step 1: Write the `ConnectionManager` class**
 Add to `src/light_map/vision/remote_driver.py` with logging and robust disconnect handling.
+
 ```python
 from fastapi import WebSocket
 import logging
@@ -46,6 +48,7 @@ class ConnectionManager:
 
 **Step 2: Initialize manager and add WebSocket endpoint**
 Modify `create_app` in `src/light_map/vision/remote_driver.py` to include the `/ws/state` endpoint.
+
 ```python
 manager = ConnectionManager()
 
@@ -63,15 +66,17 @@ async def websocket_endpoint(websocket: WebSocket):
 **Step 3: Commit**
 Run: `git add src/light_map/vision/remote_driver.py && git commit -m "feat(remote-driver): add websocket connection manager and endpoint"`
 
----
+______________________________________________________________________
 
 ### Task 2: Implement State Broadcast Loop
 
 **Files:**
+
 - Modify: `src/light_map/vision/remote_driver.py`
 
 **Step 1: Add background task for state broadcasting**
 Modify `create_app` to start an `asyncio` task on startup that broadcasts `state_mirror` updates at ~30Hz.
+
 ```python
 import asyncio
 
@@ -97,15 +102,17 @@ async def startup_event():
 **Step 2: Commit**
 Run: `git add src/light_map/vision/remote_driver.py && git commit -m "feat(remote-driver): add state broadcast background task"`
 
----
+______________________________________________________________________
 
 ### Task 3: Serve Static Frontend Assets
 
 **Files:**
+
 - Modify: `src/light_map/vision/remote_driver.py`
 
 **Step 1: Mount StaticFiles (MUST BE LAST)**
 Modify `create_app` to serve the `frontend/dist` directory. Ensure it's mounted after all other API routes to avoid path conflicts.
+
 ```python
 from fastapi.staticfiles import StaticFiles
 import os
@@ -122,11 +129,12 @@ else:
 **Step 2: Commit**
 Run: `git add src/light_map/vision/remote_driver.py && git commit -m "feat(remote-driver): serve frontend static assets"`
 
----
+______________________________________________________________________
 
 ### Task 4: Verification (TDD)
 
 **Files:**
+
 - Create: `tests/test_remote_driver_ws.py`
 
 **Step 1: Write WebSocket integration test**

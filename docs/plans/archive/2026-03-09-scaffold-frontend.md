@@ -8,11 +8,12 @@
 
 **Tech Stack:** React (TypeScript), Vite, Tailwind CSS, PostCSS, Autoprefixer, ESLint, Prettier.
 
----
+______________________________________________________________________
 
 ### Task 1: Scaffold React Project with Vite
 
 **Files:**
+
 - Create: `frontend/` (directory)
 - Create: `frontend/package.json`, `frontend/vite.config.ts`, etc. (via `npm create vite`)
 
@@ -31,11 +32,12 @@ Expected: `dist/` directory created with index.html.
 **Step 4: Commit**
 Run: `git add frontend && git commit -m "feat(frontend): scaffold react-ts project with vite"`
 
----
+______________________________________________________________________
 
 ### Task 2: Configure Tailwind CSS
 
 **Files:**
+
 - Create: `frontend/tailwind.config.js`
 - Create: `frontend/postcss.config.js`
 - Modify: `frontend/src/index.css`
@@ -50,6 +52,7 @@ Expected: `tailwind.config.js` and `postcss.config.js` created.
 
 **Step 3: Configure Tailwind to scan source files**
 Modify: `frontend/tailwind.config.js`
+
 ```javascript
 /** @type {import('tailwindcss').Config} */
 export default {
@@ -66,6 +69,7 @@ export default {
 
 **Step 4: Add Tailwind directives to CSS**
 Modify: `frontend/src/index.css` (Replace content)
+
 ```css
 @tailwind base;
 @tailwind components;
@@ -74,6 +78,7 @@ Modify: `frontend/src/index.css` (Replace content)
 
 **Step 5: Verify Tailwind is working**
 Modify: `frontend/src/App.tsx`
+
 ```tsx
 function App() {
   return (
@@ -84,17 +89,19 @@ function App() {
 }
 export default App
 ```
+
 Run: `cd frontend && npm run build`
 Expected: CSS in `dist/` includes Tailwind utility classes.
 
 **Step 6: Commit**
 Run: `git add frontend && git commit -m "feat(frontend): add tailwind css configuration"`
 
----
+______________________________________________________________________
 
 ### Task 3: Linting, Formatting, and Git Hygiene
 
 **Files:**
+
 - Create: `frontend/.gitignore`
 - Create: `frontend/.prettierrc`
 - Create: `frontend/.prettierignore`
@@ -102,6 +109,7 @@ Run: `git add frontend && git commit -m "feat(frontend): add tailwind css config
 
 **Step 1: Create frontend .gitignore**
 Create: `frontend/.gitignore`
+
 ```text
 # Logs
 logs
@@ -135,6 +143,7 @@ Expected: `package.json` updated.
 
 **Step 3: Create Prettier configuration**
 Create: `frontend/.prettierrc`
+
 ```json
 {
   "semi": true,
@@ -148,6 +157,7 @@ Create: `frontend/.prettierrc`
 
 **Step 4: Create Prettier ignore file**
 Create: `frontend/.prettierignore`
+
 ```text
 node_modules
 dist
@@ -156,6 +166,7 @@ package-lock.json
 
 **Step 5: Add lint and format scripts**
 Modify: `frontend/package.json` (Update `scripts` section)
+
 ```json
 "scripts": {
   "dev": "vite",
@@ -173,11 +184,12 @@ Expected: All files formatted.
 **Step 7: Commit**
 Run: `git add frontend && git commit -m "chore(frontend): add linting, formatting, and gitignore"`
 
----
+______________________________________________________________________
 
 ### Task 4: Basic Layout & Directory Structure
 
 **Files:**
+
 - Create: `frontend/src/components/`, `frontend/src/hooks/`, `frontend/src/services/`
 - Create: `frontend/src/components/Dashboard.tsx`
 - Modify: `frontend/src/App.tsx`
@@ -188,6 +200,7 @@ Expected: Directories created.
 
 **Step 2: Create a placeholder Dashboard component**
 Create: `frontend/src/components/Dashboard.tsx`
+
 ```tsx
 export const Dashboard = () => {
   return (
@@ -209,6 +222,7 @@ export const Dashboard = () => {
 
 **Step 3: Update App entry point**
 Modify: `frontend/src/App.tsx`
+
 ```tsx
 import { Dashboard } from './components/Dashboard';
 

@@ -844,6 +844,57 @@ class InteractiveApp:
             state_str = "ON" if self.app_context.debug_mode else "OFF"
             self.notifications.add_notification(f"Debug Mode {state_str}")
 
+        if payload.get("action") == "INSPECT_TOKEN":
+            token_id_str = payload.get("payload")
+            if token_id_str is not None:
+                try:
+                    token_id = int(token_id_str)
+                    target_token = None
+                    if state is not None:
+                        for t in state.tokens:
+                            if t.id == token_id:
+                                target_token = t
+                                break
+                        if not target_token:
+                            for t in state.raw_tokens:
+                                if t.id == token_id:
+                                    target_token = t
+                                    break
+
+                    if target_token:
+                        self.app_context.inspected_token_id = token_id
+                        map_file = (
+                            self.map_system.svg_loader.filename
+                            if self.map_system.svg_loader
+                            else None
+                        )
+                        resolved = self.map_config.resolve_token_profile(
+                            token_id, map_file
+                        )
+                        self.notifications.add_notification(
+                            f"Inspecting: {resolved.name}"
+                        )
+
+                        if self.visibility_engine and self.map_system.is_map_loaded():
+                            engine = self.visibility_engine
+                            self.app_context.inspected_token_mask = (
+                                engine.get_token_vision_mask(
+                                    token_id,
+                                    target_token.world_x,
+                                    target_token.world_y,
+                                    size=resolved.size,
+                                    vision_range_grid=25.0,
+                                    mask_width=engine.width,
+                                    mask_height=engine.height,
+                                )
+                            )
+                except ValueError:
+                    pass
+
+        if payload.get("action") == "CLEAR_INSPECTION":
+            self.app_context.inspected_token_id = None
+            self.app_context.inspected_token_mask = None
+
         if payload.get("action") == "TOGGLE_DOOR":
             from light_map.common_types import SelectionType
 

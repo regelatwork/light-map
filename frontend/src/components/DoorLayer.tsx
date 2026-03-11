@@ -1,8 +1,7 @@
 import React from 'react';
 import { useSystemState } from '../hooks/useSystemState';
-import { MenuActions, SelectionType, VisibilityType } from '../types/system';
+import { SelectionType, VisibilityType } from '../types/system';
 import { useSelection } from './SelectionContext';
-import { injectAction } from '../services/api';
 
 export const DoorLayer: React.FC = () => {
   const { world, grid_spacing_svg, isConnected } = useSystemState();
@@ -29,7 +28,6 @@ export const DoorLayer: React.FC = () => {
   const handleDoorClick = (e: React.MouseEvent, doorId: string) => {
     e.stopPropagation();
     setSelection({ type: SelectionType.DOOR, id: doorId });
-    injectAction(MenuActions.TOGGLE_DOOR, doorId).catch(console.error);
   };
 
   return (

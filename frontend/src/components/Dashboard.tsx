@@ -86,9 +86,7 @@ export const Dashboard = () => {
           </div>
           <div>
             <div className="flex items-center justify-between mb-2">
-              <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-500">
-                Menu
-              </h3>
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-500">Menu</h3>
               <button
                 onClick={handleSummonMenu}
                 className="px-2 py-0.5 text-[10px] font-bold bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors uppercase"
@@ -123,17 +121,7 @@ export const Dashboard = () => {
           <>
             <h2 className="mb-4 text-xl font-semibold text-gray-800">Schematic View</h2>
             <div className="flex-1 min-h-0 bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-              <SchematicCanvas>
-                {/* Layers will be added here */}
-                <text
-                  x="500"
-                  y="375"
-                  textAnchor="middle"
-                  className="fill-gray-300 font-bold text-4xl pointer-events-none"
-                >
-                  [Interactive Canvas Active]
-                </text>
-              </SchematicCanvas>
+              <SchematicCanvas>{/* Layers will be added here */}</SchematicCanvas>
             </div>
           </>
         ) : (

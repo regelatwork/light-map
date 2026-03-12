@@ -26,7 +26,9 @@ export const ConfigurationSidebar: React.FC = () => {
   };
 
   const selectedToken =
-    selection.type === SelectionType.TOKEN ? tokens.find((t: Token) => t.id === selection.id) : null;
+    selection.type === SelectionType.TOKEN
+      ? tokens.find((t: Token) => t.id === selection.id)
+      : null;
 
   const selectedDoor =
     selection.type === SelectionType.DOOR
@@ -36,8 +38,8 @@ export const ConfigurationSidebar: React.FC = () => {
   const [localName, setLocalName] = useState<string | null>(null);
   const [localColor, setLocalColor] = useState<string | null>(null);
 
-  const tokenName = localName !== null ? localName : (selectedToken?.name as string || '');
-  const tokenColor = localColor !== null ? localColor : (selectedToken?.color as string || '');
+  const tokenName = localName !== null ? localName : (selectedToken?.name as string) || '';
+  const tokenColor = localColor !== null ? localColor : (selectedToken?.color as string) || '';
 
   const handleTokenUpdate = async (update: { name?: string; color?: string }) => {
     if (!selectedToken) return;
@@ -118,14 +120,16 @@ export const ConfigurationSidebar: React.FC = () => {
                 <div className="flex justify-between items-start">
                   <div>
                     <p className="text-sm font-semibold text-blue-800">
-                      {selectedToken.name ? `${selectedToken.name} (#${selectedToken.id})` : `Token #${selectedToken.id}`}
+                      {selectedToken.name
+                        ? `${selectedToken.name} (#${selectedToken.id})`
+                        : `Token #${selectedToken.id}`}
                     </p>
                     <p className="text-xs text-blue-600 mt-1">
                       Status: {selectedToken.is_occluded ? 'Occluded' : 'Visible'}
                     </p>
                   </div>
                   {selectedToken.color && (
-                    <div 
+                    <div
                       className="w-6 h-6 rounded-full border border-blue-200 shadow-sm"
                       style={{ backgroundColor: selectedToken.color }}
                       title={`Color: ${selectedToken.color}`}
@@ -153,7 +157,11 @@ export const ConfigurationSidebar: React.FC = () => {
                   <div className="flex space-x-2">
                     <input
                       type="color"
-                      value={tokenColor.startsWith('#') && tokenColor.length === 7 ? tokenColor : '#ffff00'}
+                      value={
+                        tokenColor.startsWith('#') && tokenColor.length === 7
+                          ? tokenColor
+                          : '#ffff00'
+                      }
                       onChange={(e) => {
                         const newColor = e.target.value;
                         setLocalColor(newColor);

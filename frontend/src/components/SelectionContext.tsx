@@ -16,7 +16,10 @@ interface SelectionContextType {
 const SelectionContext = createContext<SelectionContextType | undefined>(undefined);
 
 export const SelectionProvider = ({ children }: { children: ReactNode }) => {
-  const [selection, setSelection] = useState<SelectionState>({ type: SelectionType.NONE, id: null });
+  const [selection, setSelection] = useState<SelectionState>({
+    type: SelectionType.NONE,
+    id: null,
+  });
   return (
     <SelectionContext.Provider value={{ selection, setSelection }}>
       {children}

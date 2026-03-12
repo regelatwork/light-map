@@ -77,13 +77,13 @@ test.describe('Dashboard E2E', () => {
     await page.goto('/');
 
     // Verify Schematic View is active by default
-    await expect(page.getByText('[Interactive Canvas Active]')).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Schematic View' })).toBeVisible();
 
     // Switch to Calibration Wizards
     await page.getByRole('button', { name: 'Calibration Wizards' }).click();
 
     // Verify Schematic View is hidden and Calibration Wizard is visible
-    await expect(page.getByText('[Interactive Canvas Active]')).not.toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Schematic View' })).not.toBeVisible();
     await expect(page.getByText('Camera Intrinsics')).toBeVisible();
   });
 

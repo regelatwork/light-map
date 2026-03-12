@@ -6,14 +6,18 @@ import { saveGridConfig } from '../services/api';
 type InteractionMode = 'IDLE' | 'MOVING_ORIGIN' | 'SCALING';
 
 export const GridLayer: React.FC = () => {
-  const { world, grid_spacing_svg, grid_origin_svg_x, grid_origin_svg_y, isConnected } =
-    useSystemState();
+  const { world, grid_spacing_svg, grid_origin_svg_x, grid_origin_svg_y, isConnected } = useSystemState();
   const { screenToWorld } = useCanvas();
 
-  const isCalibrating =
-    typeof world.scene === 'string' &&
-    (world.scene.startsWith('CALIBRATE_MAP_GRID') ||
-      world.scene.includes('MapGridCalibrationScene'));
+  useEffect(() => {
+    if (world.scene && world.scene !== 'LOADING') {
+      console.log('Current Scene:', world.scene);
+    }
+  }, [world.scene]);
+
+  const isCalibrating = typeof world.scene === 'string' && 
+    (world.scene.toUpperCase().includes('CALIBRATE_MAP_GRID') || world.scene.includes('MapGridCalibrationScene'));
+
 
   // Use a default spacing if not calibrated yet, but ONLY if we are in the calibration scene
   const effectiveSpacing = grid_spacing_svg > 0 ? grid_spacing_svg : isCalibrating ? 50 : 0;

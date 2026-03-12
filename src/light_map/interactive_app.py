@@ -1035,6 +1035,8 @@ class InteractiveApp:
             MenuActions.CALIBRATE_PPI,
             MenuActions.CALIBRATE_EXTRINSICS,
             MenuActions.CALIBRATE_FLASH,
+            MenuActions.SET_MAP_SCALE,
+            MenuActions.CALIBRATE_SCALE,
             "SCAN_SESSION",
         ]:
             scene_map = {
@@ -1043,6 +1045,8 @@ class InteractiveApp:
                 MenuActions.CALIBRATE_PPI: SceneId.CALIBRATE_PPI,
                 MenuActions.CALIBRATE_EXTRINSICS: SceneId.CALIBRATE_EXTRINSICS,
                 MenuActions.CALIBRATE_FLASH: SceneId.CALIBRATE_FLASH,
+                MenuActions.SET_MAP_SCALE: SceneId.CALIBRATE_MAP_GRID,
+                MenuActions.CALIBRATE_SCALE: SceneId.CALIBRATE_MAP_GRID,
                 "SCAN_SESSION": SceneId.SCANNING,
             }
             if action_name == "SCAN_SESSION" and not self.map_system.is_map_loaded():

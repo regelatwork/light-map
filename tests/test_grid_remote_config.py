@@ -35,3 +35,19 @@ def test_remote_driver_grid_config_endpoint():
     assert result.data["offset_x"] == 150.0
     assert result.data["offset_y"] == 300.0
     assert result.data["spacing"] == 64.5
+
+def test_remote_driver_set_map_scale_action():
+    results_queue = Queue()
+    stop_event = Event()
+    state_mirror = {}
+
+    app = create_app(results_queue, stop_event, state_mirror)
+    client = TestClient(app)
+
+    # Inject SET_MAP_SCALE action
+    response = client.post("/input/action", params={"action": "SET_MAP_SCALE"})
+    assert response.status_code == 200
+
+    result = results_queue.get(timeout=1.0)
+    assert result.type == ResultType.ACTION
+    assert result.data["action"] == "SET_MAP_SCALE"

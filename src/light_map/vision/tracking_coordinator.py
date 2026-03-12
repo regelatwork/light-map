@@ -49,6 +49,13 @@ class TrackingCoordinator:
             distortion_model=projector_config.distortion_model,
         )
 
+        from dataclasses import asdict
+
+        for d in detections:
+            if d.id not in token_configs:
+                resolved = map_config.resolve_token_profile(d.id, map_file)
+                token_configs[d.id] = asdict(resolved)
+
         # 2. Get Grid Parameters
         grid_spacing = 0.0
         grid_origin_x = 0.0
@@ -155,6 +162,14 @@ class TrackingCoordinator:
 
         if detections:
             logging.debug(f"TrackingCoord: Detected {len(detections)} tokens raw.")
+            # Ensure all detected IDs are in token_configs for name/color resolution
+            map_file = map_system.svg_loader.filename if map_system.svg_loader else None
+            for d in detections:
+                if d.id not in token_configs:
+                    resolved = map_config.resolve_token_profile(d.id, map_file)
+                    from dataclasses import asdict
+
+                    token_configs[d.id] = asdict(resolved)
 
         # 2. Get Grid Parameters and Filter/Snap
         map_file = map_system.svg_loader.filename if map_system.svg_loader else None

@@ -38,8 +38,8 @@ export const TokenLayer: React.FC = () => {
             {/* Token base */}
             <circle
               r="15"
-              fill={token.is_occluded ? '#9ca3af' : '#ef4444'}
-              stroke={isSelected ? '#1d4ed8' : '#b91c1c'}
+              fill={token.is_occluded ? '#9ca3af' : (token.color || '#ef4444')}
+              stroke={isSelected ? '#3b82f6' : '#1d4ed8'}
               strokeWidth={isSelected ? '3' : '2'}
               className="drop-shadow-sm transition-colors duration-200"
             />
@@ -49,7 +49,7 @@ export const TokenLayer: React.FC = () => {
               textAnchor="middle"
               className="fill-gray-700 font-bold text-xs select-none pointer-events-none"
             >
-              {token.id}
+              {token.name || `#${token.id}`}
             </text>
           </g>
         );

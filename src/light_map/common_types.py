@@ -269,6 +269,8 @@ class Token:
     confidence: float = 1.0
     is_occluded: bool = False
     is_duplicate: bool = False
+    name: Optional[str] = None
+    color: Optional[str] = None
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -286,6 +288,8 @@ class Token:
             "confidence": self.confidence,
             "is_occluded": self.is_occluded,
             "is_duplicate": self.is_duplicate,
+            "name": self.name,
+            "color": self.color,
         }
 
 

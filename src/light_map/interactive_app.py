@@ -500,6 +500,52 @@ class InteractiveApp:
                     self.map_system.zoom_pinned(
                         1.0 + delta, (self.config.width // 2, self.config.height // 2)
                     )
+                elif action_name == "UPDATE_TOKEN":
+                    token_id = action_data.get("id")
+                    if token_id is not None:
+                        # Try to get existing global definition to preserve type/profile/size
+                        existing_def = (
+                            self.map_config.data.global_settings.aruco_defaults.get(
+                                token_id
+                            )
+                        )
+                        new_name = action_data.get("name")
+                        new_color = action_data.get("color")
+
+                        # Use existing values if not provided in the update or if no update
+                        final_name = (
+                            new_name
+                            if new_name is not None
+                            else (
+                                existing_def.name
+                                if existing_def
+                                else f"Token {token_id}"
+                            )
+                        )
+                        final_type = existing_def.type if existing_def else "NPC"
+                        final_profile = existing_def.profile if existing_def else None
+                        final_size = existing_def.size if existing_def else None
+                        final_height_mm = (
+                            existing_def.height_mm if existing_def else None
+                        )
+                        final_color = (
+                            new_color
+                            if new_color is not None
+                            else (existing_def.color if existing_def else None)
+                        )
+
+                        self.map_config.set_global_aruco_definition(
+                            aruco_id=token_id,
+                            name=final_name,
+                            type=final_type,
+                            profile=final_profile,
+                            size=final_size,
+                            height_mm=final_height_mm,
+                            color=final_color,
+                        )
+                        logging.info(
+                            f"InteractiveApp: Updated token {token_id} - Name: {final_name}, Color: {final_color}"
+                        )
                 elif action_name == "MENU_INTERACT":
                     # Use class name check to avoid potential double-import/instance-check issues
                     is_menu_scene = self.current_scene.__class__.__name__ == "MenuScene"
@@ -951,7 +997,9 @@ class InteractiveApp:
                     self.state.blockers = [
                         {
                             "id": b.id,
-                            "type": b.type.value if hasattr(b.type, "value") else str(b.type),
+                            "type": b.type.value
+                            if hasattr(b.type, "value")
+                            else str(b.type),
                             "is_open": b.is_open,
                             "points": b.segments,
                         }

@@ -40,6 +40,7 @@ class ArucoDefinition:
     profile: Optional[str] = None
     size: Optional[int] = None
     height_mm: Optional[float] = None
+    color: Optional[str] = None
 
 
 @dataclass
@@ -49,6 +50,7 @@ class ResolvedToken:
     size: int
     height_mm: float
     is_known: bool = True
+    color: Optional[str] = None
 
 
 @dataclass
@@ -548,7 +550,11 @@ class MapConfigManager:
             height_mm = definition.height_mm
 
         return ResolvedToken(
-            name=definition.name, type=definition.type, size=size, height_mm=height_mm
+            name=definition.name,
+            type=definition.type,
+            size=size,
+            height_mm=height_mm,
+            color=definition.color,
         )
 
     def set_global_aruco_definition(
@@ -559,10 +565,16 @@ class MapConfigManager:
         profile: Optional[str] = None,
         size: Optional[int] = None,
         height_mm: Optional[float] = None,
+        color: Optional[str] = None,
     ):
         """Helper to set a global definition."""
         self.data.global_settings.aruco_defaults[aruco_id] = ArucoDefinition(
-            name=name, type=type, profile=profile, size=size, height_mm=height_mm
+            name=name,
+            type=type,
+            profile=profile,
+            size=size,
+            height_mm=height_mm,
+            color=color,
         )
         self.save()
 
@@ -575,6 +587,7 @@ class MapConfigManager:
         profile: Optional[str] = None,
         size: Optional[int] = None,
         height_mm: Optional[float] = None,
+        color: Optional[str] = None,
     ):
         """Helper to set a map override."""
         map_name = os.path.abspath(map_name)
@@ -582,6 +595,11 @@ class MapConfigManager:
             self.data.maps[map_name] = MapEntry()
 
         self.data.maps[map_name].aruco_overrides[aruco_id] = ArucoDefinition(
-            name=name, type=type, profile=profile, size=size, height_mm=height_mm
+            name=name,
+            type=type,
+            profile=profile,
+            size=size,
+            height_mm=height_mm,
+            color=color,
         )
         self.save()

@@ -86,6 +86,12 @@ class TokenFilter:
 
                 token_to_return = replace(dt, is_occluded=is_occluded)
 
+                # Populate name and color if available in config
+                if token_configs and tid in token_configs:
+                    config = token_configs[tid]
+                    token_to_return.name = config.get("name")
+                    token_to_return.color = config.get("color")
+
                 # Apply Grid Snapping if applicable
                 final_token = self._apply_grid_snapping(
                     token_to_return,

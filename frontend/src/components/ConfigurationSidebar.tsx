@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useSystemState } from '../hooks/useSystemState';
 import { useSelection } from './SelectionContext';
-import { saveGridConfig, injectAction } from '../services/api';
+import { saveGridConfig, injectAction, updateToken } from '../services/api';
 import { type Token, SelectionType } from '../types/system';
 import { VisionControl } from './VisionControl';
 
@@ -98,17 +98,47 @@ export const ConfigurationSidebar: React.FC = () => {
           )}
 
           {selectedToken && (
-            <div className="space-y-4 text-black">
+            <div key={selectedToken.id} className="space-y-4 text-black">
               <div className="bg-blue-50 p-3 rounded-md border border-blue-100">
-                <p className="text-sm font-semibold text-blue-800">
-                  {selectedToken.name ? `${selectedToken.name} (#${selectedToken.id})` : `Token #${selectedToken.id}`}
-                </p>
-                <p className="text-xs text-blue-600 mt-1">
-                  Status: {selectedToken.is_occluded ? 'Occluded' : 'Visible'}
-                </p>
+                <div className="flex justify-between items-start">
+                  <div>
+                    <p className="text-sm font-semibold text-blue-800">
+                      {selectedToken.name ? `${selectedToken.name} (#${selectedToken.id})` : `Token #${selectedToken.id}`}
+                    </p>
+                    <p className="text-xs text-blue-600 mt-1">
+                      Status: {selectedToken.is_occluded ? 'Occluded' : 'Visible'}
+                    </p>
+                  </div>
+                  {selectedToken.color && (
+                    <div 
+                      className="w-6 h-6 rounded-full border border-blue-200 shadow-sm"
+                      style={{ backgroundColor: selectedToken.color }}
+                      title={`Color: ${selectedToken.color}`}
+                    />
+                  )}
+                </div>
               </div>
 
               <div className="space-y-3">
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Name</label>
+                  <input
+                    type="text"
+                    defaultValue={selectedToken.name as string || ''}
+                    onBlur={(e) => updateToken(selectedToken.id, { name: e.target.value })}
+                    className="w-full px-2 py-1 text-sm border rounded focus:ring-blue-500 focus:border-blue-500 bg-white"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Color</label>
+                  <input
+                    type="text"
+                    defaultValue={selectedToken.color as string || ''}
+                    placeholder="#RRGGBB or css color"
+                    onBlur={(e) => updateToken(selectedToken.id, { color: e.target.value })}
+                    className="w-full px-2 py-1 text-sm border rounded focus:ring-blue-500 focus:border-blue-500 bg-white"
+                  />
+                </div>
                 <div>
                   <label className="block text-xs font-medium text-gray-700 mb-1">World X</label>
                   <input
@@ -144,11 +174,6 @@ export const ConfigurationSidebar: React.FC = () => {
                     Clear Vision
                   </button>
                 </div>
-                <p className="text-xs text-gray-500">
-                  <em>
-                    Note: Editing token properties (name, color) via API is pending backend support.
-                  </em>
-                </p>
               </div>
             </div>
           )}

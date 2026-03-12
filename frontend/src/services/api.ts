@@ -77,3 +77,20 @@ export const interactMenu = async (index: number) => {
 
   return response.json();
 };
+
+export const updateToken = async (tokenId: number, update: { name?: string; color?: string }) => {
+  const host = import.meta.env.DEV ? 'http://localhost:8000' : window.location.origin;
+  const response = await fetch(`${host}/state/tokens/${tokenId}`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(update),
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to update token: ${tokenId}`);
+  }
+
+  return response.json();
+};

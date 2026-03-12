@@ -207,3 +207,54 @@ def draw_dashed_circle(
             color,
             thickness,
         )
+
+
+def parse_color(
+    color_str: Optional[str], default=(255, 255, 0)
+) -> Tuple[int, int, int]:
+    """
+    Parses a color string (e.g. '#RRGGBB' or 'red') into a BGR tuple.
+    Returns default if parsing fails or input is None.
+    """
+    if not color_str:
+        return default
+
+    # Handle hex colors
+    if color_str.startswith("#"):
+        hex_val = color_str.lstrip("#")
+        try:
+            if len(hex_val) == 6:
+                r, g, b = (
+                    int(hex_val[0:2], 16),
+                    int(hex_val[2:4], 16),
+                    int(hex_val[4:6], 16),
+                )
+                return (b, g, r)  # BGR
+            elif len(hex_val) == 3:
+                r, g, b = (
+                    int(hex_val[0] * 2, 16),
+                    int(hex_val[1] * 2, 16),
+                    int(hex_val[2] * 2, 16),
+                )
+                return (b, g, r)  # BGR
+        except ValueError:
+            pass
+
+    # Basic CSS color names mapping to BGR
+    css_colors = {
+        "red": (0, 0, 255),
+        "green": (0, 255, 0),
+        "blue": (255, 0, 0),
+        "yellow": (0, 255, 255),
+        "cyan": (255, 255, 0),
+        "magenta": (255, 0, 255),
+        "white": (255, 255, 255),
+        "black": (0, 0, 0),
+        "gray": (128, 128, 128),
+        "grey": (128, 128, 128),
+        "orange": (0, 165, 255),
+        "purple": (128, 0, 128),
+        "pink": (203, 192, 255),
+    }
+
+    return css_colors.get(color_str.lower(), default)

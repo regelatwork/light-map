@@ -4,7 +4,11 @@ import math
 import numpy as np
 from typing import List, TYPE_CHECKING
 
-from light_map.display_utils import draw_dashed_circle, draw_text_with_background
+from light_map.display_utils import (
+    draw_dashed_circle,
+    draw_text_with_background,
+    parse_color,
+)
 from light_map.common_types import ImagePatch
 
 if TYPE_CHECKING:
@@ -60,15 +64,18 @@ class OverlayRenderer:
             lsx, lsy = int(sx) - x1, int(sy) - y1
 
             # Resolve color
-            color = (255, 255, 0)
-            if t.is_duplicate:
-                color = (0, 0, 255)
-            elif not resolved.is_known:
-                color = (200, 200, 200)
-            elif resolved.type == "PC":
-                color = (0, 255, 0)
-            elif resolved.type == "NPC":
-                color = (0, 0, 255)
+            if resolved.color:
+                color = parse_color(resolved.color)
+            else:
+                color = (255, 255, 0)  # Default Cyan
+                if t.is_duplicate:
+                    color = (0, 0, 255)
+                elif not resolved.is_known:
+                    color = (200, 200, 200)
+                elif resolved.type == "PC":
+                    color = (0, 255, 0)
+                elif resolved.type == "NPC":
+                    color = (0, 0, 255)
 
             if t.is_occluded:
                 pulse = (math.sin(time_provider() * 10) + 1) / 2

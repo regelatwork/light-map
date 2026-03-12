@@ -39,6 +39,11 @@ class RemoteToken(BaseModel):
     angle: float = 0.0
 
 
+class TokenUpdate(BaseModel):
+    name: Optional[str] = None
+    color: Optional[str] = None
+
+
 class ViewportConfig(BaseModel):
     zoom: Optional[float] = None
     pan_x: Optional[float] = None
@@ -302,6 +307,22 @@ def create_app(
         )
         results_queue.put(res)
         return {"status": "injected", "count": len(processed_tokens)}
+
+    @app.put("/state/tokens/{token_id}")
+    def update_token(token_id: int, update: TokenUpdate):
+        """Updates the properties (name, color) of a specific token."""
+        res = DetectionResult(
+            timestamp=time.monotonic_ns(),
+            type=ResultType.ACTION,
+            data={
+                "action": "UPDATE_TOKEN",
+                "id": token_id,
+                "name": update.name,
+                "color": update.color,
+            },
+        )
+        results_queue.put(res)
+        return {"status": "update_queued", "id": token_id}
 
     @app.post("/input/action")
     def inject_action(action: str, payload: Optional[str] = None):

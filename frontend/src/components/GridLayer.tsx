@@ -14,8 +14,9 @@ export const GridLayer: React.FC = () => {
   const [dragOrigin, setDragOrigin] = useState({ x: 0, y: 0 });
   const [dragSpacing, setDragSpacing] = useState(0);
 
-  const displayedOrigin = (interactionMode !== 'IDLE') ? dragOrigin : { x: grid_origin_svg_x, y: grid_origin_svg_y };
-  const displayedSpacing = (interactionMode === 'SCALING') ? dragSpacing : grid_spacing_svg;
+  const displayedOrigin =
+    interactionMode !== 'IDLE' ? dragOrigin : { x: grid_origin_svg_x, y: grid_origin_svg_y };
+  const displayedSpacing = interactionMode === 'SCALING' ? dragSpacing : grid_spacing_svg;
 
   const handleMouseDownOrigin = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -47,11 +48,12 @@ export const GridLayer: React.FC = () => {
         const dx = worldPos.x - dragOrigin.x;
         const dy = worldPos.y - dragOrigin.y;
         const dist = Math.sqrt(dx * dx + dy * dy);
-        
+
         // If we want "drag any cross", we'd need to know which one.
         // For simplicity, let's just use the distance to the mouse as the new spacing
         // if the user grabbed a handle that's exactly 1 unit away.
-        if (dist > 5) { // Minimum spacing threshold
+        if (dist > 5) {
+          // Minimum spacing threshold
           setDragSpacing(dist);
         }
       }
@@ -61,14 +63,14 @@ export const GridLayer: React.FC = () => {
 
   const handleMouseUp = useCallback(async () => {
     if (interactionMode === 'IDLE') return;
-    
+
     const finalMode = interactionMode;
     setInteractionMode('IDLE');
 
     try {
       await saveGridConfig(
-        dragOrigin.x, 
-        dragOrigin.y, 
+        dragOrigin.x,
+        dragOrigin.y,
         finalMode === 'SCALING' ? dragSpacing : grid_spacing_svg
       );
     } catch (err) {
@@ -133,19 +135,21 @@ export const GridLayer: React.FC = () => {
   return (
     <g>
       {lines}
-      
+
       {/* Origin handle (Green) */}
       <circle
         cx={displayedOrigin.x}
         cy={displayedOrigin.y}
         r={Math.max(8, displayedSpacing / 4)}
-        fill={interactionMode === 'MOVING_ORIGIN' ? 'rgba(34, 197, 94, 0.6)' : 'rgba(34, 197, 94, 0.3)'}
+        fill={
+          interactionMode === 'MOVING_ORIGIN' ? 'rgba(34, 197, 94, 0.6)' : 'rgba(34, 197, 94, 0.3)'
+        }
         stroke="#22c55e"
         strokeWidth="2"
         className="cursor-move"
         onMouseDown={handleMouseDownOrigin}
       />
-      
+
       {/* Scale handle (Blue, 1 unit to the right) */}
       <circle
         cx={displayedOrigin.x + displayedSpacing}

@@ -1,7 +1,8 @@
 from multiprocessing import Queue, Event
 from fastapi.testclient import TestClient
 from light_map.vision.remote_driver import create_app
-from light_map.common_types import ResultType, DetectionResult
+from light_map.common_types import ResultType
+
 
 def test_remote_driver_grid_config_endpoint():
     results_queue = Queue()

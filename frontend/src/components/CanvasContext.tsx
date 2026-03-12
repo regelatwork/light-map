@@ -15,7 +15,7 @@ export const useCanvas = () => {
   return context;
 };
 
-interface CanvasProviderProps {
+export interface CanvasProviderProps {
   children: ReactNode;
   svgRef: React.RefObject<SVGSVGElement | null>;
   viewBox: { x: number; y: number; w: number; h: number };

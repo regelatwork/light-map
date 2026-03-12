@@ -134,6 +134,16 @@ def build_root_menu(
                 title="Map Settings",
                 children=[
                     MenuItem(
+                        title="Undo Navigation",
+                        action_id=MenuActions.UNDO_NAV,
+                        should_close_on_trigger=False,
+                    ),
+                    MenuItem(
+                        title="Redo Navigation",
+                        action_id=MenuActions.REDO_NAV,
+                        should_close_on_trigger=False,
+                    ),
+                    MenuItem(
                         title="Rotate CW",
                         action_id=MenuActions.ROTATE_CW,
                         should_close_on_trigger=False,

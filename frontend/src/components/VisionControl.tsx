@@ -1,8 +1,8 @@
-import React from 'react';
+import { type FC } from 'react';
 import { useSystemState } from '../hooks/useSystemState';
 import { injectAction } from '../services/api';
 
-export const VisionControl: React.FC = () => {
+export const VisionControl: FC = () => {
   const { config } = useSystemState();
 
   const handleToggleHandMasking = () => {
@@ -23,6 +23,18 @@ export const VisionControl: React.FC = () => {
 
   const handleResetZoom = () => {
     injectAction('RESET_ZOOM');
+  };
+
+  const handleRotateCW = () => {
+    injectAction('ROTATE_CW');
+  };
+
+  const handleRotateCCW = () => {
+    injectAction('ROTATE_CCW');
+  };
+
+  const handleResetView = () => {
+    injectAction('RESET_VIEW');
   };
 
   const handleToggleDebug = () => {
@@ -89,12 +101,53 @@ export const VisionControl: React.FC = () => {
         Sync Vision
       </button>
 
-      <button
-        onClick={handleResetZoom}
-        className="w-full bg-green-50 hover:bg-green-100 text-green-700 text-xs font-semibold py-1.5 px-3 rounded border border-green-200 transition-colors"
-      >
-        Reset Zoom to 1:1
-      </button>
+      <div className="grid grid-cols-2 gap-2">
+        <button
+          onClick={handleRotateCCW}
+          className="bg-gray-50 hover:bg-gray-100 text-gray-700 text-xs font-semibold py-1.5 px-3 rounded border border-gray-200 transition-colors flex items-center justify-center gap-1"
+          title="Rotate Counter-Clockwise"
+        >
+          <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M10 19l-7-7m0 0l7-7m-7 7h18"
+            />
+          </svg>
+          CCW
+        </button>
+        <button
+          onClick={handleRotateCW}
+          className="bg-gray-50 hover:bg-gray-100 text-gray-700 text-xs font-semibold py-1.5 px-3 rounded border border-gray-200 transition-colors flex items-center justify-center gap-1"
+          title="Rotate Clockwise"
+        >
+          CW
+          <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M14 5l7 7m0 0l-7 7m7-7H3"
+            />
+          </svg>
+        </button>
+      </div>
+
+      <div className="grid grid-cols-2 gap-2">
+        <button
+          onClick={handleResetZoom}
+          className="bg-green-50 hover:bg-green-100 text-green-700 text-xs font-semibold py-1.5 px-3 rounded border border-green-200 transition-colors"
+        >
+          Zoom 1:1
+        </button>
+        <button
+          onClick={handleResetView}
+          className="bg-gray-50 hover:bg-gray-100 text-gray-700 text-xs font-semibold py-1.5 px-3 rounded border border-gray-200 transition-colors"
+        >
+          Reset All
+        </button>
+      </div>
 
       <div className="flex items-center justify-between">
         <span className="text-xs font-medium text-gray-700">Debug Overlay</span>

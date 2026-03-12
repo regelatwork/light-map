@@ -19,9 +19,19 @@ interface CanvasProviderProps {
   children: ReactNode;
   svgRef: React.RefObject<SVGSVGElement | null>;
   viewBox: { x: number; y: number; w: number; h: number };
+  rotation?: number;
+  centerX?: number;
+  centerY?: number;
 }
 
-export const CanvasProvider: React.FC<CanvasProviderProps> = ({ children, svgRef, viewBox }) => {
+export const CanvasProvider: React.FC<CanvasProviderProps> = ({
+  children,
+  svgRef,
+  viewBox,
+  rotation = 0,
+  centerX = 0,
+  centerY = 0,
+}) => {
   const screenToWorld = (clientX: number, clientY: number) => {
     const svg = svgRef.current;
     if (!svg) return null;
@@ -30,8 +40,20 @@ export const CanvasProvider: React.FC<CanvasProviderProps> = ({ children, svgRef
     const mouseX = clientX - rect.left;
     const mouseY = clientY - rect.top;
 
-    const x = viewBox.x + (mouseX * viewBox.w) / rect.width;
-    const y = viewBox.y + (mouseY * viewBox.h) / rect.height;
+    const x_svg = viewBox.x + (mouseX * viewBox.w) / rect.width;
+    const y_svg = viewBox.y + (mouseY * viewBox.h) / rect.height;
+
+    if (rotation === 0) {
+      return { x: x_svg, y: y_svg };
+    }
+
+    // Rotate point BACKWARDS around center to get world coordinates
+    const angleRad = (-rotation * Math.PI) / 180;
+    const dx = x_svg - centerX;
+    const dy = y_svg - centerY;
+
+    const x = dx * Math.cos(angleRad) - dy * Math.sin(angleRad) + centerX;
+    const y = dx * Math.sin(angleRad) + dy * Math.cos(angleRad) + centerY;
 
     return { x, y };
   };

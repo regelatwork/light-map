@@ -14,6 +14,11 @@ def map_scene_context():
     context.map_system = MagicMock(spec=MapSystem)
     context.map_system.width = 1000
     context.map_system.height = 1000
+    context.map_system.state = MagicMock()
+    context.map_system.state.x = 0.0
+    context.map_system.state.y = 0.0
+    context.map_system.state.zoom = 1.0
+    context.map_system.state.rotation = 0.0
     context.map_system.screen_to_world.return_value = (0.0, 0.0)
     context.map_system.svg_loader = None
     context.raw_tokens = []

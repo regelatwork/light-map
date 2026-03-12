@@ -572,6 +572,7 @@ def main():
         run_projector_calibrate(args)
     elif args.command == "version":
         import pkg_resources
+
         try:
             version = pkg_resources.get_distribution("light-map").version
             print(f"Light Map version {version}")

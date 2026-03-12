@@ -68,6 +68,8 @@ export enum MenuActions {
   CALIBRATE_SCALE = 'CALIBRATE_SCALE',
   SET_MAP_SCALE = 'SET_MAP_SCALE',
   RESET_ZOOM = 'RESET_ZOOM',
+  UNDO_NAV = 'UNDO_NAV',
+  REDO_NAV = 'REDO_NAV',
   PAGE_NEXT = 'PAGE_NEXT',
   PAGE_PREV = 'PAGE_PREV',
   SCAN_SESSION = 'SCAN_SESSION',
@@ -101,9 +103,17 @@ export interface VisibilityBlocker {
   points: [number, number][];
 }
 
+export interface ViewportState {
+  x: number;
+  y: number;
+  zoom: number;
+  rotation: number;
+}
+
 export interface WorldState {
   scene: SceneId | string;
   fps: number;
+  viewport?: ViewportState;
   blockers?: VisibilityBlocker[];
   [key: string]: unknown;
 }

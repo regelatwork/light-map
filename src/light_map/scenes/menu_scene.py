@@ -227,19 +227,31 @@ class MenuScene(Scene):
             except ValueError:
                 pass
         elif action == MenuActions.ROTATE_CW:
+            self.context.map_system.push_state()
             self.context.map_system.rotate(90)
             if self.context.save_session:
                 self.context.save_session()
         elif action == MenuActions.ROTATE_CCW:
+            self.context.map_system.push_state()
             self.context.map_system.rotate(-90)
             if self.context.save_session:
                 self.context.save_session()
         elif action == MenuActions.RESET_VIEW:
+            self.context.map_system.push_state()
             self.context.map_system.reset_view_to_base()
             if self.context.save_session:
                 self.context.save_session()
         elif action == MenuActions.RESET_ZOOM:
+            self.context.map_system.push_state()
             self.context.map_system.reset_zoom_to_base()
+            if self.context.save_session:
+                self.context.save_session()
+        elif action == MenuActions.UNDO_NAV:
+            self.context.map_system.undo()
+            if self.context.save_session:
+                self.context.save_session()
+        elif action == MenuActions.REDO_NAV:
+            self.context.map_system.redo()
             if self.context.save_session:
                 self.context.save_session()
         elif action == MenuActions.SYNC_VISION:

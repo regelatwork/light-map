@@ -1,4 +1,4 @@
-import React, { useState, useRef, type ReactNode } from 'react';
+import { useState, useRef, type ReactNode, type FC } from 'react';
 import { GridLayer } from './GridLayer';
 import { TokenLayer } from './TokenLayer';
 import { MapLayer } from './MapLayer';
@@ -6,13 +6,19 @@ import { DoorLayer } from './DoorLayer';
 import { FowLayer } from './FowLayer';
 import { CanvasProvider } from './CanvasContext';
 import { useSelection } from './SelectionContext';
+import { useSystemState } from '../hooks/useSystemState';
 import { SelectionType } from '../types/system';
 
 interface SchematicCanvasProps {
   children?: ReactNode;
 }
 
-export const SchematicCanvas: React.FC<SchematicCanvasProps> = ({ children }) => {
+export const SchematicCanvas: FC<SchematicCanvasProps> = ({ children }) => {
+  const { world, config } = useSystemState();
+  const rotation = world.viewport?.rotation || 0;
+  const centerX = config.proj_res?.[0] / 2 || 500;
+  const centerY = config.proj_res?.[1] / 2 || 375;
+
   // Viewbox state (x, y, width, height)
   const [viewBox, setViewBox] = useState({ x: 0, y: 0, w: 1000, h: 750 });
   const [isPanning, setIsPanning] = useState(false);
@@ -91,7 +97,13 @@ export const SchematicCanvas: React.FC<SchematicCanvasProps> = ({ children }) =>
 
   return (
     <div className="relative h-full w-full overflow-hidden bg-white border-2 border-gray-200 rounded-lg shadow-inner text-black">
-      <CanvasProvider svgRef={svgRef} viewBox={viewBox}>
+      <CanvasProvider
+        svgRef={svgRef}
+        viewBox={viewBox}
+        rotation={rotation}
+        centerX={centerX}
+        centerY={centerY}
+      >
         <svg
           ref={svgRef}
           className="h-full w-full cursor-move select-none"
@@ -112,14 +124,16 @@ export const SchematicCanvas: React.FC<SchematicCanvasProps> = ({ children }) =>
             onClick={handleBackgroundClick}
           />
 
-          <MapLayer />
-          <DoorLayer />
-          <GridLayer />
-          <TokenLayer />
-          <FowLayer />
+          <g transform={`rotate(${rotation}, ${centerX}, ${centerY})`}>
+            <MapLayer />
+            <DoorLayer />
+            <GridLayer />
+            <TokenLayer />
+            <FowLayer />
 
-          {/* Layers will be rendered as children */}
-          {children}
+            {/* Layers will be rendered as children */}
+            {children}
+          </g>
         </svg>
       </CanvasProvider>
 

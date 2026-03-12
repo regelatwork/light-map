@@ -12,7 +12,7 @@ from light_map.gestures import GestureType
 from light_map.common_types import SceneId, SelectionType, TimerKey, Action
 from light_map.dwell_tracker import DwellTracker
 
-from light_map.map_system import MapSystem
+from light_map.map_system import MapSystem, MapState
 
 if TYPE_CHECKING:
     from light_map.core.app_context import AppContext
@@ -337,10 +337,12 @@ class MapScene(BaseMapScene):
         super().__init__(context)
         self.interaction_controller = MapInteractionController()
         self.is_interacting = False
+        self.pre_interaction_state: Optional[MapState] = None
         self.is_dirty = True
 
     def on_enter(self, payload: dict | None = None) -> None:
         self.is_interacting = False
+        self.pre_interaction_state = None
         self.is_dirty = True
         self.dwell_tracker.reset()
         self.context.notifications.add_notification(
@@ -423,11 +425,35 @@ class MapScene(BaseMapScene):
 
         adapter = ScreenCenteredMapAdapter(map_system)
         was_interacting = self.is_interacting
+
+        # Save potential pre-interaction state
+        temp_pre_state = None
+        if not was_interacting:
+            import copy
+
+            temp_pre_state = copy.deepcopy(map_system.state)
+
         self.is_interacting = self.interaction_controller.process_gestures(
             inputs, adapter, grid_size=grid_size
         )
 
+        if not was_interacting and self.is_interacting:
+            self.pre_interaction_state = temp_pre_state
+
         if was_interacting and not self.is_interacting:
+            if self.pre_interaction_state and (
+                self.pre_interaction_state.x != map_system.state.x
+                or self.pre_interaction_state.y != map_system.state.y
+                or self.pre_interaction_state.zoom != map_system.state.zoom
+                or self.pre_interaction_state.rotation != map_system.state.rotation
+            ):
+                # We save the state that was there BEFORE the interaction.
+                # So when we undo, we go back to it.
+                map_system.undo_stack.append(self.pre_interaction_state)
+                if len(map_system.undo_stack) > map_system.max_stack_size:
+                    map_system.undo_stack.pop(0)
+                map_system.redo_stack.clear()
+
             if self.context.save_session:
                 self.context.save_session()
 

@@ -3,9 +3,6 @@ import os
 import numpy as np
 import logging
 import argparse
-import cv2
-import time
-import math
 
 # Ensure we can import the local package
 sys.path.insert(
@@ -21,8 +18,6 @@ from light_map.calibration_logic import (
 from light_map.display_utils import (
     get_screen_resolution,
     setup_logging,
-    ProjectorWindow,
-    draw_text_with_background,
 )
 from light_map.core.storage import StorageManager
 from light_map.map_config import MapConfigManager
@@ -128,9 +123,7 @@ def run_projector_calibrate(args):
 
                 # Use ground points from step 1
                 if ground_points_cam is None or ground_points_proj is None:
-                    logger.error(
-                        "Ground points missing! Run 'projector' step first."
-                    )
+                    logger.error("Ground points missing! Run 'projector' step first.")
                     continue
 
                 ext_result = calibrate_extrinsics(

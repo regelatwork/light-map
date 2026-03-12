@@ -34,9 +34,47 @@ class MapSystem:
         self._cached_matrix: Optional[svgelements.Matrix] = None
         self._cached_state_tuple: Optional[Tuple[float, float, float, float]] = None
 
+        # Undo/Redo stacks
+        self.undo_stack: List[MapState] = []
+        self.redo_stack: List[MapState] = []
+        self.max_stack_size = 50
+
     def is_map_loaded(self) -> bool:
         """Returns True if an SVG map is currently loaded."""
         return self.svg_loader is not None
+
+    def push_state(self):
+        """Pushes current state to undo stack and clears redo stack."""
+        from copy import deepcopy
+
+        self.undo_stack.append(deepcopy(self.state))
+        if len(self.undo_stack) > self.max_stack_size:
+            self.undo_stack.pop(0)
+        self.redo_stack.clear()
+
+    def undo(self):
+        """Reverts to the last saved state."""
+        if not self.undo_stack:
+            return
+        from copy import deepcopy
+
+        self.redo_stack.append(deepcopy(self.state))
+        self.state = self.undo_stack.pop()
+
+    def redo(self):
+        """Restores the state that was undone."""
+        if not self.redo_stack:
+            raise IndexError("Nothing to redo")
+        from copy import deepcopy
+
+        self.undo_stack.append(deepcopy(self.state))
+        self.state = self.redo_stack.pop()
+
+    def can_undo(self) -> bool:
+        return len(self.undo_stack) > 0
+
+    def can_redo(self) -> bool:
+        return len(self.redo_stack) > 0
 
     def set_state(self, x: float, y: float, zoom: float, rotation: float):
         self.state.x = x

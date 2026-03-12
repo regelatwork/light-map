@@ -50,8 +50,8 @@ describe('SchematicCanvas', () => {
         </SelectionProvider>
       </SystemStateProvider>
     );
-    expect(screen.getByText('1')).toBeInTheDocument();
-    expect(screen.getByText('2')).toBeInTheDocument();
+    expect(screen.getByText(/#1/)).toBeInTheDocument();
+    expect(screen.getByText(/#2/)).toBeInTheDocument();
   });
 
   it('renders reset button', () => {

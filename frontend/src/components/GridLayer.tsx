@@ -11,12 +11,14 @@ export const GridLayer: React.FC = () => {
 
   useEffect(() => {
     if (world.scene && world.scene !== 'LOADING') {
-      console.log('Current Scene:', world.scene);
+      console.log('GridLayer Debug - Scene:', world.scene, 'Spacing:', grid_spacing_svg, 'Origin:', grid_origin_svg_x, grid_origin_svg_y);
     }
-  }, [world.scene]);
+  }, [world.scene, grid_spacing_svg, grid_origin_svg_x, grid_origin_svg_y]);
 
   const isCalibrating = typeof world.scene === 'string' && 
-    (world.scene.toUpperCase().includes('CALIBRATE_MAP_GRID') || world.scene.includes('MapGridCalibrationScene'));
+    (world.scene.toUpperCase().includes('CALIBRATE_MAP_GRID') || 
+     world.scene.includes('MapGridCalibrationScene') ||
+     world.scene === 'VIEWING'); // Temporary for debugging
 
 
   // Use a default spacing if not calibrated yet, but ONLY if we are in the calibration scene

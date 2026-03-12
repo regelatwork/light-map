@@ -6,8 +6,19 @@ import { saveGridConfig } from '../services/api';
 type InteractionMode = 'IDLE' | 'MOVING_ORIGIN' | 'SCALING';
 
 export const GridLayer: React.FC = () => {
-  const { grid_spacing_svg, grid_origin_svg_x, grid_origin_svg_y, isConnected } = useSystemState();
+  const { world, grid_spacing_svg, grid_origin_svg_x, grid_origin_svg_y, isConnected } =
+    useSystemState();
   const { screenToWorld } = useCanvas();
+
+  const isCalibrating =
+    typeof world.scene === 'string' &&
+    (world.scene.startsWith('CALIBRATE_MAP_GRID') ||
+      world.scene.includes('MapGridCalibrationScene'));
+
+  // Use a default spacing if not calibrated yet, but ONLY if we are in the calibration scene
+  const effectiveSpacing = grid_spacing_svg > 0 ? grid_spacing_svg : isCalibrating ? 50 : 0;
+  const effectiveOriginX = grid_spacing_svg > 0 ? grid_origin_svg_x : isCalibrating ? 0 : 0;
+  const effectiveOriginY = grid_spacing_svg > 0 ? grid_origin_svg_y : isCalibrating ? 0 : 0;
 
   // Local state for dragging
   const [interactionMode, setInteractionMode] = useState<InteractionMode>('IDLE');
@@ -15,21 +26,21 @@ export const GridLayer: React.FC = () => {
   const [dragSpacing, setDragSpacing] = useState(0);
 
   const displayedOrigin =
-    interactionMode !== 'IDLE' ? dragOrigin : { x: grid_origin_svg_x, y: grid_origin_svg_y };
-  const displayedSpacing = interactionMode === 'SCALING' ? dragSpacing : grid_spacing_svg;
+    interactionMode !== 'IDLE' ? dragOrigin : { x: effectiveOriginX, y: effectiveOriginY };
+  const displayedSpacing = interactionMode === 'SCALING' ? dragSpacing : effectiveSpacing;
 
   const handleMouseDownOrigin = (e: React.MouseEvent) => {
     e.stopPropagation();
     setInteractionMode('MOVING_ORIGIN');
-    setDragOrigin({ x: grid_origin_svg_x, y: grid_origin_svg_y });
-    setDragSpacing(grid_spacing_svg);
+    setDragOrigin({ x: effectiveOriginX, y: effectiveOriginY });
+    setDragSpacing(effectiveSpacing);
   };
 
   const handleMouseDownScale = (e: React.MouseEvent) => {
     e.stopPropagation();
     setInteractionMode('SCALING');
-    setDragOrigin({ x: grid_origin_svg_x, y: grid_origin_svg_y });
-    setDragSpacing(grid_spacing_svg);
+    setDragOrigin({ x: effectiveOriginX, y: effectiveOriginY });
+    setDragSpacing(effectiveSpacing);
   };
 
   const handleMouseMove = useCallback(
@@ -71,12 +82,12 @@ export const GridLayer: React.FC = () => {
       await saveGridConfig(
         dragOrigin.x,
         dragOrigin.y,
-        finalMode === 'SCALING' ? dragSpacing : grid_spacing_svg
+        finalMode === 'SCALING' ? dragSpacing : effectiveSpacing
       );
     } catch (err) {
       console.error('Failed to save grid config:', err);
     }
-  }, [interactionMode, dragOrigin, dragSpacing, grid_spacing_svg]);
+  }, [interactionMode, dragOrigin, dragSpacing, effectiveSpacing]);
 
   // Add global mouse listeners during drag
   useEffect(() => {
@@ -90,7 +101,7 @@ export const GridLayer: React.FC = () => {
     };
   }, [interactionMode, handleMouseMove, handleMouseUp]);
 
-  if (!isConnected || grid_spacing_svg <= 0) {
+  if (!isConnected || effectiveSpacing <= 0) {
     return null;
   }
 

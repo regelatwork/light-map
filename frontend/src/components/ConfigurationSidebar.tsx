@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useSystemState } from '../hooks/useSystemState';
 import { useSelection } from './SelectionContext';
+import { useGridEdit } from './GridEditContext';
 import { saveGridConfig, injectAction, updateToken } from '../services/api';
 import { type Token, SelectionType } from '../types/system';
 import { VisionControl } from './VisionControl';
@@ -8,6 +9,7 @@ import { VisionControl } from './VisionControl';
 export const ConfigurationSidebar: React.FC = () => {
   const { tokens, world, grid_origin_svg_x, grid_origin_svg_y } = useSystemState();
   const { selection } = useSelection();
+  const { isGridEditMode, setIsGridEditMode } = useGridEdit();
 
   const [localGridX, setLocalGridX] = useState<number | null>(null);
   const [localGridY, setLocalGridY] = useState<number | null>(null);
@@ -64,30 +66,55 @@ export const ConfigurationSidebar: React.FC = () => {
             System Settings
           </h3>
           <div className="space-y-3">
-            <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Grid Origin X</label>
-              <input
-                type="number"
-                value={gridX}
-                onChange={(e) => setLocalGridX(Number(e.target.value))}
-                className="w-full px-2 py-1 text-sm border rounded focus:ring-blue-500 focus:border-blue-500 bg-white text-black"
-              />
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-medium text-gray-700">Edit Grid Visuals</span>
+              <button
+                onClick={() => setIsGridEditMode(!isGridEditMode)}
+                className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none ${
+                  isGridEditMode ? 'bg-blue-600' : 'bg-gray-200'
+                }`}
+              >
+                <span
+                  className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${
+                    isGridEditMode ? 'translate-x-5' : 'translate-x-1'
+                  }`}
+                />
+              </button>
             </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Grid Origin Y</label>
-              <input
-                type="number"
-                value={gridY}
-                onChange={(e) => setLocalGridY(Number(e.target.value))}
-                className="w-full px-2 py-1 text-sm border rounded focus:ring-blue-500 focus:border-blue-500 bg-white text-black"
-              />
-            </div>
-            <button
-              onClick={handleGridSave}
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold py-1.5 px-3 rounded transition-colors"
-            >
-              Update Grid
-            </button>
+
+            {isGridEditMode && (
+              <div className="p-2 bg-blue-50 rounded border border-blue-100 space-y-2">
+                <p className="text-[10px] text-blue-700 leading-tight">
+                  Drag the <span className="font-bold text-green-600">Green Handle</span> to move
+                  the origin.
+                  <br />
+                  Drag the <span className="font-bold text-blue-600">Blue Handle</span> to adjust
+                  spacing.
+                </p>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="block text-[10px] text-gray-500 uppercase">X</label>
+                    <input
+                      type="number"
+                      value={Math.round(gridX)}
+                      onChange={(e) => setLocalGridX(Number(e.target.value))}
+                      onBlur={handleGridSave}
+                      className="w-full px-1 py-0.5 text-xs border rounded bg-white text-black"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] text-gray-500 uppercase">Y</label>
+                    <input
+                      type="number"
+                      value={Math.round(gridY)}
+                      onChange={(e) => setLocalGridY(Number(e.target.value))}
+                      onBlur={handleGridSave}
+                      className="w-full px-1 py-0.5 text-xs border rounded bg-white text-black"
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </section>
 

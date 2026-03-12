@@ -82,14 +82,6 @@ export const CalibrationWizard: React.FC = () => {
           >
             Aux: Flash Calibration
           </button>
-
-          <button
-            className="px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700 text-left transition-colors"
-            onClick={() => handleStartCalibration(MenuActions.SET_MAP_SCALE)}
-            disabled={isCalibrating}
-          >
-            Aux: Map Grid Offset
-          </button>
         </div>
       </div>
 

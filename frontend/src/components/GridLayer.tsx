@@ -1,25 +1,36 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useSystemState } from '../hooks/useSystemState';
 import { useCanvas } from './CanvasContext';
+import { useGridEdit } from './GridEditContext';
 import { saveGridConfig } from '../services/api';
 
 type InteractionMode = 'IDLE' | 'MOVING_ORIGIN' | 'SCALING';
 
 export const GridLayer: React.FC = () => {
-  const { world, grid_spacing_svg, grid_origin_svg_x, grid_origin_svg_y, isConnected } = useSystemState();
+  const { world, grid_spacing_svg, grid_origin_svg_x, grid_origin_svg_y, isConnected } =
+    useSystemState();
   const { screenToWorld } = useCanvas();
+  const { isGridEditMode } = useGridEdit();
 
   useEffect(() => {
     if (world.scene && world.scene !== 'LOADING') {
-      console.log('GridLayer Debug - Scene:', world.scene, 'Spacing:', grid_spacing_svg, 'Origin:', grid_origin_svg_x, grid_origin_svg_y);
+      console.log(
+        'GridLayer Debug - Scene:',
+        world.scene,
+        'Spacing:',
+        grid_spacing_svg,
+        'Origin:',
+        grid_origin_svg_x,
+        grid_origin_svg_y
+      );
     }
   }, [world.scene, grid_spacing_svg, grid_origin_svg_x, grid_origin_svg_y]);
 
-  const isCalibrating = typeof world.scene === 'string' && 
-    (world.scene.toUpperCase().includes('CALIBRATE_MAP_GRID') || 
-     world.scene.includes('MapGridCalibrationScene') ||
-     world.scene === 'VIEWING'); // Temporary for debugging
-
+  const isCalibrating =
+    isGridEditMode ||
+    (typeof world.scene === 'string' &&
+      (world.scene.toUpperCase().includes('CALIBRATE_MAP_GRID') ||
+        world.scene.includes('MapGridCalibrationScene')));
 
   // Use a default spacing if not calibrated yet, but ONLY if we are in the calibration scene
   const effectiveSpacing = grid_spacing_svg > 0 ? grid_spacing_svg : isCalibrating ? 50 : 0;

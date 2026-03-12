@@ -33,6 +33,20 @@ The driver is integrated into the main application and can be enabled using CLI 
 | `--remote-hands` | Remote hand input mode | `exclusive`, `merge`, `ignore` (default) |
 | `--remote-tokens` | Remote token input mode | `exclusive`, `merge`, `ignore` (default) |
 | `--remote-port` | Port for the HTTP API | Integer (default: `8000`) |
+| `--remote-origins` | Allowed CORS origins | Space-separated list (default: localhost/127.0.0.1 on 8000/5173) |
+
+### CORS Security
+
+For security, the Remote Driver restricts Cross-Origin Resource Sharing (CORS) to specific origins. By default, it allows:
+
+- `http://localhost:8000` and `http://127.0.0.1:8000` (The dashboard)
+- `http://localhost:5173` and `http://127.0.0.1:5173` (Vite development server)
+
+If you are accessing the API from a different origin (e.g., a custom web app on another server or another machine on the network), you must specify the allowed origins using the `--remote-origins` flag:
+
+```bash
+python3 -m light_map --remote-hands merge --remote-origins http://my-frontend.local http://192.168.1.50:3000
+```
 
 ### Example Usage
 

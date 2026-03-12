@@ -3,7 +3,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ConfigurationSidebar } from './ConfigurationSidebar';
 import * as useSystemStateHook from '../hooks/useSystemState';
 import * as useSelectionHook from './SelectionContext';
-import { SelectionType } from '../types/system';
+import { SelectionType, GmPosition } from '../types/system';
 
 // Mock the services/api to avoid actual network requests
 vi.mock('../services/api', () => ({
@@ -42,7 +42,7 @@ describe('ConfigurationSidebar', () => {
       config: {
         cam_res: [1280, 720],
         proj_res: [1920, 1080],
-        gm_position: 'None' as any,
+        gm_position: GmPosition.NONE,
         debug_mode: false,
         enable_hand_masking: false,
         fow_disabled: false,

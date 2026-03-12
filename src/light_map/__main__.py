@@ -284,6 +284,7 @@ def run_app(args):
                 remote_mode_hands=args.remote_hands,
                 remote_mode_tokens=args.remote_tokens,
                 remote_port=args.remote_port,
+                remote_origins=args.remote_origins,
                 state_mirror=state_mirror,
             )
             manager.start()
@@ -518,6 +519,12 @@ def main():
         type=int,
         default=8000,
         help="Port for the remote driver HTTP API",
+    )
+    run_parser.add_argument(
+        "--remote-origins",
+        nargs="+",
+        help="Allowed CORS origins for remote driver",
+        default=None,
     )
 
     # 'calibrate' command

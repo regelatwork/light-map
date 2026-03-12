@@ -2,6 +2,7 @@ import { render } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
 import { TokenLayer } from './TokenLayer';
 import { SelectionProvider } from './SelectionContext';
+import { GmPosition } from '../types/system';
 
 // Mock useSystemState hook
 vi.mock('../hooks/useSystemState', () => ({
@@ -23,7 +24,7 @@ describe('TokenLayer', () => {
       config: {
         cam_res: [0, 0],
         proj_res: [0, 0],
-        gm_position: 'None' as any,
+        gm_position: GmPosition.NONE,
         debug_mode: false,
         enable_hand_masking: false,
         fow_disabled: false,
@@ -71,7 +72,7 @@ describe('TokenLayer', () => {
       config: {
         cam_res: [0, 0],
         proj_res: [0, 0],
-        gm_position: 'None' as any,
+        gm_position: GmPosition.NONE,
         debug_mode: false,
         enable_hand_masking: false,
         fow_disabled: false,

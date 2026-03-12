@@ -27,6 +27,7 @@ class VisionProcessManager:
         remote_mode_hands: str = "ignore",
         remote_mode_tokens: str = "ignore",
         remote_port: int = 8000,
+        remote_origins: Optional[List[str]] = None,
         state_mirror: Optional[Dict[str, Any]] = None,
     ):
         self.width = width
@@ -42,6 +43,7 @@ class VisionProcessManager:
         self.remote_mode_hands = remote_mode_hands
         self.remote_mode_tokens = remote_mode_tokens
         self.remote_port = remote_port
+        self.remote_origins = remote_origins
         self.state_mirror = state_mirror
 
         self.operator: Optional[CameraOperator] = None
@@ -125,6 +127,7 @@ class VisionProcessManager:
                     "width": self.width,
                     "height": self.height,
                     "num_consumers": self.num_consumers,
+                    "allowed_origins": self.remote_origins,
                 },
                 name="RemoteDriverWorker",
             )

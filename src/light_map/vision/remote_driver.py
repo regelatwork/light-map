@@ -92,6 +92,7 @@ def create_app(
     width: int = 1920,
     height: int = 1080,
     num_consumers: int = 2,
+    allowed_origins: Optional[List[str]] = None,
 ):
     manager = ConnectionManager()
 
@@ -207,9 +208,18 @@ def create_app(
 
     from fastapi.middleware.cors import CORSMiddleware
 
+    # Default to common local origins if none specified
+    if not allowed_origins:
+        allowed_origins = [
+            "http://localhost:8000",
+            "http://127.0.0.1:8000",
+            "http://localhost:5173",
+            "http://127.0.0.1:5173",
+        ]
+
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["*"],
+        allow_origins=allowed_origins,
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
@@ -531,6 +541,7 @@ def remote_driver_worker(
     width: int = 1920,
     height: int = 1080,
     num_consumers: int = 2,
+    allowed_origins: Optional[List[str]] = None,
 ):
     """Worker process entry point for the Remote Driver."""
     logging.info(f"Starting Remote Driver on {host}:{port}")
@@ -543,6 +554,7 @@ def remote_driver_worker(
         width,
         height,
         num_consumers,
+        allowed_origins=allowed_origins,
     )
 
     config = uvicorn.Config(

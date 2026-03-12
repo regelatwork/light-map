@@ -39,13 +39,7 @@ describe('CanvasProvider', () => {
     // World (600, 375) -> SVG (500, 475)
     // Screen (500, 475) -> SVG (500, 475) -> World (600, 375)
     render(
-      <CanvasProvider
-        svgRef={svgRef}
-        viewBox={viewBox}
-        rotation={90}
-        centerX={500}
-        centerY={375}
-      >
+      <CanvasProvider svgRef={svgRef} viewBox={viewBox} rotation={90} centerX={500} centerY={375}>
         <TestComponent clientX={500} clientY={475} />
       </CanvasProvider>
     );
@@ -57,13 +51,7 @@ describe('CanvasProvider', () => {
     // World (600, 475) -> SVG (400, 275)
     // Screen (400, 275) -> SVG (400, 275) -> World (600, 475)
     render(
-      <CanvasProvider
-        svgRef={svgRef}
-        viewBox={viewBox}
-        rotation={180}
-        centerX={500}
-        centerY={375}
-      >
+      <CanvasProvider svgRef={svgRef} viewBox={viewBox} rotation={180} centerX={500} centerY={375}>
         <TestComponent clientX={400} clientY={275} />
       </CanvasProvider>
     );

@@ -1,7 +1,6 @@
 import { render, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { GridLayer } from './GridLayer';
-import { SystemStateProvider } from '../hooks/useSystemState';
 import { CanvasProvider } from './CanvasContext';
 import * as api from '../services/api';
 
@@ -36,7 +35,7 @@ describe('GridLayer', () => {
 
   it('renders grid lines and handles', () => {
     const { container } = render(
-      <CanvasProvider>
+      <CanvasProvider {...({} as any)}>
         <svg>
           <GridLayer />
         </svg>
@@ -59,7 +58,7 @@ describe('GridLayer', () => {
 
   it('calls saveGridConfig when dragging origin', async () => {
     const { container } = render(
-      <CanvasProvider>
+      <CanvasProvider {...({} as any)}>
         <svg>
           <GridLayer />
         </svg>
@@ -84,7 +83,7 @@ describe('GridLayer', () => {
 
   it('calls saveGridConfig with new spacing when dragging scale handle', async () => {
     const { container } = render(
-      <CanvasProvider>
+      <CanvasProvider {...({} as any)}>
         <svg>
           <GridLayer />
         </svg>

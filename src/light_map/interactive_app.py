@@ -834,15 +834,23 @@ class InteractiveApp:
                 if entry:
                     entry.grid_origin_svg_x = payload.get("offset_x", 0.0)
                     entry.grid_origin_svg_y = payload.get("offset_y", 0.0)
+
+                    spacing = payload.get("spacing")
+                    if spacing is not None and spacing > 0:
+                        entry.grid_spacing_svg = spacing
+                        # Recalculate base scale if spacing changed
+                        self.refresh_base_scale()
+
                     self.map_config.save()
 
                     # Update WorldState
                     self.state.grid_origin_svg_x = entry.grid_origin_svg_x
                     self.state.grid_origin_svg_y = entry.grid_origin_svg_y
+                    self.state.grid_spacing_svg = entry.grid_spacing_svg
 
                     # Re-setup visibility stack
                     self._rebuild_visibility_stack(entry)
-                    self.notifications.add_notification("Grid Offset Updated")
+                    self.notifications.add_notification("Grid Configuration Updated")
         elif action_name == "INJECT_HANDS_WORLD":
             from .core.scene import HandInput
             from .common_types import GestureType

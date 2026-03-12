@@ -3,48 +3,82 @@ import { useSystemState } from '../hooks/useSystemState';
 import { useCanvas } from './CanvasContext';
 import { saveGridConfig } from '../services/api';
 
+type InteractionMode = 'IDLE' | 'MOVING_ORIGIN' | 'SCALING';
+
 export const GridLayer: React.FC = () => {
   const { grid_spacing_svg, grid_origin_svg_x, grid_origin_svg_y, isConnected } = useSystemState();
   const { screenToWorld } = useCanvas();
 
   // Local state for dragging
-  const [isDragging, setIsDragging] = useState(false);
+  const [interactionMode, setInteractionMode] = useState<InteractionMode>('IDLE');
   const [dragOrigin, setDragOrigin] = useState({ x: 0, y: 0 });
+  const [dragSpacing, setDragSpacing] = useState(0);
 
-  const displayedOrigin = isDragging ? dragOrigin : { x: grid_origin_svg_x, y: grid_origin_svg_y };
+  const displayedOrigin = (interactionMode !== 'IDLE') ? dragOrigin : { x: grid_origin_svg_x, y: grid_origin_svg_y };
+  const displayedSpacing = (interactionMode === 'SCALING') ? dragSpacing : grid_spacing_svg;
 
-  const handleMouseDown = (e: React.MouseEvent) => {
-    e.stopPropagation(); // Prevent panning the canvas
-    setIsDragging(true);
+  const handleMouseDownOrigin = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setInteractionMode('MOVING_ORIGIN');
     setDragOrigin({ x: grid_origin_svg_x, y: grid_origin_svg_y });
+    setDragSpacing(grid_spacing_svg);
+  };
+
+  const handleMouseDownScale = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setInteractionMode('SCALING');
+    setDragOrigin({ x: grid_origin_svg_x, y: grid_origin_svg_y });
+    setDragSpacing(grid_spacing_svg);
   };
 
   const handleMouseMove = useCallback(
     (e: MouseEvent) => {
-      if (!isDragging) return;
+      if (interactionMode === 'IDLE') return;
 
       const worldPos = screenToWorld(e.clientX, e.clientY);
-      if (worldPos) {
+      if (!worldPos) return;
+
+      if (interactionMode === 'MOVING_ORIGIN') {
         setDragOrigin(worldPos);
+      } else if (interactionMode === 'SCALING') {
+        // Calculate new spacing based on distance from origin to current mouse
+        // We assume the handle is 1 unit away originally (or we can just calculate distance)
+        // Let's say the handle we grabbed was at (origin.x + spacing, origin.y)
+        const dx = worldPos.x - dragOrigin.x;
+        const dy = worldPos.y - dragOrigin.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        
+        // If we want "drag any cross", we'd need to know which one.
+        // For simplicity, let's just use the distance to the mouse as the new spacing
+        // if the user grabbed a handle that's exactly 1 unit away.
+        if (dist > 5) { // Minimum spacing threshold
+          setDragSpacing(dist);
+        }
       }
     },
-    [isDragging, screenToWorld]
+    [interactionMode, dragOrigin, screenToWorld]
   );
 
   const handleMouseUp = useCallback(async () => {
-    if (!isDragging) return;
-    setIsDragging(false);
+    if (interactionMode === 'IDLE') return;
+    
+    const finalMode = interactionMode;
+    setInteractionMode('IDLE');
 
     try {
-      await saveGridConfig(dragOrigin.x, dragOrigin.y);
+      await saveGridConfig(
+        dragOrigin.x, 
+        dragOrigin.y, 
+        finalMode === 'SCALING' ? dragSpacing : grid_spacing_svg
+      );
     } catch (err) {
       console.error('Failed to save grid config:', err);
     }
-  }, [isDragging, dragOrigin.x, dragOrigin.y]);
+  }, [interactionMode, dragOrigin, dragSpacing, grid_spacing_svg]);
 
   // Add global mouse listeners during drag
   useEffect(() => {
-    if (isDragging) {
+    if (interactionMode !== 'IDLE') {
       window.addEventListener('mousemove', handleMouseMove);
       window.addEventListener('mouseup', handleMouseUp);
     }
@@ -52,27 +86,28 @@ export const GridLayer: React.FC = () => {
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('mouseup', handleMouseUp);
     };
-  }, [isDragging, handleMouseMove, handleMouseUp]);
+  }, [interactionMode, handleMouseMove, handleMouseUp]);
 
   if (!isConnected || grid_spacing_svg <= 0) {
     return null;
   }
 
   const lines: React.ReactNode[] = [];
-  const numLines = 50;
+  const numLines = 40;
   const half = Math.floor(numLines / 2);
 
   // Vertical lines
   for (let i = -half; i <= half; i++) {
-    const x = displayedOrigin.x + i * grid_spacing_svg;
+    const x = displayedOrigin.x + i * displayedSpacing;
     lines.push(
       <line
         key={`v-${i}`}
         x1={x}
-        y1={displayedOrigin.y - half * grid_spacing_svg}
+        y1={displayedOrigin.y - half * displayedSpacing}
         x2={x}
-        y2={displayedOrigin.y + half * grid_spacing_svg}
-        stroke="#e5e7eb"
+        y2={displayedOrigin.y + half * displayedSpacing}
+        stroke="#3b82f6"
+        strokeOpacity={0.3}
         strokeWidth="1"
       />
     );
@@ -80,15 +115,16 @@ export const GridLayer: React.FC = () => {
 
   // Horizontal lines
   for (let i = -half; i <= half; i++) {
-    const y = displayedOrigin.y + i * grid_spacing_svg;
+    const y = displayedOrigin.y + i * displayedSpacing;
     lines.push(
       <line
         key={`h-${i}`}
-        x1={displayedOrigin.x - half * grid_spacing_svg}
+        x1={displayedOrigin.x - half * displayedSpacing}
         y1={y}
-        x2={displayedOrigin.x + half * grid_spacing_svg}
+        x2={displayedOrigin.x + half * displayedSpacing}
         y2={y}
-        stroke="#e5e7eb"
+        stroke="#3b82f6"
+        strokeOpacity={0.3}
         strokeWidth="1"
       />
     );
@@ -97,24 +133,50 @@ export const GridLayer: React.FC = () => {
   return (
     <g>
       {lines}
-      {/* Draggable Origin handle */}
+      
+      {/* Origin handle (Green) */}
       <circle
         cx={displayedOrigin.x}
         cy={displayedOrigin.y}
-        r={grid_spacing_svg / 3}
-        fill={isDragging ? 'rgba(59, 130, 246, 0.5)' : 'rgba(59, 130, 246, 0.2)'}
+        r={Math.max(8, displayedSpacing / 4)}
+        fill={interactionMode === 'MOVING_ORIGIN' ? 'rgba(34, 197, 94, 0.6)' : 'rgba(34, 197, 94, 0.3)'}
+        stroke="#22c55e"
+        strokeWidth="2"
+        className="cursor-move"
+        onMouseDown={handleMouseDownOrigin}
+      />
+      
+      {/* Scale handle (Blue, 1 unit to the right) */}
+      <circle
+        cx={displayedOrigin.x + displayedSpacing}
+        cy={displayedOrigin.y}
+        r={Math.max(6, displayedSpacing / 6)}
+        fill={interactionMode === 'SCALING' ? 'rgba(59, 130, 246, 0.6)' : 'rgba(59, 130, 246, 0.3)'}
         stroke="#3b82f6"
         strokeWidth="2"
-        className="cursor-pointer"
-        onMouseDown={handleMouseDown}
+        className="cursor-ew-resize"
+        onMouseDown={handleMouseDownScale}
       />
+
       <text
-        x={displayedOrigin.x + grid_spacing_svg / 2}
-        y={displayedOrigin.y - 10}
-        className="fill-blue-500 text-[10px] font-mono select-none pointer-events-none"
+        x={displayedOrigin.x}
+        y={displayedOrigin.y - 15}
+        textAnchor="middle"
+        className="fill-green-600 text-[12px] font-bold font-mono select-none pointer-events-none drop-shadow-sm"
       >
-        {Math.round(displayedOrigin.x)}, {Math.round(displayedOrigin.y)}
+        Origin: {Math.round(displayedOrigin.x)}, {Math.round(displayedOrigin.y)}
       </text>
+
+      {interactionMode === 'SCALING' && (
+        <text
+          x={displayedOrigin.x + displayedSpacing}
+          y={displayedOrigin.y + 25}
+          textAnchor="middle"
+          className="fill-blue-600 text-[12px] font-bold font-mono select-none pointer-events-none drop-shadow-sm"
+        >
+          Spacing: {displayedSpacing.toFixed(1)}
+        </text>
+      )}
     </g>
   );
 };

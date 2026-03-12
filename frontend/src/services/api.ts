@@ -45,14 +45,14 @@ export const loadMap = async (path: string, loadSession: boolean = true) => {
   return response.json();
 };
 
-export const saveGridConfig = async (offset_x: number, offset_y: number) => {
+export const saveGridConfig = async (offset_x: number, offset_y: number, spacing?: number) => {
   const host = import.meta.env.DEV ? 'http://localhost:8000' : window.location.origin;
   const response = await fetch(`${host}/config/grid`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({ offset_x, offset_y }),
+    body: JSON.stringify({ offset_x, offset_y, spacing }),
   });
 
   if (!response.ok) {

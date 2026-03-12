@@ -54,6 +54,7 @@ class ViewportConfig(BaseModel):
 class GridConfig(BaseModel):
     offset_x: float
     offset_y: float
+    spacing: Optional[float] = None
 
 
 class ConnectionManager:
@@ -386,6 +387,7 @@ def create_app(
                 "action": "UPDATE_GRID",
                 "offset_x": config.offset_x,
                 "offset_y": config.offset_y,
+                "spacing": config.spacing,
             },
         )
         results_queue.put(res)

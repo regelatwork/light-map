@@ -152,17 +152,6 @@ export const ConfigurationSidebar: React.FC = () => {
                   <label className="block text-xs font-medium text-gray-700 mb-1">Color</label>
                   <div className="flex space-x-2">
                     <input
-                      type="text"
-                      value={tokenColor}
-                      onChange={(e) => setLocalColor(e.target.value)}
-                      onBlur={() => {
-                        handleTokenUpdate({ color: tokenColor });
-                        setLocalColor(null);
-                      }}
-                      placeholder="#RRGGBB or css color"
-                      className="flex-1 px-2 py-1 text-sm border rounded focus:ring-blue-500 focus:border-blue-500 bg-white"
-                    />
-                    <input
                       type="color"
                       value={tokenColor.startsWith('#') && tokenColor.length === 7 ? tokenColor : '#ffff00'}
                       onChange={(e) => {
@@ -172,6 +161,18 @@ export const ConfigurationSidebar: React.FC = () => {
                       }}
                       className="w-8 h-8 p-0.5 border rounded cursor-pointer bg-white shadow-sm"
                       title="Pick a color"
+                      style={{ direction: 'rtl' }}
+                    />
+                    <input
+                      type="text"
+                      value={tokenColor}
+                      onChange={(e) => setLocalColor(e.target.value)}
+                      onBlur={() => {
+                        handleTokenUpdate({ color: tokenColor });
+                        setLocalColor(null);
+                      }}
+                      placeholder="#RRGGBB or css color"
+                      className="flex-1 px-2 py-1 text-sm border rounded focus:ring-blue-500 focus:border-blue-500 bg-white"
                     />
                   </div>
                 </div>

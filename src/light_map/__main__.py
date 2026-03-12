@@ -7,6 +7,7 @@ import argparse
 import time
 import logging
 import multiprocessing as mp
+import threading
 
 from .camera import Camera
 from .common_types import Action, MenuActions, SceneId, TokenDetectionAlgorithm
@@ -18,13 +19,27 @@ from .display_utils import (
     ProjectorWindow,
 )
 from .core.storage import StorageManager
-
 from .projector import ProjectorDistortionModel
-import threading
 from .vision.process_manager import VisionProcessManager
 from .core.main_loop import MainLoopController
 from .vision.frame_producer import FrameProducer
 from .input_manager import InputManager
+
+# Import calibration functions from scripts (these will be renamed/moved later)
+# For now we use relative imports if possible, or we might need to add scripts to path
+sys.path.append(os.path.join(os.path.dirname(__file__), "..", "..", "scripts"))
+try:
+    from calibrate import run_calibrate
+    from projector_calibration import run_projector_calibrate
+except ImportError:
+    # If scripts are not available (e.g. in some build environments), provide stubs
+    def run_calibrate(args):
+        print("Error: Camera calibration script not found.")
+        sys.exit(1)
+
+    def run_projector_calibrate(args):
+        print("Error: Projector calibration script not found.")
+        sys.exit(1)
 
 
 def camera_capture_loop(cam, operator, stop_event):
@@ -36,63 +51,7 @@ def camera_capture_loop(cam, operator, stop_event):
             time.sleep(0.01)
 
 
-def main():
-    # 0. Basic Args setup
-    parser = argparse.ArgumentParser(description="Hand Tracker & Menu System")
-    parser.add_argument(
-        "--debug", action="store_true", help="Enable debug overlay", default=False
-    )
-    parser.add_argument(
-        "--maps", nargs="+", help="List of map files or globs to register", default=[]
-    )
-    parser.add_argument(
-        "--map", type=str, help="Path to SVG map file to load (legacy)", default=None
-    )
-    parser.add_argument(
-        "--action", type=str, help="MenuAction to execute on startup", default=None
-    )
-    parser.add_argument(
-        "--base-dir",
-        type=str,
-        help="Override base directory for config and data",
-        default=None,
-    )
-    parser.add_argument(
-        "--log-level",
-        type=str,
-        choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
-        default="INFO",
-        help="Set the logging level",
-    )
-    parser.add_argument(
-        "--log-file",
-        type=str,
-        default=None,
-        help="Path to log file (relative to data dir if not absolute)",
-    )
-    # Remote Driver Args
-    parser.add_argument(
-        "--remote-hands",
-        type=str,
-        choices=["exclusive", "merge", "ignore"],
-        default="ignore",
-        help="Mode for remote hand inputs",
-    )
-    parser.add_argument(
-        "--remote-tokens",
-        type=str,
-        choices=["exclusive", "merge", "ignore"],
-        default="ignore",
-        help="Mode for remote token inputs",
-    )
-    parser.add_argument(
-        "--remote-port",
-        type=int,
-        default=8000,
-        help="Port for the remote driver HTTP API",
-    )
-    args = parser.parse_args()
-
+def run_app(args):
     # Initialize Multiprocessing Manager for shared state mirror
     mp_manager = mp.Manager()
     state_mirror = mp_manager.dict()
@@ -162,7 +121,7 @@ def main():
                 "CRITICAL ERROR: Projector Calibration Missing!\n"
                 f"  File not found: {calibration_file}\n"
                 "  The system cannot project correctly without this.\n"
-                "  PLEASE RUN: python3 scripts/projector_calibration.py\n"
+                "  PLEASE RUN: light-map projector-calibrate\n"
                 "!" * 60 + "\n"
             )
             logger.critical(msg)
@@ -287,7 +246,7 @@ def main():
                     f"  Runtime:     {cam_w}x{cam_h}\n"
                     f"  Calibration: {calib_w}x{calib_h}\n"
                     "  The projector matrix will map points incorrectly.\n"
-                    "  PLEASE RE-CALIBRATE: python3 scripts/projector_calibration.py\n"
+                    "  PLEASE RE-CALIBRATE: light-map projector-calibrate\n"
                     "!" * 60 + "\n"
                 )
                 logger.critical(msg)
@@ -496,6 +455,130 @@ def main():
         )
     finally:
         cv2.destroyAllWindows()
+
+
+def main():
+    # Parent parser for common arguments
+    parent_parser = argparse.ArgumentParser(add_help=False)
+    parent_parser.add_argument(
+        "--base-dir",
+        type=str,
+        help="Override base directory for config and data",
+        default=None,
+    )
+    parent_parser.add_argument(
+        "--log-level",
+        type=str,
+        choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
+        default="INFO",
+        help="Set the logging level",
+    )
+    parent_parser.add_argument(
+        "--log-file",
+        type=str,
+        default=None,
+        help="Path to log file (relative to data dir if not absolute)",
+    )
+
+    parser = argparse.ArgumentParser(description="Light Map AR Tabletop Platform")
+    subparsers = parser.add_subparsers(dest="command", help="Command to execute")
+
+    # 'run' command (default)
+    run_parser = subparsers.add_parser(
+        "run", parents=[parent_parser], help="Run the main application"
+    )
+    run_parser.add_argument(
+        "--debug", action="store_true", help="Enable debug overlay", default=False
+    )
+    run_parser.add_argument(
+        "--maps", nargs="+", help="List of map files or globs to register", default=[]
+    )
+    run_parser.add_argument(
+        "--map", type=str, help="Path to SVG map file to load (legacy)", default=None
+    )
+    run_parser.add_argument(
+        "--action", type=str, help="MenuAction to execute on startup", default=None
+    )
+    run_parser.add_argument(
+        "--remote-hands",
+        type=str,
+        choices=["exclusive", "merge", "ignore"],
+        default="ignore",
+        help="Mode for remote hand inputs",
+    )
+    run_parser.add_argument(
+        "--remote-tokens",
+        type=str,
+        choices=["exclusive", "merge", "ignore"],
+        default="ignore",
+        help="Mode for remote token inputs",
+    )
+    run_parser.add_argument(
+        "--remote-port",
+        type=int,
+        default=8000,
+        help="Port for the remote driver HTTP API",
+    )
+
+    # 'calibrate' command
+    calibrate_parser = subparsers.add_parser(
+        "calibrate", parents=[parent_parser], help="Run camera intrinsics calibration"
+    )
+    calibrate_parser.add_argument(
+        "--image-dir",
+        type=str,
+        help="Directory containing calibration images",
+        default="./images",
+    )
+
+    # 'projector-calibrate' command
+    proj_calibrate_parser = subparsers.add_parser(
+        "projector-calibrate",
+        parents=[parent_parser],
+        help="Run projector-camera calibration",
+    )
+    proj_calibrate_parser.add_argument(
+        "--steps",
+        nargs="+",
+        choices=["projector", "ppi", "extrinsics"],
+        default=["projector", "ppi", "extrinsics"],
+        help="Calibration steps to run (default: all)",
+    )
+
+    # Version command
+    subparsers.add_parser("version", help="Show version information")
+
+    # Default to 'run' if no command provided
+    if len(sys.argv) == 1:
+        args = parser.parse_args(["run"])
+    elif sys.argv[1] not in subparsers.choices and not sys.argv[1].startswith("-"):
+        # This is for backward compatibility where people might just pass --debug etc.
+        args = parser.parse_args(["run"] + sys.argv[1:])
+    elif sys.argv[1].startswith("-") and sys.argv[1] not in ["-h", "--help"]:
+        # Also for backward compatibility: if first arg is an option, assume 'run'
+        args = parser.parse_args(["run"] + sys.argv[1:])
+    else:
+        args = parser.parse_args()
+
+    if args.command == "run":
+        run_app(args)
+    elif args.command == "calibrate":
+        # We need to monkeypatch sys.argv for the script's own parser if it uses one
+        # but our run_calibrate already takes args if we modify it.
+        # Let's check how we called it.
+        # Actually, let's just call it.
+        run_calibrate(args)
+    elif args.command == "projector-calibrate":
+        run_projector_calibrate(args)
+    elif args.command == "version":
+        import pkg_resources
+        try:
+            version = pkg_resources.get_distribution("light-map").version
+            print(f"Light Map version {version}")
+        except Exception:
+            print("Light Map (development version)")
+    else:
+        parser.print_help()
 
 
 if __name__ == "__main__":

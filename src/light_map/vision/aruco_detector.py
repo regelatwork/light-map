@@ -206,8 +206,11 @@ class ArucoTokenDetector:
 
             # Apply parallax correction
             height_mm = default_height_mm
+            token_type = "NPC"
             if token_configs and marker_id in token_configs:
-                height_mm = token_configs[marker_id].get("height_mm", default_height_mm)
+                config = token_configs[marker_id]
+                height_mm = config.get("height_mm", default_height_mm)
+                token_type = config.get("type", "NPC")
 
             wx_mm, wy_mm = self._parallax_correction(u, v, height_mm)
 
@@ -232,6 +235,7 @@ class ArucoTokenDetector:
                     marker_z=height_mm,
                     confidence=1.0,
                     is_duplicate=False,  # detect_raw already resolved duplicates
+                    type=token_type,
                 )
             )
 

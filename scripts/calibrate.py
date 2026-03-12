@@ -17,22 +17,7 @@ from light_map.display_utils import setup_logging
 from light_map.core.storage import StorageManager
 
 
-def main():
-    parser = argparse.ArgumentParser(description="Camera Intrinsics Calibration")
-    parser.add_argument(
-        "--base-dir",
-        type=str,
-        help="Override base directory for config and data",
-        default=None,
-    )
-    parser.add_argument(
-        "--image-dir",
-        type=str,
-        help="Directory containing calibration images",
-        default="./images",
-    )
-    args = parser.parse_args()
-
+def run_calibrate(args):
     storage = StorageManager(base_dir=args.base_dir)
     storage.ensure_dirs()
 
@@ -66,4 +51,18 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser(description="Camera Intrinsics Calibration")
+    parser.add_argument(
+        "--base-dir",
+        type=str,
+        help="Override base directory for config and data",
+        default=None,
+    )
+    parser.add_argument(
+        "--image-dir",
+        type=str,
+        help="Directory containing calibration images",
+        default="./images",
+    )
+    args = parser.parse_args()
+    run_calibrate(args)

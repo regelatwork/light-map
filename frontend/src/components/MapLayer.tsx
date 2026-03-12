@@ -50,7 +50,7 @@ export const MapLayer: React.FC = () => {
       width={config.map_width}
       height={config.map_height}
       style={{ pointerEvents: 'none' }}
-      onError={() => setErrorPath(config.current_map_path)}
+      onError={() => setErrorPath(config.current_map_path ?? null)}
       data-testid="map-image"
     />
   );

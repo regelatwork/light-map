@@ -91,6 +91,7 @@ class TokenFilter:
                     config = token_configs[tid]
                     token_to_return.name = config.get("name")
                     token_to_return.color = config.get("color")
+                    token_to_return.type = config.get("type", "NPC")
 
                 # Apply Grid Snapping if applicable
                 final_token = self._apply_grid_snapping(

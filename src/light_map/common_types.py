@@ -271,6 +271,7 @@ class Token:
     is_duplicate: bool = False
     name: Optional[str] = None
     color: Optional[str] = None
+    type: str = "NPC"
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -290,6 +291,7 @@ class Token:
             "is_duplicate": self.is_duplicate,
             "name": self.name,
             "color": self.color,
+            "type": self.type,
         }
 
 

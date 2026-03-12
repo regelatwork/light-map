@@ -30,6 +30,7 @@ dev = [
     "pytest-cov",
     "ruff",
     "mdformat",
+    "pyinstaller",
 ]
 
 [tool.setuptools.packages.find]

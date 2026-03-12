@@ -114,6 +114,7 @@ export interface Token {
   world_y: number;
   name?: string;
   color?: string;
+  type?: string;
   [key: string]: unknown;
 }
 

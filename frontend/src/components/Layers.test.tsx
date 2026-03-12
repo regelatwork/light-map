@@ -4,6 +4,7 @@ import { MapLayer } from './MapLayer';
 import { DoorLayer } from './DoorLayer';
 import { FowLayer } from './FowLayer';
 import { SystemStateProvider } from '../hooks/useSystemState';
+import { SelectionProvider } from './SelectionContext';
 import { VisibilityType } from '../types/system';
 
 // Mock the hook
@@ -41,9 +42,11 @@ describe('Layers', () => {
   it('renders MapLayer as an image', () => {
     const { container } = render(
       <SystemStateProvider>
-        <svg>
-          <MapLayer />
-        </svg>
+        <SelectionProvider>
+          <svg>
+            <MapLayer />
+          </svg>
+        </SelectionProvider>
       </SystemStateProvider>
     );
     const img = container.querySelector('image');
@@ -54,9 +57,11 @@ describe('Layers', () => {
   it('renders DoorLayer with polyline for closed door', () => {
     const { container } = render(
       <SystemStateProvider>
-        <svg>
-          <DoorLayer />
-        </svg>
+        <SelectionProvider>
+          <svg>
+            <DoorLayer />
+          </svg>
+        </SelectionProvider>
       </SystemStateProvider>
     );
     const polyline = container.querySelector('polyline');
@@ -66,9 +71,11 @@ describe('Layers', () => {
   it('renders FowLayer as an image with filter', () => {
     const { container } = render(
       <SystemStateProvider>
-        <svg>
-          <FowLayer />
-        </svg>
+        <SelectionProvider>
+          <svg>
+            <FowLayer />
+          </svg>
+        </SelectionProvider>
       </SystemStateProvider>
     );
     const img = container.querySelector('image');

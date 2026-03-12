@@ -37,6 +37,7 @@ export const ConfigurationSidebar: React.FC = () => {
 
   const [localName, setLocalName] = useState<string | null>(null);
   const [localColor, setLocalColor] = useState<string | null>(null);
+  const [showAdvanced, setShowAdvanced] = useState(false);
 
   const tokenName = localName !== null ? localName : (selectedToken?.name as string) || '';
   const tokenColor = localColor !== null ? localColor : (selectedToken?.color as string) || '';
@@ -184,24 +185,57 @@ export const ConfigurationSidebar: React.FC = () => {
                     />
                   </div>
                 </div>
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">World X</label>
-                  <input
-                    type="number"
-                    value={Number(selectedToken.world_x).toFixed(2)}
-                    readOnly
-                    className="w-full px-2 py-1 text-sm border rounded bg-gray-50 text-gray-500"
-                  />
+                <div className="flex items-center pt-1">
+                  <button
+                    type="button"
+                    onClick={() => setShowAdvanced(!showAdvanced)}
+                    className="text-[10px] text-gray-400 hover:text-gray-600 uppercase tracking-tighter font-bold flex items-center"
+                  >
+                    {showAdvanced ? 'Hide' : 'Show'} Advanced Properties
+                    <svg
+                      className={`ml-1 h-3 w-3 transform transition-transform ${
+                        showAdvanced ? 'rotate-180' : ''
+                      }`}
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M19 9l-7 7-7-7"
+                      />
+                    </svg>
+                  </button>
                 </div>
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">World Y</label>
-                  <input
-                    type="number"
-                    value={Number(selectedToken.world_y).toFixed(2)}
-                    readOnly
-                    className="w-full px-2 py-1 text-sm border rounded bg-gray-50 text-gray-500"
-                  />
-                </div>
+
+                {showAdvanced && (
+                  <div className="space-y-3 pt-2 border-t border-gray-100">
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">
+                        World X
+                      </label>
+                      <input
+                        type="number"
+                        value={Number(selectedToken.world_x).toFixed(2)}
+                        readOnly
+                        className="w-full px-2 py-1 text-sm border rounded bg-gray-50 text-gray-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">
+                        World Y
+                      </label>
+                      <input
+                        type="number"
+                        value={Number(selectedToken.world_y).toFixed(2)}
+                        readOnly
+                        className="w-full px-2 py-1 text-sm border rounded bg-gray-50 text-gray-500"
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div className="pt-2 space-y-2">

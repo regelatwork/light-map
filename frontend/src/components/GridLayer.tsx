@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 import React, { useState, useEffect, useCallback } from 'react';
 import { useSystemState } from '../hooks/useSystemState';
 import { useCanvas } from './CanvasContext';
@@ -6,6 +7,8 @@ import { saveGridConfig } from '../services/api';
 
 type InteractionMode = 'IDLE' | 'MOVING_ORIGIN' | 'SCALING';
 
+const SCALE_DISTANCES = [2, 5, 10, 20, 50];
+
 export const GridLayer: React.FC = () => {
   const { world, grid_spacing_svg, grid_origin_svg_x, grid_origin_svg_y, isConnected } =
     useSystemState();
@@ -13,7 +16,7 @@ export const GridLayer: React.FC = () => {
   const { isGridEditMode } = useGridEdit();
 
   useEffect(() => {
-    if (world.scene && world.scene !== 'LOADING') {
+    if (world.scene && world.scene !== 'LOADING' && isGridEditMode) {
       console.log(
         'GridLayer Debug - Scene:',
         world.scene,
@@ -24,7 +27,7 @@ export const GridLayer: React.FC = () => {
         grid_origin_svg_y
       );
     }
-  }, [world.scene, grid_spacing_svg, grid_origin_svg_x, grid_origin_svg_y]);
+  }, [world.scene, grid_spacing_svg, grid_origin_svg_x, grid_origin_svg_y, isGridEditMode]);
 
   const isCalibrating =
     isGridEditMode ||
@@ -41,23 +44,27 @@ export const GridLayer: React.FC = () => {
   const [interactionMode, setInteractionMode] = useState<InteractionMode>('IDLE');
   const [dragOrigin, setDragOrigin] = useState({ x: 0, y: 0 });
   const [dragSpacing, setDragSpacing] = useState(0);
+  const [dragScaleDistance, setDragScaleDistance] = useState(1);
 
   const displayedOrigin =
     interactionMode !== 'IDLE' ? dragOrigin : { x: effectiveOriginX, y: effectiveOriginY };
   const displayedSpacing = interactionMode === 'SCALING' ? dragSpacing : effectiveSpacing;
 
   const handleMouseDownOrigin = (e: React.MouseEvent) => {
+    if (!isGridEditMode) return;
     e.stopPropagation();
     setInteractionMode('MOVING_ORIGIN');
     setDragOrigin({ x: effectiveOriginX, y: effectiveOriginY });
     setDragSpacing(effectiveSpacing);
   };
 
-  const handleMouseDownScale = (e: React.MouseEvent) => {
+  const handleMouseDownScale = (e: React.MouseEvent, distUnits: number) => {
+    if (!isGridEditMode) return;
     e.stopPropagation();
     setInteractionMode('SCALING');
     setDragOrigin({ x: effectiveOriginX, y: effectiveOriginY });
     setDragSpacing(effectiveSpacing);
+    setDragScaleDistance(distUnits);
   };
 
   const handleMouseMove = useCallback(
@@ -70,36 +77,35 @@ export const GridLayer: React.FC = () => {
       if (interactionMode === 'MOVING_ORIGIN') {
         setDragOrigin(worldPos);
       } else if (interactionMode === 'SCALING') {
-        // Calculate new spacing based on distance from origin to current mouse
-        // We assume the handle is 1 unit away originally (or we can just calculate distance)
-        // Let's say the handle we grabbed was at (origin.x + spacing, origin.y)
         const dx = worldPos.x - dragOrigin.x;
         const dy = worldPos.y - dragOrigin.y;
-        const dist = Math.sqrt(dx * dx + dy * dy);
+        const currentDist = Math.sqrt(dx * dx + dy * dy);
 
-        // If we want "drag any cross", we'd need to know which one.
-        // For simplicity, let's just use the distance to the mouse as the new spacing
-        // if the user grabbed a handle that's exactly 1 unit away.
-        if (dist > 5) {
-          // Minimum spacing threshold
-          setDragSpacing(dist);
+        if (currentDist > 5) {
+          // The handle grabbed was at distUnits grid cells away
+          // Current distance should equal spacing * distUnits
+          const newSpacing = currentDist / dragScaleDistance;
+          setDragSpacing(newSpacing);
         }
       }
     },
-    [interactionMode, dragOrigin, screenToWorld]
+    [interactionMode, dragOrigin, screenToWorld, dragScaleDistance]
   );
 
   const handleMouseUp = useCallback(async () => {
     if (interactionMode === 'IDLE') return;
 
     const finalMode = interactionMode;
+    const finalOrigin = dragOrigin;
+    const finalSpacing = dragSpacing;
+
     setInteractionMode('IDLE');
 
     try {
       await saveGridConfig(
-        dragOrigin.x,
-        dragOrigin.y,
-        finalMode === 'SCALING' ? dragSpacing : effectiveSpacing
+        finalOrigin.x,
+        finalOrigin.y,
+        finalMode === 'SCALING' ? finalSpacing : effectiveSpacing
       );
     } catch (err) {
       console.error('Failed to save grid config:', err);
@@ -123,7 +129,7 @@ export const GridLayer: React.FC = () => {
   }
 
   const lines: React.ReactNode[] = [];
-  const numLines = 40;
+  const numLines = 100; // Increased for better coverage on large maps
   const half = Math.floor(numLines / 2);
 
   // Vertical lines
@@ -164,50 +170,83 @@ export const GridLayer: React.FC = () => {
     <g>
       {lines}
 
-      {/* Origin handle (Green) */}
-      <circle
-        cx={displayedOrigin.x}
-        cy={displayedOrigin.y}
-        r={Math.max(8, displayedSpacing / 4)}
-        fill={
-          interactionMode === 'MOVING_ORIGIN' ? 'rgba(34, 197, 94, 0.6)' : 'rgba(34, 197, 94, 0.3)'
-        }
-        stroke="#22c55e"
-        strokeWidth="2"
-        className="cursor-move"
-        onMouseDown={handleMouseDownOrigin}
-      />
+      {/* Handles only visible in edit mode */}
+      {isGridEditMode && (
+        <>
+          {/* Origin handle (Green) */}
+          <circle
+            cx={displayedOrigin.x}
+            cy={displayedOrigin.y}
+            r={Math.max(12, displayedSpacing / 4)}
+            fill={
+              interactionMode === 'MOVING_ORIGIN'
+                ? 'rgba(34, 197, 94, 0.6)'
+                : 'rgba(34, 197, 94, 0.3)'
+            }
+            stroke="#22c55e"
+            strokeWidth="2"
+            className="cursor-move"
+            onMouseDown={handleMouseDownOrigin}
+          />
 
-      {/* Scale handle (Blue, 1 unit to the right) */}
-      <circle
-        cx={displayedOrigin.x + displayedSpacing}
-        cy={displayedOrigin.y}
-        r={Math.max(6, displayedSpacing / 6)}
-        fill={interactionMode === 'SCALING' ? 'rgba(59, 130, 246, 0.6)' : 'rgba(59, 130, 246, 0.3)'}
-        stroke="#3b82f6"
-        strokeWidth="2"
-        className="cursor-ew-resize"
-        onMouseDown={handleMouseDownScale}
-      />
+          {/* Scale handles Horizontal */}
+          {SCALE_DISTANCES.map((dist) => (
+            <circle
+              key={`scale-h-${dist}`}
+              cx={displayedOrigin.x + dist * displayedSpacing}
+              cy={displayedOrigin.y}
+              r={Math.max(6, displayedSpacing / 6)}
+              fill={
+                interactionMode === 'SCALING' && dragScaleDistance === dist
+                  ? 'rgba(59, 130, 246, 0.8)'
+                  : 'rgba(59, 130, 246, 0.3)'
+              }
+              stroke="#3b82f6"
+              strokeWidth="2"
+              className="cursor-ew-resize"
+              onMouseDown={(e) => handleMouseDownScale(e, dist)}
+            />
+          ))}
 
-      <text
-        x={displayedOrigin.x}
-        y={displayedOrigin.y - 15}
-        textAnchor="middle"
-        className="fill-green-600 text-[12px] font-bold font-mono select-none pointer-events-none drop-shadow-sm"
-      >
-        Origin: {Math.round(displayedOrigin.x)}, {Math.round(displayedOrigin.y)}
-      </text>
+          {/* Scale handles Vertical */}
+          {SCALE_DISTANCES.map((dist) => (
+            <circle
+              key={`scale-v-${dist}`}
+              cx={displayedOrigin.x}
+              cy={displayedOrigin.y + dist * displayedSpacing}
+              r={Math.max(6, displayedSpacing / 6)}
+              fill={
+                interactionMode === 'SCALING' && dragScaleDistance === dist
+                  ? 'rgba(59, 130, 246, 0.8)'
+                  : 'rgba(59, 130, 246, 0.3)'
+              }
+              stroke="#3b82f6"
+              strokeWidth="2"
+              className="cursor-ns-resize"
+              onMouseDown={(e) => handleMouseDownScale(e, dist)}
+            />
+          ))}
 
-      {interactionMode === 'SCALING' && (
-        <text
-          x={displayedOrigin.x + displayedSpacing}
-          y={displayedOrigin.y + 25}
-          textAnchor="middle"
-          className="fill-blue-600 text-[12px] font-bold font-mono select-none pointer-events-none drop-shadow-sm"
-        >
-          Spacing: {displayedSpacing.toFixed(1)}
-        </text>
+          <text
+            x={displayedOrigin.x}
+            y={displayedOrigin.y - 15}
+            textAnchor="middle"
+            className="fill-green-600 text-[14px] font-bold font-mono select-none pointer-events-none drop-shadow-sm"
+          >
+            Origin: {Math.round(displayedOrigin.x)}, {Math.round(displayedOrigin.y)}
+          </text>
+
+          {interactionMode === 'SCALING' && (
+            <text
+              x={displayedOrigin.x + dragScaleDistance * displayedSpacing}
+              y={displayedOrigin.y + 25}
+              textAnchor="middle"
+              className="fill-blue-600 text-[14px] font-bold font-mono select-none pointer-events-none drop-shadow-sm"
+            >
+              Spacing: {displayedSpacing.toFixed(1)}
+            </text>
+          )}
+        </>
       )}
     </g>
   );

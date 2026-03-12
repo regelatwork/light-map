@@ -1,8 +1,18 @@
 import { render, fireEvent, waitFor } from '@testing-library/react';
+import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { GridLayer } from './GridLayer';
 import { CanvasProvider, type CanvasProviderProps } from './CanvasContext';
+import { GridEditProvider, useGridEdit } from './GridEditContext';
 import * as api from '../services/api';
+
+const EnableGridEdit = ({ children }: { children: React.ReactNode }) => {
+  const { setIsGridEditMode } = useGridEdit();
+  React.useEffect(() => {
+    setIsGridEditMode(true);
+  }, [setIsGridEditMode]);
+  return <>{children}</>;
+};
 
 // Mock the hook
 vi.mock('../hooks/useSystemState', () => ({
@@ -11,9 +21,11 @@ vi.mock('../hooks/useSystemState', () => ({
     grid_spacing_svg: 50,
     grid_origin_svg_x: 100,
     grid_origin_svg_y: 100,
+    world: { scene: 'VIEWING' },
   }),
-  SystemStateProvider: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  SystemStateProvider: ({ children }: { children: React.ReactNode }) => <div>{children}</div>
 }));
+
 
 // Mock API service
 vi.mock('../services/api', () => ({
@@ -37,20 +49,25 @@ describe('GridLayer', () => {
 
   it('renders grid lines and handles', () => {
     const { container } = render(
-      <CanvasProvider {...dummyProps}>
-        <svg>
-          <GridLayer />
-        </svg>
-      </CanvasProvider>
+      <GridEditProvider>
+        <EnableGridEdit>
+          <CanvasProvider {...dummyProps}>
+            <svg>
+              <GridLayer />
+            </svg>
+          </CanvasProvider>
+        </EnableGridEdit>
+      </GridEditProvider>
     );
 
     // Should have grid lines
     const lines = container.querySelectorAll('line');
     expect(lines.length).toBeGreaterThan(0);
 
-    // Should have origin handle (green) and scale handle (blue)
+    // Should have origin handle (green) and scale handles (blue)
     const circles = container.querySelectorAll('circle');
-    expect(circles.length).toBe(2);
+    // 1 origin + 5 horiz + 5 vert = 11
+    expect(circles.length).toBe(11);
 
     // First circle should be origin
     expect(circles[0].getAttribute('stroke')).toBe('#22c55e');
@@ -60,11 +77,15 @@ describe('GridLayer', () => {
 
   it('calls saveGridConfig when dragging origin', async () => {
     const { container } = render(
-      <CanvasProvider {...dummyProps}>
-        <svg>
-          <GridLayer />
-        </svg>
-      </CanvasProvider>
+      <GridEditProvider>
+        <EnableGridEdit>
+          <CanvasProvider {...dummyProps}>
+            <svg>
+              <GridLayer />
+            </svg>
+          </CanvasProvider>
+        </EnableGridEdit>
+      </GridEditProvider>
     );
 
     const originHandle = container.querySelectorAll('circle')[0];
@@ -85,11 +106,15 @@ describe('GridLayer', () => {
 
   it('calls saveGridConfig with new spacing when dragging scale handle', async () => {
     const { container } = render(
-      <CanvasProvider {...dummyProps}>
-        <svg>
-          <GridLayer />
-        </svg>
-      </CanvasProvider>
+      <GridEditProvider>
+        <EnableGridEdit>
+          <CanvasProvider {...dummyProps}>
+            <svg>
+              <GridLayer />
+            </svg>
+          </CanvasProvider>
+        </EnableGridEdit>
+      </GridEditProvider>
     );
 
     const scaleHandle = container.querySelectorAll('circle')[1];

@@ -6,6 +6,7 @@ import { DoorLayer } from './DoorLayer';
 import { FowLayer } from './FowLayer';
 import { CanvasProvider } from './CanvasContext';
 import { useSelection } from './SelectionContext';
+import { useGridEdit } from './GridEditContext';
 import { useSystemState } from '../hooks/useSystemState';
 import { SelectionType } from '../types/system';
 
@@ -15,6 +16,7 @@ interface SchematicCanvasProps {
 
 export const SchematicCanvas: FC<SchematicCanvasProps> = ({ children }) => {
   const { world, config } = useSystemState();
+  const { isGridEditMode } = useGridEdit();
   const rotation = world.viewport?.rotation || 0;
   const centerX = config.proj_res?.[0] / 2 || 500;
   const centerY = config.proj_res?.[1] / 2 || 375;
@@ -129,7 +131,7 @@ export const SchematicCanvas: FC<SchematicCanvasProps> = ({ children }) => {
             <DoorLayer />
             <GridLayer />
             <TokenLayer />
-            <FowLayer />
+            {!isGridEditMode && <FowLayer />}
 
             {/* Layers will be rendered as children */}
             {children}

@@ -33,6 +33,21 @@ export const ConfigurationSidebar: React.FC = () => {
       ? world.blockers?.find((b) => b.id === selection.id)
       : null;
 
+  const [localName, setLocalName] = useState<string | null>(null);
+  const [localColor, setLocalColor] = useState<string | null>(null);
+
+  const tokenName = localName !== null ? localName : (selectedToken?.name as string || '');
+  const tokenColor = localColor !== null ? localColor : (selectedToken?.color as string || '');
+
+  const handleTokenUpdate = async (update: { name?: string; color?: string }) => {
+    if (!selectedToken) return;
+    try {
+      await updateToken(selectedToken.id, update);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
   return (
     <aside className="w-80 bg-white shadow-md flex flex-col border-l border-gray-200 z-10">
       <div className="p-4 border-b bg-gray-50 flex justify-between items-center">
@@ -124,20 +139,41 @@ export const ConfigurationSidebar: React.FC = () => {
                   <label className="block text-xs font-medium text-gray-700 mb-1">Name</label>
                   <input
                     type="text"
-                    defaultValue={selectedToken.name as string || ''}
-                    onBlur={(e) => updateToken(selectedToken.id, { name: e.target.value })}
+                    value={tokenName}
+                    onChange={(e) => setLocalName(e.target.value)}
+                    onBlur={() => {
+                      handleTokenUpdate({ name: tokenName });
+                      setLocalName(null);
+                    }}
                     className="w-full px-2 py-1 text-sm border rounded focus:ring-blue-500 focus:border-blue-500 bg-white"
                   />
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-gray-700 mb-1">Color</label>
-                  <input
-                    type="text"
-                    defaultValue={selectedToken.color as string || ''}
-                    placeholder="#RRGGBB or css color"
-                    onBlur={(e) => updateToken(selectedToken.id, { color: e.target.value })}
-                    className="w-full px-2 py-1 text-sm border rounded focus:ring-blue-500 focus:border-blue-500 bg-white"
-                  />
+                  <div className="flex space-x-2">
+                    <input
+                      type="text"
+                      value={tokenColor}
+                      onChange={(e) => setLocalColor(e.target.value)}
+                      onBlur={() => {
+                        handleTokenUpdate({ color: tokenColor });
+                        setLocalColor(null);
+                      }}
+                      placeholder="#RRGGBB or css color"
+                      className="flex-1 px-2 py-1 text-sm border rounded focus:ring-blue-500 focus:border-blue-500 bg-white"
+                    />
+                    <input
+                      type="color"
+                      value={tokenColor.startsWith('#') && tokenColor.length === 7 ? tokenColor : '#ffff00'}
+                      onChange={(e) => {
+                        const newColor = e.target.value;
+                        setLocalColor(newColor);
+                        handleTokenUpdate({ color: newColor });
+                      }}
+                      className="w-8 h-8 p-0.5 border rounded cursor-pointer bg-white shadow-sm"
+                      title="Pick a color"
+                    />
+                  </div>
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-gray-700 mb-1">World X</label>

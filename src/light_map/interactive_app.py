@@ -441,6 +441,7 @@ class InteractiveApp:
             logging.debug("Switching scene to: %s", target_id)
             self.current_scene.on_exit()
             self.current_scene = self.scenes[target_id]
+            self.last_scene_version = -1  # Reset version tracking for new scene
             self.current_scene.on_enter(transition.payload)
             self.state.increment_scene_timestamp()
         else:
@@ -1115,6 +1116,7 @@ class InteractiveApp:
             if self.current_scene != target_scene:
                 self.current_scene.on_exit()
                 self.current_scene = target_scene
+                self.last_scene_version = -1
                 self.current_scene.on_enter()
 
     def load_map(self, filename: str, load_session: bool = False):

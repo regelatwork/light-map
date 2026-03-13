@@ -216,11 +216,14 @@ class MainLoopController:
                     # We always call render_callback so InteractiveApp can check for scene changes
                     # or remote inputs even if no new camera frame arrived.
                     did_render = render_callback(self.state, actions)
+
                 if did_render:
                     if ts_to_render > 0:
                         self.instrument.record_render(ts_to_render)
-                    self.state.clear_raw_aruco()
 
+                # ALWAYS clear raw_aruco after processing, otherwise it accumulates
+                # and prevents new updates from being recognized as "changes" in WorldState.apply
+                self.state.clear_raw_aruco()
                 # 3. Handle Frame Rate
                 elapsed = time.perf_counter() - start_time
                 wait_time = max(0.001, self.frame_time - elapsed)

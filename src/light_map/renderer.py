@@ -29,7 +29,7 @@ class Renderer:
 
         # Version tracking: Dict[Layer, int]
         self.last_layer_versions = {}
-        self._background_cache_version = -1
+        self._last_background_aggregate_version = -1
         self._last_layer_stack: List[Layer] = []
 
     def render(
@@ -49,32 +49,31 @@ class Renderer:
             current_time: The current application time (monotonic).
             instrument: Optional LatencyInstrument to track per-layer timings.
         """
-        # 1. Check if stack changed or any layer is dirty
+        # 1. Check if stack changed
         stack_changed = layers != self._last_layer_stack
         if stack_changed:
             self._last_layer_stack = list(layers)
-            self._background_cache_version = -1  # Invalidate
+            self._last_background_aggregate_version = -1  # Force recomposite
 
-        any_dirty = stack_changed
-        static_dirty = (self._background_cache_version == -1)
-
-        # Get current versions of all layers
-        current_layer_versions = {}
+        should_composite_frame = stack_changed
+        
+        # Calculate aggregate version of static layers and check for any changes
+        current_background_version = 0
         for layer in layers:
             v = layer.get_current_version()
-            current_layer_versions[layer] = v
             
-            # If dynamic or version increased, it's dirty
+            # If any layer (static or dynamic) has a new version, we must composite a new frame
             if getattr(layer, "_is_dynamic", False) or v > self.last_layer_versions.get(layer, -1):
-                any_dirty = True
-                if layer.is_static:
-                    static_dirty = True
+                should_composite_frame = True
+            
+            if layer.is_static:
+                current_background_version += v
 
-        if not any_dirty:
+        if not should_composite_frame:
             return None
 
-        # 2. Update Background Cache if needed
-        if static_dirty:
+        # 2. Update Background Cache if static layers changed
+        if current_background_version != self._last_background_aggregate_version:
             self.background_cache.fill(0)
             for i, layer in enumerate(layers):
                 if layer.is_static:
@@ -88,7 +87,7 @@ class Renderer:
                             self._composite_patch(
                                 self.background_cache, patch, layer.layer_mode
                             )
-            self._background_cache_version = 0  # Validated static portion
+            self._last_background_aggregate_version = current_background_version
 
         # 3. Copy Background Cache to Output Buffer
         np.copyto(self.output_buffer, self.background_cache)

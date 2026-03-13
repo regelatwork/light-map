@@ -154,6 +154,7 @@ class MapConfigManager:
                         profile=v.get("profile"),
                         size=v.get("size"),
                         height_mm=v.get("height_mm"),
+                        color=v.get("color"),
                     )
                 except ValueError:
                     pass
@@ -169,7 +170,7 @@ class MapConfigManager:
                 aruco_defaults=aruco_defaults,
                 enable_hand_masking=global_data.get("enable_hand_masking", False),
                 hand_mask_padding=global_data.get("hand_mask_padding", 30),
-                gm_position=GmPosition(global_data.get("gm_position", "NONE")),
+                gm_position=GmPosition(global_data.get("gm_position", GmPosition.NONE)),
                 naming_style=NamingStyle(
                     global_data.get("naming_style", NamingStyle.SCI_FI)
                 ),
@@ -202,6 +203,7 @@ class MapConfigManager:
                             profile=v.get("profile"),
                             size=v.get("size"),
                             height_mm=v.get("height_mm"),
+                            color=v.get("color"),
                         )
                     except ValueError:
                         pass

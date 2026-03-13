@@ -12,12 +12,14 @@ def test_map_config_manager_aruco_defaults(tmp_path):
     assert manager.data.global_settings.token_profiles["small"].height_mm == 15.0
 
     # 2. Add an ArUco default
-    manager.set_global_aruco_definition(1, "Fighter", type="PC", profile="medium")
+    manager.set_global_aruco_definition(
+        1, "Fighter", type="PC", profile="medium", color="#FF0000"
+    )
 
     # 3. Add an ArUco override for a specific map
     map_name = "test_map.svg"
     manager.set_map_aruco_override(
-        map_name, 1, "Strong Fighter", type="PC", height_mm=30.0
+        map_name, 1, "Strong Fighter", type="PC", height_mm=30.0, color="#00FF00"
     )
 
     # 4. Resolve profiles
@@ -25,11 +27,13 @@ def test_map_config_manager_aruco_defaults(tmp_path):
     assert resolved_global.name == "Fighter"
     assert resolved_global.height_mm == 25.0  # medium profile
     assert resolved_global.is_known is True
+    assert resolved_global.color == "#FF0000"
 
     resolved_override = manager.resolve_token_profile(1, map_name)
     assert resolved_override.name == "Strong Fighter"
     assert resolved_override.height_mm == 30.0  # override
     assert resolved_override.is_known is True
+    assert resolved_override.color == "#00FF00"
 
     # 5. Check all configs
     manager.set_global_aruco_definition(2, "Goblin", type="NPC", profile="small")

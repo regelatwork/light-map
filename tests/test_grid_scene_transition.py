@@ -2,7 +2,7 @@ import pytest
 import numpy as np
 from unittest.mock import MagicMock, patch
 from light_map.interactive_app import InteractiveApp, AppConfig
-from light_map.common_types import SceneId, ResultType, DetectionResult, MenuActions
+from light_map.common_types import SceneId, MenuActions
 
 
 @pytest.fixture
@@ -37,35 +37,27 @@ def test_process_results_set_map_scale(app):
     # Setup initial scene
     app.current_scene = app.scenes[SceneId.MENU]
 
-    # Create a result with SET_MAP_SCALE action
-    result = DetectionResult(
-        timestamp=12345,
-        type=ResultType.ACTION,
-        data={"action": MenuActions.SET_MAP_SCALE},
-    )
+    # Create a payload with SET_MAP_SCALE action
+    payload = {"action": MenuActions.SET_MAP_SCALE}
 
-    # Process the result
-    transition = app._process_results([result])
+    # Process the payload
+    transition = app._handle_payloads(payload)
 
     # Verify it returns a transition to CALIBRATE_MAP_GRID
     assert transition is not None
-    assert transition.scene_id == SceneId.CALIBRATE_MAP_GRID
+    assert transition.target_scene == SceneId.CALIBRATE_MAP_GRID
 
 
 def test_process_results_calibrate_scale(app):
     # Setup initial scene
     app.current_scene = app.scenes[SceneId.MENU]
 
-    # Create a result with CALIBRATE_SCALE action
-    result = DetectionResult(
-        timestamp=12345,
-        type=ResultType.ACTION,
-        data={"action": MenuActions.CALIBRATE_SCALE},
-    )
+    # Create a payload with CALIBRATE_SCALE action
+    payload = {"action": MenuActions.CALIBRATE_SCALE}
 
-    # Process the result
-    transition = app._process_results([result])
+    # Process the payload
+    transition = app._handle_payloads(payload)
 
     # Verify it returns a transition to CALIBRATE_MAP_GRID
     assert transition is not None
-    assert transition.scene_id == SceneId.CALIBRATE_MAP_GRID
+    assert transition.target_scene == SceneId.CALIBRATE_MAP_GRID

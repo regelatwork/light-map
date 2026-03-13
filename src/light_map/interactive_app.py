@@ -503,12 +503,26 @@ class InteractiveApp:
                 elif action_name == "UPDATE_TOKEN":
                     token_id = action_data.get("id")
                     if token_id is not None:
-                        # Try to get existing global definition to preserve type/profile/size
-                        existing_def = (
-                            self.map_config.data.global_settings.aruco_defaults.get(
-                                token_id
+                        # Try to get existing definition to preserve fields
+                        # Priority: Map Override > Global Default
+                        existing_def = None
+                        is_map_override = False
+
+                        map_file = self.current_map_path
+                        if map_file:
+                            map_entry = self.map_config.data.maps.get(map_file)
+                            if map_entry:
+                                existing_def = map_entry.aruco_overrides.get(token_id)
+                                if existing_def:
+                                    is_map_override = True
+
+                        if not existing_def:
+                            existing_def = (
+                                self.map_config.data.global_settings.aruco_defaults.get(
+                                    token_id
+                                )
                             )
-                        )
+
                         new_name = action_data.get("name")
                         new_color = action_data.get("color")
                         new_type = action_data.get("type")
@@ -516,7 +530,7 @@ class InteractiveApp:
                         new_size = action_data.get("size")
                         new_height_mm = action_data.get("height_mm")
 
-                        # Use existing values if not provided in the update or if no update
+                        # Use existing values if not provided in the update
                         final_name = (
                             new_name
                             if new_name is not None
@@ -552,18 +566,34 @@ class InteractiveApp:
                             else (existing_def.color if existing_def else None)
                         )
 
-                        self.map_config.set_global_aruco_definition(
-                            aruco_id=token_id,
-                            name=final_name,
-                            type=final_type,
-                            profile=final_profile,
-                            size=final_size,
-                            height_mm=final_height_mm,
-                            color=final_color,
-                        )
-                        logging.info(
-                            f"InteractiveApp: Updated token {token_id} - Name: {final_name}, Color: {final_color}, Type: {final_type}"
-                        )
+                        if is_map_override and map_file:
+                            self.map_config.set_map_aruco_override(
+                                map_name=map_file,
+                                aruco_id=token_id,
+                                name=final_name,
+                                type=final_type,
+                                profile=final_profile,
+                                size=final_size,
+                                height_mm=final_height_mm,
+                                color=final_color,
+                            )
+                            logging.info(
+                                f"InteractiveApp: Updated MAP override for token {token_id} on {os.path.basename(map_file)}"
+                            )
+                        else:
+                            self.map_config.set_global_aruco_definition(
+                                aruco_id=token_id,
+                                name=final_name,
+                                type=final_type,
+                                profile=final_profile,
+                                size=final_size,
+                                height_mm=final_height_mm,
+                                color=final_color,
+                            )
+                            logging.info(
+                                f"InteractiveApp: Updated GLOBAL definition for token {token_id}"
+                            )
+
                 elif action_name == "MENU_INTERACT":
                     # Use class name check to avoid potential double-import/instance-check issues
                     is_menu_scene = self.current_scene.__class__.__name__ == "MenuScene"

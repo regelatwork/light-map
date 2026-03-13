@@ -104,3 +104,16 @@ export const updateToken = async (
 
   return response.json();
 };
+
+export const deleteTokenOverride = async (tokenId: number) => {
+  const host = import.meta.env.DEV ? 'http://localhost:8000' : window.location.origin;
+  const response = await fetch(`${host}/state/tokens/${tokenId}/override`, {
+    method: 'DELETE',
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to delete token override: ${tokenId}`);
+  }
+
+  return response.json();
+};

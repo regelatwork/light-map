@@ -131,6 +131,20 @@ export interface Token {
   [key: string]: unknown;
 }
 
+export interface TokenProfile {
+  size: number;
+  height_mm: number;
+}
+
+export interface ArucoDefault {
+  name: string;
+  type: string;
+  profile?: string;
+  size?: number;
+  height_mm?: number;
+  color?: string;
+}
+
 export interface SystemConfig {
   cam_res: [number, number];
   proj_res: [number, number];
@@ -141,6 +155,8 @@ export interface SystemConfig {
   current_map_path?: string;
   map_width?: number;
   map_height?: number;
+  token_profiles?: Record<string, TokenProfile>;
+  aruco_defaults?: Record<number, ArucoDefault>;
   [key: string]: unknown;
 }
 
@@ -150,11 +166,17 @@ export interface MenuState {
   depth?: number;
 }
 
+export interface MapInfo {
+  name: string;
+  aruco_overrides?: Record<number, ArucoDefault>;
+}
+
 export interface SystemState {
   world: WorldState;
   tokens: Token[];
   menu: MenuState | null;
   config: SystemConfig;
+  maps: Record<string, MapInfo>;
   timestamp: number;
   isConnected: boolean;
   error: string | null;
@@ -176,6 +198,7 @@ export const INITIAL_STATE: SystemState = {
     debug_mode: false,
     fow_disabled: false,
   },
+  maps: {},
   timestamp: 0,
   isConnected: false,
   error: null,

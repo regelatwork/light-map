@@ -605,3 +605,11 @@ class MapConfigManager:
             color=color,
         )
         self.save()
+
+    def delete_map_aruco_override(self, map_name: str, aruco_id: int):
+        """Removes a map-specific override, effectively resetting it to global default."""
+        map_name = os.path.abspath(map_name)
+        if map_name in self.data.maps:
+            if aruco_id in self.data.maps[map_name].aruco_overrides:
+                del self.data.maps[map_name].aruco_overrides[aruco_id]
+                self.save()

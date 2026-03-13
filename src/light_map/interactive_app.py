@@ -633,6 +633,14 @@ class InteractiveApp:
                             logging.info(
                                 f"InteractiveApp: Updated GLOBAL definition for token {token_id}"
                             )
+                elif action_name == "DELETE_TOKEN_OVERRIDE":
+                    token_id = action_data.get("id")
+                    map_file = self.current_map_path
+                    if token_id is not None and map_file:
+                        self.map_config.delete_map_aruco_override(map_file, token_id)
+                        logging.info(
+                            f"InteractiveApp: Deleted MAP override for token {token_id} on {os.path.basename(map_file)}"
+                        )
 
                 elif action_name == "MENU_INTERACT":
                     # Use class name check to avoid potential double-import/instance-check issues

@@ -2,12 +2,13 @@ import React, { useState } from 'react';
 import { useSystemState } from '../hooks/useSystemState';
 import { useSelection } from './SelectionContext';
 import { useGridEdit } from './GridEditContext';
-import { saveGridConfig, injectAction, updateToken } from '../services/api';
+import { saveGridConfig, injectAction } from '../services/api';
 import { type Token, SelectionType } from '../types/system';
 import { VisionControl } from './VisionControl';
+import { TokenPropertiesEditor } from './TokenPropertiesEditor';
 
 export const ConfigurationSidebar: React.FC = () => {
-  const { tokens, world, grid_origin_svg_x, grid_origin_svg_y } = useSystemState();
+  const { tokens, world, config, grid_origin_svg_x, grid_origin_svg_y } = useSystemState();
   const { selection } = useSelection();
   const { isGridEditMode, setIsGridEditMode } = useGridEdit();
 
@@ -20,23 +21,6 @@ export const ConfigurationSidebar: React.FC = () => {
     selection.type === SelectionType.DOOR
       ? world.blockers?.find((b) => b.id === selection.id)
       : null;
-
-  const [localName, setLocalName] = useState<string | null>(null);
-  const [localColor, setLocalColor] = useState<string | null>(null);
-  const [localType, setLocalType] = useState<string | null>(null);
-  const [localProfile, setLocalProfile] = useState<string | null>(null);
-  const [localSize, setLocalSize] = useState<number | null>(null);
-  const [localHeightMm, setLocalHeightMm] = useState<number | null>(null);
-  const [showAdvanced, setShowAdvanced] = useState(false);
-
-  React.useEffect(() => {
-    setLocalName(null);
-    setLocalColor(null);
-    setLocalType(null);
-    setLocalProfile(null);
-    setLocalSize(null);
-    setLocalHeightMm(null);
-  }, [selectedToken?.id]);
 
   const [localGridX, setLocalGridX] = useState<number | null>(null);
   const [localGridY, setLocalGridY] = useState<number | null>(null);
@@ -54,30 +38,13 @@ export const ConfigurationSidebar: React.FC = () => {
     }
   };
 
-  const tokenName = localName !== null ? localName : (selectedToken?.name as string) || '';
-  const tokenColor = localColor !== null ? localColor : (selectedToken?.color as string) || '';
-  const tokenType = localType !== null ? localType : (selectedToken?.type as string) || 'NPC';
-  const tokenProfile =
-    localProfile !== null ? localProfile : (selectedToken?.profile as string) || '';
-  const tokenSize = localSize !== null ? localSize : (selectedToken?.size as number) || 1;
-  const tokenHeightMm =
-    localHeightMm !== null ? localHeightMm : (selectedToken?.height_mm as number) || 0;
+  const [manualArUcoId, setManualArUcoId] = useState<string>('');
+  const [editingManualToken, setEditingManualToken] = useState<boolean>(false);
 
-  const handleTokenUpdate = async (update: {
-    name?: string;
-    color?: string;
-    type?: string;
-    profile?: string;
-    size?: number;
-    height_mm?: number;
-  }) => {
-    if (!selectedToken) return;
-    try {
-      await updateToken(selectedToken.id, update);
-    } catch (e) {
-      console.error(e);
-    }
-  };
+  const manualIdNum = parseInt(manualArUcoId);
+  const manualToken = !isNaN(manualIdNum)
+    ? tokens.find((t) => t.id === manualIdNum) || { id: manualIdNum }
+    : null;
 
   return (
     <aside className="w-80 bg-white shadow-md flex flex-col border-l border-gray-200 z-10">
@@ -169,234 +136,7 @@ export const ConfigurationSidebar: React.FC = () => {
           )}
 
           {selectedToken && (
-            <div key={selectedToken.id} className="space-y-4 text-black">
-              <div className="bg-blue-50 p-3 rounded-md border border-blue-100">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <p className="text-sm font-semibold text-blue-800">
-                      {selectedToken.name
-                        ? `${selectedToken.name} (#${selectedToken.id})`
-                        : `Token #${selectedToken.id}`}
-                    </p>
-                    <p className="text-xs text-blue-600 mt-1">
-                      Status: {selectedToken.is_occluded ? 'Occluded' : 'Visible'}
-                    </p>
-                  </div>
-                  {selectedToken.color && (
-                    <div
-                      className="w-6 h-6 rounded-full border border-blue-200 shadow-sm"
-                      style={{ backgroundColor: selectedToken.color }}
-                      title={`Color: ${selectedToken.color}`}
-                    />
-                  )}
-                </div>
-              </div>
-
-              <div className="space-y-3">
-                <div className="flex items-center space-x-4">
-                  <div className="flex-1">
-                    <label className="block text-xs font-medium text-gray-700 mb-1">Type</label>
-                    <div className="flex rounded-md shadow-sm">
-                      <button
-                        onClick={() => {
-                          setLocalType('NPC');
-                          handleTokenUpdate({ type: 'NPC' });
-                        }}
-                        className={`flex-1 px-2 py-1 text-[10px] font-bold border rounded-l-md transition-colors ${
-                          tokenType === 'NPC'
-                            ? 'bg-blue-600 text-white border-blue-600'
-                            : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
-                        }`}
-                      >
-                        NPC
-                      </button>
-                      <button
-                        onClick={() => {
-                          setLocalType('PC');
-                          handleTokenUpdate({ type: 'PC' });
-                        }}
-                        className={`flex-1 px-2 py-1 text-[10px] font-bold border-t border-b border-r rounded-r-md transition-colors ${
-                          tokenType === 'PC'
-                            ? 'bg-green-600 text-white border-green-600'
-                            : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
-                        }`}
-                      >
-                        PC
-                      </button>
-                    </div>
-                  </div>
-                  <div className="flex-1">
-                    <label htmlFor="token-name" className="block text-xs font-medium text-gray-700 mb-1">Name</label>
-                    <input
-                      id="token-name"
-                      type="text"
-                      value={tokenName}
-                      onChange={(e) => setLocalName(e.target.value)}
-                      onBlur={() => {
-                        handleTokenUpdate({ name: tokenName });
-                        setLocalName(null);
-                      }}
-                      className="w-full px-2 py-1 text-sm border rounded focus:ring-blue-500 focus:border-blue-500 bg-white"
-                    />
-                  </div>
-                </div>
-                <div>
-                  <label htmlFor="token-color" className="block text-xs font-medium text-gray-700 mb-1">Color</label>
-                  <div className="flex space-x-2">
-                    <input
-                      id="token-color-picker"
-                      type="color"
-                      value={
-                        tokenColor.startsWith('#') && tokenColor.length === 7
-                          ? tokenColor
-                          : '#ffff00'
-                      }
-                      onChange={(e) => {
-                        const newColor = e.target.value;
-                        setLocalColor(newColor);
-                        handleTokenUpdate({ color: newColor });
-                      }}
-                      className="w-8 h-8 p-0.5 border rounded cursor-pointer bg-white shadow-sm"
-                      title="Pick a color"
-                      style={{ direction: 'rtl' }}
-                    />
-                    <input
-                      id="token-color"
-                      type="text"
-                      value={tokenColor}
-                      onChange={(e) => setLocalColor(e.target.value)}
-                      onBlur={() => {
-                        handleTokenUpdate({ color: tokenColor });
-                        setLocalColor(null);
-                      }}
-                      placeholder="#RRGGBB or css color"
-                      className="flex-1 px-2 py-1 text-sm border rounded focus:ring-blue-500 focus:border-blue-500 bg-white"
-                    />
-                  </div>
-                </div>
-                <div className="flex items-center pt-1">
-                  <button
-                    type="button"
-                    onClick={() => setShowAdvanced(!showAdvanced)}
-                    className="text-[10px] text-gray-400 hover:text-gray-600 uppercase tracking-tighter font-bold flex items-center"
-                  >
-                    {showAdvanced ? 'Hide' : 'Show'} Advanced Properties
-                    <svg
-                      className={`ml-1 h-3 w-3 transform transition-transform ${
-                        showAdvanced ? 'rotate-180' : ''
-                      }`}
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M19 9l-7 7-7-7"
-                      />
-                    </svg>
-                  </button>
-                </div>
-
-                {showAdvanced && (
-                  <div className="space-y-3 pt-2 border-t border-gray-100">
-                    <div>
-                      <label htmlFor="token-profile" className="block text-xs font-medium text-gray-700 mb-1">
-                        Token Profile
-                      </label>
-                      <input
-                        id="token-profile"
-                        type="text"
-                        value={tokenProfile}
-                        onChange={(e) => setLocalProfile(e.target.value)}
-                        onBlur={() => {
-                          handleTokenUpdate({ profile: tokenProfile });
-                          setLocalProfile(null);
-                        }}
-                        placeholder="e.g. standard_1in"
-                        className="w-full px-2 py-1 text-sm border rounded focus:ring-blue-500 focus:border-blue-500 bg-white"
-                      />
-                    </div>
-                    <div className="grid grid-cols-2 gap-2">
-                      <div>
-                        <label htmlFor="token-size" className="block text-xs font-medium text-gray-700 mb-1">
-                          Size (Grid)
-                        </label>
-                        <input
-                          id="token-size"
-                          type="number"
-                          value={tokenSize}
-                          onChange={(e) => setLocalSize(Number(e.target.value))}
-                          onBlur={() => {
-                            handleTokenUpdate({ size: tokenSize });
-                            setLocalSize(null);
-                          }}
-                          min={1}
-                          className="w-full px-2 py-1 text-sm border rounded focus:ring-blue-500 focus:border-blue-500 bg-white"
-                        />
-                      </div>
-                      <div>
-                        <label htmlFor="token-height" className="block text-xs font-medium text-gray-700 mb-1">
-                          Height (mm)
-                        </label>
-                        <input
-                          id="token-height"
-                          type="number"
-                          value={tokenHeightMm}
-                          onChange={(e) => setLocalHeightMm(Number(e.target.value))}
-                          onBlur={() => {
-                            handleTokenUpdate({ height_mm: tokenHeightMm });
-                            setLocalHeightMm(null);
-                          }}
-                          min={0}
-                          className="w-full px-2 py-1 text-sm border rounded focus:ring-blue-500 focus:border-blue-500 bg-white"
-                        />
-                      </div>
-                    </div>
-                    <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">
-                        World X
-                      </label>
-                      <input
-                        type="number"
-                        value={Number(selectedToken.world_x).toFixed(2)}
-                        readOnly
-                        className="w-full px-2 py-1 text-sm border rounded bg-gray-50 text-gray-500"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">
-                        World Y
-                      </label>
-                      <input
-                        type="number"
-                        value={Number(selectedToken.world_y).toFixed(2)}
-                        readOnly
-                        className="w-full px-2 py-1 text-sm border rounded bg-gray-50 text-gray-500"
-                      />
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              <div className="pt-2 space-y-2">
-                <div className="flex space-x-2">
-                  <button
-                    onClick={() => injectAction('INSPECT_TOKEN', selectedToken.id.toString())}
-                    className="flex-1 bg-purple-100 hover:bg-purple-200 text-purple-800 text-xs font-semibold py-1.5 px-3 rounded border border-purple-300 transition-colors"
-                  >
-                    Inspect Vision
-                  </button>
-                  <button
-                    onClick={() => injectAction('CLEAR_INSPECTION')}
-                    className="bg-gray-100 hover:bg-gray-200 text-gray-800 text-xs font-semibold py-1.5 px-3 rounded border border-gray-300 transition-colors"
-                  >
-                    Clear Vision
-                  </button>
-                </div>
-              </div>
-            </div>
+            <TokenPropertiesEditor token={selectedToken} key={`selected-${selectedToken.id}`} />
           )}
 
           {selectedDoor && (
@@ -418,6 +158,56 @@ export const ConfigurationSidebar: React.FC = () => {
               </div>
             </div>
           )}
+        </section>
+
+        <hr className="border-gray-200" />
+
+        {/* ArUco Quick-Edit */}
+        <section>
+          <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-3">
+            ArUco Quick-Edit
+          </h3>
+          <div className="space-y-3">
+            <div className="flex space-x-2">
+              <div className="flex-1 relative">
+                <input
+                  list="known-aruco-ids"
+                  type="number"
+                  value={manualArUcoId}
+                  onChange={(e) => {
+                    setManualArUcoId(e.target.value);
+                    setEditingManualToken(false);
+                  }}
+                  placeholder="Enter or select ID..."
+                  className="w-full px-2 py-1 text-sm border rounded focus:ring-blue-500 focus:border-blue-500 bg-white text-black"
+                />
+                <datalist id="known-aruco-ids">
+                  {Object.entries(config.aruco_defaults || {}).map(([id, def]) => (
+                    <option key={id} value={id}>
+                      {def.name}
+                    </option>
+                  ))}
+                </datalist>
+              </div>
+              <button
+                disabled={!manualArUcoId}
+                onClick={() => setEditingManualToken(!editingManualToken)}
+                className={`px-3 py-1 text-xs font-semibold rounded border transition-colors ${
+                  editingManualToken
+                    ? 'bg-blue-600 text-white border-blue-600'
+                    : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50 disabled:opacity-50'
+                }`}
+              >
+                {editingManualToken ? 'Hide' : 'Edit'}
+              </button>
+            </div>
+
+            {editingManualToken && manualToken && (
+              <div className="mt-4 pt-4 border-t border-gray-100">
+                <TokenPropertiesEditor token={manualToken} key={`manual-${manualToken.id}`} />
+              </div>
+            )}
+          </div>
         </section>
       </div>
     </aside>

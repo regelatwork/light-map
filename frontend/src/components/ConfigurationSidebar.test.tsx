@@ -56,7 +56,12 @@ describe('ConfigurationSidebar', () => {
         debug_mode: false,
         enable_hand_masking: false,
         fow_disabled: false,
+        token_profiles: {
+          small: { size: 1, height_mm: 15 },
+          large: { size: 2, height_mm: 40 },
+        },
       },
+      maps: {},
       timestamp: 0,
       isConnected: true,
       error: null,
@@ -116,7 +121,12 @@ describe('ConfigurationSidebar', () => {
         debug_mode: false,
         enable_hand_masking: false,
         fow_disabled: false,
+        token_profiles: {
+          small: { size: 1, height_mm: 15 },
+          large: { size: 2, height_mm: 40 },
+        },
       },
+      maps: {},
       timestamp: 0,
       isConnected: true,
       error: null,
@@ -175,7 +185,12 @@ describe('ConfigurationSidebar', () => {
         debug_mode: false,
         enable_hand_masking: false,
         fow_disabled: false,
+        token_profiles: {
+          small: { size: 1, height_mm: 15 },
+          large: { size: 2, height_mm: 40 },
+        },
       },
+      maps: {},
       timestamp: 0,
       isConnected: true,
       error: null,
@@ -195,21 +210,84 @@ describe('ConfigurationSidebar', () => {
     fireEvent.click(screen.getByText(/Show Advanced Properties/i));
 
     // Update Profile
-    const profileInput = screen.getByLabelText('Token Profile');
-    fireEvent.change(profileInput, { target: { value: 'large_token' } });
-    fireEvent.blur(profileInput);
-    expect(updateToken).toHaveBeenCalledWith(1, { profile: 'large_token' });
+    const profileSelect = screen.getByLabelText('Token Profile');
+    fireEvent.change(profileSelect, { target: { value: 'large' } });
+    expect(updateToken).toHaveBeenCalledWith(1, { profile: 'large' });
+
+    // Size and Height should now be disabled
+    const sizeInput = screen.getByLabelText('Size (Grid)');
+    const heightInput = screen.getByLabelText('Height (mm)');
+    expect(sizeInput).toBeDisabled();
+    expect(heightInput).toBeDisabled();
+
+    // Toggle back to Custom
+    fireEvent.change(profileSelect, { target: { value: '' } });
+    expect(updateToken).toHaveBeenCalledWith(1, { profile: undefined });
+
+    // Size and Height should now be enabled
+    expect(sizeInput).not.toBeDisabled();
+    expect(heightInput).not.toBeDisabled();
 
     // Update Size
-    const sizeInput = screen.getByLabelText('Size (Grid)');
     fireEvent.change(sizeInput, { target: { value: '2' } });
     fireEvent.blur(sizeInput);
     expect(updateToken).toHaveBeenCalledWith(1, { size: 2 });
 
     // Update Height
-    const heightInput = screen.getByLabelText('Height (mm)');
     fireEvent.change(heightInput, { target: { value: '25' } });
     fireEvent.blur(heightInput);
     expect(updateToken).toHaveBeenCalledWith(1, { height_mm: 25 });
+  });
+
+  it('allows editing an arbitrary ArUco ID via Quick-Edit', () => {
+    vi.mocked(useSystemStateHook.useSystemState).mockReturnValue({
+      tokens: [], // No live tokens
+      world: { scene: 'VIEWING', fps: 60, blockers: [] },
+      grid_origin_svg_x: 0,
+      grid_origin_svg_y: 0,
+      config: {
+        cam_res: [1280, 720],
+        proj_res: [1920, 1080],
+        gm_position: GmPosition.NONE,
+        debug_mode: false,
+        enable_hand_masking: false,
+        fow_disabled: false,
+        aruco_defaults: {
+          42: { name: 'Deep Thought', type: 'NPC', color: '#0000ff' },
+        },
+      },
+      maps: {},
+      timestamp: 0,
+      isConnected: true,
+      error: null,
+      grid_spacing_svg: 50,
+      visibility_timestamp: 0,
+      menu: null,
+    });
+
+    vi.mocked(useSelectionHook.useSelection).mockReturnValue({
+      selection: { type: SelectionType.NONE, id: null },
+      setSelection: vi.fn(),
+    });
+
+    render(<ConfigurationSidebar />);
+
+    // Find the Quick-Edit input
+    const quickEditInput = screen.getByPlaceholderText('Enter or select ID...');
+    fireEvent.change(quickEditInput, { target: { value: '42' } });
+
+    // Click Edit button
+    const editButton = screen.getByText('Edit');
+    fireEvent.click(editButton);
+
+    // Verify properties from aruco_defaults are shown
+    expect(screen.getByText('Deep Thought (#42)')).toBeInTheDocument();
+    expect(screen.getByDisplayValue('Deep Thought')).toBeInTheDocument();
+
+    // Update name via Quick-Edit
+    const nameInput = screen.getByLabelText('Name');
+    fireEvent.change(nameInput, { target: { value: 'The Answer' } });
+    fireEvent.blur(nameInput);
+    expect(updateToken).toHaveBeenCalledWith(42, { name: 'The Answer' });
   });
 });

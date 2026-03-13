@@ -340,10 +340,38 @@ def run_app(args):
                         "map_height": float(app.map_system.svg_loader.svg.height)
                         if app.map_system.svg_loader and app.map_system.svg_loader.svg
                         else 0,
+                        "token_profiles": {
+                            k: {"size": v.size, "height_mm": v.height_mm}
+                            for k, v in app.map_config.data.global_settings.token_profiles.items()
+                        },
+                        "aruco_defaults": {
+                            k: {
+                                "name": v.name,
+                                "type": v.type,
+                                "profile": v.profile,
+                                "size": v.size,
+                                "height_mm": v.height_mm,
+                                "color": v.color,
+                            }
+                            for k, v in app.map_config.data.global_settings.aruco_defaults.items()
+                        },
                     }
                     state_mirror["maps"] = {
-                        path: {"name": os.path.basename(path)}
-                        for path in app.map_config.data.maps.keys()
+                        path: {
+                            "name": os.path.basename(path),
+                            "aruco_overrides": {
+                                str(aid): {
+                                    "name": v.name,
+                                    "type": v.type,
+                                    "profile": v.profile,
+                                    "size": v.size,
+                                    "height_mm": v.height_mm,
+                                    "color": v.color,
+                                }
+                                for aid, v in entry.aruco_overrides.items()
+                            },
+                        }
+                        for path, entry in app.map_config.data.maps.items()
                     }
 
                 # B. Handle Startup Actions (Execute once)

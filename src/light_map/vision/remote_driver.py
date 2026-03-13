@@ -180,6 +180,7 @@ def create_app(
                         "tokens": state_mirror.get("tokens", []),
                         "menu": state_mirror.get("menu", {}),
                         "config": state_mirror.get("config", {}),
+                        "maps": state_mirror.get("maps", {}),
                         "timestamp": time.monotonic(),
                     }
                     # Hoist grid metadata to top level for frontend SystemState compatibility
@@ -342,6 +343,20 @@ def create_app(
         )
         results_queue.put(res)
         return {"status": "update_queued", "id": token_id}
+
+    @app.delete("/state/tokens/{token_id}/override")
+    def delete_token_override(token_id: int):
+        """Removes a map-specific override for a specific token."""
+        res = DetectionResult(
+            timestamp=time.monotonic_ns(),
+            type=ResultType.ACTION,
+            data={
+                "action": "DELETE_TOKEN_OVERRIDE",
+                "id": token_id,
+            },
+        )
+        results_queue.put(res)
+        return {"status": "delete_queued", "id": token_id}
 
     @app.post("/input/action")
     def inject_action(action: str, payload: Optional[str] = None):

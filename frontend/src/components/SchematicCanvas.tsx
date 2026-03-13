@@ -34,6 +34,7 @@ export const SchematicCanvas: FC<SchematicCanvasProps> = ({ children }) => {
 
   useEffect(() => {
     if (world.scene !== 'LOADING' && !initialCentered.current) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setViewBox((prev) => ({
         ...prev,
         x: (grid_origin_svg_x || 0) - prev.w / 2,

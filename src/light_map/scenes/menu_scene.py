@@ -291,8 +291,8 @@ class MenuScene(Scene):
     def get_active_layers(self, app: InteractiveApp) -> List[Layer]:
         """Menu only needs menu, notification, debug, and cursor layers."""
         return [
+            app.token_layer,  # Hidden if show_tokens is False, but should be below menu regardless
             app.menu_layer,
-            app.token_layer,  # Will be hidden by show_tokens=False
             app.notification_layer,
             app.debug_layer,
             app.cursor_layer,

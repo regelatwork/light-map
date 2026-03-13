@@ -182,8 +182,8 @@ class InteractiveApp:
             self.visibility_layer,
             self.scene_layer,
             self.hand_mask_layer,
+            self.token_layer,  # Tokens below Menu
             self.menu_layer,
-            self.token_layer,
             self.notification_layer,
             self.debug_layer,
             self.cursor_layer,
@@ -193,6 +193,40 @@ class InteractiveApp:
         self.scenes = self._initialize_scenes()
         self.current_scene: Scene = self.scenes[SceneId.MENU]
         self.current_scene.on_enter()
+
+    def get_layer_stack(self) -> List[Layer]:
+        """
+        Returns the optimized layer stack for the current scene and state.
+        Ensures correct ordering (e.g. Menu on top of Tokens).
+        """
+        # Get base stack from scene
+        stack = self.current_scene.get_active_layers(self)
+
+        # Apply Exclusive Vision transformation if active
+        if self.inspected_token_id is not None and self.app_context.inspected_token_mask is not None:
+            self.exclusive_vision_layer.set_mask(self.app_context.inspected_token_mask)
+            
+            # Transformation: Insert ExclusiveVisionLayer above Visibility/FoW
+            new_stack = []
+            for layer in stack:
+                new_stack.append(layer)
+                # After visibility or FoW, insert the exclusive mask
+                if layer == self.visibility_layer or layer == self.fow_layer:
+                    if self.exclusive_vision_layer not in new_stack:
+                        new_stack.append(self.exclusive_vision_layer)
+            
+            # Ensure Exclusive mask is present even if FoW/Visibility were not in stack
+            if self.exclusive_vision_layer not in new_stack:
+                # Fallback: insert before UI layers (HandMask, Menu, etc.)
+                try:
+                    idx = new_stack.index(self.hand_mask_layer)
+                    new_stack.insert(idx, self.exclusive_vision_layer)
+                except ValueError:
+                    new_stack.append(self.exclusive_vision_layer)
+            
+            return new_stack
+        
+        return stack
 
     def _normalize_calibration(
         self, camera_matrix: np.ndarray, rvec: np.ndarray, tvec: np.ndarray
@@ -675,39 +709,15 @@ class InteractiveApp:
             state.dwell_state = {}
 
         # --- VISIBILITY AND LAYER STACK ---
-        current_stack = self.current_scene.get_active_layers(self)
+        current_stack = self.get_layer_stack()
 
-        # Handle Exclusive Vision (Token Inspection)
-        if self.inspected_token_id is not None:
-            # Use pre-calculated mask from AppContext (set by Scene during dwell trigger)
-            if self.app_context.inspected_token_mask is not None:
-                self.exclusive_vision_layer.set_mask(
-                    self.app_context.inspected_token_mask
-                )
-
-                # Switch to specialized Exclusive Stack:
-                # Map (Full Brightness) + Door Highlights + Exclusive Highlight + UI
-                current_stack = [
-                    self.map_layer,
-                    self.door_layer,
-                    self.exclusive_vision_layer,
-                    self.scene_layer,
-                    self.hand_mask_layer,
-                    self.menu_layer,
-                    self.token_layer,
-                    self.debug_layer,
-                    self.notification_layer,
-                    self.cursor_layer,
-                ]
-
-                # Ensure Map is full brightness
-                if self.map_layer.opacity != 1.0:
-                    self.map_layer.opacity = 1.0
-                    self.map_layer._version += 1
-            else:
-                self.exclusive_vision_layer.set_mask(None)
+        # Handle Exclusive Vision (Token Inspection) - Opacity logic only
+        if self.inspected_token_id is not None and self.app_context.inspected_token_mask is not None:
+            # Ensure Map is full brightness
+            if self.map_layer.opacity != 1.0:
+                self.map_layer.opacity = 1.0
+                self.map_layer._version += 1
         else:
-            self.exclusive_vision_layer.set_mask(None)
             self.app_context.inspected_token_mask = None
 
         # We need to update tokens in map system from state

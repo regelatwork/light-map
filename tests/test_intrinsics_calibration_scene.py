@@ -156,6 +156,8 @@ def test_intrinsics_calibration_isolated_layers(intrinsics_calib_scene):
     assert "scene" in layers
     assert "token" in layers
     assert "cursor" in layers
-    assert "notification" not in layers
-    assert "debug" not in layers
-    assert len(layers) == 3
+    # UI layers are now included for consistency
+    assert "notification" in layers
+    assert "debug" in layers
+    assert "cursor" in layers
+    assert len(layers) == 6

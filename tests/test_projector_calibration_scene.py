@@ -126,6 +126,7 @@ def test_projector_calibration_isolated_layers(mock_app_context):
     assert "scene" in layers
     assert "token" in layers
     assert "cursor" in layers
-    assert "notification" not in layers
-    assert "debug" not in layers
-    assert len(layers) == 3
+    # UI layers are now included
+    assert "notification" in layers
+    assert "debug" in layers
+    assert len(layers) == 6

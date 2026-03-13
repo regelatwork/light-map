@@ -8,6 +8,7 @@ from typing import List, Tuple, Any, Dict, Optional, TYPE_CHECKING, Callable
 
 from light_map.common_types import (
     AppConfig,
+    Layer,
     SceneId,
 )
 from light_map.renderer import Renderer
@@ -203,9 +204,12 @@ class InteractiveApp:
         stack = self.current_scene.get_active_layers(self)
 
         # Apply Exclusive Vision transformation if active
-        if self.inspected_token_id is not None and self.app_context.inspected_token_mask is not None:
+        if (
+            self.inspected_token_id is not None
+            and self.app_context.inspected_token_mask is not None
+        ):
             self.exclusive_vision_layer.set_mask(self.app_context.inspected_token_mask)
-            
+
             # Transformation: Insert ExclusiveVisionLayer above Visibility/FoW
             new_stack = []
             for layer in stack:
@@ -214,7 +218,7 @@ class InteractiveApp:
                 if layer == self.visibility_layer or layer == self.fow_layer:
                     if self.exclusive_vision_layer not in new_stack:
                         new_stack.append(self.exclusive_vision_layer)
-            
+
             # Ensure Exclusive mask is present even if FoW/Visibility were not in stack
             if self.exclusive_vision_layer not in new_stack:
                 # Fallback: insert before UI layers (HandMask, Menu, etc.)
@@ -223,9 +227,9 @@ class InteractiveApp:
                     new_stack.insert(idx, self.exclusive_vision_layer)
                 except ValueError:
                     new_stack.append(self.exclusive_vision_layer)
-            
+
             return new_stack
-        
+
         return stack
 
     def _normalize_calibration(
@@ -712,7 +716,10 @@ class InteractiveApp:
         current_stack = self.get_layer_stack()
 
         # Handle Exclusive Vision (Token Inspection) - Opacity logic only
-        if self.inspected_token_id is not None and self.app_context.inspected_token_mask is not None:
+        if (
+            self.inspected_token_id is not None
+            and self.app_context.inspected_token_mask is not None
+        ):
             # Ensure Map is full brightness
             if self.map_layer.opacity != 1.0:
                 self.map_layer.opacity = 1.0
@@ -742,8 +749,11 @@ class InteractiveApp:
             new_opacity = 1.0
             is_interacting = getattr(self.current_scene, "is_interacting", False)
             new_quality = 0.25 if is_interacting else 1.0
-            
-            if new_opacity != self.map_layer.opacity or new_quality != self.map_layer.quality:
+
+            if (
+                new_opacity != self.map_layer.opacity
+                or new_quality != self.map_layer.quality
+            ):
                 self.map_layer.opacity = new_opacity
                 self.map_layer.quality = new_quality
                 self.map_layer._version += 1
@@ -751,7 +761,10 @@ class InteractiveApp:
             # 2. Update SceneLayer bridge
             self.scene_layer.scene = self.current_scene
             # Only increment scene timestamp if scene is actually dirty
-            if self.current_scene.is_dynamic or self.current_scene.version > self.last_scene_version:
+            if (
+                self.current_scene.is_dynamic
+                or self.current_scene.version > self.last_scene_version
+            ):
                 state.increment_scene_timestamp()
                 self.last_scene_version = self.current_scene.version
 
@@ -874,6 +887,22 @@ class InteractiveApp:
         self.layer_stack[1] = self.door_layer
         self.layer_stack[2] = self.fow_layer
         self.layer_stack[3] = self.visibility_layer
+
+        # Sync blockers to state
+        self._sync_blockers_to_state()
+
+    def _sync_blockers_to_state(self):
+        """Synchronizes visibility engine blockers to the public state."""
+        self.state.blockers = [
+            {
+                "id": b.id,
+                "type": b.type.value if hasattr(b.type, "value") else str(b.type),
+                "is_open": b.is_open,
+                "points": b.segments,
+            }
+            for b in self.visibility_engine.blockers
+        ]
+        self.state.visibility_timestamp += 1
 
     def _handle_payloads(self, payload: Any, state: Optional["WorldState"] = None):
         """Handle side-effects from scene transitions, like loading maps."""
@@ -1065,19 +1094,7 @@ class InteractiveApp:
                         self.fow_manager.height,
                     )
                     # Sync state.blockers so frontend gets updated is_open status
-                    self.state.blockers = [
-                        {
-                            "id": b.id,
-                            "type": b.type.value
-                            if hasattr(b.type, "value")
-                            else str(b.type),
-                            "is_open": b.is_open,
-                            "points": b.segments,
-                        }
-                        for b in self.visibility_engine.blockers
-                    ]
-                    # Increment visibility_timestamp so frontend knows to refresh FoW
-                    self.state.visibility_timestamp += 1
+                    self._sync_blockers_to_state()
 
                     self.notifications.add_notification(f"Door {door_id} Toggled")
                     self.save_session()  # Persist door state
@@ -1135,18 +1152,6 @@ class InteractiveApp:
         self.current_map_path = filename
         self.map_system.svg_loader = SVGLoader(filename)
         self.state.increment_map_timestamp()
-
-        # Update Visibility Engine with blockers
-        blockers = self.map_system.svg_loader.get_visibility_blockers()
-        self.state.blockers = [
-            {
-                "id": b.id,
-                "type": b.type.value if hasattr(b.type, "value") else str(b.type),
-                "is_open": b.is_open,
-                "points": b.segments,
-            }
-            for b in blockers
-        ]
 
         entry = self.map_config.data.maps.get(filename)
         if entry is None:
@@ -1207,6 +1212,8 @@ class InteractiveApp:
                     self.fow_manager.width,
                     self.fow_manager.height,
                 )
+                # Sync state.blockers so frontend gets updated is_open status
+                self._sync_blockers_to_state()
 
                 if session.viewport:
                     self.map_system.set_state(

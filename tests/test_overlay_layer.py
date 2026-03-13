@@ -96,7 +96,7 @@ def test_token_layer_caching(mock_app_context):
         # Return a DIFFERENT list with DIFFERENT contents to ensure 'is not' works
         p1_data = [MagicMock(name="p1")]
         mock_draw.return_value = p1_data
-        
+
         p1, v1 = layer.render()
         p2, v2 = layer.render()
         assert p1 is p2
@@ -104,10 +104,10 @@ def test_token_layer_caching(mock_app_context):
 
         # Change timestamp to trigger version increment
         ws.tokens_timestamp += 1
-        
+
         p3_data = [MagicMock(name="p3")]
         mock_draw.return_value = p3_data
-        
+
         p3, v3 = layer.render()
         assert v3 > v1
         assert p3 is not p1

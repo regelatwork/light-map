@@ -37,7 +37,7 @@ class LegacySceneLayer(Layer):
 
         # Scene modifies the buffer
         render_result = self.scene.render(buffer_bgr)
-        
+
         # Handle modern scenes that might return (result, version)
         if isinstance(render_result, tuple):
             result_bgr = render_result[0]

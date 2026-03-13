@@ -33,7 +33,7 @@ class MapLayer(Layer):
     def get_current_version(self) -> int:
         if self.state is None:
             return 0
-        
+
         # If map is not loaded, we are static/empty
         if not self.map_system.is_map_loaded():
             return 0
@@ -42,7 +42,7 @@ class MapLayer(Layer):
         return max(
             self.state.map_timestamp,
             self.state.viewport_timestamp,
-            self._version  # Manual increment on opacity/quality change
+            self._version,  # Manual increment on opacity/quality change
         )
 
     def _generate_patches(self, current_time: float) -> List[ImagePatch]:
@@ -54,10 +54,7 @@ class MapLayer(Layer):
         current_params["quality"] = self.quality
 
         # Only re-render SVG if params changed or cache is empty
-        if (
-            current_params != self._last_render_params
-            or self._cached_map_bgra is None
-        ):
+        if current_params != self._last_render_params or self._cached_map_bgra is None:
             # Render from SVG
             map_bgr = self.map_system.svg_loader.render(
                 self.width, self.height, **current_params

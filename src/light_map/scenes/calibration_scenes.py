@@ -1272,7 +1272,6 @@ class MapGridCalibrationScene(Scene):
             app.cursor_layer,
         ]
 
-
     def render(self, frame: np.ndarray) -> np.ndarray:
         # The main app loop renders the map background.
         # Here we render the grid overlay using small crosses at intersections.

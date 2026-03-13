@@ -3,6 +3,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { SchematicCanvas } from './SchematicCanvas';
 import { SystemStateProvider } from '../hooks/useSystemState';
 import { SelectionProvider } from './SelectionContext';
+import { GridEditProvider } from './GridEditContext';
 
 // Mock the WebSocket
 vi.mock('../hooks/useSystemState', async (importOriginal) => {
@@ -33,9 +34,11 @@ describe('SchematicCanvas', () => {
   it('renders the background rect', () => {
     const { container } = render(
       <SystemStateProvider>
-        <SelectionProvider>
-          <SchematicCanvas />
-        </SelectionProvider>
+        <GridEditProvider>
+          <SelectionProvider>
+            <SchematicCanvas />
+          </SelectionProvider>
+        </GridEditProvider>
       </SystemStateProvider>
     );
     const rect = container.querySelector('rect');
@@ -45,9 +48,11 @@ describe('SchematicCanvas', () => {
   it('renders tokens', () => {
     render(
       <SystemStateProvider>
-        <SelectionProvider>
-          <SchematicCanvas />
-        </SelectionProvider>
+        <GridEditProvider>
+          <SelectionProvider>
+            <SchematicCanvas />
+          </SelectionProvider>
+        </GridEditProvider>
       </SystemStateProvider>
     );
     expect(screen.getByText(/#1/)).toBeInTheDocument();
@@ -57,9 +62,11 @@ describe('SchematicCanvas', () => {
   it('renders reset button', () => {
     render(
       <SystemStateProvider>
-        <SelectionProvider>
-          <SchematicCanvas />
-        </SelectionProvider>
+        <GridEditProvider>
+          <SelectionProvider>
+            <SchematicCanvas />
+          </SelectionProvider>
+        </GridEditProvider>
       </SystemStateProvider>
     );
     expect(screen.getByText(/Reset View/i)).toBeInTheDocument();

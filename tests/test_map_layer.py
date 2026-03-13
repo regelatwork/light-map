@@ -58,7 +58,7 @@ def test_map_layer_caching(mock_map_system):
     # We must ensure get_current_version() also increases if we want Layer to re-call _generate_patches
     # MapLayer.get_current_version checks map_timestamp, viewport_timestamp and self._version
     ws.increment_map_timestamp()
-    
+
     mock_map_system.get_render_params.return_value = {"x": 10, "y": 0, "zoom": 1.0}
     p3, v3 = layer.render()
     assert mock_map_system.svg_loader.render.call_count == 2

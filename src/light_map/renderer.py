@@ -56,16 +56,18 @@ class Renderer:
             self._last_background_aggregate_version = -1  # Force recomposite
 
         should_composite_frame = stack_changed
-        
+
         # Calculate aggregate version of static layers and check for any changes
         current_background_version = 0
         for layer in layers:
             v = layer.get_current_version()
-            
+
             # If any layer (static or dynamic) has a new version, we must composite a new frame
-            if getattr(layer, "_is_dynamic", False) or v > self.last_layer_versions.get(layer, -1):
+            if getattr(layer, "_is_dynamic", False) or v > self.last_layer_versions.get(
+                layer, -1
+            ):
                 should_composite_frame = True
-            
+
             if layer.is_static:
                 current_background_version += v
 

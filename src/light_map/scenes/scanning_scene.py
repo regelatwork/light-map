@@ -328,7 +328,7 @@ class ScanningScene(Scene):
         """
         common_overlays = [
             app.token_layer,  # Hidden/Shown dynamically by scene.show_tokens
-            app.menu_layer,   # Always present for consistent stacking
+            app.menu_layer,  # Always present for consistent stacking
             app.notification_layer,
             app.debug_layer,
             app.cursor_layer,

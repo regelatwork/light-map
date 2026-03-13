@@ -135,4 +135,3 @@ def test_door_layer_dirty_logic(state, engine):
     state.update_viewport(ViewportState(x=200, y=200, zoom=2.0, rotation=45.0))
     v3 = layer.get_current_version()
     assert v3 > v2
-

@@ -115,7 +115,10 @@ def test_interactive_app_process_state_actions(mock_config, monkeypatch):
     app.current_scene.version = 1
     app.current_scene.update.return_value = None
     app.current_scene.get_active_layers.return_value = app.layer_stack
-    app.current_scene.render.side_effect = lambda f: (f, 1)  # Return the buffer passed in
+    app.current_scene.render.side_effect = lambda f: (
+        f,
+        1,
+    )  # Return the buffer passed in
 
     # 2. Inject ZOOM action
     initial_zoom = app.map_system.state.zoom

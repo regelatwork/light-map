@@ -12,7 +12,7 @@ from light_map.gestures import GestureType
 from light_map.common_types import SceneId, SelectionType, TimerKey, Action
 from light_map.dwell_tracker import DwellTracker
 
-from light_map.map_system import MapSystem, MapState
+from light_map.map_system import MapSystem
 
 if TYPE_CHECKING:
     from light_map.core.app_context import AppContext

@@ -45,8 +45,8 @@ class TokenLayer(Layer):
                 pass
 
         # Use time-based version for 500ms pulse if not dynamic
-        time_version = int(now * 2) # Increments every 0.5s
-        
+        time_version = int(now * 2)  # Increments every 0.5s
+
         # Combined version
         return max(self.state.tokens_timestamp, time_version if show_tokens else 0)
 
@@ -100,7 +100,7 @@ class DebugLayer(Layer):
     def get_current_version(self) -> int:
         if self.state is None:
             return 0
-        
+
         self._is_dynamic = self.context.debug_mode
         return self.state.hands_timestamp
 

@@ -142,18 +142,18 @@ def test_token_layer_dirty_when_occluded():
     # First check: version should be based on timestamp
     v1 = layer.get_current_version()
     assert v1 >= state.tokens_timestamp
-    
+
     patches, rv1 = layer.render()
     assert rv1 == v1
 
-    # Second check (same time): version should be same, render shouldn't happen 
+    # Second check (same time): version should be same, render shouldn't happen
     # (actually get_current_version just returns the number)
     v2 = layer.get_current_version()
     assert v2 == v1
 
     # 2. Occluded token
     token1.is_occluded = True
-    
+
     # Occlusion makes it dynamic
     v3 = layer.get_current_version()
     assert layer._is_dynamic is True

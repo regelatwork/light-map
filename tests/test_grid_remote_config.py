@@ -36,6 +36,7 @@ def test_remote_driver_grid_config_endpoint():
     assert result.data["offset_y"] == 300.0
     assert result.data["spacing"] == 64.5
 
+
 def test_remote_driver_set_map_scale_action():
     results_queue = Queue()
     stop_event = Event()

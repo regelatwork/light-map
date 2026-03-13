@@ -85,15 +85,14 @@ class MainLoopController:
                     new_tokens = mapped_result.get("tokens", [])
                     new_raw_tokens = mapped_result.get("raw_tokens", [])
 
-                    # Only apply if we actually found something, OR if there's no remote tokens.
-                    # But the simplest is to only apply non-empty physical results to avoid flickering.
-                    if new_tokens or new_raw_tokens:
-                        res = DetectionResult(
-                            timestamp=time.perf_counter_ns(),
-                            type=ResultType.ARUCO,
-                            data={"tokens": new_tokens, "raw_tokens": new_raw_tokens},
-                        )
-                        self.state.apply(res, current_time=current_mono)
+                    # Apply physical results to world state.
+                    # We always apply even if empty to ensure tokens are cleared when removed.
+                    res = DetectionResult(
+                        timestamp=time.perf_counter_ns(),
+                        type=ResultType.ARUCO,
+                        data={"tokens": new_tokens, "raw_tokens": new_raw_tokens},
+                    )
+                    self.state.apply(res, current_time=current_mono)
 
                 # NOTE: We DO NOT clear raw_aruco here anymore.
                 # Calibration scenes (e.g. Extrinsics) rely on the raw corners

@@ -58,8 +58,10 @@ def test_notification_layer_render(mock_app_context):
 
 
 def test_token_layer_render(mock_app_context):
+    from light_map.common_types import Token
+
     ws = WorldState()
-    ws.tokens = [MagicMock()]
+    ws.tokens = [Token(id=1, world_x=10, world_y=10)]
     ws.tokens_timestamp = 1
 
     layer = TokenLayer(ws, mock_app_context)
@@ -82,8 +84,10 @@ def test_debug_layer_render(mock_app_context):
 
 
 def test_token_layer_caching(mock_app_context):
+    from light_map.common_types import Token
+
     ws = WorldState()
-    ws.tokens = [MagicMock()]
+    ws.tokens = [Token(id=1, world_x=10, world_y=10)]
     ws.tokens_timestamp = 1
 
     layer = TokenLayer(ws, mock_app_context)

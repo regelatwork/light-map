@@ -31,10 +31,15 @@ class TokenLayer(Layer):
             self.state, "effective_show_tokens", self.context.show_tokens
         )
 
-        # Pulse every 500ms
+        # Pulse logic: If any token is occluded, we need to pulse every frame for smoothness.
+        # Otherwise, we pulse every 500ms for static ghost tokens to show they are "live".
+        any_occluded = any(t.is_occluded for t in self.state.tokens)
+
         pulse_dirty = False
         if show_tokens and self.state.tokens:
-            if now - self._last_pulse_render_time > 0.5:
+            if any_occluded:
+                pulse_dirty = True
+            elif now - self._last_pulse_render_time > 0.5:
                 pulse_dirty = True
 
         if (

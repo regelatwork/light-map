@@ -95,12 +95,10 @@ class FlashCalibrationScene(Scene):
         return False
 
     def get_active_layers(self, app: InteractiveApp) -> List[Layer]:
-        """Calibration scenes only need scene, token (for hide), notification, debug, and cursor layers."""
+        """Calibration scenes only need scene, token (for hide), and cursor layers."""
         return [
             app.scene_layer,
             app.token_layer,
-            app.notification_layer,
-            app.debug_layer,
             app.cursor_layer,
         ]
 
@@ -247,12 +245,10 @@ class IntrinsicsCalibrationScene(Scene):
         return False
 
     def get_active_layers(self, app: InteractiveApp) -> List[Layer]:
-        """Calibration scenes only need scene, token (for hide), notification, debug, and cursor layers."""
+        """Calibration scenes only need scene, token (for hide), and cursor layers."""
         return [
             app.scene_layer,
             app.token_layer,
-            app.notification_layer,
-            app.debug_layer,
             app.cursor_layer,
         ]
 
@@ -388,12 +384,10 @@ class ProjectorCalibrationScene(Scene):
         return False
 
     def get_active_layers(self, app: InteractiveApp) -> List[Layer]:
-        """Calibration scenes only need scene, token (for hide), notification, debug, and cursor layers."""
+        """Calibration scenes only need scene, token (for hide), and cursor layers."""
         return [
             app.scene_layer,
             app.token_layer,
-            app.notification_layer,
-            app.debug_layer,
             app.cursor_layer,
         ]
 
@@ -671,12 +665,10 @@ class ExtrinsicsCalibrationScene(Scene):
         return False
 
     def get_active_layers(self, app: InteractiveApp) -> List[Layer]:
-        """Calibration scenes only need scene, token (for hide), notification, debug, and cursor layers."""
+        """Calibration scenes only need scene, token (for hide), and cursor layers."""
         return [
             app.scene_layer,
             app.token_layer,
-            app.notification_layer,
-            app.debug_layer,
             app.cursor_layer,
         ]
 
@@ -944,12 +936,10 @@ class PpiCalibrationScene(Scene):
         return False
 
     def get_active_layers(self, app: InteractiveApp) -> List[Layer]:
-        """Calibration scenes only need scene, token (for hide), notification, debug, and cursor layers."""
+        """Calibration scenes only need scene, token (for hide), and cursor layers."""
         return [
             app.scene_layer,
             app.token_layer,
-            app.notification_layer,
-            app.debug_layer,
             app.cursor_layer,
         ]
 
@@ -1261,8 +1251,6 @@ class MapGridCalibrationScene(Scene):
             app.map_layer,
             app.scene_layer,
             app.token_layer,
-            app.notification_layer,
-            app.debug_layer,
             app.cursor_layer,
         ]
 

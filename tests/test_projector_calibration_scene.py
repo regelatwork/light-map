@@ -109,3 +109,23 @@ def test_projector_calibration_render(mock_app_context):
     assert not np.all(output == 0)
     # Background should be white (255)
     assert output[0, 0, 0] == 255
+
+
+def test_projector_calibration_isolated_layers(mock_app_context):
+    """Verify that ProjectorCalibrationScene isolates its layers to avoid interference."""
+    scene = ProjectorCalibrationScene(mock_app_context)
+    mock_app = MagicMock()
+    mock_app.scene_layer = "scene"
+    mock_app.token_layer = "token"
+    mock_app.notification_layer = "notification"
+    mock_app.debug_layer = "debug"
+    mock_app.cursor_layer = "cursor"
+
+    layers = scene.get_active_layers(mock_app)
+
+    assert "scene" in layers
+    assert "token" in layers
+    assert "cursor" in layers
+    assert "notification" not in layers
+    assert "debug" not in layers
+    assert len(layers) == 3

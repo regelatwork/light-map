@@ -20,14 +20,15 @@ Light Map is an interactive Augmented Reality (AR) tabletop platform that merges
 - [Token Tracking](docs/token_tracking.md)
 - [Remote Application Driver & Web Dashboard](docs/remote_driver.md)
 
-## Quick Start
+## Installation
 
 ### Prerequisites
 
-- Python 3.12+
+- **Python 3.12+**
+- **Node.js 20+** (for the web dashboard)
 - A webcam and a projector
 
-### Installation
+### Backend Setup
 
 1. **Clone the repository and enter the directory**:
 
@@ -50,9 +51,42 @@ Light Map is an interactive Augmented Reality (AR) tabletop platform that merges
    pip install -e .
    ```
 
-### Running the Application
+### Frontend Setup (Dashboard)
+
+The frontend is a Vite/React application that provides a real-time dashboard and control interface.
+
+1. **Navigate to the frontend directory**:
+
+   ```bash
+   cd frontend
+   ```
+
+1. **Install dependencies**:
+
+   ```bash
+   npm install
+   ```
+
+1. **Build the dashboard**:
+   This generates the production assets in `frontend/dist`. The backend automatically serves these files when the remote driver is enabled.
+
+   ```bash
+   npm run build
+   ```
+
+1. **Return to the root directory**:
+
+   ```bash
+   cd ..
+   ```
+
+______________________________________________________________________
+
+## Running the Application
 
 Once installed, you can use the `light-map` command directly or use the `python -m` syntax.
+
+### 1. Calibration (Initial Setup Only)
 
 1. **Calibrate Camera**:
 
@@ -66,19 +100,60 @@ Once installed, you can use the `light-map` command directly or use the `python 
    python scripts/projector_calibration.py
    ```
 
-1. **Run the App**:
+### 2. Standard Execution
+
+To run the application with a specific set of maps:
+
+```bash
+light-map --maps "maps/*.svg"
+```
+
+*Alternatively:* `python -m light_map --maps "maps/*.svg"`
+
+### 3. Running with the Web Dashboard
+
+To enable the web dashboard (Remote Driver), you must specify a remote input mode for hands or tokens (default is `ignore`).
+
+#### Production Mode (Recommended)
+
+If you have built the frontend using `npm run build`, the dashboard will be served automatically on port `8000` when the remote driver is enabled.
+
+1. Run the app with remote inputs enabled:
 
    ```bash
-   light-map --maps "maps/*.svg"
+   light-map --maps "maps/*.svg" --remote-hands merge
    ```
 
-   *Alternatively:* `python -m light_map --maps "maps/*.svg"`
+   *(Modes: `merge` to use both physical and remote inputs, `exclusive` for remote-only, `ignore` to disable)*
 
-1. **Access the Web Dashboard**:
-   While the application is running, open your browser and navigate to:
-   `http://localhost:8000`
+1. Open your browser to `http://localhost:8000`
 
-See [Map System](docs/map_system.md) for more details on loading maps.
+#### Development Mode (Real-time updates)
+
+For frontend development, run the backend and the Vite development server simultaneously.
+
+1. Start the backend with remote driver enabled:
+   ```bash
+   light-map --maps "maps/*.svg" --remote-hands merge
+   ```
+1. In a separate terminal, start the frontend development server:
+   ```bash
+   cd frontend
+   npm run dev
+   ```
+1. Open the development server URL (usually `http://localhost:5173`).
+
+______________________________________________________________________
+
+## Standalone Installation
+
+For a more permanent installation, you can build a standalone executable:
+
+```bash
+python scripts/install_app.py
+```
+
+This will create a `light-map` binary in `dist/`, install it to `~/.local/bin`, and create a desktop entry.
 
 ## Development
 

@@ -511,6 +511,10 @@ class InteractiveApp:
                         )
                         new_name = action_data.get("name")
                         new_color = action_data.get("color")
+                        new_type = action_data.get("type")
+                        new_profile = action_data.get("profile")
+                        new_size = action_data.get("size")
+                        new_height_mm = action_data.get("height_mm")
 
                         # Use existing values if not provided in the update or if no update
                         final_name = (
@@ -522,11 +526,25 @@ class InteractiveApp:
                                 else f"Token {token_id}"
                             )
                         )
-                        final_type = existing_def.type if existing_def else "NPC"
-                        final_profile = existing_def.profile if existing_def else None
-                        final_size = existing_def.size if existing_def else None
+                        final_type = (
+                            new_type
+                            if new_type is not None
+                            else (existing_def.type if existing_def else "NPC")
+                        )
+                        final_profile = (
+                            new_profile
+                            if new_profile is not None
+                            else (existing_def.profile if existing_def else None)
+                        )
+                        final_size = (
+                            new_size
+                            if new_size is not None
+                            else (existing_def.size if existing_def else None)
+                        )
                         final_height_mm = (
-                            existing_def.height_mm if existing_def else None
+                            new_height_mm
+                            if new_height_mm is not None
+                            else (existing_def.height_mm if existing_def else None)
                         )
                         final_color = (
                             new_color
@@ -544,7 +562,7 @@ class InteractiveApp:
                             color=final_color,
                         )
                         logging.info(
-                            f"InteractiveApp: Updated token {token_id} - Name: {final_name}, Color: {final_color}"
+                            f"InteractiveApp: Updated token {token_id} - Name: {final_name}, Color: {final_color}, Type: {final_type}"
                         )
                 elif action_name == "MENU_INTERACT":
                     # Use class name check to avoid potential double-import/instance-check issues

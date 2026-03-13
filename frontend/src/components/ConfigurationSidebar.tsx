@@ -11,6 +11,33 @@ export const ConfigurationSidebar: React.FC = () => {
   const { selection } = useSelection();
   const { isGridEditMode, setIsGridEditMode } = useGridEdit();
 
+  const selectedToken =
+    selection.type === SelectionType.TOKEN
+      ? tokens.find((t: Token) => t.id === selection.id)
+      : null;
+
+  const selectedDoor =
+    selection.type === SelectionType.DOOR
+      ? world.blockers?.find((b) => b.id === selection.id)
+      : null;
+
+  const [localName, setLocalName] = useState<string | null>(null);
+  const [localColor, setLocalColor] = useState<string | null>(null);
+  const [localType, setLocalType] = useState<string | null>(null);
+  const [localProfile, setLocalProfile] = useState<string | null>(null);
+  const [localSize, setLocalSize] = useState<number | null>(null);
+  const [localHeightMm, setLocalHeightMm] = useState<number | null>(null);
+  const [showAdvanced, setShowAdvanced] = useState(false);
+
+  React.useEffect(() => {
+    setLocalName(null);
+    setLocalColor(null);
+    setLocalType(null);
+    setLocalProfile(null);
+    setLocalSize(null);
+    setLocalHeightMm(null);
+  }, [selectedToken?.id]);
+
   const [localGridX, setLocalGridX] = useState<number | null>(null);
   const [localGridY, setLocalGridY] = useState<number | null>(null);
 
@@ -27,24 +54,23 @@ export const ConfigurationSidebar: React.FC = () => {
     }
   };
 
-  const selectedToken =
-    selection.type === SelectionType.TOKEN
-      ? tokens.find((t: Token) => t.id === selection.id)
-      : null;
-
-  const selectedDoor =
-    selection.type === SelectionType.DOOR
-      ? world.blockers?.find((b) => b.id === selection.id)
-      : null;
-
-  const [localName, setLocalName] = useState<string | null>(null);
-  const [localColor, setLocalColor] = useState<string | null>(null);
-  const [showAdvanced, setShowAdvanced] = useState(false);
-
   const tokenName = localName !== null ? localName : (selectedToken?.name as string) || '';
   const tokenColor = localColor !== null ? localColor : (selectedToken?.color as string) || '';
+  const tokenType = localType !== null ? localType : (selectedToken?.type as string) || 'NPC';
+  const tokenProfile =
+    localProfile !== null ? localProfile : (selectedToken?.profile as string) || '';
+  const tokenSize = localSize !== null ? localSize : (selectedToken?.size as number) || 1;
+  const tokenHeightMm =
+    localHeightMm !== null ? localHeightMm : (selectedToken?.height_mm as number) || 0;
 
-  const handleTokenUpdate = async (update: { name?: string; color?: string }) => {
+  const handleTokenUpdate = async (update: {
+    name?: string;
+    color?: string;
+    type?: string;
+    profile?: string;
+    size?: number;
+    height_mm?: number;
+  }) => {
     if (!selectedToken) return;
     try {
       await updateToken(selectedToken.id, update);
@@ -167,23 +193,58 @@ export const ConfigurationSidebar: React.FC = () => {
               </div>
 
               <div className="space-y-3">
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Name</label>
-                  <input
-                    type="text"
-                    value={tokenName}
-                    onChange={(e) => setLocalName(e.target.value)}
-                    onBlur={() => {
-                      handleTokenUpdate({ name: tokenName });
-                      setLocalName(null);
-                    }}
-                    className="w-full px-2 py-1 text-sm border rounded focus:ring-blue-500 focus:border-blue-500 bg-white"
-                  />
+                <div className="flex items-center space-x-4">
+                  <div className="flex-1">
+                    <label className="block text-xs font-medium text-gray-700 mb-1">Type</label>
+                    <div className="flex rounded-md shadow-sm">
+                      <button
+                        onClick={() => {
+                          setLocalType('NPC');
+                          handleTokenUpdate({ type: 'NPC' });
+                        }}
+                        className={`flex-1 px-2 py-1 text-[10px] font-bold border rounded-l-md transition-colors ${
+                          tokenType === 'NPC'
+                            ? 'bg-blue-600 text-white border-blue-600'
+                            : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                        }`}
+                      >
+                        NPC
+                      </button>
+                      <button
+                        onClick={() => {
+                          setLocalType('PC');
+                          handleTokenUpdate({ type: 'PC' });
+                        }}
+                        className={`flex-1 px-2 py-1 text-[10px] font-bold border-t border-b border-r rounded-r-md transition-colors ${
+                          tokenType === 'PC'
+                            ? 'bg-green-600 text-white border-green-600'
+                            : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                        }`}
+                      >
+                        PC
+                      </button>
+                    </div>
+                  </div>
+                  <div className="flex-1">
+                    <label htmlFor="token-name" className="block text-xs font-medium text-gray-700 mb-1">Name</label>
+                    <input
+                      id="token-name"
+                      type="text"
+                      value={tokenName}
+                      onChange={(e) => setLocalName(e.target.value)}
+                      onBlur={() => {
+                        handleTokenUpdate({ name: tokenName });
+                        setLocalName(null);
+                      }}
+                      className="w-full px-2 py-1 text-sm border rounded focus:ring-blue-500 focus:border-blue-500 bg-white"
+                    />
+                  </div>
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Color</label>
+                  <label htmlFor="token-color" className="block text-xs font-medium text-gray-700 mb-1">Color</label>
                   <div className="flex space-x-2">
                     <input
+                      id="token-color-picker"
                       type="color"
                       value={
                         tokenColor.startsWith('#') && tokenColor.length === 7
@@ -200,6 +261,7 @@ export const ConfigurationSidebar: React.FC = () => {
                       style={{ direction: 'rtl' }}
                     />
                     <input
+                      id="token-color"
                       type="text"
                       value={tokenColor}
                       onChange={(e) => setLocalColor(e.target.value)}
@@ -239,6 +301,59 @@ export const ConfigurationSidebar: React.FC = () => {
 
                 {showAdvanced && (
                   <div className="space-y-3 pt-2 border-t border-gray-100">
+                    <div>
+                      <label htmlFor="token-profile" className="block text-xs font-medium text-gray-700 mb-1">
+                        Token Profile
+                      </label>
+                      <input
+                        id="token-profile"
+                        type="text"
+                        value={tokenProfile}
+                        onChange={(e) => setLocalProfile(e.target.value)}
+                        onBlur={() => {
+                          handleTokenUpdate({ profile: tokenProfile });
+                          setLocalProfile(null);
+                        }}
+                        placeholder="e.g. standard_1in"
+                        className="w-full px-2 py-1 text-sm border rounded focus:ring-blue-500 focus:border-blue-500 bg-white"
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label htmlFor="token-size" className="block text-xs font-medium text-gray-700 mb-1">
+                          Size (Grid)
+                        </label>
+                        <input
+                          id="token-size"
+                          type="number"
+                          value={tokenSize}
+                          onChange={(e) => setLocalSize(Number(e.target.value))}
+                          onBlur={() => {
+                            handleTokenUpdate({ size: tokenSize });
+                            setLocalSize(null);
+                          }}
+                          min={1}
+                          className="w-full px-2 py-1 text-sm border rounded focus:ring-blue-500 focus:border-blue-500 bg-white"
+                        />
+                      </div>
+                      <div>
+                        <label htmlFor="token-height" className="block text-xs font-medium text-gray-700 mb-1">
+                          Height (mm)
+                        </label>
+                        <input
+                          id="token-height"
+                          type="number"
+                          value={tokenHeightMm}
+                          onChange={(e) => setLocalHeightMm(Number(e.target.value))}
+                          onBlur={() => {
+                            handleTokenUpdate({ height_mm: tokenHeightMm });
+                            setLocalHeightMm(null);
+                          }}
+                          min={0}
+                          className="w-full px-2 py-1 text-sm border rounded focus:ring-blue-500 focus:border-blue-500 bg-white"
+                        />
+                      </div>
+                    </div>
                     <div>
                       <label className="block text-xs font-medium text-gray-700 mb-1">
                         World X

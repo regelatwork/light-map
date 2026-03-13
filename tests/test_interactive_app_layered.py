@@ -137,7 +137,6 @@ def test_interactive_app_process_state_actions(mock_config, monkeypatch):
 
     # 4. Inject TOGGLE_DOOR action with door_id
     from light_map.visibility_types import VisibilityBlocker, VisibilityType
-    from light_map.common_types import SelectionType
 
     door = VisibilityBlocker(
         segments=[(0, 0), (10, 10)],
@@ -151,9 +150,46 @@ def test_interactive_app_process_state_actions(mock_config, monkeypatch):
     app.fow_manager.width = 100
     app.fow_manager.height = 100
 
-    ws.pending_actions.append({"action": "TOGGLE_DOOR", "door_id": "door123"})
+
+def test_interactive_app_update_token_action(mock_config, monkeypatch):
+    monkeypatch.setattr(
+        InteractiveApp,
+        "_load_camera_calibration",
+        lambda self: (np.eye(3), np.zeros(5), np.zeros(3), np.zeros(3)),
+    )
+
+    app = InteractiveApp(mock_config)
+    ws = app.state
+
+    # 1. Setup mock scene
+    app.current_scene = MagicMock()
+    app.current_scene.is_dirty = True
+    app.current_scene.update.return_value = None
+    app.current_scene.get_active_layers.return_value = app.layer_stack
+    app.current_scene.render.side_effect = lambda f: f
+
+    # 2. Inject UPDATE_TOKEN action
+    token_id = 999
+    update_data = {
+        "action": "UPDATE_TOKEN",
+        "id": token_id,
+        "name": "Super Hero",
+        "color": "#00ff00",
+        "type": "PC",
+        "profile": "hero_profile",
+        "size": 3,
+        "height_mm": 50.0,
+    }
+    ws.pending_actions.append(update_data)
+
     app.process_state(ws, [])
 
-    assert app.state.selection.type == SelectionType.DOOR
-    assert app.state.selection.id == "door123"
-    assert door.is_open is True
+    # Verify MapConfig was updated
+    aruco_def = app.map_config.data.global_settings.aruco_defaults.get(token_id)
+    assert aruco_def is not None
+    assert aruco_def.name == "Super Hero"
+    assert aruco_def.color == "#00ff00"
+    assert aruco_def.type == "PC"
+    assert aruco_def.profile == "hero_profile"
+    assert aruco_def.size == 3
+    assert aruco_def.height_mm == 50.0

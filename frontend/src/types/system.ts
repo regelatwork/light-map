@@ -125,6 +125,9 @@ export interface Token {
   name?: string;
   color?: string;
   type?: string;
+  profile?: string;
+  size?: number;
+  height_mm?: number;
   [key: string]: unknown;
 }
 

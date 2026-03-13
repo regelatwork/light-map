@@ -42,6 +42,10 @@ class RemoteToken(BaseModel):
 class TokenUpdate(BaseModel):
     name: Optional[str] = None
     color: Optional[str] = None
+    type: Optional[str] = None
+    profile: Optional[str] = None
+    size: Optional[int] = None
+    height_mm: Optional[float] = None
 
 
 class ViewportConfig(BaseModel):
@@ -321,7 +325,7 @@ def create_app(
 
     @app.put("/state/tokens/{token_id}")
     def update_token(token_id: int, update: TokenUpdate):
-        """Updates the properties (name, color) of a specific token."""
+        """Updates the properties (name, color, type, profile, size, height_mm) of a specific token."""
         res = DetectionResult(
             timestamp=time.monotonic_ns(),
             type=ResultType.ACTION,
@@ -330,6 +334,10 @@ def create_app(
                 "id": token_id,
                 "name": update.name,
                 "color": update.color,
+                "type": update.type,
+                "profile": update.profile,
+                "size": update.size,
+                "height_mm": update.height_mm,
             },
         )
         results_queue.put(res)

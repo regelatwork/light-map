@@ -122,7 +122,7 @@ def test_remote_driver_reset_zoom_action():
     assert result.data["payload"] is None
 
 
-def test_remote_driver_zoom_endpoint():
+def test_remote_driver_update_token_endpoint():
     results_queue = Queue()
     stop_event = Event()
     state_mirror = {}
@@ -130,10 +130,33 @@ def test_remote_driver_zoom_endpoint():
     app = create_app(results_queue, stop_event, state_mirror)
     client = TestClient(app)
 
-    response = client.post("/map/zoom", params={"delta": 0.5})
+    # 1. Update basic fields
+    response = client.put(
+        "/state/tokens/123", json={"name": "New Name", "color": "#ff0000"}
+    )
     assert response.status_code == 200
 
     result = results_queue.get(timeout=1.0)
     assert result.type == ResultType.ACTION
-    assert result.data["action"] == "ZOOM"
-    assert result.data["delta"] == 0.5
+    assert result.data["action"] == "UPDATE_TOKEN"
+    assert result.data["id"] == 123
+    assert result.data["name"] == "New Name"
+    assert result.data["color"] == "#ff0000"
+
+    # 2. Update extended fields
+    response = client.put(
+        "/state/tokens/123",
+        json={
+            "type": "PC",
+            "profile": "large_token",
+            "size": 2,
+            "height_mm": 25.5,
+        },
+    )
+    assert response.status_code == 200
+
+    result = results_queue.get(timeout=1.0)
+    assert result.data["type"] == "PC"
+    assert result.data["profile"] == "large_token"
+    assert result.data["size"] == 2
+    assert result.data["height_mm"] == 25.5

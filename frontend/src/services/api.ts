@@ -78,7 +78,17 @@ export const interactMenu = async (index: number) => {
   return response.json();
 };
 
-export const updateToken = async (tokenId: number, update: { name?: string; color?: string }) => {
+export const updateToken = async (
+  tokenId: number,
+  update: {
+    name?: string;
+    color?: string;
+    type?: string;
+    profile?: string;
+    size?: number;
+    height_mm?: number;
+  },
+) => {
   const host = import.meta.env.DEV ? 'http://localhost:8000' : window.location.origin;
   const response = await fetch(`${host}/state/tokens/${tokenId}`, {
     method: 'PUT',

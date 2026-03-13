@@ -33,7 +33,7 @@ def test_scene_layer_render(mock_scene):
 
     mock_scene.render.side_effect = side_effect
 
-    patches = layer.render()
+    patches = layer.render()[0]
     assert len(patches) == 1
     p = patches[0]
 
@@ -56,7 +56,7 @@ def test_scene_layer_blocking(mock_scene):
 
     mock_scene.render.side_effect = side_effect
 
-    patches = layer.render()
+    patches = layer.render()[0]
     p = patches[0]
     # In blocking mode, everything is opaque including black background
     assert np.array_equal(p.data[20, 20], [0, 0, 0, 255])
@@ -67,14 +67,14 @@ def test_scene_layer_caching(mock_scene):
     layer = SceneLayer(ws, mock_scene, width=100, height=100, is_static=False)
 
     # 1. First render
-    layer.render()
+    layer.render()[0]
     assert mock_scene.render.call_count == 1
 
     # 2. Second render
-    layer.render()
+    layer.render()[0]
     assert mock_scene.render.call_count == 1
 
     # 3. Change timestamp
     ws.increment_scene_timestamp()
-    layer.render()
+    layer.render()[0]
     assert mock_scene.render.call_count == 2

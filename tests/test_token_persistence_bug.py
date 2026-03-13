@@ -139,24 +139,28 @@ def test_token_layer_dirty_when_occluded():
     state.tokens = [token1]
     state.tokens_timestamp = 1
 
-    # First check: should be dirty because timestamp changed
-    assert layer.is_dirty
-    layer.render()  # Clears dirty flag
+    # First check: version should be based on timestamp
+    v1 = layer.get_current_version()
+    assert v1 >= state.tokens_timestamp
+    
+    patches, rv1 = layer.render()
+    assert rv1 == v1
 
-    # Second check (same time): should NOT be dirty
-    assert not layer.is_dirty
+    # Second check (same time): version should be same, render shouldn't happen 
+    # (actually get_current_version just returns the number)
+    v2 = layer.get_current_version()
+    assert v2 == v1
 
     # 2. Occluded token
     token1.is_occluded = True
-    # Reset timestamp so it only depends on occlusion
-    layer._last_state_timestamp = state.tokens_timestamp
+    
+    # Occlusion makes it dynamic
+    v3 = layer.get_current_version()
+    assert layer._is_dynamic is True
 
-    # Even without timestamp change, it should be dirty because of occlusion
-    assert layer.is_dirty
-
-    layer.render()
-    # Should STILL be dirty for next frame to continue pulse
-    assert layer.is_dirty
+    # Render should still return version
+    patches, rv3 = layer.render()
+    assert rv3 == v3
 
 
 def test_token_layer_pulse_dirty():
@@ -182,13 +186,14 @@ def test_token_layer_pulse_dirty():
     state.tokens = [token1]
     state.tokens_timestamp = 1
 
-    layer.render()
-    assert not layer.is_dirty
+    patches, v1 = layer.render()
 
-    # Advance time by 0.1s: should NOT be dirty
+    # Advance time by 0.1s: version might still be same (time_version based on now*2)
     current_time[0] += 0.1
-    assert not layer.is_dirty
+    v2 = layer.get_current_version()
+    assert v2 == v1
 
-    # Advance time by 0.6s total: should BE dirty
+    # Advance time by 0.6s total: time_version should increment
     current_time[0] += 0.5
-    assert layer.is_dirty
+    v3 = layer.get_current_version()
+    assert v3 > v1

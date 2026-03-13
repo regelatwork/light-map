@@ -18,21 +18,10 @@ class MenuLayer(Layer):
         self.colors = MenuColors()
         self._last_visible = False
 
-    @property
-    def is_dirty(self) -> bool:
+    def get_current_version(self) -> int:
         if self.state is None:
-            return True
-
-        menu = self.state.menu_state
-        visible = menu.is_visible if menu else False
-
-        if visible != self._last_visible:
-            return True
-
-        if not visible:
-            return False
-
-        return self.state.menu_timestamp > self._last_state_timestamp
+            return 0
+        return self.state.menu_timestamp
 
     def _generate_patches(self, current_time: float) -> List[ImagePatch]:
         if self.state is None:
@@ -92,7 +81,3 @@ class MenuLayer(Layer):
             new_patches.append(ImagePatch(x=x, y=y, width=w, height=h, data=patch_data))
 
         return new_patches
-
-    def _update_timestamp(self):
-        if self.state:
-            self._last_state_timestamp = self.state.menu_timestamp

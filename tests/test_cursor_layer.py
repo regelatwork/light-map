@@ -9,7 +9,7 @@ def test_cursor_layer_initialization():
     ws = WorldState()
     context = MagicMock()
     layer = CursorLayer(ws, context)
-    assert layer.is_dirty is True
+    assert layer.get_current_version() == 0
 
 
 def test_cursor_layer_render_no_hands():
@@ -17,7 +17,7 @@ def test_cursor_layer_render_no_hands():
     context = MagicMock()
     layer = CursorLayer(ws, context)
     ws.inputs = []
-    assert len(layer.render()) == 0
+    assert len(layer.render()[0]) == 0
 
 
 def test_cursor_layer_render_with_cursor():
@@ -32,7 +32,7 @@ def test_cursor_layer_render_with_cursor():
     ws.inputs = [hand]
     ws.hands_timestamp = 1
 
-    patches = layer.render()
+    patches = layer.render()[0]
     assert len(patches) == 1
     p = patches[0]
     # Reticle should be centered at (500, 500)
@@ -55,5 +55,5 @@ def test_cursor_layer_render_without_cursor():
     ws.inputs = [hand]
     ws.hands_timestamp = 1
 
-    patches = layer.render()
+    patches = layer.render()[0]
     assert len(patches) == 0

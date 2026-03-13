@@ -37,14 +37,10 @@ class VisibilityLayer(Layer):
         self.width = width  # Screen width
         self.height = height  # Screen height
 
-    @property
-    def is_dirty(self) -> bool:
+    def get_current_version(self) -> int:
         if self.state is None:
-            return True
-        return (
-            self.state.visibility_timestamp > self._last_state_timestamp
-            or self.state.viewport_timestamp > self._last_state_timestamp
-        )
+            return 0
+        return max(self.state.visibility_timestamp, self.state.viewport_timestamp)
 
     def _generate_patches(self, current_time: float) -> List[ImagePatch]:
         if self.state is None or self.state.visibility_mask is None:
@@ -116,12 +112,6 @@ class VisibilityLayer(Layer):
             )
         ]
 
-    def _update_timestamp(self):
-        if self.state:
-            self._last_state_timestamp = max(
-                self.state.visibility_timestamp, self.state.viewport_timestamp
-            )
-
 
 class ExclusiveVisionLayer(VisibilityLayer):
     """
@@ -135,11 +125,11 @@ class ExclusiveVisionLayer(VisibilityLayer):
 
     def set_mask(self, mask: Optional[np.ndarray]):
         self.mask_override = mask
+        self._is_dynamic = mask is not None
 
-    @property
-    def is_dirty(self) -> bool:
-        # Since this is for real-time inspection, we consider it dirty if we have a mask.
-        return self.mask_override is not None
+    def get_current_version(self) -> int:
+        # Driven by is_dynamic when mask is set, otherwise static empty
+        return 0
 
     def _generate_patches(self, current_time: float) -> List[ImagePatch]:
         if self.mask_override is None:

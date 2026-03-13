@@ -52,26 +52,27 @@ class Layer(ABC):
         self.is_static = is_static
         self.layer_mode = layer_mode
         self._cached_patches: Optional[List[ImagePatch]] = None
-        self._last_state_timestamp: int = -1
+        self._last_rendered_version: int = -1
+        self._is_dynamic: bool = False
 
-    @property
     @abstractmethod
-    def is_dirty(self) -> bool:
-        """True if the layer needs to re-render its patches."""
+    def get_current_version(self) -> int:
+        """Returns the logical version of the layer based on its dependencies."""
         pass
 
-    def render(self, current_time: float = 0.0) -> List[ImagePatch]:
-        """Handles caching and calls _generate_patches if dirty."""
-        if self.is_dirty or self._cached_patches is None:
+    def render(self, current_time: float = 0.0) -> Tuple[List[ImagePatch], int]:
+        """Handles caching and calls _generate_patches if version changed."""
+        current_version = self.get_current_version()
+
+        if (
+            self._is_dynamic
+            or current_version > self._last_rendered_version
+            or self._cached_patches is None
+        ):
             self._cached_patches = self._generate_patches(current_time)
-            # Call after patches generated so subclasses can update tracking state
-            self._update_timestamp()
-        return self._cached_patches
+            self._last_rendered_version = current_version
 
-    def _update_timestamp(self):
-        """Internal helper to sync timestamp after render."""
-        # Subclasses should override this if they use granular timestamps
-        pass
+        return self._cached_patches, self._last_rendered_version
 
     @abstractmethod
     def _generate_patches(self, current_time: float) -> List[ImagePatch]:

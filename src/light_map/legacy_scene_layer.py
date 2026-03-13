@@ -23,11 +23,10 @@ class LegacySceneLayer(Layer):
         self.width = width
         self.height = height
 
-    @property
-    def is_dirty(self) -> bool:
+    def get_current_version(self) -> int:
         if self.state is None:
-            return True
-        return self.state.scene_timestamp > self._last_state_timestamp
+            return 0
+        return self.state.scene_timestamp
 
     def _generate_patches(self, current_time: float) -> List[ImagePatch]:
         if not self.scene:
@@ -37,7 +36,13 @@ class LegacySceneLayer(Layer):
         buffer_bgr = np.zeros((self.height, self.width, 3), dtype=np.uint8)
 
         # Scene modifies the buffer
-        result_bgr = self.scene.render(buffer_bgr)
+        render_result = self.scene.render(buffer_bgr)
+        
+        # Handle modern scenes that might return (result, version)
+        if isinstance(render_result, tuple):
+            result_bgr = render_result[0]
+        else:
+            result_bgr = render_result
 
         # Convert to BGRA for the layered system
         result_bgra = np.zeros((self.height, self.width, 4), dtype=np.uint8)
@@ -56,7 +61,3 @@ class LegacySceneLayer(Layer):
         )
 
         return [patch]
-
-    def _update_timestamp(self):
-        if self.state:
-            self._last_state_timestamp = self.state.scene_timestamp

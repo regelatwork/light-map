@@ -28,24 +28,21 @@ class MapLayer(Layer):
         self._last_render_params: Dict[str, Any] = {}
         self._last_opacity: float = 1.0
         self._cached_map_bgra: Optional[np.ndarray] = None
+        self._version: int = 0
 
-    @property
-    def is_dirty(self) -> bool:
-        if not self.map_system.is_map_loaded():
-            return False
-
+    def get_current_version(self) -> int:
         if self.state is None:
-            return True
+            return 0
+        
+        # If map is not loaded, we are static/empty
+        if not self.map_system.is_map_loaded():
+            return 0
 
-        current_params = self.map_system.get_render_params().copy()
-        current_params["quality"] = self.quality
-
-        return (
-            self.state.map_timestamp > self._last_state_timestamp
-            or self.state.viewport_timestamp > self._last_state_timestamp
-            or current_params != self._last_render_params
-            or self.opacity != self._last_opacity
-            or self._cached_map_bgra is None
+        # Max of relevant timestamps
+        return max(
+            self.state.map_timestamp,
+            self.state.viewport_timestamp,
+            self._version  # Manual increment on opacity/quality change
         )
 
     def _generate_patches(self, current_time: float) -> List[ImagePatch]:
@@ -56,12 +53,10 @@ class MapLayer(Layer):
         current_params = self.map_system.get_render_params().copy()
         current_params["quality"] = self.quality
 
-        # Only re-render SVG if params changed or cache is empty or timestamps updated
+        # Only re-render SVG if params changed or cache is empty
         if (
             current_params != self._last_render_params
             or self._cached_map_bgra is None
-            or self.state.map_timestamp > self._last_state_timestamp
-            or self.state.viewport_timestamp > self._last_state_timestamp
         ):
             # Render from SVG
             map_bgr = self.map_system.svg_loader.render(
@@ -85,14 +80,4 @@ class MapLayer(Layer):
             x=0, y=0, width=self.width, height=self.height, data=final_data
         )
 
-        # Update tracking
-        self._last_opacity = self.opacity
-        self._update_timestamp()
-
         return [patch]
-
-    def _update_timestamp(self):
-        if self.state:
-            self._last_state_timestamp = max(
-                self.state.map_timestamp, self.state.viewport_timestamp
-            )

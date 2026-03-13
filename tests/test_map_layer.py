@@ -26,7 +26,7 @@ def test_map_layer_render_basic(mock_map_system):
     ws = WorldState()
     layer = MapLayer(ws, mock_map_system, width=100, height=100)
 
-    patches = layer.render()
+    patches = layer.render()[0]
     assert len(patches) == 1
     patch = patches[0]
 
@@ -45,22 +45,25 @@ def test_map_layer_caching(mock_map_system):
     layer = MapLayer(ws, mock_map_system, width=100, height=100)
 
     # 1. Initial render
-    layer.render()
+    p1, v1 = layer.render()
     assert mock_map_system.svg_loader.render.call_count == 1
 
-    # 2. Render again - should use cache
-    layer.render()
+    # 2. Render again with same params - should use cache
+    p2, v2 = layer.render()
     assert mock_map_system.svg_loader.render.call_count == 1
+    assert p1 is p2
+    assert v1 == v2
 
-    # 3. Change timestamp in world state
+    # 3. Change params - should trigger re-render
+    # We must ensure get_current_version() also increases if we want Layer to re-call _generate_patches
+    # MapLayer.get_current_version checks map_timestamp, viewport_timestamp and self._version
     ws.increment_map_timestamp()
-    layer.render()
-    assert mock_map_system.svg_loader.render.call_count == 2
-
-    # 4. Change params in map system
+    
     mock_map_system.get_render_params.return_value = {"x": 10, "y": 0, "zoom": 1.0}
-    layer.render()
-    assert mock_map_system.svg_loader.render.call_count == 3
+    p3, v3 = layer.render()
+    assert mock_map_system.svg_loader.render.call_count == 2
+    assert v3 > v1
+    assert p3 is not p1
 
 
 def test_map_layer_not_loaded(mock_map_system):
@@ -68,5 +71,5 @@ def test_map_layer_not_loaded(mock_map_system):
     ws = WorldState()
     layer = MapLayer(ws, mock_map_system, width=100, height=100)
 
-    patches = layer.render()
+    patches = layer.render()[0]
     assert len(patches) == 0

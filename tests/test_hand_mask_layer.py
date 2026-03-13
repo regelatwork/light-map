@@ -36,7 +36,7 @@ def test_hand_mask_layer_render_enabled(mock_config):
             np.array([[50, 50], [60, 50], [60, 60]], dtype=np.int32)
         ]
 
-        patches = layer.render(current_time=0.0)
+        patches = layer.render(current_time=0.0)[0]
 
         assert len(patches) > 0
         p = patches[0]
@@ -55,7 +55,7 @@ def test_hand_mask_layer_disabled(mock_config):
     ws.hands_timestamp = 1
 
     layer = HandMaskLayer(ws, mock_config)
-    patches = layer.render(current_time=0.0)
+    patches = layer.render(current_time=0.0)[0]
     assert len(patches) == 0
 
 
@@ -70,8 +70,8 @@ def test_hand_mask_layer_caching(mock_config):
     with patch.object(layer.hand_masker, "get_mask_hulls") as mock_hulls:
         mock_hulls.return_value = [np.array([[50, 50], [60, 60]])]
 
-        p1 = layer.render(current_time=0.0)
-        p2 = layer.render(current_time=0.0)
+        p1 = layer.render(current_time=0.0)[0]
+        p2 = layer.render(current_time=0.0)[0]
 
         assert p1 is p2
         assert mock_hulls.call_count == 1

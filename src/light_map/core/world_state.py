@@ -61,6 +61,7 @@ class WorldState:
         self.notifications_timestamp: int = 0
         self.viewport_timestamp: int = 0
         self.visibility_timestamp: int = 0
+        self.fow_timestamp: int = 0
 
         # Hand Expiration tracking
         self.last_hand_timestamp: float = 0.0
@@ -123,6 +124,10 @@ class WorldState:
     def increment_notifications_timestamp(self):
         """Manually trigger a notification cache invalidation."""
         self.notifications_timestamp += 1
+
+    def increment_fow_timestamp(self):
+        """Manually trigger a Fog of War cache invalidation."""
+        self.fow_timestamp += 1
 
     def update_performance_metrics(self, fps: float):
         """Updates the FPS metric. Does not trigger dirty flag or timestamp as it's for transient display."""
@@ -209,10 +214,10 @@ class WorldState:
                     self.inputs = result.data
                     self.hands_timestamp += 1
 
-                # BUG-FIX: Even if inputs didn't change, we MUST set is_dirty=True
+                # BUG-FIX: Even if inputs didn't change, we MUST increment hands_timestamp
                 # because scenes need to process time-based events (dwell, linger)
                 # every frame that hands are present.
-                self.is_dirty = True
+                self.hands_timestamp += 1
                 # Update timestamp to prevent immediate expiration
                 self.last_hand_timestamp = current_time
             else:

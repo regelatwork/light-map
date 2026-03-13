@@ -35,21 +35,15 @@ class FogOfWarLayer(Layer):
         self.grid_origin_svg = grid_origin_svg
         self.width = width  # Screen width
         self.height = height  # Screen height
-        self._is_dirty = True
 
-    @property
-    def is_dirty(self) -> bool:
+    def get_current_version(self) -> int:
         if self.state is None:
-            return True
-        return (
-            self._is_dirty
-            or self.state.viewport_timestamp > self._last_state_timestamp
-            or self.state.visibility_timestamp > self._last_state_timestamp
+            return 0
+        return max(
+            self.state.fow_timestamp,
+            self.state.viewport_timestamp,
+            self.state.visibility_timestamp,
         )
-
-    @is_dirty.setter
-    def is_dirty(self, value: bool):
-        self._is_dirty = value
 
     def _generate_patches(self, current_time: float) -> List[ImagePatch]:
         """
@@ -57,7 +51,6 @@ class FogOfWarLayer(Layer):
         """
         if self.manager.is_disabled:
             # GM Override: No patches to render
-            self._is_dirty = False
             return []
 
         # 1. Create the full map FoW mask in "Mask Space"
@@ -136,7 +129,6 @@ class FogOfWarLayer(Layer):
                 interpolation=cv2.INTER_NEAREST,
             )
 
-        self._is_dirty = False
         return [
             ImagePatch(
                 x=0,
@@ -146,9 +138,3 @@ class FogOfWarLayer(Layer):
                 data=fow_bgra_screen,
             )
         ]
-
-    def _update_timestamp(self):
-        if self.state:
-            self._last_state_timestamp = max(
-                self.state.viewport_timestamp, self.state.visibility_timestamp
-            )

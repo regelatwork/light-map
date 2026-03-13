@@ -18,23 +18,16 @@ class HandMaskLayer(Layer):
         self.hand_masker = HandMasker()
         self._last_enabled = config.enable_hand_masking
 
-    @property
-    def is_dirty(self) -> bool:
-        enabled_changed = self.config.enable_hand_masking != self._last_enabled
-        if enabled_changed:
-            return True
-
-        if not self.config.enable_hand_masking:
-            return False
-
+    def get_current_version(self) -> int:
         if self.state is None:
-            return True
+            return 0
 
-        # If we have active hulls (including persisted ones), keep dirty
-        if self.hand_masker.last_hulls:
-            return True
+        # If we have active hulls, we are dynamic (rendering every frame for persistence)
+        self._is_dynamic = bool(self.hand_masker.last_hulls)
 
-        return self.state.hands_timestamp > self._last_state_timestamp
+        # Also return hands_timestamp. Note: enable_hand_masking change isn't tracked by version,
+        # but Renderer will redraw if any layer changes.
+        return self.state.hands_timestamp
 
     def _transform_pts(self, pts: np.ndarray) -> np.ndarray:
         """Helper to transform normalized camera points to projector space."""
@@ -108,7 +101,3 @@ class HandMaskLayer(Layer):
             patches.append(ImagePatch(x=x1, y=y1, width=pw, height=ph, data=patch_data))
 
         return patches
-
-    def _update_timestamp(self):
-        if self.state:
-            self._last_state_timestamp = self.state.hands_timestamp

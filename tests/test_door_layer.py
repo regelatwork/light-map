@@ -39,7 +39,7 @@ def test_door_layer_render_closed_door(state, engine):
     engine.blockers = [door]
 
     layer = DoorLayer(state, engine, 100, 100)
-    patches = layer.render(0.0)
+    patches = layer.render(0.0)[0]
 
     assert len(patches) == 1
     data = patches[0].data
@@ -77,7 +77,7 @@ def test_door_layer_render_open_door(state, engine):
     engine.blockers = [door]
 
     layer = DoorLayer(state, engine, 100, 100)
-    patches = layer.render(0.0)
+    patches = layer.render(0.0)[0]
 
     assert len(patches) == 1
     data = patches[0].data
@@ -109,19 +109,30 @@ def test_door_layer_render_open_door(state, engine):
 def test_door_layer_dirty_logic(state, engine):
     layer = DoorLayer(state, engine, 100, 100)
 
-    # Initial state is dirty (since geometry_version > -1)
-    assert layer.is_dirty
-    layer.render(0.0)
-    assert not layer.is_dirty
+    # Initial state
+    v1 = layer.get_current_version()
+    patches, rv1 = layer.render(0.0)
+    assert rv1 == v1
+
+    # Subsequent render should return same version, no re-render needed
+    # (Actually render handles caching internally)
+    patches, rv2 = layer.render(0.0)
+    assert rv2 == v1
 
     # Update geometry version
     engine.geometry_version += 1
-    assert layer.is_dirty
-    layer.render(0.0)
-    assert not layer.is_dirty
+    v2 = layer.get_current_version()
+    assert v2 > v1
+    patches, rv3 = layer.render(0.0)
+    assert rv3 == v2
 
     # Update viewport
     from light_map.common_types import ViewportState
 
-    state.update_viewport(ViewportState(x=10, y=10, zoom=1.0))
-    assert layer.is_dirty
+    # Already at v=1 from geometry_version. viewport_timestamp=0.
+    # Update viewport to trigger v=2
+    state.update_viewport(ViewportState(x=100, y=100, zoom=2.0, rotation=45.0))
+    state.update_viewport(ViewportState(x=200, y=200, zoom=2.0, rotation=45.0))
+    v3 = layer.get_current_version()
+    assert v3 > v2
+

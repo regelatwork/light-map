@@ -25,11 +25,10 @@ class SceneLayer(Layer):
         self.width = width
         self.height = height
 
-    @property
-    def is_dirty(self) -> bool:
+    def get_current_version(self) -> int:
         if self.state is None:
-            return True
-        return self.state.scene_timestamp > self._last_state_timestamp
+            return 0
+        return self.state.scene_timestamp
 
     def _generate_patches(self, current_time: float) -> List[ImagePatch]:
         if not self.scene:
@@ -40,7 +39,13 @@ class SceneLayer(Layer):
         import numpy as np
 
         buffer_bgr = np.zeros((self.height, self.width, 3), dtype=np.uint8)
-        result_bgr = self.scene.render(buffer_bgr)
+        render_result = self.scene.render(buffer_bgr)
+        
+        # Handle modern scenes that might return (result, version)
+        if isinstance(render_result, tuple):
+            result_bgr = render_result[0]
+        else:
+            result_bgr = render_result
 
         result_bgra = np.zeros((self.height, self.width, 4), dtype=np.uint8)
         result_bgra[:, :, :3] = result_bgr
@@ -59,7 +64,3 @@ class SceneLayer(Layer):
         return [
             ImagePatch(x=0, y=0, width=self.width, height=self.height, data=result_bgra)
         ]
-
-    def _update_timestamp(self):
-        if self.state:
-            self._last_state_timestamp = self.state.scene_timestamp

@@ -27,8 +27,9 @@ class Renderer:
             (self.screen_height, self.screen_width, 3), dtype=np.uint8
         )
 
-        self._force_render = True
-        self._background_dirty = True
+        # Version tracking: Dict[Layer, int]
+        self.last_layer_versions = {}
+        self._background_cache_version = -1
         self._last_layer_stack: List[Layer] = []
 
     def render(
@@ -48,23 +49,23 @@ class Renderer:
             current_time: The current application time (monotonic).
             instrument: Optional LatencyInstrument to track per-layer timings.
         """
-        # If the layer stack itself changed (e.g., scene switch), we MUST force a full redraw
-        # and invalidate the background cache.
+        # 1. Check if stack changed or any layer is dirty
         stack_changed = layers != self._last_layer_stack
         if stack_changed:
-            self._force_render = True
-            self._background_dirty = True
             self._last_layer_stack = list(layers)
+            self._background_cache_version = -1  # Invalidate
 
-        any_dirty = self._force_render
-        static_dirty = self._background_dirty
+        any_dirty = stack_changed
+        static_dirty = (self._background_cache_version == -1)
 
-        # Poll all layers for dirty status
-        layer_info = []
-        for i, layer in enumerate(layers):
-            is_dirty = layer.is_dirty
-            layer_info.append(is_dirty)
-            if is_dirty:
+        # Get current versions of all layers
+        current_layer_versions = {}
+        for layer in layers:
+            v = layer.get_current_version()
+            current_layer_versions[layer] = v
+            
+            # If dynamic or version increased, it's dirty
+            if getattr(layer, "_is_dynamic", False) or v > self.last_layer_versions.get(layer, -1):
                 any_dirty = True
                 if layer.is_static:
                     static_dirty = True
@@ -72,40 +73,40 @@ class Renderer:
         if not any_dirty:
             return None
 
-        # 1. Update Background Cache if needed
+        # 2. Update Background Cache if needed
         if static_dirty:
             self.background_cache.fill(0)
             for i, layer in enumerate(layers):
                 if layer.is_static:
                     layer_name = layer.__class__.__name__
                     with track_wait(f"layer_render_{layer_name}", instrument):
-                        patches = layer.render(current_time)
+                        patches, version = layer.render(current_time)
+                        self.last_layer_versions[layer] = version
+
                     with track_wait(f"layer_composite_{layer_name}", instrument):
                         for patch in patches:
                             self._composite_patch(
                                 self.background_cache, patch, layer.layer_mode
                             )
-            self._background_dirty = False
+            self._background_cache_version = 0  # Validated static portion
 
-        # 2. Copy Background Cache to Output Buffer
+        # 3. Copy Background Cache to Output Buffer
         np.copyto(self.output_buffer, self.background_cache)
 
-        # 3. Composite Dynamic Layers
+        # 4. Composite Dynamic Layers
         for i, layer in enumerate(layers):
             if not layer.is_static:
                 layer_name = layer.__class__.__name__
-                # We only render and composite if it's dirty or we are forced
-                # But Layer.render() usually handles its own internal caching/dirty check.
-                # However, for consistency and clear stats, we wrap it.
                 with track_wait(f"layer_render_{layer_name}", instrument):
-                    patches = layer.render(current_time)
+                    patches, version = layer.render(current_time)
+                    self.last_layer_versions[layer] = version
+
                 with track_wait(f"layer_composite_{layer_name}", instrument):
                     for patch in patches:
                         self._composite_patch(
                             self.output_buffer, patch, layer.layer_mode
                         )
 
-        self._force_render = False
         return self.output_buffer
 
     def _composite_patch(self, buffer: np.ndarray, patch: ImagePatch, mode: LayerMode):

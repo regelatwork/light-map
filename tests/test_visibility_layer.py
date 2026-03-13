@@ -8,7 +8,7 @@ def test_visibility_layer_initialization():
     layer = VisibilityLayer(ws, 100, 100, 10.0, (0.0, 0.0), 100, 100)
     assert layer.mask_width == 100
     assert layer.mask_height == 100
-    assert layer.is_dirty is True
+    assert layer.get_current_version() == 0
 
 
 def test_visibility_layer_render():
@@ -16,14 +16,14 @@ def test_visibility_layer_render():
     layer = VisibilityLayer(ws, 10, 10, 10.0, (0.0, 0.0), 10, 10)
 
     # Initially no mask
-    assert len(layer.render()) == 0
+    assert len(layer.render()[0]) == 0
 
     # Set mask in state
     mask = np.zeros((10, 10), dtype=np.uint8)
     mask[0, 0] = 255
     ws.update_visibility_mask(mask)
 
-    patches = layer.render()
+    patches = layer.render()[0]
     assert len(patches) == 1
     p = patches[0]
 
@@ -42,13 +42,13 @@ def test_visibility_layer_caching():
     ws.update_visibility_mask(mask)
 
     # 1. First render
-    p1 = layer.render()
-    p2 = layer.render()
+    p1 = layer.render()[0]
+    p2 = layer.render()[0]
     assert p1 is p2
 
     # 2. Update mask with same data
     ws.update_visibility_mask(mask)
-    p3 = layer.render()
+    p3 = layer.render()[0]
     assert (
         p3 is p1
     )  # Manager/State handles change detection, timestamp shouldn't increment
@@ -56,5 +56,5 @@ def test_visibility_layer_caching():
     # 3. Update with different data
     mask[0, 0] = 255
     ws.update_visibility_mask(mask)
-    p4 = layer.render()
+    p4 = layer.render()[0]
     assert p4 is not p1

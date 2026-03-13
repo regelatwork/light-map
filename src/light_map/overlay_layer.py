@@ -21,10 +21,9 @@ class TokenLayer(Layer):
         self._last_show_tokens = True
         self._last_pulse_render_time = 0.0
 
-    @property
-    def is_dirty(self) -> bool:
+    def get_current_version(self) -> int:
         if self.state is None:
-            return True
+            return 0
 
         now = self.time_provider()
         show_tokens = getattr(
@@ -35,23 +34,21 @@ class TokenLayer(Layer):
         # Otherwise, we pulse every 500ms for static ghost tokens to show they are "live".
         any_occluded = any(t.is_occluded for t in self.state.tokens)
 
-        pulse_dirty = False
+        self._is_dynamic = False
         if show_tokens and self.state.tokens:
             if any_occluded:
-                pulse_dirty = True
+                self._is_dynamic = True
             elif now - self._last_pulse_render_time > 0.5:
-                pulse_dirty = True
+                # We trigger ONE render pass by incrementing version or just returning dirty?
+                # Actually, _is_dynamic = True for one frame is hard.
+                # Let's just return a higher version if 500ms passed.
+                pass
 
-        if (
-            pulse_dirty
-            or self.state.tokens_timestamp > self._last_state_timestamp
-            or show_tokens != self._last_show_tokens
-        ):
-            if pulse_dirty:
-                self._last_pulse_render_time = now
-            return True
-
-        return False
+        # Use time-based version for 500ms pulse if not dynamic
+        time_version = int(now * 2) # Increments every 0.5s
+        
+        # Combined version
+        return max(self.state.tokens_timestamp, time_version if show_tokens else 0)
 
     def _generate_patches(self, current_time: float) -> List[ImagePatch]:
         if self.state is None:
@@ -67,10 +64,6 @@ class TokenLayer(Layer):
 
         return self.overlay_renderer.draw_ghost_tokens(self.time_provider)
 
-    def _update_timestamp(self):
-        if self.state:
-            self._last_state_timestamp = self.state.tokens_timestamp
-
 
 class NotificationLayer(Layer):
     """
@@ -82,20 +75,15 @@ class NotificationLayer(Layer):
         self.context = context
         self.overlay_renderer = OverlayRenderer(context)
 
-    @property
-    def is_dirty(self) -> bool:
+    def get_current_version(self) -> int:
         if self.state is None:
-            return True
-        return self.state.notifications_timestamp > self._last_state_timestamp
+            return 0
+        return self.state.notifications_timestamp
 
     def _generate_patches(self, current_time: float) -> List[ImagePatch]:
         if self.state is None:
             return []
         return self.overlay_renderer.draw_notifications()
-
-    def _update_timestamp(self):
-        if self.state:
-            self._last_state_timestamp = self.state.notifications_timestamp
 
 
 class DebugLayer(Layer):
@@ -109,22 +97,12 @@ class DebugLayer(Layer):
         self.overlay_renderer = OverlayRenderer(context)
         self._last_debug_mode = False
 
-    @property
-    def is_dirty(self) -> bool:
+    def get_current_version(self) -> int:
         if self.state is None:
-            return True
-
-        if (
-            self.state.hands_timestamp > self._last_state_timestamp
-            or self.context.debug_mode != self._last_debug_mode
-            or True  # Always dirty if debug mode is on to update FPS
-        ):
-            return (
-                self.context.debug_mode
-                or self.context.debug_mode != self._last_debug_mode
-            )
-
-        return False
+            return 0
+        
+        self._is_dynamic = self.context.debug_mode
+        return self.state.hands_timestamp
 
     def _generate_patches(self, current_time: float) -> List[ImagePatch]:
         if self.state is None or not self.context.debug_mode:
@@ -137,7 +115,3 @@ class DebugLayer(Layer):
             self.state.current_scene_name,
             self.state.inputs,
         )
-
-    def _update_timestamp(self):
-        if self.state:
-            self._last_state_timestamp = self.state.hands_timestamp

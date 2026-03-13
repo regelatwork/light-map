@@ -9,10 +9,9 @@ class MockLayer(Layer):
         super().__init__(state=state, is_static=is_static)
         self.generate_count = 0
 
-    @property
-    def is_dirty(self) -> bool:
-        # For testing, dirty if map_timestamp changed
-        return self.state.map_timestamp > self._last_state_timestamp
+    def get_current_version(self) -> int:
+        # For testing, version is map_timestamp
+        return self.state.map_timestamp
 
     def _generate_patches(self, current_time: float) -> List[ImagePatch]:
         self.generate_count += 1
@@ -26,24 +25,21 @@ class MockLayer(Layer):
             )
         ]
 
-    def _update_timestamp(self):
-        self._last_state_timestamp = self.state.map_timestamp
-
 
 def test_layer_caching():
     state = WorldState()
     layer = MockLayer(state)
 
     # First render
-    patches = layer.render()
+    patches = layer.render()[0]
     assert layer.generate_count == 1
     assert len(patches) == 1
 
     # Second render without change
-    patches = layer.render()
+    patches = layer.render()[0]
     assert layer.generate_count == 1
 
     # Change state
     state.increment_map_timestamp()
-    patches = layer.render()
+    patches = layer.render()[0]
     assert layer.generate_count == 2

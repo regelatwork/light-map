@@ -31,13 +31,11 @@ class DoorLayer(Layer):
         self.thickness_multiplier = thickness_multiplier
         self._last_geometry_version = -1
 
-    @property
-    def is_dirty(self) -> bool:
+    def get_current_version(self) -> int:
         if self.state is None:
-            return True
-        return (
-            self.visibility_engine.geometry_version > self._last_geometry_version
-            or self.state.viewport_timestamp > self._last_state_timestamp
+            return 0
+        return max(
+            self.visibility_engine.geometry_version, self.state.viewport_timestamp
         )
 
     def _generate_patches(self, current_time: float) -> List[ImagePatch]:
@@ -125,8 +123,6 @@ class DoorLayer(Layer):
                     thickness=yellow_thickness,
                     lineType=cv2.LINE_AA,
                 )
-        self._last_geometry_version = self.visibility_engine.geometry_version
-        self._update_timestamp()
 
         return [
             ImagePatch(
@@ -137,7 +133,3 @@ class DoorLayer(Layer):
                 data=image,
             )
         ]
-
-    def _update_timestamp(self):
-        if self.state:
-            self._last_state_timestamp = self.state.viewport_timestamp

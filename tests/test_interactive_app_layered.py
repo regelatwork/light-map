@@ -52,7 +52,7 @@ def test_interactive_app_process_state_layered(mock_config, monkeypatch):
 
     # We need to mock the current scene's render method to avoid errors
     app.current_scene = MagicMock()
-    app.current_scene.render.return_value = np.zeros((100, 100, 3), dtype=np.uint8)
+    app.current_scene.render.return_value = (np.zeros((100, 100, 3), dtype=np.uint8), 1)
     app.current_scene.update.return_value = None
 
     frame, messages = app.process_state(ws, [])
@@ -77,10 +77,11 @@ def test_interactive_app_process_state_skips_render_when_not_dirty(
 
     # 1. Initial render (everything is dirty)
     app.current_scene = MagicMock()
-    app.current_scene.is_dirty = True
+    app.current_scene.version = 1
+    app.current_scene.is_dynamic = False
     app.current_scene.update.return_value = None
     app.current_scene.get_active_layers.return_value = app.layer_stack
-    app.current_scene.render.return_value = np.zeros((100, 100, 3), dtype=np.uint8)
+    app.current_scene.render.return_value = (np.zeros((100, 100, 3), dtype=np.uint8), 1)
 
     frame1, _ = app.process_state(ws, [])
     assert frame1 is not None
@@ -89,8 +90,8 @@ def test_interactive_app_process_state_skips_render_when_not_dirty(
     # We must ensure no pulsing tokens are present to allow skip
     ws.tokens = []
 
-    # We must ensure the scene is clean
-    app.current_scene.is_dirty = False
+    # Ensure last_scene_version is synced
+    app.last_scene_version = app.current_scene.version
 
     # Also need to mock get_active_layers to return same stack
     app.current_scene.get_active_layers.return_value = app.layer_stack
@@ -111,10 +112,10 @@ def test_interactive_app_process_state_actions(mock_config, monkeypatch):
 
     # 1. Setup mock scene
     app.current_scene = MagicMock()
-    app.current_scene.is_dirty = True
+    app.current_scene.version = 1
     app.current_scene.update.return_value = None
     app.current_scene.get_active_layers.return_value = app.layer_stack
-    app.current_scene.render.side_effect = lambda f: f  # Return the buffer passed in
+    app.current_scene.render.side_effect = lambda f: (f, 1)  # Return the buffer passed in
 
     # 2. Inject ZOOM action
     initial_zoom = app.map_system.state.zoom
@@ -163,10 +164,10 @@ def test_interactive_app_update_token_action(mock_config, monkeypatch):
 
     # 1. Setup mock scene
     app.current_scene = MagicMock()
-    app.current_scene.is_dirty = True
+    app.current_scene.version = 1
     app.current_scene.update.return_value = None
     app.current_scene.get_active_layers.return_value = app.layer_stack
-    app.current_scene.render.side_effect = lambda f: f
+    app.current_scene.render.side_effect = lambda f: (f, 1)
 
     # 2. Inject UPDATE_TOKEN action
     token_id = 999

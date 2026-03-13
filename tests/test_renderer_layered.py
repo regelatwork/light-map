@@ -15,14 +15,12 @@ class MockLayer(Layer):
     ):
         super().__init__(state=state, is_static=is_static, layer_mode=mode)
         self.patches = patches or []
-        self._dirty = True
+        self._version = 1
 
-    @property
-    def is_dirty(self) -> bool:
-        return self._dirty
+    def get_current_version(self) -> int:
+        return self._version
 
     def _generate_patches(self, current_time: float = 0.0) -> List[ImagePatch]:
-        self._dirty = False
         return self.patches
 
 
@@ -125,8 +123,8 @@ def test_renderer_skip_if_not_dirty():
     frame = renderer.render(state, [layer])
     assert frame is None
 
-    # Set dirty again
-    layer._dirty = True
+    # Set dirty again by incrementing version
+    layer._version += 1
     frame = renderer.render(state, [layer])
     assert frame is not None
 

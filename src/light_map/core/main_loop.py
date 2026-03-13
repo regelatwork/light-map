@@ -99,7 +99,7 @@ class MainLoopController:
                 # being available in the context. If we clear it, they get empty data.
                 # Since WorldState.apply already implements a change-check,
                 # we won't trigger redundant renders if the same results arrive.
-                # raw_aruco will be cleared in WorldState.clear_dirty() after the render.
+                # raw_aruco will be cleared in WorldState.clear_raw_aruco() after the render.
 
         # 4. Process Temporal Events
         event_actions = self.events.check()
@@ -210,13 +210,12 @@ class MainLoopController:
                 # 1. Process State
                 actions = self.tick()
 
-                # 2. Trigger Render (Layered Renderer handles dirty states)
+                # 2. Trigger Render (Layered Renderer handles version tracking)
                 ts_to_render = self.state.last_frame_timestamp
                 with track_wait("render_time", self.instrument):
-                    # We always call render_callback so InteractiveApp can check for dirty scenes
+                    # We always call render_callback so InteractiveApp can check for scene changes
                     # or remote inputs even if no new camera frame arrived.
                     did_render = render_callback(self.state, actions)
-
                 if did_render:
                     if ts_to_render > 0:
                         self.instrument.record_render(ts_to_render)

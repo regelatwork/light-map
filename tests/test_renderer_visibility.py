@@ -8,17 +8,15 @@ class MockLayer(Layer):
         super().__init__(is_static=is_static)
         self.color = color
         self.alpha = alpha
-        self._is_dirty = True
+        self._version = 1
 
-    @property
-    def is_dirty(self):
-        return self._is_dirty
+    def get_current_version(self):
+        return self._version
 
     def _generate_patches(self, current_time: float = 0.0):
         data = np.zeros((100, 100, 4), dtype=np.uint8)
         data[:, :, :3] = self.color
         data[:, :, 3] = self.alpha
-        self._is_dirty = False
         return [ImagePatch(0, 0, 100, 100, data)]
 
 
@@ -36,9 +34,8 @@ def test_renderer_visibility_composition():
     fow_data[:, 50:, 3] = 0  # Explored
 
     class FowLayer(Layer):
-        @property
-        def is_dirty(self):
-            return True
+        def get_current_version(self):
+            return 1
 
         def _generate_patches(self, current_time: float = 0.0):
             return [ImagePatch(0, 0, 100, 100, fow_data)]
@@ -53,9 +50,8 @@ def test_renderer_visibility_composition():
     vis_data[:, 75:, 3] = 0  # Visible
 
     class VisLayer(Layer):
-        @property
-        def is_dirty(self):
-            return True
+        def get_current_version(self):
+            return 1
 
         def _generate_patches(self, current_time: float = 0.0):
             return [ImagePatch(0, 0, 100, 100, vis_data)]

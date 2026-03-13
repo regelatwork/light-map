@@ -12,7 +12,7 @@ def test_fow_initialization():
     layer = FogOfWarLayer(ws, manager, 10.0, (0.0, 0.0), 100, 100)
     assert layer.manager.width == 100
     assert layer.manager.height == 100
-    assert layer.is_dirty is True
+    assert layer.get_current_version() == 0
 
 
 def test_fow_render_two_states():
@@ -21,7 +21,7 @@ def test_fow_render_two_states():
     layer = FogOfWarLayer(ws, manager, 10.0, (0.0, 0.0), 10, 10)
 
     # 1. Unexplored (All black/opaque)
-    patches = layer.render()
+    patches = layer.render()[0]
     alpha = patches[0].data[:, :, 3]
     assert np.all(alpha == 255)
 
@@ -31,9 +31,9 @@ def test_fow_render_two_states():
     explored = np.zeros((10, 10), dtype=np.uint8)
     explored[0, 0] = 255
     manager.reveal_area(explored)
-    layer.is_dirty = True
+    ws.increment_fow_timestamp()
 
-    patches = layer.render()
+    patches = layer.render()[0]
     alpha = patches[0].data[:, :, 3]
     assert alpha[0, 0] == 0
     assert alpha[1, 1] == 255
@@ -52,14 +52,14 @@ def test_fow_rendering_with_non_zero_origin():
     explored = np.zeros((10, 10), dtype=np.uint8)
     explored[5, 5] = 255
     manager.reveal_area(explored)
-    layer.is_dirty = True
+    ws.increment_fow_timestamp()
 
     # Viewport at zoom=1.0, no offset
     from light_map.common_types import ViewportState
 
     ws.update_viewport(ViewportState(x=0, y=0, zoom=1.0, rotation=0))
 
-    patches = layer.render()
+    patches = layer.render()[0]
     data = patches[0].data
 
     # Transformation: p_screen = m_svg_to_screen * m_fow_to_svg * p_fow
@@ -79,8 +79,8 @@ def test_fow_gm_override():
     manager = FogOfWarManager(10, 10)
     layer = FogOfWarLayer(ws, manager, 10.0, (0.0, 0.0), 10, 10)
     manager.is_disabled = True
-    layer.is_dirty = True
+    ws.increment_fow_timestamp()
 
-    patches = layer.render()
+    patches = layer.render()[0]
     # No patches should be returned when disabled
     assert len(patches) == 0

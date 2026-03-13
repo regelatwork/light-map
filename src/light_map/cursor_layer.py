@@ -23,16 +23,10 @@ class CursorLayer(Layer):
         self.context = context
         self._last_cursor_positions: List[Tuple[int, int]] = []
 
-    @property
-    def is_dirty(self) -> bool:
+    def get_current_version(self) -> int:
         if self.state is None:
-            return True
-
-        # Cursor is dynamic, always re-render if hands are present or if they were present
-        if self.state.hands_timestamp > self._last_state_timestamp:
-            return True
-
-        return False
+            return 0
+        return self.state.hands_timestamp
 
     def _generate_patches(self, current_time: float) -> List[ImagePatch]:
         if self.state is None or not self.state.inputs:
@@ -84,7 +78,3 @@ class CursorLayer(Layer):
 
         self._last_cursor_positions = current_positions
         return patches
-
-    def _update_timestamp(self):
-        if self.state:
-            self._last_state_timestamp = self.state.hands_timestamp

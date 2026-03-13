@@ -69,6 +69,7 @@ class InteractiveApp:
         self.events = events or TemporalEventManager(time_provider=time_provider)
         self.last_fps_time = 0.0
         self.fps = 0.0
+        self.last_scene_version = -1
 
         # State management
         self.state = WorldState()
@@ -609,7 +610,7 @@ class InteractiveApp:
                             menu_sys = getattr(self.current_scene, "menu_system", None)
                             if menu_sys:
                                 menu_sys.trigger_index(index)
-                                self.current_scene.is_dirty = True
+                                self.current_scene.mark_dirty()
                             else:
                                 logging.error(
                                     "InteractiveApp: Current scene is MenuScene but has no menu_system"
@@ -699,7 +700,9 @@ class InteractiveApp:
                 ]
 
                 # Ensure Map is full brightness
-                self.map_layer.opacity = 1.0
+                if self.map_layer.opacity != 1.0:
+                    self.map_layer.opacity = 1.0
+                    self.map_layer._version += 1
             else:
                 self.exclusive_vision_layer.set_mask(None)
         else:
@@ -725,20 +728,21 @@ class InteractiveApp:
             t_start = time.perf_counter_ns()
 
             # 1. Update MapLayer params based on scene
-            self.map_layer.opacity = 1.0
+            new_opacity = 1.0
             is_interacting = getattr(self.current_scene, "is_interacting", False)
-            self.map_layer.quality = 0.25 if is_interacting else 1.0
+            new_quality = 0.25 if is_interacting else 1.0
+            
+            if new_opacity != self.map_layer.opacity or new_quality != self.map_layer.quality:
+                self.map_layer.opacity = new_opacity
+                self.map_layer.quality = new_quality
+                self.map_layer._version += 1
 
             # 2. Update SceneLayer bridge
             self.scene_layer.scene = self.current_scene
             # Only increment scene timestamp if scene is actually dirty
-            if self.current_scene.is_dirty:
+            if self.current_scene.is_dynamic or self.current_scene.version > self.last_scene_version:
                 state.increment_scene_timestamp()
-                # Most scenes (especially legacy) draw every frame once rendered
-                # or managing their own dirty flag.
-                # We clear it here if it's a scene that doesn't draw itself.
-                if not getattr(self.current_scene, "is_dynamic", False):
-                    self.current_scene.is_dirty = False
+                self.last_scene_version = self.current_scene.version
 
             # 3. Perform Composite Render
             with track_wait("renderer_composite", self.instrument):
@@ -784,7 +788,7 @@ class InteractiveApp:
                 self.state.update_visibility_mask(combined_pc_mask)
 
                 # 5. Invalidate Layer Caches
-                self.fow_layer.is_dirty = True
+                self.state.increment_fow_timestamp()
 
     def _rebuild_visibility_stack(self, entry: Any):
         """Re-initializes visibility engine and layers based on map configuration."""
@@ -935,13 +939,13 @@ class InteractiveApp:
             if self.fow_manager and self.current_map_path:
                 self.fow_manager.reset()
                 self.map_config.save_fow_masks(self.current_map_path, self.fow_manager)
-                self.fow_layer.is_dirty = True
+                self.state.increment_fow_timestamp()
                 self.notifications.add_notification("Fog of War Reset")
 
         if payload.get("action") == "TOGGLE_FOW":
             if self.fow_manager:
                 self.fow_manager.is_disabled = not self.fow_manager.is_disabled
-                self.fow_layer.is_dirty = True
+                self.state.increment_fow_timestamp()
                 state = "OFF" if self.fow_manager.is_disabled else "ON"
                 self.notifications.add_notification(f"GM: Fog of War {state}")
 

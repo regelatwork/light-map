@@ -30,7 +30,7 @@ def test_menu_layer_render_visible():
     )
 
     layer = MenuLayer(ws)
-    patches = layer.render()
+    patches = layer.render()[0]
 
     assert len(patches) == 1
     p = patches[0]
@@ -46,7 +46,7 @@ def test_menu_layer_render_hidden():
     ws.update_menu_state(get_default_menu_state(is_visible=False))
 
     layer = MenuLayer(ws)
-    patches = layer.render()
+    patches = layer.render()[0]
     assert len(patches) == 0
 
 
@@ -61,14 +61,14 @@ def test_menu_layer_caching():
     )
 
     layer = MenuLayer(ws)
-    p1 = layer.render()
-    p2 = layer.render()
+    p1 = layer.render()[0]
+    p2 = layer.render()[0]
 
     # Should be the same list object due to caching
     assert p1 is p2
 
     # Change timestamp
     ws.increment_menu_timestamp()
-    p3 = layer.render()
+    p3 = layer.render()[0]
     assert p3 is not p1  # New list
     assert len(p3) == 1

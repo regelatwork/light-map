@@ -84,7 +84,7 @@ class MenuScene(Scene):
             door_is_open=door_is_open,
         )
         self.menu_system.set_root_menu(new_root)
-        self._is_dirty = True
+        self.mark_dirty()
 
     def update(
         self, inputs: List[HandInput], actions: List[Action], current_time: float
@@ -111,7 +111,7 @@ class MenuScene(Scene):
             self._menu_state.hovered_item_index != new_state.hovered_item_index
             or self._menu_state.node_stack_titles != new_state.node_stack_titles
         ):
-            self._is_dirty = True
+            self.mark_dirty()
 
         self._menu_state = new_state
 
@@ -273,21 +273,10 @@ class MenuScene(Scene):
         return self.menu_system.get_current_state()
 
     @property
-    def is_dirty(self) -> bool:
+    def is_dynamic(self) -> bool:
+        """Menu is dynamic while it is summoning or priming (animating)."""
         state = self.menu_system.get_current_state()
-        # Dirty if we are in the middle of a transition (progress)
-        # OR if we have a one-time dirty flag set (e.g. from hovering/scrolling)
-        # Note: state.is_visible is NOT enough, we only re-render if something CHANGES inside.
-        return (
-            self._is_dirty
-            or state.summon_progress > 0
-            or state.prime_progress > 0
-            or state.just_triggered_action is not None
-        )
-
-    @is_dirty.setter
-    def is_dirty(self, value: bool):
-        self._is_dirty = value
+        return state.summon_progress > 0 or state.prime_progress > 0
 
     @property
     def blocking(self) -> bool:

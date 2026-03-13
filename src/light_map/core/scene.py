@@ -60,16 +60,26 @@ class Scene(ABC):
 
     def __init__(self, context: AppContext):
         self.context = context
-        self._is_dirty = True
+        self._version = 0
+        self._is_dynamic = False
 
     @property
-    def is_dirty(self) -> bool:
-        """True if the scene has visual changes since last render."""
-        return self._is_dirty
+    def version(self) -> int:
+        """Monotonically increasing version number, incremented on every change."""
+        return self._version
 
-    @is_dirty.setter
-    def is_dirty(self, value: bool):
-        self._is_dirty = value
+    def mark_dirty(self):
+        """Increments the scene version to trigger a re-render."""
+        self._version += 1
+
+    @property
+    def is_dynamic(self) -> bool:
+        """True if the scene should re-render every frame."""
+        return self._is_dynamic
+
+    @is_dynamic.setter
+    def is_dynamic(self, value: bool):
+        self._is_dynamic = value
 
     @property
     def blocking(self) -> bool:

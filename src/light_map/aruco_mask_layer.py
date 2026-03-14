@@ -1,5 +1,5 @@
 import logging
-from typing import List
+from typing import List, Any
 import cv2
 import numpy as np
 from .common_types import Layer, LayerMode, ImagePatch, AppConfig
@@ -25,9 +25,12 @@ class ArucoMaskLayer(Layer):
         enabled_bit = 1 if self.config.enable_aruco_masking else 0
         return (self.state.tokens_timestamp << 1) | enabled_bit
 
-    def _transform_pts(self, pts: np.ndarray) -> np.ndarray:
+    def _transform_pts(self, pts: Any) -> np.ndarray:
         """Helper to transform camera pixel points to projector space."""
         # pts is expected to be (N, 2)
+        if isinstance(pts, list):
+            pts = np.array(pts, dtype=np.float32)
+
         cam_pts = pts.reshape(-1, 1, 2).astype(np.float32).copy()
 
         if self.config.distortion_model:

@@ -92,3 +92,16 @@ def test_aruco_mask_layer_no_aruco(mock_state, mock_config):
 
     patches = layer._generate_patches(0.0)
     assert len(patches) == 0
+
+
+def test_aruco_mask_layer_list_corners(mock_state, mock_config):
+    """Verifies that the layer correctly handles corners as lists (common after IPC)."""
+    # corners as list of lists instead of numpy array
+    corners_list = [[100.0, 100.0], [200.0, 100.0], [200.0, 200.0], [100.0, 200.0]]
+    mock_state.raw_aruco = {"corners": [corners_list], "ids": [42]}
+    layer = ArucoMaskLayer(mock_state, mock_config)
+
+    # This should not raise AttributeError: 'list' object has no attribute 'reshape'
+    patches = layer._generate_patches(0.0)
+    assert len(patches) == 1
+    assert patches[0].x == 90

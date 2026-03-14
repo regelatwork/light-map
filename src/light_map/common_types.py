@@ -224,6 +224,9 @@ class AppConfig:
     projector_matrix: np.ndarray
     projector_matrix_resolution: Tuple[int, int] = DEFAULT_PROJECTOR_RESOLUTION
     camera_resolution: Tuple[int, int] = (0, 0)  # Runtime camera resolution
+    camera_matrix: Optional[np.ndarray] = None
+    rvec: Optional[np.ndarray] = None
+    tvec: Optional[np.ndarray] = None
     map_search_patterns: List[str] = field(default_factory=list)
     distortion_model: Optional[Any] = None
     storage_manager: Optional[Any] = None
@@ -237,6 +240,8 @@ class AppConfig:
     aruco_mask_padding: int = DEFAULT_ARUCO_MASK_PADDING
     gm_position: GmPosition = GmPosition.NONE
     projector_ppi: float = DEFAULT_PROJECTOR_PPI
+    aruco_defaults: Dict[int, Any] = field(default_factory=dict)
+    token_profiles: Dict[str, Any] = field(default_factory=dict)
     pointer_extension_inches: float = DEFAULT_POINTER_EXTENSION_INCHES
     inspection_linger_duration: float = DEFAULT_INSPECTION_LINGER_DURATION
     door_thickness_multiplier: float = DEFAULT_DOOR_THICKNESS_MULTIPLIER

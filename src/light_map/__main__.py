@@ -180,6 +180,18 @@ def run_app(args):
     map_config_manager = MapConfigManager(storage=storage)
     gs = map_config_manager.data.global_settings
 
+    # Load Camera Calibration for Parallax Correction
+    camera_matrix = None
+    if os.path.exists(intrinsics_path):
+        with np.load(intrinsics_path) as data:
+            camera_matrix = data["camera_matrix"]
+
+    rvec, tvec = None, None
+    if os.path.exists(extrinsics_path):
+        with np.load(extrinsics_path) as data:
+            rvec = data["rvec"]
+            tvec = data["tvec"]
+
     # Detect runtime camera resolution first
     cam_w, cam_h = 0, 0
     with Camera() as cam:
@@ -192,6 +204,9 @@ def run_app(args):
         projector_matrix=transformation_matrix,
         projector_matrix_resolution=(cam_res_w, cam_res_h),
         camera_resolution=(cam_w, cam_h),
+        camera_matrix=camera_matrix,
+        rvec=rvec,
+        tvec=tvec,
         map_search_patterns=map_sources,
         distortion_model=dist_model,
         storage_manager=storage,
@@ -199,8 +214,12 @@ def run_app(args):
         log_file=log_file,
         enable_hand_masking=gs.enable_hand_masking,
         hand_mask_padding=gs.hand_mask_padding,
+        enable_aruco_masking=gs.enable_aruco_masking,
+        aruco_mask_padding=gs.aruco_mask_padding,
         gm_position=gs.gm_position,
         projector_ppi=gs.projector_ppi,
+        aruco_defaults=gs.aruco_defaults,
+        token_profiles=gs.token_profiles,
         inspection_linger_duration=gs.inspection_linger_duration,
     )
     app = InteractiveApp(config)

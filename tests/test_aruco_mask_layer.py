@@ -15,6 +15,13 @@ def mock_config():
     config.aruco_mask_padding = 10
     config.projector_matrix = np.eye(3)
     config.distortion_model = None
+    config.camera_matrix = None
+    config.rvec = None
+    config.tvec = None
+    config.projector_ppi = 96.0
+    config.token_profiles = {}
+    config.aruco_defaults = {}
+    config.storage_manager = None
     return config
 
 
@@ -105,3 +112,58 @@ def test_aruco_mask_layer_list_corners(mock_state, mock_config):
     patches = layer._generate_patches(0.0)
     assert len(patches) == 1
     assert patches[0].x == 90
+
+
+def test_aruco_mask_layer_parallax_rendering(mock_state, mock_config):
+    """Verifies that height changes the projection coordinates (parallax)."""
+    # 1. Setup camera calibration (simplified identity-ish)
+    # Camera at (0,0, 500) looking down
+    mock_config.camera_matrix = np.array(
+        [[1000, 0, 960], [0, 1000, 540], [0, 0, 1]], dtype=np.float32
+    )
+    mock_config.rvec = np.zeros(3, dtype=np.float32)
+    mock_config.tvec = np.array(
+        [0, 0, 500], dtype=np.float32
+    )  # Camera at 500mm above table
+    mock_config.projector_ppi = 96.0
+    # Marker near principal point (960, 540) to be in camera view
+    # Principal point maps to world (0,0) at Z=0
+    # Let's map world (0,0) to projector (960, 540)
+    mock_config.projector_matrix = np.array(
+        [[1, 0, 960], [0, 1, 540], [0, 0, 1]], dtype=np.float32
+    )
+
+    # Marker near principal point (960, 540) to be in camera view
+    corners = np.array(
+        [[900, 500], [1000, 500], [1000, 600], [900, 600]], dtype=np.float32
+    )
+    mock_state.raw_aruco = {"corners": [corners], "ids": [42]}
+
+    layer = ArucoMaskLayer(mock_state, mock_config)
+
+    # Height 0
+    patches0 = layer._generate_patches(0.0)
+    assert len(patches0) == 1
+    x0 = patches0[0].x
+
+    # Height 50mm
+    from dataclasses import dataclass
+
+    @dataclass
+    class Profile:
+        height_mm: float
+
+    @dataclass
+    class Default:
+        profile: str
+
+    mock_config.token_profiles = {"standard": Profile(height_mm=50.0)}
+    mock_config.aruco_defaults = {42: Default(profile="standard")}
+
+    patches50 = layer._generate_patches(0.0)
+    assert len(patches50) == 1
+    x50 = patches50[0].x
+
+    # For a marker seen at (100,100), increasing height should move its world location
+    # further from the camera principal point.
+    assert x0 != x50

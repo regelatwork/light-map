@@ -45,9 +45,12 @@ from light_map.core.world_state import WorldState
 
 if TYPE_CHECKING:
     from light_map.common_types import Action, Token
+    from light_map.core.scene import SceneTransition
 
 
 from light_map.core.temporal_event_manager import TemporalEventManager
+from light_map.action_dispatcher import ActionDispatcher
+from light_map.input_coordinator import InputCoordinator
 
 
 class InteractiveApp:
@@ -97,6 +100,8 @@ class InteractiveApp:
         from .core.analytics import LatencyInstrument
 
         self.instrument = LatencyInstrument()
+        self.action_dispatcher = ActionDispatcher(self)
+        self.input_coordinator = InputCoordinator(self)
 
         # Load Camera Calibration
         camera_matrix, dist_coeffs, rvec, tvec = self._load_camera_calibration()
@@ -518,190 +523,17 @@ class InteractiveApp:
         if state.pending_actions:
             for action_data in state.pending_actions:
                 action_name = action_data.get("action")
-                if action_name == "ZOOM":
-                    delta = action_data.get("delta", 0.0)
-                    self.map_system.zoom_pinned(
-                        1.0 + delta, (self.config.width // 2, self.config.height // 2)
-                    )
-                elif action_name == "UPDATE_TOKEN":
-                    token_id = action_data.get("id")
-                    if token_id is not None:
-                        # Try to get existing definition to preserve fields
-                        # Priority: Map Override > Global Default
-                        existing_def = None
-                        is_map_override = False
-
-                        map_file = self.current_map_path
-                        if map_file:
-                            map_entry = self.map_config.data.maps.get(map_file)
-                            if map_entry:
-                                existing_def = map_entry.aruco_overrides.get(token_id)
-                                if existing_def:
-                                    is_map_override = True
-
-                        # Explicit override from action data (if provided)
-                        action_override = action_data.get("is_map_override")
-                        if action_override is not None:
-                            is_map_override = action_override
-
-                        if not existing_def:
-                            existing_def = (
-                                self.map_config.data.global_settings.aruco_defaults.get(
-                                    token_id
-                                )
-                            )
-
-                        new_name = action_data.get("name")
-                        new_color = action_data.get("color")
-                        new_type = action_data.get("type")
-                        new_profile = action_data.get("profile")
-                        new_size = action_data.get("size")
-                        new_height_mm = action_data.get("height_mm")
-
-                        # Use existing values if not provided in the update
-                        final_name = (
-                            new_name
-                            if new_name is not None
-                            else (
-                                existing_def.name
-                                if existing_def
-                                else f"Token {token_id}"
-                            )
-                        )
-                        final_type = (
-                            new_type
-                            if new_type is not None
-                            else (existing_def.type if existing_def else "NPC")
-                        )
-                        final_profile = (
-                            new_profile
-                            if new_profile is not None
-                            else (existing_def.profile if existing_def else None)
-                        )
-                        final_size = (
-                            new_size
-                            if new_size is not None
-                            else (existing_def.size if existing_def else None)
-                        )
-                        final_height_mm = (
-                            new_height_mm
-                            if new_height_mm is not None
-                            else (existing_def.height_mm if existing_def else None)
-                        )
-                        final_color = (
-                            new_color
-                            if new_color is not None
-                            else (existing_def.color if existing_def else None)
-                        )
-
-                        if is_map_override and map_file:
-                            self.map_config.set_map_aruco_override(
-                                map_name=map_file,
-                                aruco_id=token_id,
-                                name=final_name,
-                                type=final_type,
-                                profile=final_profile,
-                                size=final_size,
-                                height_mm=final_height_mm,
-                                color=final_color,
-                            )
-                            logging.info(
-                                f"InteractiveApp: Updated MAP override for token {token_id} on {os.path.basename(map_file)}"
-                            )
-                        else:
-                            self.map_config.set_global_aruco_definition(
-                                aruco_id=token_id,
-                                name=final_name,
-                                type=final_type,
-                                profile=final_profile,
-                                size=final_size,
-                                height_mm=final_height_mm,
-                                color=final_color,
-                            )
-                            logging.info(
-                                f"InteractiveApp: Updated GLOBAL definition for token {token_id}"
-                            )
-                elif action_name == "DELETE_TOKEN_OVERRIDE":
-                    token_id = action_data.get("id")
-                    map_file = self.current_map_path
-                    if token_id is not None and map_file:
-                        self.map_config.delete_map_aruco_override(map_file, token_id)
-                        logging.info(
-                            f"InteractiveApp: Deleted MAP override for token {token_id} on {os.path.basename(map_file)}"
-                        )
-                elif action_name == "DELETE_TOKEN":
-                    token_id = action_data.get("id")
-                    if token_id is not None:
-                        self.map_config.delete_global_aruco_definition(token_id)
-                        logging.info(
-                            f"InteractiveApp: Deleted GLOBAL definition for token {token_id}"
-                        )
-
-                elif action_name == "MENU_INTERACT":
-                    # Use class name check to avoid potential double-import/instance-check issues
-                    is_menu_scene = self.current_scene.__class__.__name__ == "MenuScene"
-
-                    logging.debug(
-                        f"InteractiveApp: Received MENU_INTERACT index={action_data.get('index')}, current_scene={self.current_scene.__class__.__name__}"
-                    )
-
-                    if is_menu_scene:
-                        index = action_data.get("index")
-                        if index is not None:
-                            # Safely access menu_system (expected on MenuScene)
-                            menu_sys = getattr(self.current_scene, "menu_system", None)
-                            if menu_sys:
-                                menu_sys.trigger_index(index)
-                                self.current_scene.mark_dirty()
-                            else:
-                                logging.error(
-                                    "InteractiveApp: Current scene is MenuScene but has no menu_system"
-                                )
-                    else:
-                        logging.warning(
-                            f"InteractiveApp: MENU_INTERACT ignored - current scene {self.current_scene.__class__.__name__} is not MenuScene"
-                        )
-                else:
-                    # Generic action/payload for SYNC_VISION, etc.
-
-                    transition = self._handle_payloads(action_data, state)
-                    if transition:
-                        self._switch_scene(transition)
-                    else:
-                        # If not handled by _handle_payloads, pass it as a semantic action to the scene
-                        if actions is not None:
-                            actions.append(action_name)
+                transition = self._handle_payloads(action_data, state)
+                if transition:
+                    self._switch_scene(transition)
+                elif action_name:
+                    # If not handled by ActionDispatcher, pass it as a semantic action to the scene
+                    if actions is not None:
+                        actions.append(action_name)
             state.pending_actions.clear()
 
-        # Update context frame if available
-        if state.background is not None:
-            self.app_context.last_camera_frame = state.background
-            frame_shape = state.background.shape
-        else:
-            frame_shape = (self.config.height, self.config.width, 3)
-
-        # Standardize Input
-        # Priority 1: Raw landmarks from physical camera
-        if state.hands or state.handedness:
-            results = DummyResults(state.hands, state.handedness)
-            inputs = self.input_processor.convert_mediapipe_to_inputs(
-                results, frame_shape
-            )
-            state.update_inputs(inputs, current_time)
-        # Priority 2: Use existing inputs (might be from Remote Driver)
-        else:
-            inputs = state.inputs
-            # BUG-FIX: Expire inputs if no update received for > 0.5s
-            if inputs and (current_time - state.last_hand_timestamp > 0.5):
-                state.inputs = []
-                state.hands_timestamp += 1
-                inputs = []
-
-        # Update app context with latest vision results
-        self.app_context.last_camera_frame = state.background
-        self.app_context.raw_aruco = state.raw_aruco
-        self.app_context.raw_tokens = state.raw_tokens
-        self.inspected_token_id = self.app_context.inspected_token_id
+        # Standardize Input and Sync Context
+        self.input_coordinator.update(state, current_time)
 
         # Update dwell state if available in current scene
         dwell_tracker = getattr(self.current_scene, "dwell_tracker", None)
@@ -718,23 +550,11 @@ class InteractiveApp:
         # --- VISIBILITY AND LAYER STACK ---
         current_stack = self.get_layer_stack()
 
-        # Handle Exclusive Vision (Token Inspection) - Opacity logic only
-        if (
-            self.inspected_token_id is not None
-            and self.app_context.inspected_token_mask is not None
-        ):
-            # Ensure Map is full brightness
-            if self.layer_manager.map_layer.opacity != 1.0:
-                self.layer_manager.map_layer.opacity = 1.0
-                self.layer_manager.map_layer._version += 1
-        else:
-            self.app_context.inspected_token_mask = None
-
         # We need to update tokens in map system from state
         self.map_system.ghost_tokens = state.tokens
 
         # Scene Update
-        transition = self.current_scene.update(inputs, actions, current_time)
+        transition = self.current_scene.update(state.inputs, actions, current_time)
         if transition:
             self._handle_payloads(transition.payload, state)
             self._switch_scene(transition)
@@ -876,237 +696,11 @@ class InteractiveApp:
         ]
         self.state.visibility_timestamp += 1
 
-    def _handle_payloads(self, payload: Any, state: Optional["WorldState"] = None):
+    def _handle_payloads(
+        self, payload: Any, state: Optional["WorldState"] = None
+    ) -> Optional["SceneTransition"]:
         """Handle side-effects from scene transitions, like loading maps."""
-        if not isinstance(payload, dict):
-            return
-
-        if "map_file" in payload:
-            self.load_map(payload["map_file"], payload.get("load_session", False))
-
-        action_name = payload.get("action")
-        if action_name == "SYNC_VISION":
-            if state is not None:
-                self._sync_vision(state)
-            self.app_context.notifications.add_notification("Vision Synchronized")
-        elif action_name == "RESET_ZOOM":
-            self.map_system.reset_zoom_to_base()
-            self.notifications.add_notification("Zoom Reset to 1:1")
-        elif action_name == "UPDATE_GRID":
-            if self.current_map_path:
-                entry = self.map_config.data.maps.get(self.current_map_path)
-                if entry:
-                    entry.grid_origin_svg_x = payload.get("offset_x", 0.0)
-                    entry.grid_origin_svg_y = payload.get("offset_y", 0.0)
-
-                    spacing = payload.get("spacing")
-                    if spacing is not None and spacing > 0:
-                        entry.grid_spacing_svg = spacing
-                        # Recalculate base scale if spacing changed
-                        self.refresh_base_scale()
-
-                    self.map_config.save()
-
-                    # Update WorldState
-                    self.state.grid_origin_svg_x = entry.grid_origin_svg_x
-                    self.state.grid_origin_svg_y = entry.grid_origin_svg_y
-                    self.state.grid_spacing_svg = entry.grid_spacing_svg
-
-                    # Re-setup visibility stack
-                    self._rebuild_visibility_stack(entry)
-                    self.notifications.add_notification("Grid Configuration Updated")
-        elif action_name == "INJECT_HANDS_WORLD":
-            from .core.scene import HandInput
-            from .common_types import GestureType
-
-            hands_data = payload.get("hands", [])
-            processed_hands = []
-            for h in hands_data:
-                sx, sy = self.map_system.world_to_screen(h["world_x"], h["world_y"])
-                gesture_str = h.get("gesture", "NONE").upper()
-                try:
-                    gesture = GestureType[gesture_str]
-                except KeyError:
-                    gesture = GestureType.NONE
-                processed_hands.append(
-                    HandInput(
-                        gesture=gesture,
-                        proj_pos=(int(sx), int(sy)),
-                        unit_direction=(0.0, 0.0),
-                        raw_landmarks=None,
-                    )
-                )
-            if state is not None:
-                state.update_inputs(processed_hands, self.time_provider())
-        elif action_name == "SET_VIEWPORT":
-            if "zoom" in payload:
-                self.map_system.state.zoom = payload["zoom"]
-            if "pan_x" in payload and "pan_y" in payload:
-                self.map_system.state.pan_x = payload["pan_x"]
-                self.map_system.state.pan_y = payload["pan_y"]
-            if "rotation" in payload:
-                self.map_system.state.rotation = payload["rotation"]
-
-        if payload.get("action") == "RESET_FOW":
-            if self.fow_manager and self.current_map_path:
-                self.fow_manager.reset()
-                self.map_config.save_fow_masks(self.current_map_path, self.fow_manager)
-                self.state.increment_fow_timestamp()
-                self.notifications.add_notification("Fog of War Reset")
-
-        if payload.get("action") == "TOGGLE_FOW":
-            if self.fow_manager:
-                self.fow_manager.is_disabled = not self.fow_manager.is_disabled
-                self.state.increment_fow_timestamp()
-                state = "OFF" if self.fow_manager.is_disabled else "ON"
-                self.notifications.add_notification(f"GM: Fog of War {state}")
-
-        if payload.get("action") == "TOGGLE_HAND_MASKING":
-            gs = self.map_config.data.global_settings
-            gs.enable_hand_masking = not gs.enable_hand_masking
-            self.map_config.save()
-            self.config.enable_hand_masking = gs.enable_hand_masking
-            state_str = "ON" if gs.enable_hand_masking else "OFF"
-            self.notifications.add_notification(f"Projection Masking {state_str}")
-
-        if payload.get("action") == "SET_GM_POSITION":
-            from light_map.common_types import GmPosition
-
-            try:
-                new_pos = GmPosition(payload.get("payload", "None"))
-                gs = self.map_config.data.global_settings
-                gs.gm_position = new_pos
-                self.map_config.save()
-                self.config.gm_position = gs.gm_position
-                self.notifications.add_notification(f"GM Position: {new_pos}")
-            except (ValueError, KeyError):
-                self.notifications.add_notification("Invalid GM Position")
-
-        if payload.get("action") == "TOGGLE_DEBUG_MODE":
-            self.app_context.debug_mode = not self.app_context.debug_mode
-            state_str = "ON" if self.app_context.debug_mode else "OFF"
-            self.notifications.add_notification(f"Debug Mode {state_str}")
-
-        if payload.get("action") == "INSPECT_TOKEN":
-            token_id_str = payload.get("payload")
-            if token_id_str is not None:
-                try:
-                    token_id = int(token_id_str)
-                    target_token = None
-                    if state is not None:
-                        for t in state.tokens:
-                            if t.id == token_id:
-                                target_token = t
-                                break
-                        if not target_token:
-                            for t in state.raw_tokens:
-                                if t.id == token_id:
-                                    target_token = t
-                                    break
-
-                    if target_token:
-                        self.app_context.inspected_token_id = token_id
-                        map_file = (
-                            self.map_system.svg_loader.filename
-                            if self.map_system.svg_loader
-                            else None
-                        )
-                        resolved = self.map_config.resolve_token_profile(
-                            token_id, map_file
-                        )
-                        self.notifications.add_notification(
-                            f"Inspecting: {resolved.name}"
-                        )
-
-                        if self.visibility_engine and self.map_system.is_map_loaded():
-                            engine = self.visibility_engine
-                            self.app_context.inspected_token_mask = (
-                                engine.get_token_vision_mask(
-                                    token_id,
-                                    target_token.world_x,
-                                    target_token.world_y,
-                                    size=resolved.size,
-                                    vision_range_grid=25.0,
-                                    mask_width=engine.width,
-                                    mask_height=engine.height,
-                                )
-                            )
-                except ValueError:
-                    pass
-
-        if payload.get("action") == "CLEAR_INSPECTION":
-            self.app_context.inspected_token_id = None
-            self.app_context.inspected_token_mask = None
-
-        if payload.get("action") == "TOGGLE_DOOR":
-            from light_map.common_types import SelectionType
-
-            # If a specific door is passed in the payload, select it first
-            # RemoteDriver's inject_action puts the payload in the 'payload' field
-            door_id = payload.get("door_id") or payload.get("payload")
-            if door_id:
-                self.state.selection.type = SelectionType.DOOR
-                self.state.selection.id = door_id
-
-            if (
-                self.state.selection.type == SelectionType.DOOR
-                and self.state.selection.id
-            ):
-                door_id = self.state.selection.id
-                # Toggle door in visibility engine
-                found = False
-                for blocker in self.visibility_engine.blockers:
-                    if blocker.id == door_id:
-                        blocker.is_open = not blocker.is_open
-                        found = True
-                if found:
-                    self.visibility_engine.update_blockers(
-                        self.visibility_engine.blockers,
-                        self.fow_manager.width,
-                        self.fow_manager.height,
-                    )
-                    # Sync state.blockers so frontend gets updated is_open status
-                    self._sync_blockers_to_state()
-
-                    self.notifications.add_notification(f"Door {door_id} Toggled")
-                    self.save_session()  # Persist door state
-
-                    # Sync vision immediately when a door is toggled
-                    if state is not None:
-                        self._sync_vision(state)
-            else:
-                self.notifications.add_notification("No door selected to toggle")
-
-        from .common_types import MenuActions, SceneId
-        from .core.scene import SceneTransition
-
-        action_name = payload.get("action")
-        if action_name in [
-            MenuActions.CALIBRATE_INTRINSICS,
-            MenuActions.CALIBRATE_PROJECTOR,
-            MenuActions.CALIBRATE_PPI,
-            MenuActions.CALIBRATE_EXTRINSICS,
-            MenuActions.CALIBRATE_FLASH,
-            MenuActions.SET_MAP_SCALE,
-            MenuActions.CALIBRATE_SCALE,
-            "SCAN_SESSION",
-        ]:
-            scene_map = {
-                MenuActions.CALIBRATE_INTRINSICS: SceneId.CALIBRATE_INTRINSICS,
-                MenuActions.CALIBRATE_PROJECTOR: SceneId.CALIBRATE_PROJECTOR,
-                MenuActions.CALIBRATE_PPI: SceneId.CALIBRATE_PPI,
-                MenuActions.CALIBRATE_EXTRINSICS: SceneId.CALIBRATE_EXTRINSICS,
-                MenuActions.CALIBRATE_FLASH: SceneId.CALIBRATE_FLASH,
-                MenuActions.SET_MAP_SCALE: SceneId.CALIBRATE_MAP_GRID,
-                MenuActions.CALIBRATE_SCALE: SceneId.CALIBRATE_MAP_GRID,
-                "SCAN_SESSION": SceneId.SCANNING,
-            }
-            if action_name == "SCAN_SESSION" and not self.map_system.is_map_loaded():
-                self.notifications.add_notification("Load a map before scanning.")
-                return None
-            return SceneTransition(scene_map[action_name])
-
-        return None
+        return self.action_dispatcher.dispatch(payload, state)
 
     def switch_to_viewing(self):
         """Switches the current scene to ViewingScene."""

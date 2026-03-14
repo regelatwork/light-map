@@ -158,6 +158,11 @@ class LayerStackManager:
             if self.exclusive_vision_layer:
                 self.exclusive_vision_layer.set_mask(inspected_token_mask)
 
+                # Ensure Map is full brightness during inspection
+                if self.map_layer.opacity != 1.0:
+                    self.map_layer.opacity = 1.0
+                    self.map_layer._version += 1
+
                 # Transformation: Insert ExclusiveVisionLayer above Visibility/FoW
                 new_stack = []
                 for layer in stack:
@@ -177,6 +182,9 @@ class LayerStackManager:
                         new_stack.append(self.exclusive_vision_layer)
 
                 return new_stack
+        else:
+            # Clear mask if not inspecting
+            self.context.inspected_token_mask = None
 
         return stack
 

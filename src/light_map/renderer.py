@@ -63,9 +63,9 @@ class Renderer:
             v = layer.get_current_version()
 
             # If any layer (static or dynamic) has a new version, we must composite a new frame
-            if getattr(layer, "_is_dynamic", False) or v != self.last_layer_versions.get(
-                layer, -1
-            ):
+            if getattr(
+                layer, "_is_dynamic", False
+            ) or v != self.last_layer_versions.get(layer, -1):
                 should_composite_frame = True
 
             if layer.is_static:

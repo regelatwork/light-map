@@ -12,25 +12,17 @@ from light_map.common_types import (
     SceneId,
 )
 from light_map.renderer import Renderer
-from light_map.map_layer import MapLayer
-from light_map.door_layer import DoorLayer
-from light_map.menu_layer import MenuLayer
-from light_map.scene_layer import SceneLayer
-from light_map.hand_mask_layer import HandMaskLayer
-from light_map.overlay_layer import TokenLayer, NotificationLayer, DebugLayer
 from light_map.map_system import MapSystem
 from light_map.svg import SVGLoader
 from light_map.map_config import MapConfigManager
 from light_map.session_manager import SessionManager
 from light_map.fow_manager import FogOfWarManager
-from light_map.fow_layer import FogOfWarLayer
-from light_map.visibility_layer import VisibilityLayer, ExclusiveVisionLayer
 from light_map.visibility_engine import VisibilityEngine
-from light_map.cursor_layer import CursorLayer
 
 from light_map.core.app_context import AppContext
 from light_map.core.analytics import AnalyticsManager
 from light_map.core.notification import NotificationManager
+from light_map.core.layer_stack_manager import LayerStackManager
 from light_map.core.scene import Scene
 from light_map.scenes.menu_scene import MenuScene
 from light_map.scenes.map_scene import MapScene, ViewingScene
@@ -94,32 +86,6 @@ class InteractiveApp:
         # Use a temporary engine until map is loaded
         self.visibility_engine = VisibilityEngine(grid_spacing_svg=10.0)
         self.fow_manager = FogOfWarManager(config.width, config.height)
-        self.fow_layer = FogOfWarLayer(
-            self.state,
-            self.fow_manager,
-            grid_spacing_svg=10.0,
-            grid_origin_svg=(0.0, 0.0),
-            width=config.width,
-            height=config.height,
-        )
-        self.visibility_layer = VisibilityLayer(
-            self.state,
-            config.width,
-            config.height,
-            grid_spacing_svg=10.0,
-            grid_origin_svg=(0.0, 0.0),
-            width=config.width,
-            height=config.height,
-        )
-        self.exclusive_vision_layer = ExclusiveVisionLayer(
-            self.state,
-            config.width,
-            config.height,
-            grid_spacing_svg=10.0,
-            grid_origin_svg=(0.0, 0.0),
-            width=config.width,
-            height=config.height,
-        )
         self.inspected_token_id: Optional[int] = None
         self.current_map_path: Optional[str] = None
 
@@ -154,41 +120,15 @@ class InteractiveApp:
             camera_matrix, dist_coeffs, rvec, tvec
         )
 
-        # Initialize Layers
-        self.map_layer = MapLayer(
-            self.state, self.map_system, config.width, config.height
-        )
-        self.door_layer = DoorLayer(
-            self.state,
-            self.visibility_engine,
+        # Layer Management
+        self.layer_manager = LayerStackManager(self.app_context, self.state)
+        self.layer_manager.update_visibility_stack(
+            self.fow_manager,
             config.width,
             config.height,
-            thickness_multiplier=config.door_thickness_multiplier,
+            spacing=10.0,
+            origin=(0.0, 0.0),
         )
-        self.scene_layer = SceneLayer(
-            self.state, None, config.width, config.height, is_static=False
-        )
-        self.hand_mask_layer = HandMaskLayer(self.state, config)
-        self.menu_layer = MenuLayer(self.state)
-        self.token_layer = TokenLayer(self.state, self.app_context)
-        self.notification_layer = NotificationLayer(self.state, self.app_context)
-        self.debug_layer = DebugLayer(self.state, self.app_context)
-        self.cursor_layer = CursorLayer(self.state, self.app_context)
-
-        # Layer Stack (Bottom to Top)
-        self.layer_stack = [
-            self.map_layer,
-            self.door_layer,
-            self.fow_layer,
-            self.visibility_layer,
-            self.scene_layer,
-            self.hand_mask_layer,
-            self.token_layer,  # Tokens below Menu
-            self.menu_layer,
-            self.notification_layer,
-            self.debug_layer,
-            self.cursor_layer,
-        ]
 
         # Scene Management
         self.scenes = self._initialize_scenes()
@@ -200,37 +140,59 @@ class InteractiveApp:
         Returns the optimized layer stack for the current scene and state.
         Ensures correct ordering (e.g. Menu on top of Tokens).
         """
-        # Get base stack from scene
-        stack = self.current_scene.get_active_layers(self)
+        return self.layer_manager.get_stack(self.current_scene)
 
-        # Apply Exclusive Vision transformation if active
-        if (
-            self.inspected_token_id is not None
-            and self.app_context.inspected_token_mask is not None
-        ):
-            self.exclusive_vision_layer.set_mask(self.app_context.inspected_token_mask)
+    @property
+    def layer_stack(self) -> List[Layer]:
+        return self.layer_manager.layer_stack
 
-            # Transformation: Insert ExclusiveVisionLayer above Visibility/FoW
-            new_stack = []
-            for layer in stack:
-                new_stack.append(layer)
-                # After visibility or FoW, insert the exclusive mask
-                if layer == self.visibility_layer or layer == self.fow_layer:
-                    if self.exclusive_vision_layer not in new_stack:
-                        new_stack.append(self.exclusive_vision_layer)
+    @property
+    def map_layer(self):
+        return self.layer_manager.map_layer
 
-            # Ensure Exclusive mask is present even if FoW/Visibility were not in stack
-            if self.exclusive_vision_layer not in new_stack:
-                # Fallback: insert before UI layers (HandMask, Menu, etc.)
-                try:
-                    idx = new_stack.index(self.hand_mask_layer)
-                    new_stack.insert(idx, self.exclusive_vision_layer)
-                except ValueError:
-                    new_stack.append(self.exclusive_vision_layer)
+    @property
+    def door_layer(self):
+        return self.layer_manager.door_layer
 
-            return new_stack
+    @property
+    def fow_layer(self):
+        return self.layer_manager.fow_layer
 
-        return stack
+    @property
+    def visibility_layer(self):
+        return self.layer_manager.visibility_layer
+
+    @property
+    def scene_layer(self):
+        return self.layer_manager.scene_layer
+
+    @property
+    def hand_mask_layer(self):
+        return self.layer_manager.hand_mask_layer
+
+    @property
+    def menu_layer(self):
+        return self.layer_manager.menu_layer
+
+    @property
+    def token_layer(self):
+        return self.layer_manager.token_layer
+
+    @property
+    def notification_layer(self):
+        return self.layer_manager.notification_layer
+
+    @property
+    def debug_layer(self):
+        return self.layer_manager.debug_layer
+
+    @property
+    def cursor_layer(self):
+        return self.layer_manager.cursor_layer
+
+    @property
+    def exclusive_vision_layer(self):
+        return self.layer_manager.exclusive_vision_layer
 
     def _normalize_calibration(
         self, camera_matrix: np.ndarray, rvec: np.ndarray, tvec: np.ndarray
@@ -468,6 +430,28 @@ class InteractiveApp:
             show_tokens=self.app_context.show_tokens,
         )
 
+        # Re-initialize Layer Management
+        self.layer_manager = LayerStackManager(self.app_context, self.state)
+        # Use current visibility params if map is loaded, else default
+        if self.current_map_path:
+            entry = self.map_config.data.maps.get(self.current_map_path)
+            if entry:
+                self.layer_manager.update_visibility_stack(
+                    self.fow_manager,
+                    self.fow_manager.width if self.fow_manager else self.config.width,
+                    self.fow_manager.height if self.fow_manager else self.config.height,
+                    spacing=entry.grid_spacing_svg,
+                    origin=(entry.grid_origin_svg_x, entry.grid_origin_svg_y),
+                )
+        else:
+            self.layer_manager.update_visibility_stack(
+                self.fow_manager,
+                self.config.width,
+                self.config.height,
+                spacing=10.0,
+                origin=(0.0, 0.0),
+            )
+
         self.scenes = self._initialize_scenes()
         self.current_scene = self.scenes[SceneId.MENU]
         self.current_scene.on_enter()
@@ -501,8 +485,7 @@ class InteractiveApp:
         # Ensure layers are using the passed state if it's different
         if state is not self.state:
             self.state = state
-            for layer in self.layer_stack:
-                layer.state = state
+            self.layer_manager.update_state(state)
 
         current_time = self.time_provider()
 
@@ -741,9 +724,9 @@ class InteractiveApp:
             and self.app_context.inspected_token_mask is not None
         ):
             # Ensure Map is full brightness
-            if self.map_layer.opacity != 1.0:
-                self.map_layer.opacity = 1.0
-                self.map_layer._version += 1
+            if self.layer_manager.map_layer.opacity != 1.0:
+                self.layer_manager.map_layer.opacity = 1.0
+                self.layer_manager.map_layer._version += 1
         else:
             self.app_context.inspected_token_mask = None
 
@@ -771,15 +754,15 @@ class InteractiveApp:
             new_quality = 0.25 if is_interacting else 1.0
 
             if (
-                new_opacity != self.map_layer.opacity
-                or new_quality != self.map_layer.quality
+                new_opacity != self.layer_manager.map_layer.opacity
+                or new_quality != self.layer_manager.map_layer.quality
             ):
-                self.map_layer.opacity = new_opacity
-                self.map_layer.quality = new_quality
-                self.map_layer._version += 1
+                self.layer_manager.map_layer.opacity = new_opacity
+                self.layer_manager.map_layer.quality = new_quality
+                self.layer_manager.map_layer._version += 1
 
             # 2. Update SceneLayer bridge
-            self.scene_layer.scene = self.current_scene
+            self.layer_manager.scene_layer.scene = self.current_scene
             # Only increment scene timestamp if scene is actually dirty
             if (
                 self.current_scene.is_dynamic
@@ -857,7 +840,7 @@ class InteractiveApp:
         mask_w, mask_h = self.visibility_engine.calculate_mask_dimensions(svg_w, svg_h)
         self.visibility_engine.update_blockers(blockers, mask_w, mask_h)
 
-        # Initialize Fog of War Manager if not already done for this map
+        # Re-initialize Fog of War Manager if not already done for this map
         # Or if dimensions changed (which shouldn't happen for same map file)
         if (
             self.fow_manager is None
@@ -868,45 +851,14 @@ class InteractiveApp:
             if self.current_map_path:
                 self.map_config.load_fow_masks(self.current_map_path, self.fow_manager)
 
-        # Update layers
-        self.fow_layer = FogOfWarLayer(
-            self.state,
+        # Update layers via manager
+        self.layer_manager.update_visibility_stack(
             self.fow_manager,
-            spacing,
-            origin,
-            self.config.width,
-            self.config.height,
-        )
-        self.visibility_layer = VisibilityLayer(
-            self.state,
             mask_w,
             mask_h,
             spacing,
             origin,
-            self.config.width,
-            self.config.height,
         )
-        self.exclusive_vision_layer = ExclusiveVisionLayer(
-            self.state,
-            mask_w,
-            mask_h,
-            spacing,
-            origin,
-            self.config.width,
-            self.config.height,
-        )
-        self.door_layer = DoorLayer(
-            self.state,
-            self.visibility_engine,
-            self.config.width,
-            self.config.height,
-            thickness_multiplier=self.config.door_thickness_multiplier,
-        )
-
-        # Update layer stack
-        self.layer_stack[1] = self.door_layer
-        self.layer_stack[2] = self.fow_layer
-        self.layer_stack[3] = self.visibility_layer
 
         # Sync blockers to state
         self._sync_blockers_to_state()

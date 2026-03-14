@@ -3,7 +3,7 @@ import numpy as np
 import os
 from unittest.mock import MagicMock
 from light_map.interactive_app import InteractiveApp
-from light_map.common_types import AppConfig, DetectionResult, ResultType
+from light_map.common_types import AppConfig
 
 
 @pytest.fixture
@@ -23,7 +23,9 @@ def mock_config():
     return config
 
 
-def test_interactive_app_delete_token_override_action(mock_config, monkeypatch, tmp_path):
+def test_interactive_app_delete_token_override_action(
+    mock_config, monkeypatch, tmp_path
+):
     # Setup MapConfig to use a temporary file
     map_state_file = tmp_path / "map_state.json"
     tokens_file = tmp_path / "tokens.json"
@@ -74,7 +76,9 @@ def test_interactive_app_delete_token_override_action(mock_config, monkeypatch, 
     app.process_state(ws, [])
 
     # 4. Verify override is deleted and falls back to global
-    resolved_after = app.map_config.resolve_token_profile(token_id, app.current_map_path)
+    resolved_after = app.map_config.resolve_token_profile(
+        token_id, app.current_map_path
+    )
     assert resolved_after.name == "Global Name"
     assert resolved_after.color == "#ff0000"
 

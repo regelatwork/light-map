@@ -66,7 +66,7 @@ class Layer(ABC):
 
         if (
             self._is_dynamic
-            or current_version > self._last_rendered_version
+            or current_version != self._last_rendered_version
             or self._cached_patches is None
         ):
             self._cached_patches = self._generate_patches(current_time)

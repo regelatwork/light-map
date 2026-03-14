@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { type Token } from '../types/system';
-import { updateToken, injectAction, deleteTokenOverride } from '../services/api';
+import { updateToken, injectAction, deleteTokenOverride, deleteToken } from '../services/api';
 import { useSystemState } from '../hooks/useSystemState';
 
 interface TokenPropertiesEditorProps {
@@ -26,6 +26,8 @@ export const TokenPropertiesEditor: React.FC<TokenPropertiesEditorProps> = ({
     ? !!maps[config.current_map_path]?.aruco_overrides?.[token.id]
     : false;
 
+  const [editMode, setEditMode] = useState<'MAP' | 'GLOBAL'>(isOverridden ? 'MAP' : 'GLOBAL');
+
   const tokenProfile =
     localProfile !== null ? localProfile : (token.profile as string) || arucoDefault?.profile || '';
   const isProfileSelected = tokenProfile !== '' && tokenProfile !== null;
@@ -47,7 +49,10 @@ export const TokenPropertiesEditor: React.FC<TokenPropertiesEditorProps> = ({
     height_mm?: number;
   }) => {
     try {
-      await updateToken(token.id, update);
+      await updateToken(token.id, {
+        ...update,
+        is_map_override: editMode === 'MAP',
+      });
       if (onUpdate) onUpdate();
     } catch (e) {
       console.error(e);
@@ -107,6 +112,33 @@ export const TokenPropertiesEditor: React.FC<TokenPropertiesEditorProps> = ({
               title={`Color: ${tokenColor}`}
             />
           )}
+        </div>
+      </div>
+
+      <div className="flex items-center justify-between px-1">
+        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-tighter">
+          Target: {editMode === 'MAP' ? 'Map Override' : 'Global Default'}
+        </span>
+        <div className="flex bg-gray-100 p-0.5 rounded-md">
+          <button
+            onClick={() => setEditMode('GLOBAL')}
+            className={`px-2 py-0.5 text-[10px] font-bold rounded transition-colors ${
+              editMode === 'GLOBAL' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500'
+            }`}
+          >
+            GLOBAL
+          </button>
+          <button
+            disabled={!config.current_map_path}
+            onClick={() => setEditMode('MAP')}
+            className={`px-2 py-0.5 text-[10px] font-bold rounded transition-colors ${
+              editMode === 'MAP'
+                ? 'bg-white text-orange-600 shadow-sm'
+                : 'text-gray-500 disabled:opacity-30'
+            }`}
+          >
+            MAP
+          </button>
         </div>
       </div>
 
@@ -385,6 +417,30 @@ export const TokenPropertiesEditor: React.FC<TokenPropertiesEditorProps> = ({
             className="w-full bg-white hover:bg-red-50 text-red-600 text-[10px] font-bold py-1 px-3 rounded border border-red-200 transition-colors uppercase"
           >
             Reset to Global Default
+          </button>
+        </div>
+      )}
+
+      {arucoDefault && (
+        <div className="pt-1">
+          <button
+            onClick={async () => {
+              if (
+                window.confirm(
+                  `Are you sure you want to delete the GLOBAL definition for Token #${token.id}?`
+                )
+              ) {
+                try {
+                  await deleteToken(token.id);
+                  if (onUpdate) onUpdate();
+                } catch (e) {
+                  console.error(e);
+                }
+              }
+            }}
+            className="w-full bg-white hover:bg-gray-50 text-gray-400 text-[10px] font-bold py-1 px-3 rounded border border-gray-200 transition-colors uppercase"
+          >
+            Delete Global Definition
           </button>
         </div>
       )}

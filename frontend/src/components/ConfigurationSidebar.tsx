@@ -1,21 +1,19 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useSystemState } from '../hooks/useSystemState';
 import { useSelection } from './SelectionContext';
 import { useGridEdit } from './GridEditContext';
 import { saveGridConfig, injectAction } from '../services/api';
-import { type Token, SelectionType } from '../types/system';
+import { SelectionType } from '../types/system';
 import { VisionControl } from './VisionControl';
 import { TokenPropertiesEditor } from './TokenPropertiesEditor';
 
 export const ConfigurationSidebar: React.FC = () => {
   const { tokens, world, config, grid_origin_svg_x, grid_origin_svg_y } = useSystemState();
-  const { selection } = useSelection();
+  const { selection, setSelection } = useSelection();
   const { isGridEditMode, setIsGridEditMode } = useGridEdit();
 
-  const selectedToken =
-    selection.type === SelectionType.TOKEN
-      ? tokens.find((t: Token) => t.id === selection.id)
-      : null;
+  // If a token is selected on map, use its ID. Otherwise use manual entry.
+  const activeTokenId = selection.type === SelectionType.TOKEN ? selection.id : null;
 
   const selectedDoor =
     selection.type === SelectionType.DOOR
@@ -39,15 +37,21 @@ export const ConfigurationSidebar: React.FC = () => {
   };
 
   const [manualArUcoId, setManualArUcoId] = useState<string>('');
-  const [editingManualToken, setEditingManualToken] = useState<boolean>(false);
 
-  const manualIdNum = parseInt(manualArUcoId);
-  const manualToken = !isNaN(manualIdNum)
-    ? tokens.find((t) => t.id === manualIdNum) || { id: manualIdNum }
+  // Synchronize manual ID field with selection
+  useEffect(() => {
+    if (activeTokenId !== null) {
+      setManualArUcoId(activeTokenId.toString());
+    }
+  }, [activeTokenId]);
+
+  const displayId = activeTokenId !== null ? activeTokenId : parseInt(manualArUcoId);
+  const activeToken = !isNaN(Number(displayId))
+    ? tokens.find((t) => t.id === Number(displayId)) || { id: Number(displayId) }
     : null;
 
   return (
-    <aside className="w-80 bg-white shadow-md flex flex-col border-l border-gray-200 z-10">
+    <aside className="w-80 bg-white shadow-md flex flex-col border-l border-gray-200 z-10 text-black">
       <div className="p-4 border-b bg-gray-50 flex justify-between items-center">
         <h2 className="font-semibold text-gray-800">Configuration</h2>
       </div>
@@ -123,24 +127,71 @@ export const ConfigurationSidebar: React.FC = () => {
 
         <hr className="border-gray-200" />
 
-        {/* Selected Entity */}
+        {/* Entity Properties */}
         <section>
           <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-3">
-            Selection Properties
+            Entity Properties
           </h3>
 
-          {!selectedToken && !selectedDoor && (
+          <div className="mb-4">
+            <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">
+              Select Token by ArUco ID
+            </label>
+            <div className="flex space-x-2">
+              <div className="flex-1 relative">
+                <input
+                  list="known-aruco-ids"
+                  type="number"
+                  value={manualArUcoId}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setManualArUcoId(val);
+                    const idNum = parseInt(val);
+                    if (!isNaN(idNum)) {
+                      setSelection({ type: SelectionType.TOKEN, id: idNum });
+                    } else {
+                      setSelection({ type: SelectionType.NONE, id: null });
+                    }
+                  }}
+                  placeholder="Enter or select ID..."
+                  className="w-full px-2 py-1 text-sm border rounded focus:ring-blue-500 focus:border-blue-500 bg-white text-black"
+                />
+                <datalist id="known-aruco-ids">
+                  {Object.entries(config.aruco_defaults || {}).map(([id, def]) => (
+                    <option key={id} value={id}>
+                      {def.name}
+                    </option>
+                  ))}
+                </datalist>
+              </div>
+              {manualArUcoId && (
+                <button
+                  onClick={() => {
+                    setManualArUcoId('');
+                    setSelection({ type: SelectionType.NONE, id: null });
+                  }}
+                  className="px-2 py-1 text-[10px] font-bold text-gray-400 hover:text-gray-600 uppercase"
+                >
+                  Clear
+                </button>
+              )}
+            </div>
+          </div>
+
+          {!activeToken && !selectedDoor && (
             <div className="text-sm text-gray-400 italic p-4 text-center border-2 border-dashed rounded-md">
-              Select a token or door on the canvas to view its properties
+              Select a token or door on the canvas, or enter an ArUco ID to view properties
             </div>
           )}
 
-          {selectedToken && (
-            <TokenPropertiesEditor token={selectedToken} key={`selected-${selectedToken.id}`} />
+          {activeToken && (
+            <div className="mt-2">
+              <TokenPropertiesEditor token={activeToken} key={`token-${activeToken.id}`} />
+            </div>
           )}
 
           {selectedDoor && (
-            <div className="space-y-4 text-black">
+            <div className="space-y-4 text-black border-t border-gray-100 pt-4 mt-4">
               <div className="bg-yellow-50 p-3 rounded-md border border-yellow-200">
                 <p className="text-sm font-semibold text-yellow-800">Door: {selectedDoor.id}</p>
                 <p className="text-xs text-yellow-600 mt-1">
@@ -158,56 +209,6 @@ export const ConfigurationSidebar: React.FC = () => {
               </div>
             </div>
           )}
-        </section>
-
-        <hr className="border-gray-200" />
-
-        {/* ArUco Quick-Edit */}
-        <section>
-          <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-3">
-            ArUco Quick-Edit
-          </h3>
-          <div className="space-y-3">
-            <div className="flex space-x-2">
-              <div className="flex-1 relative">
-                <input
-                  list="known-aruco-ids"
-                  type="number"
-                  value={manualArUcoId}
-                  onChange={(e) => {
-                    setManualArUcoId(e.target.value);
-                    setEditingManualToken(false);
-                  }}
-                  placeholder="Enter or select ID..."
-                  className="w-full px-2 py-1 text-sm border rounded focus:ring-blue-500 focus:border-blue-500 bg-white text-black"
-                />
-                <datalist id="known-aruco-ids">
-                  {Object.entries(config.aruco_defaults || {}).map(([id, def]) => (
-                    <option key={id} value={id}>
-                      {def.name}
-                    </option>
-                  ))}
-                </datalist>
-              </div>
-              <button
-                disabled={!manualArUcoId}
-                onClick={() => setEditingManualToken(!editingManualToken)}
-                className={`px-3 py-1 text-xs font-semibold rounded border transition-colors ${
-                  editingManualToken
-                    ? 'bg-blue-600 text-white border-blue-600'
-                    : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50 disabled:opacity-50'
-                }`}
-              >
-                {editingManualToken ? 'Hide' : 'Edit'}
-              </button>
-            </div>
-
-            {editingManualToken && manualToken && (
-              <div className="mt-4 pt-4 border-t border-gray-100">
-                <TokenPropertiesEditor token={manualToken} key={`manual-${manualToken.id}`} />
-              </div>
-            )}
-          </div>
         </section>
       </div>
     </aside>

@@ -87,6 +87,7 @@ export const updateToken = async (
     profile?: string;
     size?: number;
     height_mm?: number;
+    is_map_override?: boolean;
   },
 ) => {
   const host = import.meta.env.DEV ? 'http://localhost:8000' : window.location.origin;
@@ -100,6 +101,19 @@ export const updateToken = async (
 
   if (!response.ok) {
     throw new Error(`Failed to update token: ${tokenId}`);
+  }
+
+  return response.json();
+};
+
+export const deleteToken = async (tokenId: number) => {
+  const host = import.meta.env.DEV ? 'http://localhost:8000' : window.location.origin;
+  const response = await fetch(`${host}/state/tokens/${tokenId}`, {
+    method: 'DELETE',
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to delete token: ${tokenId}`);
   }
 
   return response.json();

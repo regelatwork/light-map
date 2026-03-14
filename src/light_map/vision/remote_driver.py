@@ -46,6 +46,7 @@ class TokenUpdate(BaseModel):
     profile: Optional[str] = None
     size: Optional[int] = None
     height_mm: Optional[float] = None
+    is_map_override: Optional[bool] = None
 
 
 class ViewportConfig(BaseModel):
@@ -339,10 +340,25 @@ def create_app(
                 "profile": update.profile,
                 "size": update.size,
                 "height_mm": update.height_mm,
+                "is_map_override": update.is_map_override,
             },
         )
         results_queue.put(res)
         return {"status": "update_queued", "id": token_id}
+
+    @app.delete("/state/tokens/{token_id}")
+    def delete_token(token_id: int):
+        """Removes a global definition for a specific token."""
+        res = DetectionResult(
+            timestamp=time.monotonic_ns(),
+            type=ResultType.ACTION,
+            data={
+                "action": "DELETE_TOKEN",
+                "id": token_id,
+            },
+        )
+        results_queue.put(res)
+        return {"status": "delete_queued", "id": token_id}
 
     @app.delete("/state/tokens/{token_id}/override")
     def delete_token_override(token_id: int):

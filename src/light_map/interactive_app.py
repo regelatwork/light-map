@@ -556,6 +556,11 @@ class InteractiveApp:
                                 if existing_def:
                                     is_map_override = True
 
+                        # Explicit override from action data (if provided)
+                        action_override = action_data.get("is_map_override")
+                        if action_override is not None:
+                            is_map_override = action_override
+
                         if not existing_def:
                             existing_def = (
                                 self.map_config.data.global_settings.aruco_defaults.get(
@@ -640,6 +645,13 @@ class InteractiveApp:
                         self.map_config.delete_map_aruco_override(map_file, token_id)
                         logging.info(
                             f"InteractiveApp: Deleted MAP override for token {token_id} on {os.path.basename(map_file)}"
+                        )
+                elif action_name == "DELETE_TOKEN":
+                    token_id = action_data.get("id")
+                    if token_id is not None:
+                        self.map_config.delete_global_aruco_definition(token_id)
+                        logging.info(
+                            f"InteractiveApp: Deleted GLOBAL definition for token {token_id}"
                         )
 
                 elif action_name == "MENU_INTERACT":
@@ -771,7 +783,7 @@ class InteractiveApp:
             # Only increment scene timestamp if scene is actually dirty
             if (
                 self.current_scene.is_dynamic
-                or self.current_scene.version > self.last_scene_version
+                or self.current_scene.version != self.last_scene_version
             ):
                 state.increment_scene_timestamp()
                 self.last_scene_version = self.current_scene.version

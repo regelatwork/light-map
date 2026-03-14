@@ -47,8 +47,10 @@ class TokenLayer(Layer):
         # Use time-based version for 500ms pulse if not dynamic
         time_version = int(now * 2)  # Increments every 0.5s
 
-        # Combined version
-        return max(self.state.tokens_timestamp, time_version if show_tokens else 0)
+        # Combined version: include show_tokens in version to catch toggles.
+        # We use a bit-shift or large offset to ensure it's different.
+        v = (self.state.tokens_timestamp << 1) | (1 if show_tokens else 0)
+        return max(v, time_version if show_tokens else 0)
 
     def _generate_patches(self, current_time: float) -> List[ImagePatch]:
         if self.state is None:
@@ -102,7 +104,8 @@ class DebugLayer(Layer):
             return 0
 
         self._is_dynamic = self.context.debug_mode
-        return self.state.hands_timestamp
+        # Catch debug toggle in version
+        return (self.state.hands_timestamp << 1) | (1 if self.context.debug_mode else 0)
 
     def _generate_patches(self, current_time: float) -> List[ImagePatch]:
         if self.state is None or not self.context.debug_mode:

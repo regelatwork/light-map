@@ -580,6 +580,12 @@ class MapConfigManager:
         )
         self.save()
 
+    def delete_global_aruco_definition(self, aruco_id: int):
+        """Removes a global ArUco definition."""
+        if aruco_id in self.data.global_settings.aruco_defaults:
+            del self.data.global_settings.aruco_defaults[aruco_id]
+            self.save()
+
     def set_map_aruco_override(
         self,
         map_name: str,

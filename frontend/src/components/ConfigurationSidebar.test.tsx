@@ -12,6 +12,8 @@ vi.mock('../services/api', () => ({
   saveGridConfig: vi.fn(),
   injectAction: vi.fn(),
   updateToken: vi.fn(),
+  deleteTokenOverride: vi.fn(),
+  deleteToken: vi.fn(),
 }));
 
 vi.mock('../hooks/useSystemState', () => ({
@@ -77,7 +79,7 @@ describe('ConfigurationSidebar', () => {
 
     render(<ConfigurationSidebar />);
 
-    // By default, World X/Y should not be visible (this test will FAIL until we implement it)
+    // By default, World X/Y should not be visible
     expect(screen.queryByText('World X')).not.toBeInTheDocument();
     expect(screen.queryByText('World Y')).not.toBeInTheDocument();
 
@@ -151,13 +153,13 @@ describe('ConfigurationSidebar', () => {
 
     // Toggle to PC
     fireEvent.click(pcButton);
-    expect(updateToken).toHaveBeenCalledWith(1, { type: 'PC' });
+    expect(updateToken).toHaveBeenCalledWith(1, expect.objectContaining({ type: 'PC' }));
 
     // Update Name
     const nameInput = screen.getByLabelText('Name');
     fireEvent.change(nameInput, { target: { value: 'New Hero' } });
     fireEvent.blur(nameInput);
-    expect(updateToken).toHaveBeenCalledWith(1, { name: 'New Hero' });
+    expect(updateToken).toHaveBeenCalledWith(1, expect.objectContaining({ name: 'New Hero' }));
   });
 
   it('allows updating advanced token properties', () => {
@@ -212,7 +214,7 @@ describe('ConfigurationSidebar', () => {
     // Update Profile
     const profileSelect = screen.getByLabelText('Token Profile');
     fireEvent.change(profileSelect, { target: { value: 'large' } });
-    expect(updateToken).toHaveBeenCalledWith(1, { profile: 'large' });
+    expect(updateToken).toHaveBeenCalledWith(1, expect.objectContaining({ profile: 'large' }));
 
     // Size and Height should now be disabled
     const sizeInput = screen.getByLabelText('Size (Grid)');
@@ -222,7 +224,7 @@ describe('ConfigurationSidebar', () => {
 
     // Toggle back to Custom
     fireEvent.change(profileSelect, { target: { value: '' } });
-    expect(updateToken).toHaveBeenCalledWith(1, { profile: undefined });
+    expect(updateToken).toHaveBeenCalledWith(1, expect.objectContaining({ profile: undefined }));
 
     // Size and Height should now be enabled
     expect(sizeInput).not.toBeDisabled();
@@ -231,12 +233,12 @@ describe('ConfigurationSidebar', () => {
     // Update Size
     fireEvent.change(sizeInput, { target: { value: '2' } });
     fireEvent.blur(sizeInput);
-    expect(updateToken).toHaveBeenCalledWith(1, { size: 2 });
+    expect(updateToken).toHaveBeenCalledWith(1, expect.objectContaining({ size: 2 }));
 
     // Update Height
     fireEvent.change(heightInput, { target: { value: '25' } });
     fireEvent.blur(heightInput);
-    expect(updateToken).toHaveBeenCalledWith(1, { height_mm: 25 });
+    expect(updateToken).toHaveBeenCalledWith(1, expect.objectContaining({ height_mm: 25 }));
   });
 
   it('allows editing an arbitrary ArUco ID via Quick-Edit', () => {
@@ -265,29 +267,38 @@ describe('ConfigurationSidebar', () => {
       menu: null,
     });
 
+    const setSelection = vi.fn();
     vi.mocked(useSelectionHook.useSelection).mockReturnValue({
       selection: { type: SelectionType.NONE, id: null },
-      setSelection: vi.fn(),
+      setSelection,
     });
 
-    render(<ConfigurationSidebar />);
+    const { unmount } = render(<ConfigurationSidebar />);
 
     // Find the Quick-Edit input
     const quickEditInput = screen.getByPlaceholderText('Enter or select ID...');
     fireEvent.change(quickEditInput, { target: { value: '42' } });
 
-    // Click Edit button
-    const editButton = screen.getByText('Edit');
-    fireEvent.click(editButton);
+    // Verify setSelection was called
+    expect(setSelection).toHaveBeenCalledWith({ type: SelectionType.TOKEN, id: 42 });
+
+    // Mock update to show the token is now "selected"
+    vi.mocked(useSelectionHook.useSelection).mockReturnValue({
+      selection: { type: SelectionType.TOKEN, id: 42 },
+      setSelection,
+    });
+    
+    unmount(); // Remove the old instance
+    render(<ConfigurationSidebar />);
 
     // Verify properties from aruco_defaults are shown
     expect(screen.getByText('Deep Thought (#42)')).toBeInTheDocument();
     expect(screen.getByDisplayValue('Deep Thought')).toBeInTheDocument();
 
-    // Update name via Quick-Edit
+    // Update name
     const nameInput = screen.getByLabelText('Name');
     fireEvent.change(nameInput, { target: { value: 'The Answer' } });
     fireEvent.blur(nameInput);
-    expect(updateToken).toHaveBeenCalledWith(42, { name: 'The Answer' });
+    expect(updateToken).toHaveBeenCalledWith(42, expect.objectContaining({ name: 'The Answer' }));
   });
 });

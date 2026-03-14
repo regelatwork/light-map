@@ -25,9 +25,10 @@ class HandMaskLayer(Layer):
         # If we have active hulls, we are dynamic (rendering every frame for persistence)
         self._is_dynamic = bool(self.hand_masker.last_hulls)
 
-        # Also return hands_timestamp. Note: enable_hand_masking change isn't tracked by version,
-        # but Renderer will redraw if any layer changes.
-        return self.state.hands_timestamp
+        # Include enable_hand_masking change in version
+        return (self.state.hands_timestamp << 1) | (
+            1 if self.config.enable_hand_masking else 0
+        )
 
     def _transform_pts(self, pts: np.ndarray) -> np.ndarray:
         """Helper to transform normalized camera points to projector space."""

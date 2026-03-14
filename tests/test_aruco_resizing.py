@@ -47,6 +47,7 @@ class TestArucoResizing(unittest.TestCase):
         # Mock calibration and map_system
         detector.camera_matrix = np.eye(3)
         detector.R = np.eye(3)
+        detector.RT = np.eye(3)
         detector.camera_center_world = np.zeros(3)
 
         mock_map_system = MagicMock(spec=MapSystem)

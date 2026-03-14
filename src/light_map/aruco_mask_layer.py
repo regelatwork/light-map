@@ -38,14 +38,21 @@ class ArucoMaskLayer(Layer):
             and self.config.rvec is not None
             and self.config.tvec is not None
         ):
+            # Only update if rvec/tvec changed
+            current_ext = (tuple(self.config.rvec.flatten()), tuple(self.config.tvec.flatten()))
+            if hasattr(self, "_last_ext") and self._last_ext == current_ext:
+                return
+
             try:
                 self._camera_matrix_inv = np.linalg.inv(self.config.camera_matrix)
                 rvec = np.array(self.config.rvec, dtype=np.float32).reshape(3, 1)
                 tvec = np.array(self.config.tvec, dtype=np.float32).reshape(3, 1)
+                self._tvec = tvec
                 R, _ = cv2.Rodrigues(rvec)
                 self._R_inv = R.T
                 # Camera center in world coordinates: C = -R^T * t
                 self._camera_center = -(R.T @ tvec).flatten()
+                self._last_ext = current_ext
             except Exception as e:
                 self._camera_matrix_inv = None
                 logging.warning(
@@ -85,37 +92,34 @@ class ArucoMaskLayer(Layer):
         cz = self._camera_center[2]
         vz = rays_world[2, :]
         s_marker = (height_mm - cz) / (vz + 1e-9)
+        # World coordinates of marker top
         p_world_marker = (
             self._camera_center.reshape(3, 1) + s_marker * rays_world
         )  # 3 x N
 
-        # 4. Map back to projector space.
-        # projector_matrix assumed to be H from camera Z=0 to projector.
-        # We need to find the camera pixel `pix_ground` that corresponds to world point [X, Y, 0].
-        def world_to_pix(pw):
-            R_wc = self._R_inv.T
-            t_wc = np.array(self.config.tvec, dtype=np.float32).reshape(3, 1)
-            pc = R_wc @ pw + t_wc
-            px_h = self.config.camera_matrix @ (pc / (pc[2, :] + 1e-9))
-            return px_h[:2, :].T.astype(np.float32)
-
-        # Ground point directly below marker top
+        # 4. Map the ground point (directly below marker) back to camera pixels
+        # R_wc = self._R_inv.T
         p_world_ground = p_world_marker.copy()
         p_world_ground[2, :] = 0.0
-        pix_ground = world_to_pix(p_world_ground)
+        
+        # pc = R_wc @ p_world_ground + t_wc
+        # R_wc @ p_world_ground is R @ p_world_ground
+        pc = self._R_inv.T @ p_world_ground + self._tvec
+        pix_ground_h = self.config.camera_matrix @ (pc / (pc[2, :] + 1e-9))
+        pix_ground = pix_ground_h[:2, :].T.astype(np.float32)
 
-        # 5. Parallax shift:
+        # 5. Parallax shift in camera space:
         # pts are where the marker top is seen.
-        # pix_ground is where the marker bottom WOULD be seen if it were at Z=0.
-        # shift = marker_top - floor_intersection
+        # pix_ground is where the marker bottom IS seen.
+        # The shift is due to the marker's physical height.
         shift = pts - pix_ground
 
-        # factor 0.0 => use pts (Projector at Camera)
-        # factor 1.0 => shift OUTWARD (Projector at half Camera height)
-        # factor -1.0 => shift INWARD to floor intersection (Projector at Infinity)
+        # Use parallax_factor to adjust mask for projector position
+        # factor 0.0 => use pts (projector co-located with camera)
+        # factor -1.0 => use pix_ground (projector at infinity/orthogonal)
         target_pix = pts + shift * self.config.parallax_factor
 
-        # 6. Apply Homography
+        # 6. Apply Homography to map from Z=0 camera pixels to projector
         cam_pts_target = target_pix.reshape(-1, 1, 2).astype(np.float32)
         proj_pts = cv2.perspectiveTransform(
             cam_pts_target, self.config.projector_matrix
@@ -131,6 +135,7 @@ class ArucoMaskLayer(Layer):
             proj_pts = np.array(corrected, dtype=np.float32)
 
         return proj_pts.reshape(-1, 2)
+
 
     def _generate_patches(self, current_time: float) -> List[ImagePatch]:
         if not self.config.enable_aruco_masking or self.state is None:

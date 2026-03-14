@@ -24,6 +24,7 @@ class ArucoTokenDetector:
         self.rvec = None
         self.tvec = None
         self.R = None
+        self.RT = None
         self.camera_center_world = None
 
         # Performance optimization
@@ -49,11 +50,7 @@ class ArucoTokenDetector:
         if extrinsics_file:
             if os.path.exists(extrinsics_file):
                 data = np.load(extrinsics_file)
-                self.rvec = data["rvec"]
-                self.tvec = data["tvec"]
-                self.R, _ = cv2.Rodrigues(self.rvec)
-                # Camera center in world coordinates: C = -R^T * t
-                self.camera_center_world = -self.R.T @ self.tvec.flatten()
+                self.set_extrinsics(data["rvec"], data["tvec"])
                 logging.info(
                     f"ArucoDetector: Loaded camera extrinsics from {extrinsics_file}."
                 )
@@ -76,8 +73,9 @@ class ArucoTokenDetector:
         self.rvec = rvec
         self.tvec = tvec
         self.R, _ = cv2.Rodrigues(self.rvec)
+        self.RT = self.R.T
         # Camera center in world coordinates: C = -R^T * t
-        self.camera_center_world = -self.R.T @ self.tvec.flatten()
+        self.camera_center_world = -self.RT @ self.tvec.flatten()
         logging.debug("ArucoDetector: Camera extrinsics updated.")
 
     def get_fov_roi(
@@ -185,9 +183,9 @@ class ArucoTokenDetector:
         """
         Maps raw ArUco detections (corners, ids) to Token objects in world coordinates.
         """
-        if self.camera_matrix is None or self.R is None:
+        if self.camera_matrix is None or self.RT is None:
             logging.debug(
-                f"ArucoDetector: map_to_tokens missing calibration. camera_matrix={self.camera_matrix is not None}, R={self.R is not None}"
+                f"ArucoDetector: map_to_tokens missing calibration. camera_matrix={self.camera_matrix is not None}, RT={self.RT is not None}"
             )
             return []
 
@@ -313,47 +311,33 @@ class ArucoTokenDetector:
         """
         Intersects the ray from camera through (u, v) with the plane z = h.
         Returns (X, Y) in world space.
+        Uses precomputed extrinsics and cv2.undistortPoints for performance and accuracy.
         """
-        if self.camera_matrix is None or self.R is None:
+        if self.camera_matrix is None or self.RT is None:
             return 0.0, 0.0
 
-        # 1. Back-project to ray in camera space
-        # [u, v, 1] in pixels -> ray in camera space
-        # Ray direction: inv(K) * [u, v, 1]^T
-        p_pixel = np.array([u, v, 1.0]).reshape(3, 1)
-        ray_cam = np.linalg.inv(self.camera_matrix) @ p_pixel
+        # 1. Undistort point and convert to normalized camera coordinates
+        # cv2.undistortPoints returns points in the normalized camera frame [x, y]
+        # such that P_cam = [x, y, 1]
+        pts = np.array([[[u, v]]], dtype=np.float32)
+        undistorted = cv2.undistortPoints(pts, self.camera_matrix, self.dist_coeffs)
+        xn, yn = undistorted[0][0]
 
-        # 2. Transform ray to world space
-        # v_world = R^T * ray_cam
-        v_world = self.R.T @ ray_cam
-        v_world = v_world.flatten()
+        # 2. Transform ray direction to world space
+        # v_world = R^T * [xn, yn, 1]^T
+        v_world = self.RT @ np.array([xn, yn, 1.0])
 
-        # 3. Intersect with plane z = h
+        # 3. Intersect ray with plane z = h
         # P = C + s * v_world
-        # P.z = C.z + s * v_world.z = h
-        # s = (h - C.z) / v_world.z
-
+        # P.z = C.z + s * v_world.z = h  => s = (h - C.z) / v_world.z
         cz = self.camera_center_world[2]
         vz = v_world[2]
 
         if abs(vz) < 1e-6:
-            if self.debug_mode:
-                logging.debug(f"Parallax: vz={vz:.6f} too small, returning (0,0)")
-            return 0.0, 0.0  # Should not happen if camera is above table
-
-        s = (h - cz) / vz
-        if s < 0:
-            if self.debug_mode:
-                logging.debug(
-                    f"Parallax: s={s:.1f} is negative (impossible ray), returning (0,0)"
-                )
             return 0.0, 0.0
 
+        s = (h - cz) / vz
         p_world = self.camera_center_world + s * v_world
 
-        if self.debug_mode:
-            logging.debug(
-                f"Parallax: u,v=({u:.1f}, {v:.1f}) h={h:.1f} s={s:.1f} cz={cz:.1f} vz={vz:.3f} p_world=({p_world[0]:.1f}, {p_world[1]:.1f}, {p_world[2]:.1f})"
-            )
-
         return p_world[0], p_world[1]
+

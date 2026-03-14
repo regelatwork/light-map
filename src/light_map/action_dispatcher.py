@@ -63,6 +63,7 @@ class ActionDispatcher:
         self.register("UPDATE_TOKEN", handle_update_token)
         self.register("DELETE_TOKEN_OVERRIDE", handle_delete_token_override)
         self.register("DELETE_TOKEN", handle_delete_token)
+        self.register("UPDATE_SYSTEM_CONFIG", handle_update_system_config)
         self.register("MENU_INTERACT", handle_menu_interact)
 
     def _handle_menu_transition(self, action_name: str) -> Optional["SceneTransition"]:
@@ -194,6 +195,45 @@ def handle_toggle_fow(
         app.state.increment_fow_timestamp()
         state_str = "OFF" if app.fow_manager.is_disabled else "ON"
         app.notifications.add_notification(f"GM: Fog of War {state_str}")
+    return None
+
+
+def handle_update_system_config(
+    app: "InteractiveApp", payload: Dict[str, Any], state: Optional["WorldState"] = None
+) -> Optional["SceneTransition"]:
+    from .common_types import GmPosition
+
+    gs = app.map_config.data.global_settings
+    changed = False
+
+    if "enable_hand_masking" in payload:
+        gs.enable_hand_masking = payload["enable_hand_masking"]
+        app.config.enable_hand_masking = gs.enable_hand_masking
+        changed = True
+
+    if "enable_aruco_masking" in payload:
+        gs.enable_aruco_masking = payload["enable_aruco_masking"]
+        app.config.enable_aruco_masking = gs.enable_aruco_masking
+        changed = True
+
+    if "parallax_factor" in payload:
+        gs.parallax_factor = payload["parallax_factor"]
+        app.config.parallax_factor = gs.parallax_factor
+        changed = True
+
+    if "gm_position" in payload:
+        try:
+            new_pos = GmPosition(payload["gm_position"])
+            gs.gm_position = new_pos
+            app.config.gm_position = new_pos
+            changed = True
+        except ValueError:
+            pass
+
+    if changed:
+        app.map_config.save()
+        app.notifications.add_notification("System Settings Updated")
+
     return None
 
 

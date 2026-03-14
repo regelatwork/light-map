@@ -150,6 +150,8 @@ export interface SystemConfig {
   cam_res: [number, number];
   proj_res: [number, number];
   enable_hand_masking: boolean;
+  enable_aruco_masking: boolean;
+  parallax_factor: number;
   gm_position: GmPosition;
   debug_mode: boolean;
   fow_disabled: boolean;

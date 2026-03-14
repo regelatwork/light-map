@@ -351,6 +351,8 @@ def run_app(args):
                         "remote_tokens": args.remote_tokens,
                         "remote_port": args.remote_port,
                         "enable_hand_masking": app.config.enable_hand_masking,
+                        "enable_aruco_masking": app.config.enable_aruco_masking,
+                        "parallax_factor": app.config.parallax_factor,
                         "gm_position": str(app.config.gm_position),
                         "debug_mode": app.debug_mode,
                         "fow_disabled": app.fow_manager.is_disabled

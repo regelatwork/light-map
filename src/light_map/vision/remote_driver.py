@@ -63,6 +63,13 @@ class GridConfig(BaseModel):
     spacing: Optional[float] = None
 
 
+class SystemConfigUpdate(BaseModel):
+    enable_hand_masking: Optional[bool] = None
+    enable_aruco_masking: Optional[bool] = None
+    parallax_factor: Optional[float] = None
+    gm_position: Optional[str] = None
+
+
 class ConnectionManager:
     def __init__(self):
         self.active_connections: list[WebSocket] = []
@@ -446,6 +453,27 @@ def create_app(
                 "offset_y": config.offset_y,
                 "spacing": config.spacing,
             },
+        )
+        results_queue.put(res)
+        return {"status": "injected"}
+
+    @app.post("/config/system")
+    def update_system_config(config: SystemConfigUpdate):
+        """Update global system settings."""
+        data = {"action": "UPDATE_SYSTEM_CONFIG"}
+        if config.enable_hand_masking is not None:
+            data["enable_hand_masking"] = config.enable_hand_masking
+        if config.enable_aruco_masking is not None:
+            data["enable_aruco_masking"] = config.enable_aruco_masking
+        if config.parallax_factor is not None:
+            data["parallax_factor"] = config.parallax_factor
+        if config.gm_position is not None:
+            data["gm_position"] = config.gm_position
+
+        res = DetectionResult(
+            timestamp=time.monotonic_ns(),
+            type=ResultType.ACTION,
+            data=data,
         )
         results_queue.put(res)
         return {"status": "injected"}

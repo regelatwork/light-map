@@ -154,8 +154,8 @@ def test_aruco_mask_layer_parallax_rendering(mock_state, mock_config):
 
     layer = ArucoMaskLayer(mock_state, mock_config)
 
-    # Factor -1.0 (Projector at Infinity - my previous failed attempt)
-    # This should shift the point INWARD (towards 960, 540)
+    # Factor -1.0 (Projector at Infinity)
+    # This should shift the point INWARD (towards pix_ground)
     mock_config.parallax_factor = -1.0
     patches_inf = layer._generate_patches(0.0)
     x_inf = patches_inf[0].x
@@ -166,15 +166,15 @@ def test_aruco_mask_layer_parallax_rendering(mock_state, mock_config):
     patches_cam = layer._generate_patches(0.0)
     x_cam = patches_cam[0].x
 
-    # Factor 1.0 (Extrapolated - Projector at half height)
-    # This should shift the point OUTWARD (away from 960, 540)
+    # Factor 1.0 (Extrapolated - OUTWARD)
     mock_config.parallax_factor = 1.0
     patches_extra = layer._generate_patches(0.0)
     x_extra = patches_extra[0].x
 
     # Verify directions:
-    # Marker is at x=1000 (right of center 960).
-    # Moving INWARD means x decreases.
-    # Moving OUTWARD means x increases.
+    # Marker is at x=1000 (right of camera principal point 960).
+    # Its floor intersection 'pix_ground' will be at x < 1000.
+    # Moving INWARD (factor -1) means x decreases.
+    # Moving OUTWARD (factor 1) means x increases.
     assert x_inf < x_cam
     assert x_extra > x_cam

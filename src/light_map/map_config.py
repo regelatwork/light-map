@@ -87,7 +87,7 @@ class GlobalMapConfig:
     hand_mask_padding: int = 30
     enable_aruco_masking: bool = True
     aruco_mask_padding: int = 10
-    parallax_factor: float = 1.0
+    parallax_factor: float = -1.0
     gm_position: GmPosition = GmPosition.NONE
     naming_style: NamingStyle = NamingStyle.SCI_FI
     inspection_linger_duration: float = 10.0
@@ -175,7 +175,7 @@ class MapConfigManager:
                 hand_mask_padding=global_data.get("hand_mask_padding", 30),
                 enable_aruco_masking=global_data.get("enable_aruco_masking", True),
                 aruco_mask_padding=global_data.get("aruco_mask_padding", 10),
-                parallax_factor=global_data.get("parallax_factor", 1.0),
+                parallax_factor=global_data.get("parallax_factor", -1.0),
                 gm_position=GmPosition(global_data.get("gm_position", GmPosition.NONE)),
                 naming_style=NamingStyle(
                     global_data.get("naming_style", NamingStyle.SCI_FI)

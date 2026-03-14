@@ -1,12 +1,23 @@
 import { type FC } from 'react';
 import { useSystemState } from '../hooks/useSystemState';
-import { injectAction } from '../services/api';
+import { injectAction, updateSystemConfig } from '../services/api';
 
 export const VisionControl: FC = () => {
   const { config } = useSystemState();
 
   const handleToggleHandMasking = () => {
     injectAction('TOGGLE_HAND_MASKING');
+  };
+
+  const handleToggleArucoMasking = () => {
+    updateSystemConfig({ enable_aruco_masking: !config.enable_aruco_masking });
+  };
+
+  const handleParallaxChange = (value: string) => {
+    const factor = parseFloat(value);
+    if (!isNaN(factor)) {
+      updateSystemConfig({ parallax_factor: factor });
+    }
   };
 
   const handleToggleFow = () => {
@@ -71,6 +82,43 @@ export const VisionControl: FC = () => {
         >
           {config.enable_hand_masking ? 'ENABLED' : 'DISABLED'}
         </button>
+      </div>
+
+      <div className="flex items-center justify-between">
+        <span className="text-xs font-medium text-gray-700">ArUco Masking</span>
+        <button
+          onClick={handleToggleArucoMasking}
+          className={`px-3 py-1 text-xs font-semibold rounded transition-colors ${
+            config.enable_aruco_masking
+              ? 'bg-green-100 text-green-800 hover:bg-green-200'
+              : 'bg-gray-100 text-gray-800 hover:bg-gray-200'
+          }`}
+        >
+          {config.enable_aruco_masking ? 'ENABLED' : 'DISABLED'}
+        </button>
+      </div>
+
+      <div className="space-y-1">
+        <div className="flex justify-between items-center">
+          <label className="block text-xs font-medium text-gray-700">Parallax Factor</label>
+          <span className="text-[10px] text-gray-500 font-mono">
+            {config.parallax_factor?.toFixed(2) || '0.00'}
+          </span>
+        </div>
+        <input
+          type="range"
+          min="-2.0"
+          max="1.0"
+          step="0.05"
+          value={config.parallax_factor || 0}
+          onChange={(e) => handleParallaxChange(e.target.value)}
+          className="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
+        />
+        <div className="flex justify-between text-[8px] text-gray-400 uppercase font-bold">
+          <span>Inward</span>
+          <span>Camera</span>
+          <span>Outward</span>
+        </div>
       </div>
 
       <div className="flex items-center justify-between">

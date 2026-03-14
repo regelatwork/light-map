@@ -131,3 +131,25 @@ export const deleteTokenOverride = async (tokenId: number) => {
 
   return response.json();
 };
+
+export const updateSystemConfig = async (update: {
+  enable_hand_masking?: boolean;
+  enable_aruco_masking?: boolean;
+  parallax_factor?: number;
+  gm_position?: string;
+}) => {
+  const host = import.meta.env.DEV ? 'http://localhost:8000' : window.location.origin;
+  const response = await fetch(`${host}/config/system`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(update),
+  });
+
+  if (!response.ok) {
+    throw new Error('Failed to update system configuration');
+  }
+
+  return response.json();
+};

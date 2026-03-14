@@ -257,6 +257,11 @@ def build_root_menu(
                                 should_close_on_trigger=False,
                             ),
                             MenuItem(
+                                title=f"ArUco Masking: {'ON' if map_config.data.global_settings.enable_aruco_masking else 'OFF'}",
+                                action_id=MenuActions.TOGGLE_ARUCO_MASKING,
+                                should_close_on_trigger=False,
+                            ),
+                            MenuItem(
                                 title="GM Position",
                                 children=[
                                     MenuItem(

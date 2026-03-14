@@ -292,7 +292,10 @@ def run_app(args):
             # Use the WorldState instance from InteractiveApp
             state = app.state
             producer = FrameProducer(
-                shm_name=manager.shm_name, width=cam_w, height=cam_h
+                shm_name=manager.shm_name,
+                width=cam_w,
+                height=cam_h,
+                num_consumers=active_consumers,
             )
             producer.lock = manager.lock
 

@@ -81,7 +81,10 @@ class ActionDispatcher:
         }
 
         if action_name in scene_map:
-            if action_name == "SCAN_SESSION" and not self.app.map_system.is_map_loaded():
+            if (
+                action_name == "SCAN_SESSION"
+                and not self.app.map_system.is_map_loaded()
+            ):
                 self.app.notifications.add_notification("Load a map before scanning.")
                 return None
             return SceneTransition(scene_map[action_name])
@@ -446,7 +449,9 @@ def handle_delete_token(
     token_id = payload.get("id")
     if token_id is not None:
         app.map_config.delete_global_aruco_definition(token_id)
-        logging.info(f"ActionDispatcher: Deleted GLOBAL definition for token {token_id}")
+        logging.info(
+            f"ActionDispatcher: Deleted GLOBAL definition for token {token_id}"
+        )
     return None
 
 

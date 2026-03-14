@@ -38,7 +38,7 @@ from light_map.scenes.calibration_scenes import (
 
 
 from light_map.vision.tracking_coordinator import TrackingCoordinator
-from light_map.vision.input_processor import InputProcessor, DummyResults
+from light_map.vision.input_processor import InputProcessor
 from light_map.vision.aruco_detector import ArucoTokenDetector
 
 from light_map.core.world_state import WorldState
@@ -174,6 +174,10 @@ class InteractiveApp:
     @property
     def hand_mask_layer(self):
         return self.layer_manager.hand_mask_layer
+
+    @property
+    def aruco_mask_layer(self):
+        return self.layer_manager.aruco_mask_layer
 
     @property
     def menu_layer(self):

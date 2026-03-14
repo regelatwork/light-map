@@ -10,6 +10,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import StreamingResponse
 import threading
 import cv2
+import numpy as np
 from light_map.vision.frame_producer import FrameProducer
 from pydantic import BaseModel
 from typing import List, Dict, Any, Optional
@@ -324,6 +325,23 @@ def create_app(
         )
         results_queue.put(res)
         return {"status": "injected", "count": len(processed_tokens)}
+
+    @app.post("/input/aruco_corners")
+    def inject_aruco_corners(corners: List[List[List[float]]], ids: List[int]):
+        """Injects raw ArUco corners for testing mask rendering."""
+        try:
+            # Convert list of lists to list of numpy arrays for consistency
+            np_corners = [np.array(c, dtype=np.float32) for c in corners]
+            res = DetectionResult(
+                timestamp=time.perf_counter_ns(),
+                type=ResultType.ARUCO,
+                data={"corners": np_corners, "ids": ids},
+            )
+            results_queue.put(res)
+            return {"status": "injected", "count": len(ids)}
+        except Exception as e:
+            logging.error(f"Error in inject_aruco_corners: {e}", exc_info=True)
+            raise e
 
     @app.put("/state/tokens/{token_id}")
     def update_token(token_id: int, update: TokenUpdate):

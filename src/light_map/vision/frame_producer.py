@@ -67,6 +67,12 @@ class FrameProducer:
             latest_id = self._latest_id[0]
             if latest_id == -1:
                 return None
+            if not (0 <= latest_id < self.n):
+                # This indicates memory corruption or a serious logic error in IPC offsets
+                logging.error(
+                    f"FrameProducer ERROR: latest_id {latest_id} is out of bounds (n={self.n}, shm_name={self.shm.name})"
+                )
+                return None
             return int(self._timestamps[latest_id])
 
     def get_shm_pushed_timestamp(self) -> Optional[int]:
@@ -74,6 +80,8 @@ class FrameProducer:
         with self.lock:
             latest_id = self._latest_id[0]
             if latest_id == -1:
+                return None
+            if not (0 <= latest_id < self.n):
                 return None
             return int(self._shm_pushed_ts[latest_id])
 
@@ -92,6 +100,8 @@ class FrameProducer:
         with self.lock:
             latest_id = self._latest_id[0]
             if latest_id == -1:
+                return None
+            if not (0 <= latest_id < self.n):
                 return None
 
             self._ref_counts[latest_id] += 1

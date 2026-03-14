@@ -214,6 +214,12 @@ class MenuScene(Scene):
             self.context.map_config_manager.save()
             self.context.app_config.enable_hand_masking = gs.enable_hand_masking
             self.on_enter()
+        elif action == MenuActions.TOGGLE_ARUCO_MASKING:
+            gs = self.context.map_config_manager.data.global_settings
+            gs.enable_aruco_masking = not gs.enable_aruco_masking
+            self.context.map_config_manager.save()
+            self.context.app_config.enable_aruco_masking = gs.enable_aruco_masking
+            self.on_enter()
         elif action == MenuActions.SET_GM_POSITION:
             from light_map.common_types import GmPosition
 

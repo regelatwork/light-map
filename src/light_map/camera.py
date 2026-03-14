@@ -1,5 +1,7 @@
 import cv2
 import logging
+import os
+import numpy as np
 
 
 class Camera:
@@ -47,6 +49,11 @@ class Camera:
         )
 
     def _initialize_camera(self):
+        if os.environ.get("MOCK_CAMERA") == "1":
+            logging.info("MOCK_CAMERA=1 detected. Using dummy camera.")
+            self.cap = MagicMockCamera(self.width, self.height)
+            return
+
         if self._is_raspberry_pi():
             logging.info("Raspberry Pi detected. Using GStreamer pipeline.")
             pipeline = self._get_gstreamer_pipeline()
@@ -91,3 +98,32 @@ class Camera:
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.release()
+
+
+class MagicMockCamera:
+    """Fake camera for headless environments."""
+
+    def __init__(self, width, height):
+        self.width = width
+        self.height = height
+        self.is_open = True
+
+    def isOpened(self):
+        return self.is_open
+
+    def set(self, prop, val):
+        return True
+
+    def get(self, prop):
+        if prop == cv2.CAP_PROP_FRAME_WIDTH:
+            return self.width
+        if prop == cv2.CAP_PROP_FRAME_HEIGHT:
+            return self.height
+        return 0
+
+    def read(self):
+        # Return a black frame
+        return True, np.zeros((self.height, self.width, 3), dtype=np.uint8)
+
+    def release(self):
+        self.is_open = False

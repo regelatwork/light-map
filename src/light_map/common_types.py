@@ -17,6 +17,7 @@ from .constants import (
     DEFAULT_POINTER_EXTENSION_INCHES,
     DEFAULT_INSPECTION_LINGER_DURATION,
     DEFAULT_DOOR_THICKNESS_MULTIPLIER,
+    DEFAULT_ARUCO_MASK_PADDING,
 )
 
 if TYPE_CHECKING:
@@ -132,6 +133,7 @@ class MenuActions(StrEnum):
     CALIBRATE_FLASH = "CALIBRATE_FLASH"
     SCAN_ALGORITHM = "SCAN_ALGORITHM"
     TOGGLE_HAND_MASKING = "TOGGLE_HAND_MASKING"
+    TOGGLE_ARUCO_MASKING = "TOGGLE_ARUCO_MASKING"
     SET_GM_POSITION = "SET_GM_POSITION"
     SYNC_VISION = "SYNC_VISION"
     RESET_FOW = "RESET_FOW"
@@ -231,6 +233,8 @@ class AppConfig:
     # Masking settings
     enable_hand_masking: bool = False
     hand_mask_padding: int = DEFAULT_HAND_MASK_PADDING
+    enable_aruco_masking: bool = True
+    aruco_mask_padding: int = DEFAULT_ARUCO_MASK_PADDING
     gm_position: GmPosition = GmPosition.NONE
     projector_ppi: float = DEFAULT_PROJECTOR_PPI
     pointer_extension_inches: float = DEFAULT_POINTER_EXTENSION_INCHES

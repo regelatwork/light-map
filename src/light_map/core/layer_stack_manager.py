@@ -6,6 +6,7 @@ from light_map.door_layer import DoorLayer
 from light_map.menu_layer import MenuLayer
 from light_map.scene_layer import SceneLayer
 from light_map.hand_mask_layer import HandMaskLayer
+from light_map.aruco_mask_layer import ArucoMaskLayer
 from light_map.overlay_layer import TokenLayer, NotificationLayer, DebugLayer
 from light_map.fow_layer import FogOfWarLayer
 from light_map.visibility_layer import VisibilityLayer, ExclusiveVisionLayer
@@ -42,6 +43,7 @@ class LayerStackManager:
             state, None, config.width, config.height, is_static=False
         )
         self.hand_mask_layer = HandMaskLayer(state, config)
+        self.aruco_mask_layer = ArucoMaskLayer(state, config)
         self.menu_layer = MenuLayer(state)
         self.token_layer = TokenLayer(state, context)
         self.notification_layer = NotificationLayer(state, context)
@@ -88,6 +90,7 @@ class LayerStackManager:
             self.fow_layer,
             self.visibility_layer,
             self.scene_layer,
+            self.aruco_mask_layer,
             self.hand_mask_layer,
             self.token_layer,  # Tokens below Menu
             self.menu_layer,
@@ -202,6 +205,7 @@ class LayerStackManager:
             self.map_layer,
             self.door_layer,
             self.scene_layer,
+            self.aruco_mask_layer,
             self.hand_mask_layer,
             self.menu_layer,
             self.token_layer,

@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 from .vision.input_processor import DummyResults
 
 if TYPE_CHECKING:
@@ -40,7 +40,9 @@ class InputCoordinator:
         else:
             inputs = state.inputs
             # Expire inputs if no update received for > flicker_timeout
-            if inputs and (current_time - state.last_hand_timestamp > self.flicker_timeout):
+            if inputs and (
+                current_time - state.last_hand_timestamp > self.flicker_timeout
+            ):
                 state.inputs = []
                 state.hands_timestamp += 1
 
@@ -48,6 +50,6 @@ class InputCoordinator:
         self.app.app_context.last_camera_frame = state.background
         self.app.app_context.raw_aruco = state.raw_aruco
         self.app.app_context.raw_tokens = state.raw_tokens
-        
+
         # Update app inspected token id
         self.app.inspected_token_id = self.app.app_context.inspected_token_id

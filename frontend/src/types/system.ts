@@ -197,6 +197,8 @@ export const INITIAL_STATE: SystemState = {
     cam_res: [0, 0],
     proj_res: [0, 0],
     enable_hand_masking: false,
+    enable_aruco_masking: true,
+    parallax_factor: -1.0,
     gm_position: GmPosition.NONE,
     debug_mode: false,
     fow_disabled: false,

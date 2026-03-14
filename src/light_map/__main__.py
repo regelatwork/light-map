@@ -216,6 +216,7 @@ def run_app(args):
         hand_mask_padding=gs.hand_mask_padding,
         enable_aruco_masking=gs.enable_aruco_masking,
         aruco_mask_padding=gs.aruco_mask_padding,
+        parallax_factor=gs.parallax_factor,
         gm_position=gs.gm_position,
         projector_ppi=gs.projector_ppi,
         aruco_defaults=gs.aruco_defaults,

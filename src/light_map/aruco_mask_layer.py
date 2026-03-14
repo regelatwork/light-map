@@ -40,14 +40,12 @@ class ArucoMaskLayer(Layer):
         ):
             try:
                 self._camera_matrix_inv = np.linalg.inv(self.config.camera_matrix)
-                # Ensure rvec is (3,1) or (3,) for Rodrigues
                 rvec = np.array(self.config.rvec, dtype=np.float32).reshape(3, 1)
                 tvec = np.array(self.config.tvec, dtype=np.float32).reshape(3, 1)
                 R, _ = cv2.Rodrigues(rvec)
                 self._R_inv = R.T
                 # Camera center in world coordinates: C = -R^T * t
-                self._camera_center = -R.T @ tvec
-                self._camera_center = self._camera_center.flatten()
+                self._camera_center = -(R.T @ tvec).flatten()
             except Exception as e:
                 self._camera_matrix_inv = None
                 logging.warning(
@@ -57,11 +55,11 @@ class ArucoMaskLayer(Layer):
     def _transform_pts(self, pts: Any, height_mm: float = 0.0) -> np.ndarray:
         """
         Transforms camera pixel points to projector space, accounting for height.
-        If height_mm > 0, performs parallax-corrected projection.
         """
-        # pts is expected to be (N, 2)
         if isinstance(pts, list):
             pts = np.array(pts, dtype=np.float32)
+        else:
+            pts = pts.astype(np.float32)
 
         if height_mm <= 0 or self._camera_matrix_inv is None:
             # Fallback to standard surface homography (Z=0)
@@ -76,53 +74,52 @@ class ArucoMaskLayer(Layer):
 
         # Parallax Corrected Projection
         # 1. Back-project to rays in camera space
-        ones = np.ones((pts.shape[0], 1), dtype=np.float32)
-        pts_homog = np.hstack([pts, ones]).T  # 3 x N
-        rays_cam = self._camera_matrix_inv @ pts_homog  # 3 x N
+        N = pts.shape[0]
+        pts_homog = np.hstack([pts, np.ones((N, 1), dtype=np.float32)])  # N x 3
+        rays_cam = self._camera_matrix_inv @ pts_homog.T  # 3 x N
 
         # 2. Transform rays to world space
         rays_world = self._R_inv @ rays_cam  # 3 x N
 
-        # 3. Intersect with plane Z = height_mm
-        # P = C + s * V
-        # P.z = C.z + s * V.z = height_mm => s = (height_mm - C.z) / V.z
+        # 3. Intersect with plane Z = height_mm to get world point P
         cz = self._camera_center[2]
-        vz = rays_world[2, :]  # 1 x N row vector
+        vz = rays_world[2, :]
+        s_marker = (height_mm - cz) / (vz + 1e-9)
+        p_world_marker = (
+            self._camera_center.reshape(3, 1) + s_marker * rays_world
+        )  # 3 x N
 
-        # Avoid division by zero
-        s = (height_mm - cz) / (vz + 1e-9)
-        p_world = self._camera_center.reshape(3, 1) + s * rays_world  # 3 x N
+        # 4. Map back to projector space.
+        # projector_matrix assumed to be H from camera Z=0 to projector.
+        # We need to find the camera pixel `pix_ground` that corresponds to world point [X, Y, 0].
+        def world_to_pix(pw):
+            R_wc = self._R_inv.T
+            t_wc = np.array(self.config.tvec, dtype=np.float32).reshape(3, 1)
+            pc = R_wc @ pw + t_wc
+            px_h = self.config.camera_matrix @ (pc / (pc[2, :] + 1e-9))
+            return px_h[:2, :].T.astype(np.float32)
 
-        # 4. Map world coordinates (mm) to projector pixels
-        # The projector_matrix maps (u_c, v_c) at Z=0 to (u_p, v_p).
-        # We need to map p_world=(X, Y, height_mm) to (u_p, v_p).
-        # Since projector_matrix was computed by projecting a pattern onto Z=0,
-        # we can find the camera pixel (u_c0, v_c0) that corresponds to (X, Y, 0)
-        # and then apply the homography.
+        # Ground point directly below marker top
+        p_world_ground = p_world_marker.copy()
+        p_world_ground[2, :] = 0.0
+        pix_ground = world_to_pix(p_world_ground)
 
-        # P_world_0 = [X, Y, 0]
-        p_world_0 = p_world.copy()
-        p_world_0[2, :] = 0.0
+        # 5. Parallax shift:
+        # pts are where the marker top is seen.
+        # pix_ground is where the marker bottom WOULD be seen if it were at Z=0.
+        # shift = marker_top - floor_intersection
+        shift = pts - pix_ground
 
-        # Project world point at Z=0 back to camera pixels
-        # cam_pixel = K * [R|t] * P_world
-        # R_world_to_cam = R_inv.T = self.config.R
-        R = self._R_inv.T
-        tvec = np.array(self.config.tvec, dtype=np.float32).reshape(3, 1)
+        # factor 0.0 => use pts (Projector at Camera)
+        # factor 1.0 => shift OUTWARD (Projector at half Camera height)
+        # factor -1.0 => shift INWARD to floor intersection (Projector at Infinity)
+        target_pix = pts + shift * self.config.parallax_factor
 
-        # p_cam = R * p_world + t
-        p_cam_0 = R @ p_world_0 + tvec
-
-        # normalize by Z
-        p_cam_0_norm = p_cam_0 / (p_cam_0[2, :] + 1e-9)
-
-        # multiply by K
-        cam_pixels_0 = self.config.camera_matrix @ p_cam_0_norm
-        cam_pixels_0 = cam_pixels_0[:2, :].T  # N x 2
-
-        # Now apply the Z=0 homography to these 'virtual' camera pixels
-        cam_pts_0 = cam_pixels_0.reshape(-1, 1, 2).astype(np.float32)
-        proj_pts = cv2.perspectiveTransform(cam_pts_0, self.config.projector_matrix)
+        # 6. Apply Homography
+        cam_pts_target = target_pix.reshape(-1, 1, 2).astype(np.float32)
+        proj_pts = cv2.perspectiveTransform(
+            cam_pts_target, self.config.projector_matrix
+        )
         proj_pts = proj_pts.reshape(-1, 2)
 
         # Apply non-linear distortion if present
@@ -156,33 +153,28 @@ class ArucoMaskLayer(Layer):
         color = DEFAULT_ARUCO_MASK_COLOR
 
         # Get token configs for height lookup
-        token_configs = self.config.token_profiles
-        aruco_defaults = self.config.aruco_defaults
+        token_profiles = getattr(self.config, "token_profiles", {})
+        aruco_defaults = getattr(self.config, "aruco_defaults", {})
 
         default_height = 5.0
 
         for i, corners in enumerate(corners_list):
             marker_id = ids[i] if i < len(ids) else -1
+            corners = np.array(corners, dtype=np.float32)
 
             # Determine height
             height_mm = default_height
             if marker_id != -1 and marker_id in aruco_defaults:
                 profile_name = aruco_defaults[marker_id].profile
-                if profile_name in token_configs:
-                    height_mm = token_configs[profile_name].height_mm
+                if profile_name in token_profiles:
+                    height_mm = token_profiles[profile_name].height_mm
 
             # corners is (4, 2) in camera pixel coordinates
             proj_corners = self._transform_pts(corners, height_mm=height_mm)
-            logging.debug(
-                f"ArucoMaskLayer: marker {marker_id} height={height_mm}mm proj_corners={proj_corners}"
-            )
 
             # Get bounding box in projector space
             proj_corners_int = proj_corners.astype(np.int32)
             x, y, w, h = cv2.boundingRect(proj_corners_int)
-            logging.debug(
-                f"ArucoMaskLayer: boundingRect for marker {marker_id}: x={x}, y={y}, w={w}, h={h}"
-            )
 
             x1 = max(0, x - pad)
             y1 = max(0, y - pad)

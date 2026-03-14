@@ -1,5 +1,6 @@
 import numpy as np
 import pytest
+import cv2
 from unittest.mock import MagicMock
 from light_map.aruco_mask_layer import ArucoMaskLayer
 from light_map.common_types import AppConfig
@@ -9,8 +10,8 @@ from light_map.core.world_state import WorldState
 @pytest.fixture
 def mock_config():
     config = MagicMock(spec=AppConfig)
-    config.width = 1920
-    config.height = 1080
+    config.width = 4000
+    config.height = 4000
     config.enable_aruco_masking = True
     config.aruco_mask_padding = 10
     config.projector_matrix = np.eye(3)
@@ -117,36 +118,27 @@ def test_aruco_mask_layer_list_corners(mock_state, mock_config):
 def test_aruco_mask_layer_parallax_rendering(mock_state, mock_config):
     """Verifies that height changes the projection coordinates (parallax)."""
     # 1. Setup camera calibration (simplified identity-ish)
-    # Camera at (0,0, 500) looking down
     mock_config.camera_matrix = np.array(
         [[1000, 0, 960], [0, 1000, 540], [0, 0, 1]], dtype=np.float32
     )
-    mock_config.rvec = np.zeros(3, dtype=np.float32)
-    mock_config.tvec = np.array(
-        [0, 0, 500], dtype=np.float32
-    )  # Camera at 500mm above table
+    # Rotate camera slightly so ray is not perfectly vertical
+    # 10 degrees around X axis
+    mock_config.rvec = np.array([0.174, 0, 0], dtype=np.float32)
+    # Re-calculate tvec for C=(0,0,500)
+    R, _ = cv2.Rodrigues(mock_config.rvec)
+    mock_config.tvec = -R @ np.array([0, 0, 500], dtype=np.float32)
     mock_config.projector_ppi = 96.0
-    # Marker near principal point (960, 540) to be in camera view
-    # Principal point maps to world (0,0) at Z=0
-    # Let's map world (0,0) to projector (960, 540)
+    # Projector maps world (0,0) to projector (1000, 1000) with 2x zoom
     mock_config.projector_matrix = np.array(
-        [[1, 0, 960], [0, 1, 540], [0, 0, 1]], dtype=np.float32
+        [[2, 0, 1000], [0, 2, 1000], [0, 0, 1]], dtype=np.float32
     )
 
     # Marker near principal point (960, 540) to be in camera view
     corners = np.array(
-        [[900, 500], [1000, 500], [1000, 600], [900, 600]], dtype=np.float32
+        [[1000, 600], [1100, 600], [1100, 700], [1000, 700]], dtype=np.float32
     )
     mock_state.raw_aruco = {"corners": [corners], "ids": [42]}
 
-    layer = ArucoMaskLayer(mock_state, mock_config)
-
-    # Height 0
-    patches0 = layer._generate_patches(0.0)
-    assert len(patches0) == 1
-    x0 = patches0[0].x
-
-    # Height 50mm
     from dataclasses import dataclass
 
     @dataclass
@@ -160,10 +152,29 @@ def test_aruco_mask_layer_parallax_rendering(mock_state, mock_config):
     mock_config.token_profiles = {"standard": Profile(height_mm=50.0)}
     mock_config.aruco_defaults = {42: Default(profile="standard")}
 
-    patches50 = layer._generate_patches(0.0)
-    assert len(patches50) == 1
-    x50 = patches50[0].x
+    layer = ArucoMaskLayer(mock_state, mock_config)
 
-    # For a marker seen at (100,100), increasing height should move its world location
-    # further from the camera principal point.
-    assert x0 != x50
+    # Factor -1.0 (Projector at Infinity - my previous failed attempt)
+    # This should shift the point INWARD (towards 960, 540)
+    mock_config.parallax_factor = -1.0
+    patches_inf = layer._generate_patches(0.0)
+    x_inf = patches_inf[0].x
+
+    # Factor 0.0 (Projector at Camera)
+    # This should be the same as standard homography
+    mock_config.parallax_factor = 0.0
+    patches_cam = layer._generate_patches(0.0)
+    x_cam = patches_cam[0].x
+
+    # Factor 1.0 (Extrapolated - Projector at half height)
+    # This should shift the point OUTWARD (away from 960, 540)
+    mock_config.parallax_factor = 1.0
+    patches_extra = layer._generate_patches(0.0)
+    x_extra = patches_extra[0].x
+
+    # Verify directions:
+    # Marker is at x=1000 (right of center 960).
+    # Moving INWARD means x decreases.
+    # Moving OUTWARD means x increases.
+    assert x_inf < x_cam
+    assert x_extra > x_cam

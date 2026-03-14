@@ -240,6 +240,7 @@ class AppConfig:
     aruco_mask_padding: int = DEFAULT_ARUCO_MASK_PADDING
     gm_position: GmPosition = GmPosition.NONE
     projector_ppi: float = DEFAULT_PROJECTOR_PPI
+    parallax_factor: float = 1.0
     aruco_defaults: Dict[int, Any] = field(default_factory=dict)
     token_profiles: Dict[str, Any] = field(default_factory=dict)
     pointer_extension_inches: float = DEFAULT_POINTER_EXTENSION_INCHES

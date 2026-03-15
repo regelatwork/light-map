@@ -1,10 +1,13 @@
-from typing import Any, List, Optional
+from typing import Any, List, Optional, TYPE_CHECKING
 
 import numpy as np
 
 from .common_types import ImagePatch, Layer, LayerMode
 from .core.analytics import LatencyInstrument, track_wait
 from .constants import ALPHA_OPAQUE
+
+if TYPE_CHECKING:
+    from .vision.projector import Projector3DModel
 
 
 class Renderer:
@@ -13,9 +16,15 @@ class Renderer:
     Optimized with intermediate caching for static layers.
     """
 
-    def __init__(self, screen_width: int, screen_height: int):
+    def __init__(
+        self,
+        screen_width: int,
+        screen_height: int,
+        projector_3d_model: Optional["Projector3DModel"] = None,
+    ):
         self.screen_width = screen_width
         self.screen_height = screen_height
+        self.projector_3d_model = projector_3d_model
 
         # Main output buffer (BGR)
         self.output_buffer = np.zeros(

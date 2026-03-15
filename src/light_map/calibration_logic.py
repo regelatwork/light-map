@@ -2,7 +2,7 @@ import cv2
 import numpy as np
 import logging
 import time
-from typing import Optional, Tuple, Dict
+from typing import Optional, Tuple, Dict, List
 
 from .camera import Camera
 from .projector import generate_calibration_pattern, compute_projector_homography
@@ -251,5 +251,74 @@ def calibrate_extrinsics(
             rvec, tvec = rvec_new, tvec_new
 
         return rvec, tvec, obj_points, img_points
+
+    return None
+
+
+def calibrate_projector_3d(
+    correspondences: List[Tuple[np.ndarray, np.ndarray]],
+    projector_resolution: Tuple[int, int],
+    initial_mtx: Optional[np.ndarray] = None,
+    initial_dist: Optional[np.ndarray] = None,
+) -> Optional[Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, float]]:
+    """
+    Computes Projector Intrinsics and Extrinsics using 3D-to-2D correspondences.
+
+    Args:
+        correspondences: List of (world_pt_3d, proj_pt_2d) tuples.
+                         world_pt_3d is (3,) array [X, Y, Z] in mm.
+                         proj_pt_2d is (2,) array [u, v] in pixels.
+        projector_resolution: (width, height) of the projector.
+        initial_mtx: Optional initial intrinsic matrix.
+        initial_dist: Optional initial distortion coefficients.
+
+    Returns:
+        (mtx, dist, rvec, tvec, rms) or None if calibration fails.
+    """
+    if len(correspondences) < 10:
+        logging.warning(
+            "calibrate_projector_3d: Not enough points (need at least 10 for stability, got %d).",
+            len(correspondences),
+        )
+        return None
+
+    obj_points = np.array([c[0] for c in correspondences], dtype=np.float32).reshape(
+        1, -1, 3
+    )
+    img_points = np.array([c[1] for c in correspondences], dtype=np.float32).reshape(
+        1, -1, 2
+    )
+
+    if initial_mtx is None:
+        # Provide a reasonable initial guess for the intrinsic matrix
+        # f = max(width, height), principal point = center
+        w, h = projector_resolution
+        f = max(w, h)
+        initial_mtx = np.array(
+            [[f, 0, w / 2], [0, f, h / 2], [0, 0, 1]], dtype=np.float32
+        )
+
+    flags = cv2.CALIB_USE_INTRINSIC_GUESS
+
+    # For projectors, we often assume no skew and potentially fx=fy
+    # flags |= cv2.CALIB_FIX_ASPECT_RATIO
+
+    try:
+        ret, mtx, dist, rvecs, tvecs = cv2.calibrateCamera(
+            obj_points,
+            img_points,
+            projector_resolution,
+            cameraMatrix=initial_mtx,
+            distCoeffs=initial_dist,
+            flags=flags,
+        )
+
+        if ret:
+            # calibrateCamera returns a list of rvecs/tvecs (one per 'view').
+            # Since we treat all points as one 'view', we take the first one.
+            return mtx, dist, rvecs[0], tvecs[0], ret
+
+    except Exception as e:
+        logging.error("calibrate_projector_3d: Error during calibration: %s", e)
 
     return None

@@ -8,6 +8,7 @@ from light_map.map_system import MapSystem
 
 if TYPE_CHECKING:
     from light_map.projector import ProjectorDistortionModel
+    from light_map.vision.projector import Projector3DModel
 
 
 class ArucoTokenDetector:
@@ -179,6 +180,7 @@ class ArucoTokenDetector:
         ppi: float = 96.0,
         default_height_mm: float = 5.0,
         distortion_model: Optional["ProjectorDistortionModel"] = None,
+        projector_3d_model: Optional["Projector3DModel"] = None,
     ) -> List[Token]:
         """
         Maps raw ArUco detections (corners, ids) to Token objects in world coordinates.
@@ -212,12 +214,20 @@ class ArucoTokenDetector:
 
             wx_mm, wy_mm = self._parallax_correction(u, v, height_mm)
 
-            # Map to projector pixels (Z=0 vertical projection)
-            px = wx_mm * ppi_mm
-            py = wy_mm * ppi_mm
+            if (
+                projector_3d_model
+                and projector_3d_model.use_3d
+            ):
+                p_world = np.array([[wx_mm, wy_mm, height_mm]], dtype=np.float32)
+                p_proj_real = projector_3d_model.project_world_to_projector(p_world)[0]
+                px, py = p_proj_real[0], p_proj_real[1]
+            else:
+                # Map to projector pixels (Z=0 vertical projection)
+                px = wx_mm * ppi_mm
+                py = wy_mm * ppi_mm
 
-            if distortion_model:
-                px, py = distortion_model.correct_theoretical_point(px, py)
+                if distortion_model:
+                    px, py = distortion_model.correct_theoretical_point(px, py)
 
             # Map to SVG units
             wx_svg, wy_svg = map_system.screen_to_world(px, py)
@@ -248,6 +258,7 @@ class ArucoTokenDetector:
         default_height_mm: float = 5.0,
         distortion_model: Optional["ProjectorDistortionModel"] = None,
         projector_matrix: Optional[np.ndarray] = None,
+        projector_3d_model: Optional["Projector3DModel"] = None,
     ) -> List[Token]:
         """
         Legacy/Combined method for single-threaded use.
@@ -264,6 +275,7 @@ class ArucoTokenDetector:
             ppi=ppi,
             default_height_mm=default_height_mm,
             distortion_model=distortion_model,
+            projector_3d_model=projector_3d_model,
         )
 
     def _get_fov_mask(

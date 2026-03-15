@@ -9,72 +9,76 @@ This design transitions the projector to a full **3D Projection Model**, treatin
 - **Parallax-Corrected Projection**: Accurately align digital overlays (e.g., status icons, vision masks) with the tops of physical tokens.
 - **Robust 3D Mapping**: Move from a planar mapping to a volumetric mapping of the interaction space.
 - **User-Friendly Calibration**: Minimize manual effort using automated ArUco projection and gesture-based triggers.
-- **Precision Masking**: Eliminate the need for heuristic "parallax factor" sliders in ArUco masking.
+- **System-Wide Consistency**: Replace scattered 2D homography calls with a centralized 3D projection API.
 
-## 3. Physical Calibration Target
-The system will use a single "Calibration Box" with known dimensions:
-- **Height**: 78 mm (User-configurable)
-- **Width**: 188 mm
-- **Length**: 295 mm
+## 3. Data Structures
 
-The box serves as a portable $Z$-plane, allowing the system to capture 3D-to-2D correspondences at both $Z=0$ (table) and $Z=H$ (box top).
+### 3.1 `AppConfig` Updates (System Settings)
+Added to `src/light_map/map_config.py` (or global system settings):
+- `calibration_box_height_mm` (float): Height of the physical calibration target (Default: 78.0).
+- `use_projector_3d_model` (bool): Master toggle to enable 3D projection (Default: False).
 
-## 4. Calibration Workflow (`Projector3DCalibrationScene`)
-1. **Setup**: The user enters the 3D Projector Calibration scene. The system retrieves box dimensions from `SystemConfig`.
-2. **Interactive Placement**:
-   - The projector highlights a "Target Zone" on the table.
-   - The user places the box in the zone.
-3. **Multi-Marker Projection**:
-   - The projector displays a $3 \times 2$ grid of ArUco markers on the top surface of the box ($Z=78$).
-   - Simultaneously, it projects reference ArUco markers on the surrounding tabletop ($Z=0$).
-4. **Gesture-Triggered Capture**:
-   - The user steps back and performs the **Victory** gesture.
-   - The camera captures a frame and detects all ArUco corners.
-5. **3D Reconstruction**:
-   - For each detected corner $(u_c, v_c)$ in the camera image:
-     - The system projects a ray from the camera center through the pixel.
-     - The ray is intersected with the plane $Z=H$ (for box markers) or $Z=0$ (for table markers) using the **Camera's 3D Extrinsics**.
-     - This yields a precise World Coordinate $(X, Y, Z)_w$.
-6. **Repetition**: The process is repeated for 4–6 different box locations to ensure coverage of the entire projection volume.
+### 3.2 `projector_3d_calibration.npz`
+Stored in the user data directory:
+- `mtx` (3x3 float): Projector Intrinsic Matrix.
+- `dist` (1x5 or 1x8 float): Projector Distortion Coefficients.
+- `rvec` (3x1 float): Projector Rotation Vector (World to Projector).
+- `tvec` (3x1 float): Projector Translation Vector (World to Projector).
+- `rms` (float): Root Mean Square error of the calibration.
 
-## 5. Mathematical Solver
-- **Correspondence Set**: A collection of pairs: `(Projector Pixel (u_p, v_p), World Coordinate (X, Y, Z)_w)`.
-- **Algorithm**: OpenCV `cv2.calibrateCamera` is used, treating the projector as a camera and the $(X, Y, Z)_w$ points as the "object points."
-- **Outputs**:
-  - `K_p`: Projector Intrinsic Matrix (Focal length, principal point).
-  - `D_p`: Projector Distortion Coefficients.
-  - `R_p, t_p`: Projector 3D Pose relative to the World $(0,0,0)$ origin.
+## 4. Physical Calibration Target
+A single box of known dimensions ($78 \times 188 \times 295$ mm) serves as a portable $Z$-plane.
 
-## 6. Impact on ArUco Masking and Tracking
+## 5. Calibration Workflow (`Projector3DCalibrationScene`)
+1. **Interactive Placement**: Projector highlights a "Target Zone"; user places the box.
+2. **Multi-Marker Projection**: Projects a $3 \times 2$ ArUco grid on the box ($Z=H$) and reference markers on the table ($Z=0$).
+3. **Gesture-Triggered Capture**: User performs the **Victory** gesture to sample points.
+4. **3D Reconstruction**: Camera rays are intersected with $Z=H$ or $Z=0$ planes to find World Coordinates $(X, Y, Z)_w$.
+5. **Solver**: Uses `cv2.calibrateCamera` to calculate $K_p, D_p, R_p, t_p$.
 
-### 6.1 Elimination of Heuristics
-The current `parallax_factor` slider in `ArucoMaskLayer` is a heuristic used to "guess" the projector's perspective shift by sliding 2D camera coordinates. With a 3D projector model, this shift is mathematically exact.
+## 6. Centralized Projection API
+To prevent fragmented logic, a new `Projector3DModel` class will be created in `src/light_map/vision/projector.py`.
 
-- **Current Logic**: `target_pix = camera_pix + shift * parallax_factor`.
-- **New Logic**: `target_pix = Project(World_Point_3D)`.
+```python
+class Projector3DModel:
+    def project_world_to_projector(self, points_3d: np.ndarray) -> np.ndarray:
+        """
+        Maps (N, 3) World points to (N, 2) Projector pixels.
+        If use_projector_3d_model is False, falls back to 2D Homography (assuming Z=0).
+        """
+        if self.use_3d:
+            # Full 3D Projective transformation
+            pts_p, _ = cv2.projectPoints(points_3d, self.rvec, self.tvec, self.mtx, self.dist)
+            return pts_p.reshape(-1, 2)
+        else:
+            # Fallback to 2D Homography (ignoring Z height)
+            return cv2.perspectiveTransform(points_3d[:, :2], self.H)
+```
 
-### 6.2 Precision Masking for Tall Tokens
-For a token of height $h$, we already calculate its world coordinates $(X, Y, h)_w$ using the camera's pose. 
-- The system will project these **3D coordinates** directly through the **Projector's 3D Matrix**.
-- This ensures the "blackout mask" perfectly matches the physical footprint of the token as seen from the projector's specific 3D viewpoint.
+## 7. Migration Scope (Code Changes)
 
-## 7. Code Migration Plan
+### 7.1 Component Updates
+All components currently using `cv2.perspectiveTransform` for projector mapping must be updated to use the `Projector3DModel` API:
+- **`ArucoMaskLayer`**: Map marker corners at their detected height $h$ to projector space.
+- **`HandMaskLayer`**: Map hand positions to projector coordinates (assuming hand height or $Z=0$).
+- **`FlashDetector`**: Use the 3D model to calculate expected dot positions at variable surface heights.
+- **`InputProcessor`**: Ensure UI interactions (gestures) at height $Z$ are mapped correctly to projector coordinates.
 
-### 7.1 `src/light_map/aruco_mask_layer.py`
-- **Remove**: The `parallax_factor` and the camera-space shift logic in `_project_to_projector`.
-- **Implement**: A new projection method that uses the stored `projector_3d_pose.npz` (intrinsics + extrinsics).
-- **Update**: `_generate_patches` to pass the token's 3D corners $(X, Y, h)$ directly to the new 3D projection function.
+### 7.2 Interface Changes
+- `Renderer` and `Scene` contexts will now hold an instance of `Projector3DModel`.
+- `ArucoMaskLayer.config` will lose `parallax_factor` in favor of the automated 3D model.
 
-### 7.2 `src/light_map/calibration_logic.py`
-- **New Function**: `calibrate_projector_3d(correspondences)`:
-  - Takes the list of `(u_p, v_p) -> (X, Y, Z)_w`.
-  - Performs `cv2.calibrateCamera`.
-  - Returns `K_p, D_p, rvec_p, tvec_p`.
+## 8. Testing Details
 
-### 7.3 `src/light_map/renderer.py`
-- **Update**: The base projection logic should prioritize the 3D Projector Model if available, falling back to 2D Homography only if 3D calibration is missing.
+### 8.1 Automated Unit Tests
+- **Solver Verification**: Test `calibrate_projector_3d` with synthetic 3D-to-2D correspondences and verify it recovers known pose/intrinsics.
+- **Fallback Logic**: Verify `Projector3DModel` correctly falls back to Homography when 3D data is absent or disabled.
+- **Numerical Consistency**: Verify that `project_world_to_projector(X, Y, 0)` with the 3D model yields results similar to the 2D Homography for planar points.
 
-## 8. Success Criteria & Validation
-- **Reprojection Error**: The average distance between detected corners and projected corners should be $< 2.0$ pixels.
-- **Physical Alignment**: A projected wireframe box must align with the physical edges of the 78mm box regardless of its position on the table.
-- **Parallax Stability**: A status icon projected "on top" of a token should not appear to "slide" off the token when the token is moved across the table.
+### 8.2 Integration & Manual Tests
+- **Wireframe Alignment**: Project a virtual box and verify it aligns with the physical box at multiple positions.
+- **Parallax Stress Test**: Place a tall token on the table and verify the mask stays centered as the token moves across the field of view.
+
+## 9. Success Criteria
+- **Reprojection Error**: RMS error $< 2.0$ pixels.
+- **Zero Drift**: No visible "sliding" of overlays when height $Z$ changes.

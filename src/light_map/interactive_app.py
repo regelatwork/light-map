@@ -34,12 +34,14 @@ from light_map.scenes.calibration_scenes import (
     IntrinsicsCalibrationScene,
     ProjectorCalibrationScene,
     ExtrinsicsCalibrationScene,
+    Projector3DCalibrationScene,
 )
 
 
 from light_map.vision.tracking_coordinator import TrackingCoordinator
 from light_map.vision.input_processor import InputProcessor
 from light_map.vision.aruco_detector import ArucoTokenDetector
+from light_map.vision.projector import Projector3DModel
 
 from light_map.core.world_state import WorldState
 
@@ -71,10 +73,19 @@ class InteractiveApp:
         self.state = WorldState()
 
         # Core Systems
-        self.renderer = Renderer(config.width, config.height)
-        self.map_system = MapSystem(config.width, config.height)
         self.map_config = MapConfigManager(storage=config.storage_manager)
         self.notifications = NotificationManager()
+
+        # Initialize Projector 3D Model
+        self.config.projector_3d_model = Projector3DModel.load_from_storage(
+            config.storage_manager,
+            use_3d=self.map_config.data.global_settings.use_projector_3d_model,
+        )
+
+        self.renderer = Renderer(
+            config.width, config.height, self.config.projector_3d_model
+        )
+        self.map_system = MapSystem(config.width, config.height)
 
         # Sync AppConfig with MapConfig global settings
         gs = self.map_config.data.global_settings
@@ -389,6 +400,7 @@ class InteractiveApp:
             SceneId.CALIBRATE_INTRINSICS: IntrinsicsCalibrationScene(self.app_context),
             SceneId.CALIBRATE_PROJECTOR: ProjectorCalibrationScene(self.app_context),
             SceneId.CALIBRATE_EXTRINSICS: ExtrinsicsCalibrationScene(self.app_context),
+            SceneId.CALIBRATE_PROJECTOR_3D: Projector3DCalibrationScene(self.app_context),
         }
 
     @property

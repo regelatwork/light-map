@@ -23,6 +23,7 @@ def mock_config():
     config.token_profiles = {}
     config.aruco_defaults = {}
     config.storage_manager = None
+    config.projector_3d_model = None
     return config
 
 

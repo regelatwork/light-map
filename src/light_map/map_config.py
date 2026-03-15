@@ -88,6 +88,8 @@ class GlobalMapConfig:
     enable_aruco_masking: bool = True
     aruco_mask_padding: int = 10
     parallax_factor: float = -1.0
+    calibration_box_height_mm: float = 78.0
+    use_projector_3d_model: bool = False
     gm_position: GmPosition = GmPosition.NONE
     naming_style: NamingStyle = NamingStyle.SCI_FI
     inspection_linger_duration: float = 10.0
@@ -176,6 +178,12 @@ class MapConfigManager:
                 enable_aruco_masking=global_data.get("enable_aruco_masking", True),
                 aruco_mask_padding=global_data.get("aruco_mask_padding", 10),
                 parallax_factor=global_data.get("parallax_factor", -1.0),
+                calibration_box_height_mm=global_data.get(
+                    "calibration_box_height_mm", 78.0
+                ),
+                use_projector_3d_model=global_data.get(
+                    "use_projector_3d_model", False
+                ),
                 gm_position=GmPosition(global_data.get("gm_position", GmPosition.NONE)),
                 naming_style=NamingStyle(
                     global_data.get("naming_style", NamingStyle.SCI_FI)

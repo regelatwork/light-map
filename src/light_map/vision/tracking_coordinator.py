@@ -47,6 +47,7 @@ class TrackingCoordinator:
             token_configs=token_configs,
             ppi=map_config.get_ppi(),
             distortion_model=projector_config.distortion_model,
+            projector_3d_model=projector_config.projector_3d_model,
         )
 
         from dataclasses import asdict
@@ -158,6 +159,7 @@ class TrackingCoordinator:
             token_configs=token_configs,
             default_height_mm=5.0,  # Default for ArUco tokens
             distortion_model=config.distortion_model,
+            projector_3d_model=config.projector_3d_model,
         )
 
         if detections:

@@ -75,6 +75,7 @@ class ActionDispatcher:
             MenuActions.CALIBRATE_PROJECTOR: SceneId.CALIBRATE_PROJECTOR,
             MenuActions.CALIBRATE_PPI: SceneId.CALIBRATE_PPI,
             MenuActions.CALIBRATE_EXTRINSICS: SceneId.CALIBRATE_EXTRINSICS,
+            MenuActions.CALIBRATE_PROJECTOR_3D: SceneId.CALIBRATE_PROJECTOR_3D,
             MenuActions.CALIBRATE_FLASH: SceneId.CALIBRATE_FLASH,
             MenuActions.SET_MAP_SCALE: SceneId.CALIBRATE_MAP_GRID,
             MenuActions.CALIBRATE_SCALE: SceneId.CALIBRATE_MAP_GRID,
@@ -229,6 +230,13 @@ def handle_update_system_config(
             changed = True
         except ValueError:
             pass
+
+    if "use_projector_3d_model" in payload:
+        gs.use_projector_3d_model = payload["use_projector_3d_model"]
+        app.config.use_projector_3d_model = gs.use_projector_3d_model
+        if app.config.projector_3d_model:
+            app.config.projector_3d_model.use_3d = gs.use_projector_3d_model
+        changed = True
 
     if changed:
         app.map_config.save()

@@ -12,6 +12,7 @@ from light_map.vision.debug_utils import DebugVisualizer
 
 if TYPE_CHECKING:
     from light_map.projector import ProjectorDistortionModel
+    from light_map.vision.projector import Projector3DModel
 
 
 class StructuredLightTokenDetector:
@@ -115,6 +116,7 @@ class StructuredLightTokenDetector:
         ppi: float = 96.0,
         default_height_mm: float = 0.0,
         distortion_model: Optional["ProjectorDistortionModel"] = None,
+        projector_3d_model: Optional["Projector3DModel"] = None,
     ) -> List[Token]:
         h, w = frame_pattern.shape[:2]
 
@@ -171,8 +173,17 @@ class StructuredLightTokenDetector:
             if self.camera_matrix is not None and self.R is not None:
                 # Use 3D projection
                 wx_mm, wy_mm = self._parallax_correction(u, v, default_height_mm)
-                px = wx_mm * ppi_mm
-                py = wy_mm * ppi_mm
+                
+                if (
+                    projector_3d_model
+                    and projector_3d_model.use_3d
+                ):
+                    p_world = np.array([[wx_mm, wy_mm, default_height_mm]], dtype=np.float32)
+                    p_proj_real = projector_3d_model.project_world_to_projector(p_world)[0]
+                    px, py = p_proj_real[0], p_proj_real[1]
+                else:
+                    px = wx_mm * ppi_mm
+                    py = wy_mm * ppi_mm
             else:
                 # Fallback to homography
                 pt = np.array([u, v], dtype=np.float32).reshape(1, 1, 2)

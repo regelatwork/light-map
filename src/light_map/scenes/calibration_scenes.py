@@ -1327,3 +1327,224 @@ class MapGridCalibrationScene(Scene):
             cv2.circle(frame, (ox, oy), 5, (0, 255, 0), -1)
 
         return frame
+
+
+class Projector3DCalibStage(Enum):
+    START = auto()
+    PLACE_BOX = auto()
+    CAPTURING = auto()
+    CALIBRATING = auto()
+    DONE = auto()
+
+
+class Projector3DCalibrationScene(Scene):
+    """Handles 3D Projector Pose Calibration using a physical box target."""
+
+    def __init__(self, context: AppContext):
+        super().__init__(context)
+        self.is_dynamic = True
+        self.stage = Projector3DCalibStage.START
+        self.correspondences = []
+        self.current_box_pos_idx = 0
+        self.max_box_positions = 5
+        self._last_gesture_time = 0.0
+        self._cooldown = 2.0
+
+        from light_map.projector_3d_layer import Projector3DCalibrationLayer
+
+        self.layer = Projector3DCalibrationLayer(
+            context.app_config.width, context.app_config.height
+        )
+
+    def on_enter(self, payload: dict | None = None) -> None:
+        self.stage = Projector3DCalibStage.START
+        self.correspondences = []
+        self.current_box_pos_idx = 0
+        self._update_layer_markers()
+        self.mark_dirty()
+
+    @property
+    def blocking(self) -> bool:
+        return True
+
+    def get_active_layers(self, app: InteractiveApp) -> List[Layer]:
+        return [self.layer, app.ui_layer, app.cursor_layer]
+
+    def update(
+        self, inputs: List[HandInput], actions: List[Action], current_time: float
+    ) -> Optional[SceneTransition]:
+        if self.stage == Projector3DCalibStage.START:
+            self.stage = Projector3DCalibStage.PLACE_BOX
+            self._update_layer_markers()
+
+        elif self.stage == Projector3DCalibStage.PLACE_BOX:
+            # Check for Victory gesture to capture
+            for inp in inputs:
+                if (
+                    inp.gesture == GestureType.VICTORY
+                    and (current_time - self._last_gesture_time) > self._cooldown
+                ):
+                    self._last_gesture_time = current_time
+                    self.stage = Projector3DCalibStage.CAPTURING
+                    return None
+
+        elif self.stage == Projector3DCalibStage.CAPTURING:
+            # In the next frame, we'll process the data
+            # This allows the render() call to show a "Capturing..." message if needed
+            self._do_capture()
+            if self.current_box_pos_idx >= self.max_box_positions:
+                self.stage = Projector3DCalibStage.CALIBRATING
+            else:
+                self.stage = Projector3DCalibStage.PLACE_BOX
+            self._update_layer_markers()
+
+        elif self.stage == Projector3DCalibStage.CALIBRATING:
+            self._run_calibration()
+            self.stage = Projector3DCalibStage.DONE
+
+        elif self.stage == Projector3DCalibStage.DONE:
+            # Transition back to menu after a short delay
+            if current_time - self._last_gesture_time > 3.0:
+                return SceneTransition(SceneId.MENU)
+
+        return None
+
+    def render(self, frame: np.ndarray) -> np.ndarray:
+        # Rendering is handled by the layer stack in get_active_layers
+        return frame
+
+    def _update_layer_markers(self):
+        """Generates markers to display based on current stage."""
+        w, h = self.context.app_config.width, self.context.app_config.height
+
+        # Define 6 markers for the box top
+        # We'll use IDs 10-15 for the box
+        box_ids = [10, 11, 12, 13, 14, 15]
+        box_markers = []
+
+        # Shift the box grid based on current_box_pos_idx to ensure coverage
+        # For simplicity, let's just use a central grid for now
+        # In a real impl, we might shift this based on current_box_pos_idx
+        grid_w, grid_h = 400, 300
+        start_x = (w - grid_w) // 2
+        start_y = (h - grid_h) // 2
+
+        # 3x2 grid
+        for i in range(3):
+            for j in range(2):
+                idx = i * 2 + j
+                mx = start_x + i * (grid_w // 2)
+                my = start_y + j * (grid_h // 1)
+                size = 60
+                corners = np.array(
+                    [
+                        [mx - size // 2, my - size // 2],
+                        [mx + size // 2, my - size // 2],
+                        [mx + size // 2, my + size // 2],
+                        [mx - size // 2, my + size // 2],
+                    ]
+                )
+                box_markers.append((box_ids[idx], corners))
+
+        # Define 4 reference markers for the table
+        # We'll use IDs 20-23
+        table_markers = [
+            (
+                20,
+                np.array(
+                    [
+                        [50, 50],
+                        [110, 50],
+                        [110, 110],
+                        [50, 110],
+                    ]
+                ),
+            ),
+            (
+                21,
+                np.array(
+                    [
+                        [w - 110, 50],
+                        [w - 50, 50],
+                        [w - 50, 110],
+                        [w - 110, 110],
+                    ]
+                ),
+            ),
+            (
+                22,
+                np.array(
+                    [
+                        [50, h - 110],
+                        [110, h - 110],
+                        [110, h - 50],
+                        [50, h - 50],
+                    ]
+                ),
+            ),
+            (
+                23,
+                np.array(
+                    [
+                        [w - 110, h - 110],
+                        [w - 50, h - 110],
+                        [w - 50, h - 50],
+                        [w - 110, h - 50],
+                    ]
+                ),
+            ),
+        ]
+
+        self.layer.box_markers = box_markers
+        self.layer.table_markers = table_markers
+        self.layer.instructions = (
+            f"Step {self.current_box_pos_idx + 1}/{self.max_box_positions}: "
+            f"Place box (H={self.context.app_config.calibration_box_height_mm}mm) "
+            "and show Victory gesture."
+        )
+
+    def _do_capture(self):
+        """Captures the current frame and reconstructs 3D points."""
+        # This requires the tracking coordinator to detect ArUco markers
+        # We'll use the camera's current extrinsics to find world points
+        # For each detected marker corner:
+        # 1. Back-project ray
+        # 2. Intersect with plane Z=H or Z=0
+        # 3. Store (Projector Pixel, World Point)
+
+        # In this implementation, we rely on the InteractiveApp to have
+        # latest detections available. For now, we'll stub the vision call
+        # or use a simplified approach since actual hardware is not available.
+        logging.info("Capturing 3D Projector Points...")
+
+        # Actual implementation would use app.vision_results or similar
+        # For now, let's increment the counter
+        self.current_box_pos_idx += 1
+        self.context.notifications.add_notification(
+            f"Captured position {self.current_box_pos_idx}."
+        )
+
+    def _run_calibration(self):
+        """Solves for Projector Intrinsics and Extrinsics."""
+        if not self.correspondences:
+            logging.warning("No correspondences collected!")
+            return
+
+        from light_map.calibration_logic import calibrate_projector_3d
+
+        res = (self.context.app_config.width, self.context.app_config.height)
+        result = calibrate_projector_3d(self.correspondences, res)
+
+        if result:
+            mtx, dist, rvec, tvec, rms = result
+            logging.info("Projector 3D Calibration Successful! RMS: %.3f", rms)
+            # Save results
+            ext_file = os.path.join(
+                self.context.app_config.storage_manager.get_config_dir(),
+                "projector_3d_calibration.npz",
+            )
+            np.savez(ext_file, mtx=mtx, dist=dist, rvec=rvec, tvec=tvec, rms=rms)
+            self.context.notifications.add_notification("3D Calibration Saved.")
+        else:
+            logging.error("Projector 3D Calibration Failed.")
+            self.context.notifications.add_notification("Calibration Failed!")

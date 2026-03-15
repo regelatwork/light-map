@@ -58,6 +58,47 @@ class InputProcessor:
         self.config = config
         self.hand_masker = HandMasker()
 
+    def _project_to_projector(self, cam_pts: np.ndarray, frame_shape: Tuple[int, int, int]) -> np.ndarray:
+        """Helper to project camera pixels to projector space."""
+        # 1. 3D Model Projection
+        if (
+            self.config.projector_3d_model
+            and self.config.projector_3d_model.use_3d
+        ):
+            # Reconstruct world points at Z=0
+            if (
+                self.config.camera_matrix is not None
+                and self.config.rvec is not None
+                and self.config.tvec is not None
+            ):
+                try:
+                    mtx_inv = np.linalg.inv(self.config.camera_matrix)
+                    rvec = np.array(self.config.rvec).reshape(3, 1)
+                    tvec = np.array(self.config.tvec).reshape(3, 1)
+                    R, _ = cv2.Rodrigues(rvec)
+                    RT = R.T
+                    camera_center = -(RT @ tvec).flatten()
+                    
+                    pts_homog = np.hstack([cam_pts, np.ones((cam_pts.shape[0], 1))])
+                    rays_cam = mtx_inv @ pts_homog.T
+                    rays_world = RT @ rays_cam
+                    
+                    cz = camera_center[2]
+                    vz = rays_world[2, :]
+                    s = (0.0 - cz) / (vz + 1e-9)
+                    p_world = camera_center.reshape(3, 1) + s * rays_world
+                    return self.config.projector_3d_model.project_world_to_projector(p_world.T)
+                except Exception:
+                    pass
+
+        # 2. Fallback to Homography
+        cam_pts_reshaped = cam_pts.reshape(-1, 1, 2).astype(np.float32)
+        if self.config.distortion_model:
+            proj_pts = self.config.distortion_model.apply_correction(cam_pts_reshaped)
+        else:
+            proj_pts = cv2.perspectiveTransform(cam_pts_reshaped, self.config.projector_matrix)
+        return proj_pts.reshape(-1, 2)
+
     def convert_mediapipe_to_inputs(
         self, results: Any, frame_shape: Tuple[int, int, int]
     ) -> List[HandInput]:
@@ -66,7 +107,6 @@ class InputProcessor:
         if not results.multi_hand_landmarks or not results.multi_handedness:
             return inputs
 
-        matrix = self.config.projector_matrix.astype(np.float32)
         res = (self.config.width, self.config.height)
 
         for i, landmarks in enumerate(results.multi_hand_landmarks):
@@ -75,18 +115,12 @@ class InputProcessor:
                 landmarks.landmark, handedness.classification[0].label
             )
 
-            tip = landmarks.landmark[mp.solutions.hands.HandLandmark.INDEX_FINGER_TIP]
+            tip_lm = landmarks.landmark[mp.solutions.hands.HandLandmark.INDEX_FINGER_TIP]
             cam_point = np.array(
-                [tip.x * frame_shape[1], tip.y * frame_shape[0]], dtype=np.float32
-            ).reshape(1, 1, 2)
+                [[tip_lm.x * frame_shape[1], tip_lm.y * frame_shape[0]]], dtype=np.float32
+            )
 
-            if self.config.distortion_model:
-                proj_point = self.config.distortion_model.apply_correction(cam_point)[
-                    0
-                ][0]
-            else:
-                proj_point = cv2.perspectiveTransform(cam_point, matrix)[0][0]
-
+            proj_point = self._project_to_projector(cam_point, frame_shape)[0]
             px, py = int(proj_point[0]), int(proj_point[1])
 
             # Virtual Pointer Direction Calculation (POINTING)
@@ -95,16 +129,13 @@ class InputProcessor:
             ux, uy = 0.0, 0.0
             if gesture == GestureType.POINTING:
                 # Calculate direction from PIP to TIP
-                pip = landmarks.landmark[
+                pip_lm = landmarks.landmark[
                     mp.solutions.hands.HandLandmark.INDEX_FINGER_PIP
-                ]
-                tip = landmarks.landmark[
-                    mp.solutions.hands.HandLandmark.INDEX_FINGER_TIP
                 ]
 
                 # Direction in camera coordinates (normalized)
-                dx_cam = tip.x - pip.x
-                dy_cam = tip.y - pip.y
+                dx_cam = tip_lm.x - pip_lm.x
+                dy_cam = tip_lm.y - pip_lm.y
                 mag = np.sqrt(dx_cam**2 + dy_cam**2)
 
                 if mag > 0.0001:
@@ -112,18 +143,13 @@ class InputProcessor:
                     # Let's project another point 10% further along the finger ray
                     tip_ext_cam = np.array(
                         [
-                            (tip.x + (dx_cam / mag) * 0.1) * frame_shape[1],
-                            (tip.y + (dy_cam / mag) * 0.1) * frame_shape[0],
+                            [(tip_lm.x + (dx_cam / mag) * 0.1) * frame_shape[1],
+                             (tip_lm.y + (dy_cam / mag) * 0.1) * frame_shape[0]]
                         ],
                         dtype=np.float32,
-                    ).reshape(1, 1, 2)
+                    )
 
-                    if self.config.distortion_model:
-                        proj_ext = self.config.distortion_model.apply_correction(
-                            tip_ext_cam
-                        )[0][0]
-                    else:
-                        proj_ext = cv2.perspectiveTransform(tip_ext_cam, matrix)[0][0]
+                    proj_ext = self._project_to_projector(tip_ext_cam, frame_shape)[0]
 
                     # Direction in projector space
                     pdx = proj_ext[0] - proj_point[0]

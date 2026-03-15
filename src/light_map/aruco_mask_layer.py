@@ -62,14 +62,40 @@ class ArucoMaskLayer(Layer):
     def _transform_pts(self, pts: Any, height_mm: float = 0.0) -> np.ndarray:
         """
         Transforms camera pixel points to projector space, accounting for height.
+        Uses Projector3DModel if available and enabled.
         """
         if isinstance(pts, list):
             pts = np.array(pts, dtype=np.float32)
         else:
             pts = pts.astype(np.float32)
 
+        # 1. Calculate World Coordinates (X, Y, height_mm) from Camera Pixels
+        if self._camera_matrix_inv is not None:
+            N = pts.shape[0]
+            pts_homog = np.hstack([pts, np.ones((N, 1), dtype=np.float32)])  # N x 3
+            rays_cam = self._camera_matrix_inv @ pts_homog.T  # 3 x N
+            rays_world = self._R_inv @ rays_cam  # 3 x N
+
+            cz = self._camera_center[2]
+            vz = rays_world[2, :]
+            # Intersect ray with plane Z = height_mm
+            s = (height_mm - cz) / (vz + 1e-9)
+            p_world = self._camera_center.reshape(3, 1) + s * rays_world  # 3 x N
+            p_world = p_world.T  # N x 3
+        else:
+            # Fallback if camera calibration is missing (should not happen)
+            p_world = np.hstack([pts, np.full((pts.shape[0], 1), height_mm)])
+
+        # 2. Project World Points to Projector Space
+        if (
+            self.config.projector_3d_model
+            and self.config.projector_3d_model.use_3d
+        ):
+            return self.config.projector_3d_model.project_world_to_projector(p_world)
+
+        # 3. Legacy Fallback (2D Homography + Heuristic Parallax)
         if height_mm <= 0 or self._camera_matrix_inv is None:
-            # Fallback to standard surface homography (Z=0)
+            # Standard surface homography (Z=0)
             cam_pts = pts.reshape(-1, 1, 2).astype(np.float32).copy()
             if self.config.distortion_model:
                 proj_pts = self.config.distortion_model.apply_correction(cam_pts)
@@ -79,62 +105,28 @@ class ArucoMaskLayer(Layer):
                 )
             return proj_pts.reshape(-1, 2)
 
-        # Parallax Corrected Projection
-        # 1. Back-project to rays in camera space
-        N = pts.shape[0]
-        pts_homog = np.hstack([pts, np.ones((N, 1), dtype=np.float32)])  # N x 3
-        rays_cam = self._camera_matrix_inv @ pts_homog.T  # 3 x N
-
-        # 2. Transform rays to world space
-        rays_world = self._R_inv @ rays_cam  # 3 x N
-
-        # 3. Intersect with plane Z = height_mm to get world point P
-        cz = self._camera_center[2]
-        vz = rays_world[2, :]
-        s_marker = (height_mm - cz) / (vz + 1e-9)
-        # World coordinates of marker top
-        p_world_marker = (
-            self._camera_center.reshape(3, 1) + s_marker * rays_world
-        )  # 3 x N
-
-        # 4. Map the ground point (directly below marker) back to camera pixels
-        # R_wc = self._R_inv.T
-        p_world_ground = p_world_marker.copy()
+        # Map the ground point (directly below world point) back to camera pixels
+        p_world_ground = p_world.T.copy()
         p_world_ground[2, :] = 0.0
-        
-        # pc = R_wc @ p_world_ground + t_wc
-        # R_wc @ p_world_ground is R @ p_world_ground
         pc = self._R_inv.T @ p_world_ground + self._tvec
         pix_ground_h = self.config.camera_matrix @ (pc / (pc[2, :] + 1e-9))
         pix_ground = pix_ground_h[:2, :].T.astype(np.float32)
 
-        # 5. Parallax shift in camera space:
-        # pts are where the marker top is seen.
-        # pix_ground is where the marker bottom IS seen.
-        # The shift is due to the marker's physical height.
         shift = pts - pix_ground
-
-        # Use parallax_factor to adjust mask for projector position
-        # factor 0.0 => use pts (projector co-located with camera)
-        # factor -1.0 => use pix_ground (projector at infinity/orthogonal)
         target_pix = pts + shift * self.config.parallax_factor
 
-        # 6. Apply Homography to map from Z=0 camera pixels to projector
         cam_pts_target = target_pix.reshape(-1, 1, 2).astype(np.float32)
         proj_pts = cv2.perspectiveTransform(
             cam_pts_target, self.config.projector_matrix
         )
         proj_pts = proj_pts.reshape(-1, 2)
 
-        # Apply non-linear distortion if present
         if self.config.distortion_model:
-            corrected = []
-            for p in proj_pts:
-                c_p = self.config.distortion_model.correct_theoretical_point(p[0], p[1])
-                corrected.append(c_p)
-            proj_pts = np.array(corrected, dtype=np.float32)
+            proj_pts = self.config.distortion_model.apply_correction(
+                proj_pts.reshape(-1, 1, 2)
+            ).reshape(-1, 2)
 
-        return proj_pts.reshape(-1, 2)
+        return proj_pts
 
 
     def _generate_patches(self, current_time: float) -> List[ImagePatch]:
@@ -176,10 +168,10 @@ class ArucoMaskLayer(Layer):
 
             # corners is (4, 2) in camera pixel coordinates
             proj_corners = self._transform_pts(corners, height_mm=height_mm)
+            proj_corners = np.array(proj_corners, dtype=np.float32).reshape(-1, 2)
 
             # Get bounding box in projector space
-            proj_corners_int = proj_corners.astype(np.int32)
-            x, y, w, h = cv2.boundingRect(proj_corners_int)
+            x, y, w, h = cv2.boundingRect(proj_corners)
 
             x1 = max(0, x - pad)
             y1 = max(0, y - pad)

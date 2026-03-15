@@ -22,6 +22,7 @@ from .constants import (
 
 if TYPE_CHECKING:
     from light_map.core.world_state import WorldState
+    from .vision.projector import Projector3DModel
 
 
 class LayerMode(StrEnum):
@@ -116,6 +117,7 @@ class MenuActions(StrEnum):
     CALIBRATE_PROJECTOR = "CALIBRATE_PROJECTOR"
     CALIBRATE_PPI = "CALIBRATE_PPI"
     CALIBRATE_EXTRINSICS = "CALIBRATE_EXTRINSICS"
+    CALIBRATE_PROJECTOR_3D = "CALIBRATE_PROJECTOR_3D"
     NAV_BACK = "NAV_BACK"
     MAP_CONTROLS = "MAP_CONTROLS"
     ROTATE_CW = "ROTATE_CW"
@@ -152,6 +154,7 @@ class SceneId(StrEnum):
     CALIBRATE_INTRINSICS = "CALIBRATE_INTRINSICS"
     CALIBRATE_PROJECTOR = "CALIBRATE_PROJECTOR"
     CALIBRATE_EXTRINSICS = "CALIBRATE_EXTRINSICS"
+    CALIBRATE_PROJECTOR_3D = "CALIBRATE_PROJECTOR_3D"
 
 
 class SelectionType(StrEnum):
@@ -230,6 +233,7 @@ class AppConfig:
     map_search_patterns: List[str] = field(default_factory=list)
     distortion_model: Optional[Any] = None
     storage_manager: Optional[Any] = None
+    projector_3d_model: Optional[Projector3DModel] = None
     log_level: str = "INFO"
     log_file: str = _DEFAULT_STORAGE.get_state_path("light_map.log")
 
@@ -241,6 +245,8 @@ class AppConfig:
     gm_position: GmPosition = GmPosition.NONE
     projector_ppi: float = DEFAULT_PROJECTOR_PPI
     parallax_factor: float = -1.0
+    calibration_box_height_mm: float = 78.0
+    use_projector_3d_model: bool = False
     aruco_defaults: Dict[int, Any] = field(default_factory=dict)
     token_profiles: Dict[str, Any] = field(default_factory=dict)
     pointer_extension_inches: float = DEFAULT_POINTER_EXTENSION_INCHES

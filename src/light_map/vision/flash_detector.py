@@ -8,6 +8,7 @@ from light_map.vision.debug_utils import DebugVisualizer
 
 if TYPE_CHECKING:
     from light_map.projector import ProjectorDistortionModel
+    from light_map.vision.projector import Projector3DModel
 
 
 class FlashTokenDetector:
@@ -56,6 +57,7 @@ class FlashTokenDetector:
         ppi: float = 96.0,
         default_height_mm: float = 0.0,
         distortion_model: Optional["ProjectorDistortionModel"] = None,
+        projector_3d_model: Optional["Projector3DModel"] = None,
     ) -> List[Token]:
         warped_image, markers = self._preprocess_and_find_markers(
             frame_white,
@@ -75,6 +77,7 @@ class FlashTokenDetector:
             ppi=ppi,
             default_height_mm=default_height_mm,
             distortion_model=distortion_model,
+            projector_3d_model=projector_3d_model,
         )
         if self.debug_mode:
             self._save_flash_debug_image(
@@ -138,6 +141,7 @@ class FlashTokenDetector:
         ppi=96.0,
         default_height_mm=0.0,
         distortion_model=None,
+        projector_3d_model=None,
     ):
         tokens = []
         id_counter = 1
@@ -174,6 +178,7 @@ class FlashTokenDetector:
                     ppi=ppi,
                     default_height_mm=default_height_mm,
                     distortion_model=distortion_model,
+                    projector_3d_model=projector_3d_model,
                 )
                 id_counter += 1
         return tokens
@@ -260,6 +265,7 @@ class FlashTokenDetector:
         ppi=96.0,
         default_height_mm=0.0,
         distortion_model=None,
+        projector_3d_model=None,
     ):
         M = cv2.moments(blob_mask)
         if M["m00"] > 0:
@@ -277,12 +283,20 @@ class FlashTokenDetector:
                 # Apply vertical projection
                 wx_mm, wy_mm = self._parallax_correction(u, v, default_height_mm)
 
-                ppi_mm = ppi / 25.4
-                px = wx_mm * ppi_mm
-                py = wy_mm * ppi_mm
+                if (
+                    projector_3d_model
+                    and projector_3d_model.use_3d
+                ):
+                    p_world = np.array([[wx_mm, wy_mm, default_height_mm]], dtype=np.float32)
+                    p_proj_real = projector_3d_model.project_world_to_projector(p_world)[0]
+                    px, py = p_proj_real[0], p_proj_real[1]
+                else:
+                    ppi_mm = ppi / 25.4
+                    px = wx_mm * ppi_mm
+                    py = wy_mm * ppi_mm
 
-                if distortion_model:
-                    px, py = distortion_model.correct_theoretical_point(px, py)
+                    if distortion_model:
+                        px, py = distortion_model.correct_theoretical_point(px, py)
 
                 wx, wy = map_system.screen_to_world(px, py)
             else:

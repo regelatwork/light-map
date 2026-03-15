@@ -10,49 +10,48 @@ This design proposes a robust **Timestamp-based Synchronization** mechanism and 
 
 ### Core Principle
 
-Instead of a boolean `is_dirty`, producers increment a version counter (timestamp). Consumers store the `last_seen_version`. If `producer.version > consumer.last_seen_version`, the consumer is dirty. This is implemented atomically: the `render()` method should return the version it just satisfied to ensure the renderer knows exactly what is in its cache.
+The system has moved away from manual boolean "dirty flags" (`is_dirty`) to a strictly monotonic version counter (timestamp) using `time.monotonic_ns()`.
+
+- **Producers**: Increment a specialized version in `WorldState` when data changes.
+- **Consumers**: Store the `last_seen_version`. If `producer.version > consumer.last_seen_version`, the consumer is stale and triggers an update.
+
+This ensures atomic updates: the `render()` method returns the version it just satisfied to ensure the renderer knows exactly what is in its cache.
 
 ### Changes
 
 #### `Layer` Base Class
 
-- Replace `is_dirty` (boolean property) with `get_current_version() -> int`.
+- Replaced `is_dirty` (boolean property) with `get_current_version() -> int`.
 - Each layer subclass calculates its current logical version from its `WorldState` dependencies (e.g., `viewport_timestamp`, `map_timestamp`).
-- Update `render(current_time) -> Tuple[List[ImagePatch], int]` to return both the patches and the version that was rendered.
+- Updated `render(current_time) -> Tuple[List[ImagePatch], int]` to return both the patches and the version that was rendered.
 
 #### `Renderer`
 
-- Store `last_layer_versions: Dict[Layer, int]` to track what is currently in its buffers/cache.
-- In `render()`, compare `layer.get_current_version()` with `last_layer_versions`.
-- If `current > last`, call `layer.render()`, update `last_layer_versions`, and recomposite.
-- This eliminates the "dirty flag" as a stored boolean entirely, moving to a pure "version comparison" model.
+- Stores `last_layer_versions: Dict[Layer, int]` to track current buffer/cache state.
+- In `render()`, compares `layer.get_current_version()` with `last_layer_versions`.
+- This eliminates the legacy "dirty flag" entirely.
 
 #### `Scene` Base Class
 
-- Remove `_is_dirty` boolean.
-- Add `version: int` (monotonically increasing).
-- Add `is_dynamic: bool` (default `False`).
-- Add `mark_dirty()` method to increment `version`.
+- Removed `_is_dirty` boolean.
+- Uses centralized `version: int` (derived from `WorldState.scene_timestamp`).
+- Replaced `mark_dirty()` with `increment_version()`.
 
 #### `WorldState`
 
-- Add `fow_timestamp: int`.
-- Add `increment_fow_timestamp()` method.
+- Central repository for all versions, issued via `_get_next_version()`.
+- Includes `fow_timestamp`, `map_timestamp`, `tokens_timestamp`, etc.
 
 #### `FogOfWarLayer`
 
-- Remove `self._is_dirty`.
-- `is_dirty` property checks `state.fow_timestamp`, `state.viewport_timestamp`, and `state.visibility_timestamp`.
+- Removed manual `_is_dirty` flag.
+- `get_current_version()` property checks `state.fow_timestamp`, `state.viewport_timestamp`, and `state.visibility_timestamp`.
 
 #### `InteractiveApp`
 
-- Remove manual `is_dirty = True/False` assignments for scenes and layers.
-- In the `update()` loop:
-  ```python
-  if self.current_scene.is_dynamic or self.current_scene.version > self.last_scene_version:
-      state.increment_scene_timestamp()
-      self.last_scene_version = self.current_scene.version
-  ```
+- Removed manual `is_dirty = True/False` assignments.
+- In the `process_state()` loop, `last_scene_version` is used to detect if the scene has updated.
+
 
 ## 2. Structural Refactoring
 

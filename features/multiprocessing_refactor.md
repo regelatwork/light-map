@@ -57,7 +57,7 @@ The system will be split into four primary process types:
 - **Role**: Central Data Repository (The "Source of Truth").
 - **Responsibilities**:
   - Stores a snapshot of the world: token list, hand data, active menu, viewport, and notifications.
-  - Implements a `dirty` flag logic: If an update significantly changes the state (e.g., token moves past a threshold), it marks itself as needing a redraw.
+  - Implements a strictly monotonic versioning logic: If an update significantly changes the state (e.g., token moves past a threshold), it increments a specialized timestamp using `time.monotonic_ns()`.
   - Provides a thread-safe `apply(event)` method to ingest data from various sources.
 
 ### Class: TemporalEventManager
@@ -74,7 +74,7 @@ The system will be split into four primary process types:
 - **Responsibilities**:
   - Encapsulates the waiting/polling strategy (e.g., high-frequency polling at a configurable 30Hz).
   - Aggregates events from Vision Queues, Keyboard input, and the `TemporalEventManager`.
-  - Orchestrates the update-then-render cycle based on `WorldState`'s dirty flag.
+  - Orchestrates the update-then-render cycle based on `WorldState`'s version timestamps.
 
 ### Class: HandDetectorProcess / ArucoDetectorProcess
 
@@ -92,7 +92,7 @@ The system will be split into four primary process types:
 1. **Detectors** push `Result(K)` to their Results Queue.
 1. **MainLoopController** drains the queues. It applies the newest results to the **WorldState**.
 1. **MainLoopController** checks for Key events and Temporal events, applying them to **WorldState**.
-1. If **WorldState** is "dirty", the **Renderer** is invoked to update the projector output.
+1. If **WorldState** versions have changed, the **Renderer** is invoked to update the projector output.
 
 ## Appendix: Alternatives Considered
 

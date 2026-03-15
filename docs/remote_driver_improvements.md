@@ -52,7 +52,7 @@ Expose the current visibility geometry loaded from the SVG.
 Expose the internal state of the `DwellTracker`.
 
 - **Fields:** `accumulated_time`, `is_triggered`, `last_point`, `target_id`.
-- **Benefit:** Essential for diagnosing "deadlocks" where interactions aren't triggering despite valid input (e.g., the "dirty state" bug).
+- **Benefit:** Essential for diagnosing "deadlocks" where interactions aren't triggering despite valid input (e.g., the "version synchronization" bug).
 
 ## 4. Diagnostics and Control
 

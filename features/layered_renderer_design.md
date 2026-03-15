@@ -24,12 +24,12 @@ The central manager of the rendering pipeline.
 
 ### 2. `Layer` (Interface)
 
-An abstract base class for all visual components.
+An abstract base class for all visual layers.
 
-- **`render(current_time: float) -> list[ImagePatch]`**: Inspects the state and returns patches to be drawn.
-- **`is_dirty: bool`**: Property that determines if the layer needs a redraw based on `WorldState` timestamps.
+- **`render(current_time: float) -> Tuple[List[ImagePatch], int]`**: Inspects the state and returns patches to be drawn along with the version they satisfy.
+- **`get_current_version() -> int`**: Abstract method that determines the layer's logical version based on its `WorldState` dependencies.
 - **`layer_mode: LayerMode`**: Defines how the layer's output interacts with layers below it.
-- **Caching**: Each layer tracks its own `_last_state_timestamp` to decide if it can reuse previously generated patches.
+- **Caching**: Each layer tracks its own `_last_rendered_version` (consumer-side) to decide if it can reuse previously generated patches.
 
 ## Standard Layer Stack (Bottom to Top)
 
@@ -60,18 +60,22 @@ Represents a rectangular region of pixels.
 
 ### WorldState Timestamps
 
-The `WorldState` serves as the single source of truth and maintains monotonic timestamps (or version IDs) for its components:
+The `WorldState` serves as the single source of truth and maintains strictly monotonic version timestamps based on `time.monotonic_ns()` for its components:
 
 - `map_timestamp`
 - `menu_timestamp`
-- `calibration_timestamp`
+- `scene_timestamp`
 - `tokens_timestamp`
+- `viewport_timestamp`
+- `fow_timestamp`
+- `visibility_timestamp`
+- `hands_timestamp`
 
 ### Rendering Pipeline
 
 1. **Request Patches**: The `Renderer` iterates through the active layer stack from bottom to top.
-1. **Stale Check**: Each layer compares the relevant `WorldState` timestamp with its `last_rendered_timestamp`.
-   - If `state_timestamp > last_rendered_timestamp`, the layer re-renders its patches and updates its cache.
+1. **Stale Check**: Each layer compares the relevant `WorldState` timestamps with its `_last_rendered_version`.
+   - If any `state_timestamp > _last_rendered_version`, the layer re-renders its patches and updates its cache.
    - Otherwise, it returns the cached patches.
 1. **Composition**:
    - If `LayerMode.BLOCKING`, the `Renderer` performs a fast `numpy` slice assignment.

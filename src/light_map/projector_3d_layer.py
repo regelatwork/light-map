@@ -1,7 +1,11 @@
-from typing import List, Optional, Tuple
+from typing import List, Optional, Tuple, TYPE_CHECKING
 import numpy as np
 import cv2
 from .common_types import Layer, ImagePatch, LayerMode
+from .display_utils import draw_text_with_background
+
+if TYPE_CHECKING:
+    from .core.world_state import WorldState
 
 
 class Projector3DCalibrationLayer(Layer):
@@ -12,13 +16,14 @@ class Projector3DCalibrationLayer(Layer):
 
     def __init__(
         self,
+        state: "WorldState",
         width: int,
         height: int,
         box_markers: List[Tuple[int, np.ndarray]] = None,
         table_markers: List[Tuple[int, np.ndarray]] = None,
         instructions: str = "",
     ):
-        super().__init__(is_static=False, layer_mode=LayerMode.BLOCKING)
+        super().__init__(state=state, is_static=False, layer_mode=LayerMode.BLOCKING)
         self.width = width
         self.height = height
         self.box_markers = box_markers or []
@@ -28,32 +33,43 @@ class Projector3DCalibrationLayer(Layer):
         self._aruco_dict = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_4X4_50)
 
     def get_current_version(self) -> int:
-        return int(np.random.randint(0, 1000000))
+        # Depend on the scene timestamp for versioning
+        if self.state:
+            return self.state.scene_timestamp
+        return 0
 
     def _generate_patches(self, current_time: float) -> List[ImagePatch]:
-        # Create full black background
+        if self.width <= 0 or self.height <= 0:
+            import logging
+            logging.error("Projector3DCalibrationLayer: Invalid dimensions!")
+            return []
+
+        # Create full black background (BGRA)
         img = np.zeros((self.height, self.width, 4), dtype=np.uint8)
-        img[:, :, 3] = 255  # Fully opaque black
+        img[:, :, 3] = 255  # Fully opaque alpha
 
-        # Draw Table Markers (Reference)
+        # Draw a bright white border (BGRA)
+        cv2.rectangle(img, (5, 5), (self.width - 6, self.height - 6), (255, 255, 255, 255), 10)
+
+        # Draw Table Markers (Reference) - Green (BGRA)
         for aruco_id, corners in self.table_markers:
-            self._draw_marker(img, aruco_id, corners, (0, 255, 0))  # Green for table
+            self._draw_marker(img, aruco_id, corners, (0, 255, 0, 255))
 
-        # Draw Box Markers (Target)
+        # Draw Box Markers (Target) - Yellow (BGRA)
         for aruco_id, corners in self.box_markers:
-            self._draw_marker(img, aruco_id, corners, (0, 255, 255))  # Yellow for box
+            self._draw_marker(img, aruco_id, corners, (0, 255, 255, 255))
 
         # Draw Instructions
         if self.instructions:
-            from .display_utils import draw_text_with_background
-
             draw_text_with_background(
                 img,
                 self.instructions,
-                (50, 50),
-                scale=1.0,
-                thickness=2,
-                color=(255, 255, 255),
+                (100, 150),
+                scale=2.0,
+                thickness=4,
+                color=(255, 255, 255, 255),
+                bg_color=(0, 0, 128), # Dark blue
+                alpha=0.9,
             )
 
         return [ImagePatch(0, 0, self.width, self.height, img)]
@@ -102,6 +118,6 @@ class Projector3DCalibrationLayer(Layer):
             (center[0], center[1]),
             cv2.FONT_HERSHEY_SIMPLEX,
             0.5,
-            color,
+            color[:3], # Use only BGR for putText
             1,
         )

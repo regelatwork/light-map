@@ -1353,7 +1353,7 @@ class Projector3DCalibrationScene(Scene):
         from light_map.projector_3d_layer import Projector3DCalibrationLayer
 
         self.layer = Projector3DCalibrationLayer(
-            context.app_config.width, context.app_config.height
+            context.state, context.app_config.width, context.app_config.height
         )
 
     def on_enter(self, payload: dict | None = None) -> None:
@@ -1368,7 +1368,7 @@ class Projector3DCalibrationScene(Scene):
         return True
 
     def get_active_layers(self, app: InteractiveApp) -> List[Layer]:
-        return [self.layer, app.ui_layer, app.cursor_layer]
+        return [self.layer, app.notification_layer, app.cursor_layer]
 
     def update(
         self, inputs: List[HandInput], actions: List[Action], current_time: float
@@ -1435,7 +1435,7 @@ class Projector3DCalibrationScene(Scene):
                 idx = i * 2 + j
                 mx = start_x + i * (grid_w // 2)
                 my = start_y + j * (grid_h // 1)
-                size = 60
+                size = 120
                 corners = np.array(
                     [
                         [mx - size // 2, my - size // 2],
@@ -1448,15 +1448,16 @@ class Projector3DCalibrationScene(Scene):
 
         # Define 4 reference markers for the table
         # We'll use IDs 20-23
+        tsize = 120
         table_markers = [
             (
                 20,
                 np.array(
                     [
                         [50, 50],
-                        [110, 50],
-                        [110, 110],
-                        [50, 110],
+                        [50 + tsize, 50],
+                        [50 + tsize, 50 + tsize],
+                        [50, 50 + tsize],
                     ]
                 ),
             ),
@@ -1464,10 +1465,10 @@ class Projector3DCalibrationScene(Scene):
                 21,
                 np.array(
                     [
-                        [w - 110, 50],
+                        [w - 50 - tsize, 50],
                         [w - 50, 50],
-                        [w - 50, 110],
-                        [w - 110, 110],
+                        [w - 50, 50 + tsize],
+                        [w - 50 - tsize, 50 + tsize],
                     ]
                 ),
             ),
@@ -1475,9 +1476,9 @@ class Projector3DCalibrationScene(Scene):
                 22,
                 np.array(
                     [
-                        [50, h - 110],
-                        [110, h - 110],
-                        [110, h - 50],
+                        [50, h - 50 - tsize],
+                        [50 + tsize, h - 50 - tsize],
+                        [50 + tsize, h - 50],
                         [50, h - 50],
                     ]
                 ),
@@ -1486,10 +1487,10 @@ class Projector3DCalibrationScene(Scene):
                 23,
                 np.array(
                     [
-                        [w - 110, h - 110],
-                        [w - 50, h - 110],
+                        [w - 50 - tsize, h - 50 - tsize],
+                        [w - 50, h - 50 - tsize],
                         [w - 50, h - 50],
-                        [w - 110, h - 50],
+                        [w - 50 - tsize, h - 50],
                     ]
                 ),
             ),

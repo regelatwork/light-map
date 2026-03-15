@@ -119,7 +119,16 @@ def draw_text_with_background(
 
     # Draw background with alpha blending
     sub_img = img[bg_rect_y1:bg_rect_y2, bg_rect_x1:bg_rect_x2]
-    rect = np.full(sub_img.shape, bg_color, dtype=np.uint8)
+    
+    # Ensure bg_color matches channel count
+    channels = sub_img.shape[2]
+    if channels == 4:
+        # Append alpha=255 to bg_color
+        full_bg_color = tuple(bg_color) + (255,)
+    else:
+        full_bg_color = bg_color
+
+    rect = np.full(sub_img.shape, full_bg_color, dtype=np.uint8)
     res = cv2.addWeighted(sub_img, 1 - alpha, rect, alpha, 0)
     img[bg_rect_y1:bg_rect_y2, bg_rect_x1:bg_rect_x2] = res
 

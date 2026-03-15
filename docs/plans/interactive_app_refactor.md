@@ -52,7 +52,6 @@ This ensures atomic updates: the `render()` method returns the version it just s
 - Removed manual `is_dirty = True/False` assignments.
 - In the `process_state()` loop, `last_scene_version` is used to detect if the scene has updated.
 
-
 ## 2. Structural Refactoring
 
 To reduce the complexity and size of `InteractiveApp.py` (~1300 lines), the following components will be extracted:

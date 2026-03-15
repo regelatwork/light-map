@@ -58,13 +58,12 @@ class InputProcessor:
         self.config = config
         self.hand_masker = HandMasker()
 
-    def _project_to_projector(self, cam_pts: np.ndarray, frame_shape: Tuple[int, int, int]) -> np.ndarray:
+    def _project_to_projector(
+        self, cam_pts: np.ndarray, frame_shape: Tuple[int, int, int]
+    ) -> np.ndarray:
         """Helper to project camera pixels to projector space."""
         # 1. 3D Model Projection
-        if (
-            self.config.projector_3d_model
-            and self.config.projector_3d_model.use_3d
-        ):
+        if self.config.projector_3d_model and self.config.projector_3d_model.use_3d:
             # Reconstruct world points at Z=0
             if (
                 self.config.camera_matrix is not None
@@ -78,16 +77,18 @@ class InputProcessor:
                     R, _ = cv2.Rodrigues(rvec)
                     RT = R.T
                     camera_center = -(RT @ tvec).flatten()
-                    
+
                     pts_homog = np.hstack([cam_pts, np.ones((cam_pts.shape[0], 1))])
                     rays_cam = mtx_inv @ pts_homog.T
                     rays_world = RT @ rays_cam
-                    
+
                     cz = camera_center[2]
                     vz = rays_world[2, :]
                     s = (0.0 - cz) / (vz + 1e-9)
                     p_world = camera_center.reshape(3, 1) + s * rays_world
-                    return self.config.projector_3d_model.project_world_to_projector(p_world.T)
+                    return self.config.projector_3d_model.project_world_to_projector(
+                        p_world.T
+                    )
                 except Exception:
                     pass
 
@@ -96,7 +97,9 @@ class InputProcessor:
         if self.config.distortion_model:
             proj_pts = self.config.distortion_model.apply_correction(cam_pts_reshaped)
         else:
-            proj_pts = cv2.perspectiveTransform(cam_pts_reshaped, self.config.projector_matrix)
+            proj_pts = cv2.perspectiveTransform(
+                cam_pts_reshaped, self.config.projector_matrix
+            )
         return proj_pts.reshape(-1, 2)
 
     def convert_mediapipe_to_inputs(
@@ -115,9 +118,12 @@ class InputProcessor:
                 landmarks.landmark, handedness.classification[0].label
             )
 
-            tip_lm = landmarks.landmark[mp.solutions.hands.HandLandmark.INDEX_FINGER_TIP]
+            tip_lm = landmarks.landmark[
+                mp.solutions.hands.HandLandmark.INDEX_FINGER_TIP
+            ]
             cam_point = np.array(
-                [[tip_lm.x * frame_shape[1], tip_lm.y * frame_shape[0]]], dtype=np.float32
+                [[tip_lm.x * frame_shape[1], tip_lm.y * frame_shape[0]]],
+                dtype=np.float32,
             )
 
             proj_point = self._project_to_projector(cam_point, frame_shape)[0]
@@ -143,8 +149,10 @@ class InputProcessor:
                     # Let's project another point 10% further along the finger ray
                     tip_ext_cam = np.array(
                         [
-                            [(tip_lm.x + (dx_cam / mag) * 0.1) * frame_shape[1],
-                             (tip_lm.y + (dy_cam / mag) * 0.1) * frame_shape[0]]
+                            [
+                                (tip_lm.x + (dx_cam / mag) * 0.1) * frame_shape[1],
+                                (tip_lm.y + (dy_cam / mag) * 0.1) * frame_shape[0],
+                            ]
                         ],
                         dtype=np.float32,
                     )

@@ -283,12 +283,13 @@ class FlashTokenDetector:
                 # Apply vertical projection
                 wx_mm, wy_mm = self._parallax_correction(u, v, default_height_mm)
 
-                if (
-                    projector_3d_model
-                    and projector_3d_model.use_3d
-                ):
-                    p_world = np.array([[wx_mm, wy_mm, default_height_mm]], dtype=np.float32)
-                    p_proj_real = projector_3d_model.project_world_to_projector(p_world)[0]
+                if projector_3d_model and projector_3d_model.use_3d:
+                    p_world = np.array(
+                        [[wx_mm, wy_mm, default_height_mm]], dtype=np.float32
+                    )
+                    p_proj_real = projector_3d_model.project_world_to_projector(
+                        p_world
+                    )[0]
                     px, py = p_proj_real[0], p_proj_real[1]
                 else:
                     ppi_mm = ppi / 25.4

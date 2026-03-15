@@ -27,7 +27,9 @@ class TestProjector3DModel(unittest.TestCase):
         # Looking down from Z=1000, no rotation
         mtx = np.array([[1000, 0, 640], [0, 1000, 360], [0, 0, 1]], dtype=np.float32)
         dist = np.zeros(5, dtype=np.float32)
-        rvec = np.array([np.pi, 0, 0], dtype=np.float32)  # Rotated 180 around X to look down
+        rvec = np.array(
+            [np.pi, 0, 0], dtype=np.float32
+        )  # Rotated 180 around X to look down
         tvec = np.array([0, 0, 1000], dtype=np.float32)
 
         model = Projector3DModel(mtx=mtx, dist=dist, rvec=rvec, tvec=tvec, use_3d=True)
@@ -68,7 +70,9 @@ class TestProjector3DModel(unittest.TestCase):
         img_points = img_points.reshape(-1, 2)
 
         # Package as correspondences
-        correspondences = [(obj_points[i], img_points[i]) for i in range(len(obj_points))]
+        correspondences = [
+            (obj_points[i], img_points[i]) for i in range(len(obj_points))
+        ]
 
         # Solve
         result = calibrate_projector_3d(correspondences, res)
@@ -87,7 +91,9 @@ class TestProjector3DModel(unittest.TestCase):
         true_R, _ = cv2.Rodrigues(true_rvec)
         sol_R, _ = cv2.Rodrigues(rvec)
         np.testing.assert_array_almost_equal(sol_R, true_R, decimal=2)
-        np.testing.assert_array_almost_equal(tvec.flatten(), true_tvec.flatten(), decimal=0)
+        np.testing.assert_array_almost_equal(
+            tvec.flatten(), true_tvec.flatten(), decimal=0
+        )
 
     def test_solver_noisy(self):
         # Similar to synthetic but with noise
@@ -115,7 +121,9 @@ class TestProjector3DModel(unittest.TestCase):
         np.random.seed(42)
         img_points += np.random.normal(0, 0.5, img_points.shape).astype(np.float32)
 
-        correspondences = [(obj_points[i], img_points[i]) for i in range(len(obj_points))]
+        correspondences = [
+            (obj_points[i], img_points[i]) for i in range(len(obj_points))
+        ]
         result = calibrate_projector_3d(correspondences, res)
 
         self.assertIsNotNone(result)
@@ -124,13 +132,14 @@ class TestProjector3DModel(unittest.TestCase):
         # Verify RMS reflects noise level (approx 0.5)
         self.assertLess(rms, 1.5)
         # Verify parameters are still reasonably close
-        np.testing.assert_array_almost_equal(mtx, true_mtx, decimal=-1)  # Within 10px focal length
+        np.testing.assert_array_almost_equal(
+            mtx, true_mtx, decimal=-1
+        )  # Within 10px focal length
 
     def test_projection_consistency(self):
         """Verifies that 3D model at Z=0 matches a Homography built from the same data."""
-        res = (1280, 720)
         mtx = np.array([[1000, 0, 640], [0, 1000, 360], [0, 0, 1]], dtype=np.float32)
-        rvec = np.array([np.pi, 0.1, 0.1], dtype=np.float32) # Slight tilt
+        rvec = np.array([np.pi, 0.1, 0.1], dtype=np.float32)  # Slight tilt
         tvec = np.array([50, -50, 1500], dtype=np.float32)
 
         # 1. Create a set of points at Z=0
@@ -148,18 +157,20 @@ class TestProjector3DModel(unittest.TestCase):
         H, _ = cv2.findHomography(world_pts_3d[:, :2], proj_pts_3d)
 
         # 4. Create Projector3DModel with both
-        model = Projector3DModel(mtx=mtx, rvec=rvec, tvec=tvec, homography=H, use_3d=True)
+        model = Projector3DModel(
+            mtx=mtx, rvec=rvec, tvec=tvec, homography=H, use_3d=True
+        )
 
         # 5. Test point at Z=0
         test_pt = np.array([[123.0, 456.0, 0.0]], dtype=np.float32)
-        
+
         # Result using 3D path
         res_3d = model.project_world_to_projector(test_pt)
-        
+
         # Result using Homography path
         model.use_3d = False
         res_2d = model.project_world_to_projector(test_pt)
-        
+
         # They should be very close for Z=0
         np.testing.assert_array_almost_equal(res_3d, res_2d, decimal=1)
 

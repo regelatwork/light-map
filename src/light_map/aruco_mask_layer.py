@@ -39,7 +39,10 @@ class ArucoMaskLayer(Layer):
             and self.config.tvec is not None
         ):
             # Only update if rvec/tvec changed
-            current_ext = (tuple(self.config.rvec.flatten()), tuple(self.config.tvec.flatten()))
+            current_ext = (
+                tuple(self.config.rvec.flatten()),
+                tuple(self.config.tvec.flatten()),
+            )
             if hasattr(self, "_last_ext") and self._last_ext == current_ext:
                 return
 
@@ -87,10 +90,7 @@ class ArucoMaskLayer(Layer):
             p_world = np.hstack([pts, np.full((pts.shape[0], 1), height_mm)])
 
         # 2. Project World Points to Projector Space
-        if (
-            self.config.projector_3d_model
-            and self.config.projector_3d_model.use_3d
-        ):
+        if self.config.projector_3d_model and self.config.projector_3d_model.use_3d:
             return self.config.projector_3d_model.project_world_to_projector(p_world)
 
         # 3. Legacy Fallback (2D Homography + Heuristic Parallax)
@@ -127,7 +127,6 @@ class ArucoMaskLayer(Layer):
             ).reshape(-1, 2)
 
         return proj_pts
-
 
     def _generate_patches(self, current_time: float) -> List[ImagePatch]:
         if not self.config.enable_aruco_masking or self.state is None:

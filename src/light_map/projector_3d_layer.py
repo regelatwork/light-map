@@ -1,4 +1,4 @@
-from typing import List, Optional, Tuple, TYPE_CHECKING
+from typing import List, Tuple, TYPE_CHECKING
 import numpy as np
 import cv2
 from .common_types import Layer, ImagePatch, LayerMode
@@ -41,6 +41,7 @@ class Projector3DCalibrationLayer(Layer):
     def _generate_patches(self, current_time: float) -> List[ImagePatch]:
         if self.width <= 0 or self.height <= 0:
             import logging
+
             logging.error("Projector3DCalibrationLayer: Invalid dimensions!")
             return []
 
@@ -49,7 +50,9 @@ class Projector3DCalibrationLayer(Layer):
         img[:, :, 3] = 255  # Fully opaque alpha
 
         # Draw a bright white border (BGRA)
-        cv2.rectangle(img, (5, 5), (self.width - 6, self.height - 6), (255, 255, 255, 255), 10)
+        cv2.rectangle(
+            img, (5, 5), (self.width - 6, self.height - 6), (255, 255, 255, 255), 10
+        )
 
         # Draw Table Markers (Reference) - Green (BGRA)
         for aruco_id, corners in self.table_markers:
@@ -68,7 +71,7 @@ class Projector3DCalibrationLayer(Layer):
                 scale=2.0,
                 thickness=4,
                 color=(255, 255, 255, 255),
-                bg_color=(0, 0, 128), # Dark blue
+                bg_color=(0, 0, 128),  # Dark blue
                 alpha=0.9,
             )
 
@@ -81,7 +84,9 @@ class Projector3DCalibrationLayer(Layer):
             return
 
         # Generate the marker bits
-        marker_img = cv2.aruco.generateImageMarker(self._aruco_dict, aruco_id, marker_size)
+        marker_img = cv2.aruco.generateImageMarker(
+            self._aruco_dict, aruco_id, marker_size
+        )
         marker_bgr = cv2.cvtColor(marker_img, cv2.COLOR_GRAY2BGR)
 
         # Create a white border/background for contrast
@@ -109,7 +114,7 @@ class Projector3DCalibrationLayer(Layer):
         # Composite (simple max or addition since base is black)
         mask = (temp > 0).any(axis=2)
         img[mask, :3] = temp[mask]
-        
+
         # Draw ID for debugging/info
         center = np.mean(corners, axis=0).astype(int)
         cv2.putText(
@@ -118,6 +123,6 @@ class Projector3DCalibrationLayer(Layer):
             (center[0], center[1]),
             cv2.FONT_HERSHEY_SIMPLEX,
             0.5,
-            color[:3], # Use only BGR for putText
+            color[:3],  # Use only BGR for putText
             1,
         )

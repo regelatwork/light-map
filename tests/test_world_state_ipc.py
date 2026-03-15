@@ -67,7 +67,7 @@ def test_world_state_apply_results():
     )
     state.apply(result_grid)
     assert state.tokens_timestamp > last_ts
-    last_ts = last_ts = state.tokens_timestamp # Actually I'll just keep the structure
+    last_ts = last_ts = state.tokens_timestamp  # Actually I'll just keep the structure
 
     # 6. Apply ArUco result (Raw corners) - SHOULD increment version for calibration updates
     raw_data = {"corners": [[[0, 0], [1, 0], [1, 1], [0, 1]]], "ids": [42]}

@@ -50,7 +50,9 @@ class Projector3DModel:
             pts_p = cv2.perspectiveTransform(pts_2d, self.H)
             return pts_p.reshape(-1, 2)
         else:
-            logging.warning("Projector3DModel: No calibration available for projection.")
+            logging.warning(
+                "Projector3DModel: No calibration available for projection."
+            )
             return points_3d[:, :2].astype(np.float32)
 
     @staticmethod
@@ -76,7 +78,9 @@ class Projector3DModel:
                 dist = data["dist"]
                 rvec = data["rvec"]
                 tvec = data["tvec"]
-                logging.info("Projector3DModel: Loaded 3D calibration from %s", ext_path)
+                logging.info(
+                    "Projector3DModel: Loaded 3D calibration from %s", ext_path
+                )
             except Exception as e:
                 logging.error("Projector3DModel: Error loading 3D calibration: %s", e)
 

@@ -400,7 +400,9 @@ class InteractiveApp:
             SceneId.CALIBRATE_INTRINSICS: IntrinsicsCalibrationScene(self.app_context),
             SceneId.CALIBRATE_PROJECTOR: ProjectorCalibrationScene(self.app_context),
             SceneId.CALIBRATE_EXTRINSICS: ExtrinsicsCalibrationScene(self.app_context),
-            SceneId.CALIBRATE_PROJECTOR_3D: Projector3DCalibrationScene(self.app_context),
+            SceneId.CALIBRATE_PROJECTOR_3D: Projector3DCalibrationScene(
+                self.app_context
+            ),
         }
 
     @property

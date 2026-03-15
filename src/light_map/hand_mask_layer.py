@@ -1,3 +1,4 @@
+import logging
 from typing import List
 import cv2
 import numpy as np
@@ -44,18 +45,16 @@ class HandMaskLayer(Layer):
 
         # If using 3D model, we need to assume a Z-height for hands.
         # For now, let's assume Z=0 (tabletop) or a slight offset.
-        if (
-            self.config.projector_3d_model
-            and self.config.projector_3d_model.use_3d
-        ):
-            # Create (N, 3) points at Z=0
-            pts_3d = np.hstack([cam_pts, np.zeros((cam_pts.shape[0], 1))])
+        if self.config.projector_3d_model and self.config.projector_3d_model.use_3d:
             # Note: The Projector3DModel.project_world_to_projector expects WORLD points.
             # Here cam_pts are CAMERA pixels. We need to convert CAMERA pixels to WORLD.
-            
+
             # TODO: Move the world_to_pix / pix_to_world logic into a centralized VisionService.
             # For now, if we have extrinsics, we can reconstruct world points at Z=0.
-            if hasattr(self.config, "camera_matrix") and self.config.camera_matrix is not None:
+            if (
+                hasattr(self.config, "camera_matrix")
+                and self.config.camera_matrix is not None
+            ):
                 try:
                     mtx_inv = np.linalg.inv(self.config.camera_matrix)
                     rvec = np.array(self.config.rvec).reshape(3, 1)
@@ -63,16 +62,18 @@ class HandMaskLayer(Layer):
                     R, _ = cv2.Rodrigues(rvec)
                     RT = R.T
                     camera_center = -(RT @ tvec).flatten()
-                    
+
                     pts_homog = np.hstack([cam_pts, np.ones((cam_pts.shape[0], 1))])
                     rays_cam = mtx_inv @ pts_homog.T
                     rays_world = RT @ rays_cam
-                    
+
                     cz = camera_center[2]
                     vz = rays_world[2, :]
                     s = (0.0 - cz) / (vz + 1e-9)
                     p_world = camera_center.reshape(3, 1) + s * rays_world
-                    return self.config.projector_3d_model.project_world_to_projector(p_world.T)
+                    return self.config.projector_3d_model.project_world_to_projector(
+                        p_world.T
+                    )
                 except Exception as e:
                     logging.warning(f"HandMaskLayer: 3D projection failed: {e}")
 
@@ -81,7 +82,9 @@ class HandMaskLayer(Layer):
         if self.config.distortion_model:
             proj_pts = self.config.distortion_model.apply_correction(cam_pts_reshaped)
         else:
-            proj_pts = cv2.perspectiveTransform(cam_pts_reshaped, self.config.projector_matrix)
+            proj_pts = cv2.perspectiveTransform(
+                cam_pts_reshaped, self.config.projector_matrix
+            )
         return proj_pts.reshape(-1, 2)
 
     def _generate_patches(self, current_time: float) -> List[ImagePatch]:

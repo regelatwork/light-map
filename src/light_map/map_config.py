@@ -181,9 +181,7 @@ class MapConfigManager:
                 calibration_box_height_mm=global_data.get(
                     "calibration_box_height_mm", 78.0
                 ),
-                use_projector_3d_model=global_data.get(
-                    "use_projector_3d_model", False
-                ),
+                use_projector_3d_model=global_data.get("use_projector_3d_model", False),
                 gm_position=GmPosition(global_data.get("gm_position", GmPosition.NONE)),
                 naming_style=NamingStyle(
                     global_data.get("naming_style", NamingStyle.SCI_FI)

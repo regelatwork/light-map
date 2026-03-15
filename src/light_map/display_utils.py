@@ -119,7 +119,7 @@ def draw_text_with_background(
 
     # Draw background with alpha blending
     sub_img = img[bg_rect_y1:bg_rect_y2, bg_rect_x1:bg_rect_x2]
-    
+
     # Ensure bg_color matches channel count
     channels = sub_img.shape[2]
     if channels == 4:

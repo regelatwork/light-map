@@ -17,7 +17,9 @@ def state():
 
 @pytest.fixture
 def engine():
-    return VisibilityEngine(grid_spacing_svg=10.0)
+    e = VisibilityEngine(grid_spacing_svg=10.0)
+    e.geometry_version = 100
+    return e
 
 
 def test_door_layer_init(state, engine):
@@ -106,7 +108,7 @@ def test_door_layer_render_open_door(state, engine):
     assert np.all(data[10, 20, :3] == [0, 255, 255])
 
 
-def test_door_layer_dirty_logic(state, engine):
+def test_door_layer_version_logic(state, engine):
     layer = DoorLayer(state, engine, 100, 100)
 
     # Initial state
@@ -115,12 +117,11 @@ def test_door_layer_dirty_logic(state, engine):
     assert rv1 == v1
 
     # Subsequent render should return same version, no re-render needed
-    # (Actually render handles caching internally)
     patches, rv2 = layer.render(0.0)
     assert rv2 == v1
 
-    # Update geometry version
-    engine.geometry_version += 1
+    # Update geometry version - use strictly monotonic helper from state
+    engine.geometry_version = state._get_next_version()
     v2 = layer.get_current_version()
     assert v2 > v1
     patches, rv3 = layer.render(0.0)
@@ -129,9 +130,7 @@ def test_door_layer_dirty_logic(state, engine):
     # Update viewport
     from light_map.common_types import ViewportState
 
-    # Already at v=1 from geometry_version. viewport_timestamp=0.
-    # Update viewport to trigger v=2
+    # Update viewport to trigger new version
     state.update_viewport(ViewportState(x=100, y=100, zoom=2.0, rotation=45.0))
-    state.update_viewport(ViewportState(x=200, y=200, zoom=2.0, rotation=45.0))
     v3 = layer.get_current_version()
     assert v3 > v2

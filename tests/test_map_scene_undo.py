@@ -4,6 +4,7 @@ from light_map.scenes.map_scene import MapScene
 from light_map.core.app_context import AppContext
 from light_map.common_types import GestureType
 from light_map.map_system import MapSystem
+from light_map.core.world_state import WorldState
 
 
 class MockHandInput:
@@ -27,7 +28,7 @@ def context():
     ctx.events = MagicMock()
     ctx.notifications = MagicMock()
     ctx.save_session = MagicMock()
-    ctx.state = None
+    ctx.state = WorldState()
     ctx.raw_tokens = []
     return ctx
 

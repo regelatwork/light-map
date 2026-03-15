@@ -9,7 +9,7 @@ def test_cursor_layer_initialization():
     ws = WorldState()
     context = MagicMock()
     layer = CursorLayer(ws, context)
-    assert layer.get_current_version() == 0
+    assert layer.get_current_version() > 0
 
 
 def test_cursor_layer_render_no_hands():

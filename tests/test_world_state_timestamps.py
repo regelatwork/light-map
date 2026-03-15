@@ -4,12 +4,12 @@ from light_map.common_types import DetectionResult, ResultType, Token, ViewportS
 
 def test_world_state_timestamps_init():
     ws = WorldState()
-    assert ws.map_timestamp == 0
-    assert ws.menu_timestamp == 0
-    assert ws.tokens_timestamp == 0
-    assert ws.hands_timestamp == 0
-    assert ws.notifications_timestamp == 0
-    assert ws.viewport_timestamp == 0
+    assert ws.map_timestamp > 0
+    assert ws.menu_timestamp > 0
+    assert ws.tokens_timestamp > 0
+    assert ws.hands_timestamp > 0
+    assert ws.notifications_timestamp > 0
+    assert ws.viewport_timestamp > 0
 
 
 def test_tokens_timestamp_increments():

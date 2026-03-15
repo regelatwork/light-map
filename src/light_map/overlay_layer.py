@@ -39,9 +39,7 @@ class TokenLayer(Layer):
             if any_occluded:
                 self._is_dynamic = True
             elif now - self._last_pulse_render_time > 0.5:
-                # We trigger ONE render pass by incrementing version or just returning dirty?
-                # Actually, _is_dynamic = True for one frame is hard.
-                # Let's just return a higher version if 500ms passed.
+                # Triggers a pulse render by returning a time-based version.
                 pass
 
         # Use time-based version for 500ms pulse if not dynamic

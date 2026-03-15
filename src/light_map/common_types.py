@@ -42,7 +42,10 @@ class ImagePatch:
 
 
 class Layer(ABC):
-    """Abstract Base Class for all visual layers."""
+    """
+    Abstract Base Class for all visual layers.
+    Uses strictly monotonic versions for efficient caching and re-rendering.
+    """
 
     def __init__(
         self,
@@ -54,16 +57,22 @@ class Layer(ABC):
         self.is_static = is_static
         self.layer_mode = layer_mode
         self._cached_patches: Optional[List[ImagePatch]] = None
-        self._last_rendered_version: int = -1
+        self._last_rendered_version: int = -1  # Consumer-side version tracking
         self._is_dynamic: bool = False
 
     @abstractmethod
     def get_current_version(self) -> int:
-        """Returns the logical version of the layer based on its dependencies."""
+        """
+        Returns the logical version of the layer based on its dependencies.
+        Subclasses should combine relevant timestamps from self.state.
+        """
         pass
 
     def render(self, current_time: float = 0.0) -> Tuple[List[ImagePatch], int]:
-        """Handles caching and calls _generate_patches if version changed."""
+        """
+        Handles caching and calls _generate_patches if any dependency version changed.
+        Returns the cached or newly generated patches and the version they satisfy.
+        """
         current_version = self.get_current_version()
 
         if (

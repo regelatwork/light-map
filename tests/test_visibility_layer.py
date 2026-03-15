@@ -8,7 +8,7 @@ def test_visibility_layer_initialization():
     layer = VisibilityLayer(ws, 100, 100, 10.0, (0.0, 0.0), 100, 100)
     assert layer.mask_width == 100
     assert layer.mask_height == 100
-    assert layer.get_current_version() == 0
+    assert layer.get_current_version() > 0
 
 
 def test_visibility_layer_render():

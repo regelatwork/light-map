@@ -60,17 +60,19 @@ class Scene(ABC):
 
     def __init__(self, context: AppContext):
         self.context = context
-        self._version = 0
         self._is_dynamic = False
 
     @property
     def version(self) -> int:
-        """Monotonically increasing version number, incremented on every change."""
-        return self._version
+        """
+        Returns the current scene version from WorldState.
+        Scenes do not store their own versions; they trigger updates in the central state.
+        """
+        return self.context.state.scene_timestamp
 
-    def mark_dirty(self):
-        """Increments the scene version to trigger a re-render."""
-        self._version += 1
+    def increment_version(self):
+        """Triggers a re-render by incrementing the central scene version."""
+        self.context.state.increment_scene_timestamp()
 
     @property
     def is_dynamic(self) -> bool:

@@ -15,7 +15,18 @@ from light_map.core.scene import HandInput
 class WorldState:
     """
     Central Data Repository (The "Source of Truth") for the MainProcess.
-    Manages background frames, vision results, and granular timestamps for caching.
+    Manages background frames, vision results, and granular versioning for caching.
+
+    VERSIONING SYSTEM:
+    -----------------
+    The codebase uses a strictly monotonic versioning system based on time.monotonic_ns().
+    - PRODUCERS: When a state component changes (e.g. tokens move, viewport pans), the
+      associated version/timestamp is updated using _get_next_version().
+    - CONSUMERS: Layers and scenes track the version they last processed. If the
+      current version in WorldState is greater than their last-seen version, they
+      trigger a re-render or re-computation.
+    - MOTIVATION: This eliminates redundant renders, avoids boolean 'dirty' flags
+      which are prone to lost updates, and provides a global ordering of events.
     """
 
     def __init__(
@@ -52,19 +63,28 @@ class WorldState:
         # Remote Action Queuing
         self.pending_actions: List[Dict[str, Any]] = []
 
-        # Granular Timestamps (Monotonic counters for caching)
-        self.map_timestamp: int = 0
-        self.menu_timestamp: int = 0
-        self.tokens_timestamp: int = 0
-        self.hands_timestamp: int = 0
-        self.scene_timestamp: int = 0
-        self.notifications_timestamp: int = 0
-        self.viewport_timestamp: int = 0
-        self.visibility_timestamp: int = 0
-        self.fow_timestamp: int = 0
+        # Granular Version Timestamps (Strictly monotonic counters for caching)
+        self._last_issued_version: int = 0
+        self.map_timestamp: int = self._get_next_version()
+        self.menu_timestamp: int = self._get_next_version()
+        self.tokens_timestamp: int = self._get_next_version()
+        self.hands_timestamp: int = self._get_next_version()
+        self.scene_timestamp: int = self._get_next_version()
+        self.notifications_timestamp: int = self._get_next_version()
+        self.viewport_timestamp: int = self._get_next_version()
+        self.visibility_timestamp: int = self._get_next_version()
+        self.fow_timestamp: int = self._get_next_version()
 
         # Hand Expiration tracking
         self.last_hand_timestamp: float = 0.0
+
+    def _get_next_version(self) -> int:
+        """Returns a strictly monotonic version number based on time.monotonic_ns()."""
+        new_v = time.monotonic_ns()
+        if new_v <= self._last_issued_version:
+            new_v = self._last_issued_version + 1
+        self._last_issued_version = new_v
+        return new_v
 
     def update_from_frame(self, shm_view: np.ndarray, timestamp: int):
         """
@@ -85,7 +105,7 @@ class WorldState:
         self.last_frame_timestamp = timestamp
 
     def update_viewport(self, new_viewport: ViewportState):
-        """Updates the viewport state and increments its timestamp if changed."""
+        """Updates the viewport state and increments its version if changed."""
         if (
             self.viewport.x != new_viewport.x
             or self.viewport.y != new_viewport.y
@@ -93,44 +113,44 @@ class WorldState:
             or self.viewport.rotation != new_viewport.rotation
         ):
             self.viewport = new_viewport
-            self.viewport_timestamp += 1
+            self.viewport_timestamp = self._get_next_version()
 
     def update_visibility_mask(self, mask: np.ndarray):
-        """Updates the LOS visibility mask and increments timestamp if changed."""
+        """Updates the LOS visibility mask and increments version if changed."""
         if self.visibility_mask is None or not np.array_equal(
             self.visibility_mask, mask
         ):
             self.visibility_mask = mask.copy()
-            self.visibility_timestamp += 1
+            self.visibility_timestamp = self._get_next_version()
 
     def increment_map_timestamp(self):
         """Manually trigger a map cache invalidation."""
-        self.map_timestamp += 1
+        self.map_timestamp = self._get_next_version()
 
     def increment_menu_timestamp(self):
         """Manually trigger a menu cache invalidation."""
-        self.menu_timestamp += 1
+        self.menu_timestamp = self._get_next_version()
 
     def increment_scene_timestamp(self):
         """Manually trigger a scene cache invalidation."""
-        self.scene_timestamp += 1
+        self.scene_timestamp = self._get_next_version()
 
     def update_menu_state(self, new_menu_state: Optional[MenuState]):
-        """Updates the menu state and increments its timestamp if changed."""
+        """Updates the menu state and increments its version if changed."""
         if self.menu_state != new_menu_state:
             self.menu_state = new_menu_state
-            self.menu_timestamp += 1
+            self.menu_timestamp = self._get_next_version()
 
     def increment_notifications_timestamp(self):
         """Manually trigger a notification cache invalidation."""
-        self.notifications_timestamp += 1
+        self.notifications_timestamp = self._get_next_version()
 
     def increment_fow_timestamp(self):
         """Manually trigger a Fog of War cache invalidation."""
-        self.fow_timestamp += 1
+        self.fow_timestamp = self._get_next_version()
 
     def update_performance_metrics(self, fps: float):
-        """Updates the FPS metric. Does not trigger dirty flag or timestamp as it's for transient display."""
+        """Updates the FPS metric. Does not trigger version increment as it's for transient display."""
         self.fps = fps
 
     def update_inputs(self, inputs: List[HandInput], current_time: float = 0.0):
@@ -140,7 +160,7 @@ class WorldState:
 
         if not self._inputs_equal(self.inputs, inputs):
             self.inputs = inputs
-            self.hands_timestamp += 1
+            self.hands_timestamp = self._get_next_version()
 
     def _inputs_equal(self, i1: List[HandInput], i2: List[HandInput]) -> bool:
         """Checks for semantic equality between two lists of hand inputs."""
@@ -201,7 +221,7 @@ class WorldState:
                     changed = True
 
             if changed:
-                self.tokens_timestamp += 1
+                self.tokens_timestamp = self._get_next_version()
 
         elif result.type == ResultType.HANDS:
             if (
@@ -212,12 +232,12 @@ class WorldState:
                 # Standardized HandInput objects (likely from Remote Driver)
                 if not self._inputs_equal(self.inputs, result.data):
                     self.inputs = result.data
-                    self.hands_timestamp += 1
+                    self.hands_timestamp = self._get_next_version()
 
                 # BUG-FIX: Even if inputs didn't change, we MUST increment hands_timestamp
                 # because scenes need to process time-based events (dwell, linger)
                 # every frame that hands are present.
-                self.hands_timestamp += 1
+                self.hands_timestamp = self._get_next_version()
                 # Update timestamp to prevent immediate expiration
                 self.last_hand_timestamp = current_time
             else:
@@ -230,7 +250,7 @@ class WorldState:
                 ):
                     self.hands = new_landmarks
                     self.handedness = new_handedness
-                    self.hands_timestamp += 1
+                    self.hands_timestamp = self._get_next_version()
                     # Update timestamp for raw landmarks too
                     self.last_hand_timestamp = current_time
 
@@ -238,7 +258,7 @@ class WorldState:
             new_gesture = result.data.get("gesture")
             if self.gesture != new_gesture:
                 self.gesture = new_gesture
-                self.hands_timestamp += 1
+                self.hands_timestamp = self._get_next_version()
 
         elif result.type == ResultType.ACTION:
             self.pending_actions.append(result.data)

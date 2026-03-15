@@ -63,7 +63,7 @@ def test_interactive_app_process_state_layered(mock_config, monkeypatch):
     assert np.all(frame == 0)  # Base black frame
 
 
-def test_interactive_app_process_state_skips_render_when_not_dirty(
+def test_interactive_app_process_state_skips_render_when_not_stale(
     mock_config, monkeypatch
 ):
     monkeypatch.setattr(
@@ -75,7 +75,7 @@ def test_interactive_app_process_state_skips_render_when_not_dirty(
     app = InteractiveApp(mock_config)
     ws = app.state
 
-    # 1. Initial render (everything is dirty)
+    # 1. Initial render (everything is stale/initial)
     app.current_scene = MagicMock()
     app.current_scene.version = 1
     app.current_scene.is_dynamic = False

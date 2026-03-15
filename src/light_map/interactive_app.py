@@ -599,7 +599,7 @@ class InteractiveApp:
 
             # 2. Update SceneLayer bridge
             self.layer_manager.scene_layer.scene = self.current_scene
-            # Only increment scene timestamp if scene is actually dirty
+            # Only increment scene timestamp if scene version has changed
             if (
                 self.current_scene.is_dynamic
                 or self.current_scene.version != self.last_scene_version

@@ -12,7 +12,7 @@ def test_fow_initialization():
     layer = FogOfWarLayer(ws, manager, 10.0, (0.0, 0.0), 100, 100)
     assert layer.manager.width == 100
     assert layer.manager.height == 100
-    assert layer.get_current_version() == 0
+    assert layer.get_current_version() > 0
 
 
 def test_fow_render_two_states():

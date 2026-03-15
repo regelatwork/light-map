@@ -58,7 +58,7 @@ class FlashCalibrationScene(Scene):
         self._current_level_idx = 0
         self._results = {}
         self.token_tracker.debug_mode = self.context.debug_mode
-        self.mark_dirty()
+        self.increment_version()
 
     def update(
         self, inputs: List[HandInput], actions: List[Action], current_time: float
@@ -179,7 +179,7 @@ class IntrinsicsCalibrationScene(Scene):
     def on_enter(self, payload: Any = None) -> None:
         self._captured_images = []
         self._stage = "CAPTURE"
-        self.mark_dirty()
+        self.increment_version()
         self.context.notifications.add_notification(
             f"Capture {self._required_images} chessboard images."
         )
@@ -299,7 +299,7 @@ class ProjectorCalibrationScene(Scene):
         from light_map.projector import generate_calibration_pattern
 
         self._stage = "DISPLAY_PATTERN"
-        self.mark_dirty()
+        self.increment_version()
 
         # Generate pattern
         w, h = self.context.app_config.width, self.context.app_config.height
@@ -436,7 +436,7 @@ class ExtrinsicsCalibrationScene(Scene):
 
     def on_enter(self, payload: Any = None) -> None:
         self._stage = "PLACEMENT"
-        self.mark_dirty()
+        self.increment_version()
         self._ppi = self.context.map_config_manager.get_ppi()
         self._reprojection_error = 0.0
         self._obj_points = None
@@ -1093,7 +1093,7 @@ class MapGridCalibrationScene(Scene):
     def on_enter(self, payload: dict | None = None) -> None:
         self.is_interacting = False
         self.summon_gesture_start_time = 0.0
-        self.mark_dirty()
+        self.increment_version()
 
         map_system = self.context.map_system
         map_config = self.context.map_config_manager
@@ -1361,7 +1361,7 @@ class Projector3DCalibrationScene(Scene):
         self.correspondences = []
         self.current_box_pos_idx = 0
         self._update_layer_markers()
-        self.mark_dirty()
+        self.increment_version()
 
     @property
     def blocking(self) -> bool:

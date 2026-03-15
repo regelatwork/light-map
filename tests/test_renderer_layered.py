@@ -110,7 +110,7 @@ def test_renderer_clipping():
     assert np.array_equal(out[70, 50], [0, 0, 0])
 
 
-def test_renderer_skip_if_not_dirty():
+def test_renderer_skip_if_version_unchanged():
     renderer = Renderer(100, 100)
     state = WorldState()
     layer = MockLayer(state=state)
@@ -119,11 +119,11 @@ def test_renderer_skip_if_not_dirty():
     frame = renderer.render(state, [layer])
     assert frame is not None
 
-    # Subsequent render without changes should return None
+    # Subsequent render without version changes should return None (skipped)
     frame = renderer.render(state, [layer])
     assert frame is None
 
-    # Set dirty again by incrementing version
+    # Trigger re-render by incrementing version
     layer._version += 1
     frame = renderer.render(state, [layer])
     assert frame is not None

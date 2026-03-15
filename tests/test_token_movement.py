@@ -106,7 +106,7 @@ def test_token_movement_propagation():
     )
     world_state.apply(world_res_2)
 
-    # VERIFY: Should be dirty! (timestamp incremented)
+    # VERIFY: Version should change! (timestamp incremented)
     assert world_state.tokens_timestamp > timestamp_after_frame_1
     assert world_state.tokens[0].grid_x == 2
 
@@ -129,7 +129,7 @@ def test_token_movement_propagation():
     # VERIFY: raw tokens didn't change logically enough, maybe same data dict?
     # Actually wait: The raw tokens did change (220->230). So the timestamp WILL increment!
     # Let's just assert that it continues to work.
-    # The original test asserted False for dirty_tokens, meaning the smoothing/filter kept it stable.
+    # The original test asserted False for stale_tokens, meaning the smoothing/filter kept it stable.
     # If the tokens dict doesn't change, the timestamp won't increment.
     # Let's test that the logical token is still in grid 2.
     assert world_state.tokens[0].grid_x == 2

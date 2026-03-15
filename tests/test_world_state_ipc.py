@@ -36,14 +36,14 @@ def test_world_state_apply_results():
     assert state.tokens_timestamp > last_ts
     last_ts = state.tokens_timestamp
 
-    # 2. Apply SAME tokens again - should NOT be dirty (timestamp shouldn't increment)
+    # 2. Apply SAME tokens again - should NOT increment version
     result_same = DetectionResult(
         timestamp=2010, type=ResultType.ARUCO, data={"tokens": tokens}
     )
     state.apply(result_same)
     assert state.tokens_timestamp == last_ts
 
-    # 3. Apply tokens with tiny jitter (< 0.01) - should NOT be dirty
+    # 3. Apply tokens with tiny jitter (< 0.01) - should NOT increment version
     jitter_tokens = [Token(id=1, world_x=10.005, world_y=20.0)]
     result_jitter = DetectionResult(
         timestamp=2020, type=ResultType.ARUCO, data={"tokens": jitter_tokens}
@@ -51,7 +51,7 @@ def test_world_state_apply_results():
     state.apply(result_jitter)
     assert state.tokens_timestamp == last_ts
 
-    # 4. Apply tokens with significant movement - SHOULD be dirty
+    # 4. Apply tokens with significant movement - SHOULD increment version
     moved_tokens = [Token(id=1, world_x=15.0, world_y=20.0)]
     result_moved = DetectionResult(
         timestamp=2030, type=ResultType.ARUCO, data={"tokens": moved_tokens}
@@ -60,16 +60,16 @@ def test_world_state_apply_results():
     assert state.tokens_timestamp > last_ts
     last_ts = state.tokens_timestamp
 
-    # 5. Apply tokens with grid change - SHOULD be dirty
+    # 5. Apply tokens with grid change - SHOULD increment version
     grid_tokens = [Token(id=1, world_x=10.0, world_y=20.0, grid_x=1, grid_y=0)]
     result_grid = DetectionResult(
         timestamp=2040, type=ResultType.ARUCO, data={"tokens": grid_tokens}
     )
     state.apply(result_grid)
     assert state.tokens_timestamp > last_ts
-    last_ts = state.tokens_timestamp
+    last_ts = last_ts = state.tokens_timestamp # Actually I'll just keep the structure
 
-    # 6. Apply ArUco result (Raw corners) - SHOULD dirty tokens for calibration updates
+    # 6. Apply ArUco result (Raw corners) - SHOULD increment version for calibration updates
     raw_data = {"corners": [[[0, 0], [1, 0], [1, 1], [0, 1]]], "ids": [42]}
     result_raw = DetectionResult(timestamp=2050, type=ResultType.ARUCO, data=raw_data)
     state.apply(result_raw)

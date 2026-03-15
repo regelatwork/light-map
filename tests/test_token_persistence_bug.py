@@ -114,9 +114,9 @@ def test_tokens_persist_via_aruco_mapper_path():
     assert len(state.tokens) == 0, "Tokens should be cleared by mapper even if empty"
 
 
-def test_token_layer_dirty_when_occluded():
+def test_token_layer_stale_when_occluded():
     """
-    Verify that TokenLayer is dirty every frame if a token is occluded.
+    Verify that TokenLayer version increments every frame if a token is occluded.
     """
     state = WorldState()
     # Use a list to hold time so it can be mutated inside closure
@@ -163,9 +163,9 @@ def test_token_layer_dirty_when_occluded():
     assert rv3 == v3
 
 
-def test_token_layer_pulse_dirty():
+def test_token_layer_pulse_version():
     """
-    Verify that TokenLayer is dirty every 500ms even if no tokens are occluded.
+    Verify that TokenLayer version increments every 500ms even if no tokens are occluded.
     """
     state = WorldState()
     current_time = [100.0]

@@ -4,6 +4,7 @@ from light_map.scenes.menu_scene import MenuScene
 from light_map.core.app_context import AppContext
 from light_map.common_types import MenuActions
 from light_map.map_system import MapSystem
+from light_map.core.world_state import WorldState
 
 
 @pytest.fixture
@@ -18,7 +19,7 @@ def context():
     ctx.map_config_manager.get_detection_algorithm.return_value = "ARUCO"
     ctx.analytics = MagicMock()
     ctx.save_session = MagicMock()
-    ctx.state = None
+    ctx.state = WorldState()
     ctx.visibility_engine = MagicMock()
     ctx.visibility_engine.blockers = []
     return ctx

@@ -252,10 +252,10 @@ class ViewingScene(BaseMapScene):
 
     def __init__(self, context: AppContext):
         super().__init__(context)
-        self.mark_dirty()  # Start dirty to render once
+        self.increment_version()  # Initial version increment to trigger first render
 
     def on_enter(self, payload: dict | None = None) -> None:
-        self.mark_dirty()
+        self.increment_version()
         self.dwell_tracker.reset()
 
     @property
@@ -338,12 +338,12 @@ class MapScene(BaseMapScene):
         self.interaction_controller = MapInteractionController()
         self.is_interacting = False
         self.pre_interaction_state = None
-        self.mark_dirty()
+        self.increment_version()
 
     def on_enter(self, payload: dict | None = None) -> None:
         self.is_interacting = False
         self.pre_interaction_state = None
-        self.mark_dirty()
+        self.increment_version()
         self.dwell_tracker.reset()
         self.context.notifications.add_notification(
             "Map Interaction Mode: Pan (1 hand), Zoom (2 hands)"

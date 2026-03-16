@@ -46,17 +46,22 @@ def test_aruco_mask_layer_version(mock_state, mock_config):
     # Enabled
     mock_config.enable_aruco_masking = True
     v1 = layer.get_current_version()
-    assert v1 == (mock_state.tokens_timestamp << 1) | 1
+    assert v1 == (mock_state.raw_aruco_timestamp << 1) | 1
 
     # Disabled
     mock_config.enable_aruco_masking = False
     v2 = layer.get_current_version()
-    assert v2 == (mock_state.tokens_timestamp << 1) | 0
+    assert v2 == (mock_state.raw_aruco_timestamp << 1) | 0
 
-    # Tokens updated
+    # Tokens updated (Should NOT affect raw_aruco_timestamp)
     mock_state.tokens_timestamp = 2
     v3 = layer.get_current_version()
-    assert v3 == (mock_state.tokens_timestamp << 1) | 0
+    assert v3 == (mock_state.raw_aruco_timestamp << 1) | 0
+
+    # Raw ArUco updated
+    mock_state.raw_aruco_timestamp = 3
+    v4 = layer.get_current_version()
+    assert v4 == (3 << 1) | 0
 
 
 def test_aruco_mask_layer_rendering(mock_state, mock_config):

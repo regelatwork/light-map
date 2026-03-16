@@ -1,7 +1,8 @@
+import logging
+import math
 from dataclasses import dataclass
 from typing import Dict, Any, Optional, Tuple, List, TYPE_CHECKING
 import svgelements
-import math
 
 from light_map.svg import SVGLoader
 from light_map.common_types import Token
@@ -208,4 +209,7 @@ class MapSystem:
         """Converts world coordinates to screen coordinates."""
         m = self._get_matrix()
         p = m.point_in_matrix_space((wx, wy))
+        logging.debug(
+            f"MapSystem: world {wx:.1f},{wy:.1f} -> screen {p.x:.1f},{p.y:.1f}"
+        )
         return p.x, p.y

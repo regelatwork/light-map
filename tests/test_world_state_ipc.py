@@ -69,12 +69,15 @@ def test_world_state_apply_results():
     assert state.tokens_timestamp > last_ts
     last_ts = last_ts = state.tokens_timestamp  # Actually I'll just keep the structure
 
-    # 6. Apply ArUco result (Raw corners) - SHOULD increment version for calibration updates
+    # 6. Apply ArUco result (Raw corners) - SHOULD increment raw_aruco_timestamp
     raw_data = {"corners": [[[0, 0], [1, 0], [1, 1], [0, 1]]], "ids": [42]}
     result_raw = DetectionResult(timestamp=2050, type=ResultType.ARUCO, data=raw_data)
+    last_raw_ts = state.raw_aruco_timestamp
     state.apply(result_raw)
     assert state.raw_aruco["ids"] == [42]
-    assert state.tokens_timestamp > last_ts
+    assert state.raw_aruco_timestamp > last_raw_ts
+    # Should NOT increment tokens_timestamp
+    assert state.tokens_timestamp == last_ts
     last_ts = state.tokens_timestamp
 
     # 7. Apply both Snapped and Raw tokens

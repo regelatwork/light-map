@@ -68,6 +68,7 @@ class WorldState:
         self.map_timestamp: int = self._get_next_version()
         self.menu_timestamp: int = self._get_next_version()
         self.tokens_timestamp: int = self._get_next_version()
+        self.raw_aruco_timestamp: int = self._get_next_version()
         self.hands_timestamp: int = self._get_next_version()
         self.scene_timestamp: int = self._get_next_version()
         self.notifications_timestamp: int = self._get_next_version()
@@ -193,21 +194,22 @@ class WorldState:
             current_time = time.monotonic()
 
         if result.type == ResultType.ARUCO:
-            changed = False
+            changed_tokens = False
+            changed_raw = False
             if "tokens" in result.data:
                 # Logical/Snapped tokens
                 new_tokens = result.data["tokens"]
 
                 if not self._tokens_equal(self.tokens, new_tokens):
                     self.tokens = new_tokens
-                    changed = True
+                    changed_tokens = True
 
                 # Update raw tokens if provided
                 if "raw_tokens" in result.data:
                     new_raw_tokens = result.data["raw_tokens"]
                     if not self._tokens_equal(self.raw_tokens, new_raw_tokens):
                         self.raw_tokens = new_raw_tokens
-                        changed = True
+                        changed_tokens = True
             else:
                 # Raw ArUco from workers (corners, ids)
                 new_ids = result.data.get("ids", [])
@@ -218,10 +220,13 @@ class WorldState:
                         "corners": new_corners,
                         "ids": new_ids,
                     }
-                    changed = True
+                    changed_raw = True
 
-            if changed:
+            if changed_tokens:
                 self.tokens_timestamp = self._get_next_version()
+
+            if changed_raw:
+                self.raw_aruco_timestamp = self._get_next_version()
 
         elif result.type == ResultType.HANDS:
             if (

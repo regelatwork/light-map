@@ -44,6 +44,7 @@ class MainLoopController:
         self.events = events or TemporalEventManager(time_provider=time_provider)
         self.debug_mode = False
         self._last_report_time = 0.0
+        self._last_raw_aruco_ts = -1
 
     def tick(self) -> List[Action]:
         """Performs one iteration of the main loop."""
@@ -77,8 +78,11 @@ class MainLoopController:
         with track_wait("queue_wait_main", self.instrument):
             self._drain_queues(current_mono)
 
-        # 3. Map Raw ArUco if available
-        if self.state.raw_aruco["ids"]:
+        # 3. Map Raw ArUco if available AND changed
+        if (
+            self.state.raw_aruco["ids"]
+            and self.state.raw_aruco_timestamp != self._last_raw_aruco_ts
+        ):
             if self.aruco_mapper:
                 mapped_result = self.aruco_mapper(self.state.raw_aruco)
                 if isinstance(mapped_result, dict):
@@ -94,12 +98,8 @@ class MainLoopController:
                     )
                     self.state.apply(res, current_time=current_mono)
 
-                # NOTE: We DO NOT clear raw_aruco here anymore.
-                # Calibration scenes (e.g. Extrinsics) rely on the raw corners
-                # being available in the context. If we clear it, they get empty data.
-                # Since WorldState.apply already implements a change-check,
-                # we won't trigger redundant renders if the same results arrive.
-                # raw_aruco will be cleared in WorldState.clear_raw_aruco() after the render.
+                # Track that we've processed this raw ArUco state
+                self._last_raw_aruco_ts = self.state.raw_aruco_timestamp
 
         # 4. Process Temporal Events
         event_actions = self.events.check()
@@ -221,9 +221,6 @@ class MainLoopController:
                     if ts_to_render > 0:
                         self.instrument.record_render(ts_to_render)
 
-                # ALWAYS clear raw_aruco after processing, otherwise it accumulates
-                # and prevents new updates from being recognized as "changes" in WorldState.apply
-                self.state.clear_raw_aruco()
                 # 3. Handle Frame Rate
                 elapsed = time.perf_counter() - start_time
                 wait_time = max(0.001, self.frame_time - elapsed)

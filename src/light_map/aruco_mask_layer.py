@@ -27,7 +27,8 @@ class ArucoMaskLayer(Layer):
 
         # Include enable_aruco_masking change in version
         enabled_bit = 1 if self.config.enable_aruco_masking else 0
-        return (self.state.tokens_timestamp << 1) | enabled_bit
+        # Use raw_aruco_timestamp to ensure masks persist even if logical tokens change
+        return (self.state.raw_aruco_timestamp << 1) | enabled_bit
 
     def _update_calibration(self):
         """Pre-calculates calibration matrices for parallax correction."""
@@ -64,67 +65,62 @@ class ArucoMaskLayer(Layer):
 
     def _transform_pts(self, pts: Any, height_mm: float = 0.0) -> np.ndarray:
         """
-        Transforms camera pixel points to projector space, accounting for height.
-        Uses Projector3DModel if available and enabled.
+        Transforms camera pixel points to projector space, matching ArucoDetector logic.
+        Outputs coordinates in Calibration Space (e.g. 4608x2592).
         """
         if isinstance(pts, list):
             pts = np.array(pts, dtype=np.float32)
         else:
             pts = pts.astype(np.float32)
 
-        # 1. Calculate World Coordinates (X, Y, height_mm) from Camera Pixels
+        # 1. Project to World Space (X, Y, height_mm)
         if self._camera_matrix_inv is not None:
-            N = pts.shape[0]
-            pts_homog = np.hstack([pts, np.ones((N, 1), dtype=np.float32)])  # N x 3
-            rays_cam = self._camera_matrix_inv @ pts_homog.T  # 3 x N
+            pts_reshaped = pts.reshape(-1, 1, 2)
+            undistorted = cv2.undistortPoints(
+                pts_reshaped,
+                self.config.camera_matrix,
+                getattr(self.config, "dist_coeffs", None),
+            )
+            xn = undistorted[:, 0, 0]
+            yn = undistorted[:, 0, 1]
+
+            N = xn.shape[0]
+            rays_cam = np.vstack([xn, yn, np.ones(N)])  # 3 x N
             rays_world = self._R_inv @ rays_cam  # 3 x N
 
             cz = self._camera_center[2]
             vz = rays_world[2, :]
-            # Intersect ray with plane Z = height_mm
+
             s = (height_mm - cz) / (vz + 1e-9)
             p_world = self._camera_center.reshape(3, 1) + s * rays_world  # 3 x N
-            p_world = p_world.T  # N x 3
+            wx_mm = p_world[0, :]
+            wy_mm = p_world[1, :]
         else:
-            # Fallback if camera calibration is missing (should not happen)
-            p_world = np.hstack([pts, np.full((pts.shape[0], 1), height_mm)])
+            # Fallback if camera calibration missing
+            return np.zeros((pts.shape[0], 2), dtype=np.float32)
 
-        # 2. Project World Points to Projector Space
-        if self.config.projector_3d_model and self.config.projector_3d_model.use_3d:
-            return self.config.projector_3d_model.project_world_to_projector(p_world)
+        # 2. Map World (mm) to Projector Pixels (Calibration Space)
+        ppi = self.config.projector_ppi
+        ppi_mm = ppi / 25.4 if ppi > 0 else 0.0
 
-        # 3. Legacy Fallback (2D Homography + Heuristic Parallax)
-        if height_mm <= 0 or self._camera_matrix_inv is None:
-            # Standard surface homography (Z=0)
-            cam_pts = pts.reshape(-1, 1, 2).astype(np.float32).copy()
-            if self.config.distortion_model:
-                proj_pts = self.config.distortion_model.apply_correction(cam_pts)
-            else:
-                proj_pts = cv2.perspectiveTransform(
-                    cam_pts, self.config.projector_matrix
-                )
-            return proj_pts.reshape(-1, 2)
+        px = wx_mm * ppi_mm
+        py = wy_mm * ppi_mm
 
-        # Map the ground point (directly below world point) back to camera pixels
-        p_world_ground = p_world.T.copy()
-        p_world_ground[2, :] = 0.0
-        pc = self._R_inv.T @ p_world_ground + self._tvec
-        pix_ground_h = self.config.camera_matrix @ (pc / (pc[2, :] + 1e-9))
-        pix_ground = pix_ground_h[:2, :].T.astype(np.float32)
+        proj_pts = np.column_stack([px, py]).astype(np.float32)
 
-        shift = pts - pix_ground
-        target_pix = pts + shift * self.config.parallax_factor
-
-        cam_pts_target = target_pix.reshape(-1, 1, 2).astype(np.float32)
-        proj_pts = cv2.perspectiveTransform(
-            cam_pts_target, self.config.projector_matrix
-        )
-        proj_pts = proj_pts.reshape(-1, 2)
-
+        # 3. Apply Distortion Model if available
         if self.config.distortion_model:
-            proj_pts = self.config.distortion_model.apply_correction(
-                proj_pts.reshape(-1, 1, 2)
-            ).reshape(-1, 2)
+            corrected = []
+            for pt in proj_pts:
+                c_px, c_py = self.config.distortion_model.correct_theoretical_point(
+                    pt[0], pt[1]
+                )
+                corrected.append([c_px, c_py])
+            proj_pts = np.array(corrected, dtype=np.float32)
+
+        # NOTE: We DO NOT scale to physical screen resolution here.
+        # The system (MapSystem, ArucoDetector) operates in Calibration Space (4608x2592).
+        # Scaling here causes a mismatch with the logical tokens.
 
         return proj_pts
 
@@ -140,17 +136,18 @@ class ArucoMaskLayer(Layer):
 
         self._update_calibration()
 
-        logging.debug(
-            f"ArucoMaskLayer: Generating patches for {len(corners_list)} markers"
-        )
-
         patches = []
         pad = self.config.aruco_mask_padding
         color = DEFAULT_ARUCO_MASK_COLOR
 
-        # Get token configs for height lookup
-        token_profiles = getattr(self.config, "token_profiles", {})
-        aruco_defaults = getattr(self.config, "aruco_defaults", {})
+        # Calibration resolution for clamping
+        calib_w, calib_h = self.config.projector_matrix_resolution
+        limit_w = calib_w if calib_w > 0 else self.config.width
+        limit_h = calib_h if calib_h > 0 else self.config.height
+
+        logging.debug(
+            f"ArucoMaskLayer: Generating patches for {len(corners_list)} markers. Range: {limit_w}x{limit_h}"
+        )
 
         default_height = 5.0
 
@@ -160,10 +157,12 @@ class ArucoMaskLayer(Layer):
 
             # Determine height
             height_mm = default_height
-            if marker_id != -1 and marker_id in aruco_defaults:
-                profile_name = aruco_defaults[marker_id].profile
-                if profile_name in token_profiles:
-                    height_mm = token_profiles[profile_name].height_mm
+            if marker_id != -1 and marker_id in getattr(
+                self.config, "aruco_defaults", {}
+            ):
+                profile_name = self.config.aruco_defaults[marker_id].profile
+                if profile_name in getattr(self.config, "token_profiles", {}):
+                    height_mm = self.config.token_profiles[profile_name].height_mm
 
             # corners is (4, 2) in camera pixel coordinates
             proj_corners = self._transform_pts(corners, height_mm=height_mm)
@@ -174,12 +173,19 @@ class ArucoMaskLayer(Layer):
 
             x1 = max(0, x - pad)
             y1 = max(0, y - pad)
-            x2 = min(self.config.width, x + w + pad)
-            y2 = min(self.config.height, y + h + pad)
+            x2 = min(limit_w, x + w + pad)
+            y2 = min(limit_h, y + h + pad)
 
-            pw, ph = x2 - x1, y2 - y1
+            pw, ph = int(x2 - x1), int(y2 - y1)
             if pw <= 0 or ph <= 0:
+                logging.debug(
+                    f"ArucoMaskLayer: Marker {marker_id} off-limits: x1={x1}, y1={y1}, x2={x2}, y2={y2}"
+                )
                 continue
+
+            logging.debug(
+                f"ArucoMaskLayer: Final patch for marker {marker_id}: x={x1}, y={y1}, w={pw}, h={ph}"
+            )
 
             # Local coordinates for the patch
             local_corners = proj_corners - [x1, y1]
@@ -201,6 +207,8 @@ class ArucoMaskLayer(Layer):
             patch_data[mask > 0, :3] = color[:3]
             patch_data[mask > 0, 3] = color[3]
 
-            patches.append(ImagePatch(x=x1, y=y1, width=pw, height=ph, data=patch_data))
+            patches.append(
+                ImagePatch(x=int(x1), y=int(y1), width=pw, height=ph, data=patch_data)
+            )
 
         return patches

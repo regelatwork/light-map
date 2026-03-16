@@ -213,21 +213,37 @@ class ArucoTokenDetector:
                 token_type = config.get("type", "NPC")
 
             wx_mm, wy_mm = self._parallax_correction(u, v, height_mm)
+            logging.debug(
+                f"ArucoDetector: Marker {marker_id} at cam {u:.1f},{v:.1f} -> world {wx_mm:.1f},{wy_mm:.1f} (h={height_mm})"
+            )
 
             if projector_3d_model and projector_3d_model.use_3d:
                 p_world = np.array([[wx_mm, wy_mm, height_mm]], dtype=np.float32)
                 p_proj_real = projector_3d_model.project_world_to_projector(p_world)[0]
                 px, py = p_proj_real[0], p_proj_real[1]
+                logging.debug(
+                    f"ArucoDetector: Marker {marker_id} 3D projection -> proj {px:.1f},{py:.1f}"
+                )
             else:
                 # Map to projector pixels (Z=0 vertical projection)
                 px = wx_mm * ppi_mm
                 py = wy_mm * ppi_mm
+                logging.debug(
+                    f"ArucoDetector: Marker {marker_id} 2D map -> proj {px:.1f},{py:.1f} (ppi_mm={ppi_mm:.2f})"
+                )
 
                 if distortion_model:
+                    orig_px, orig_py = px, py
                     px, py = distortion_model.correct_theoretical_point(px, py)
+                    logging.debug(
+                        f"ArucoDetector: Marker {marker_id} distortion correction: {orig_px:.1f},{orig_py:.1f} -> {px:.1f},{py:.1f}"
+                    )
 
             # Map to SVG units
             wx_svg, wy_svg = map_system.screen_to_world(px, py)
+            logging.debug(
+                f"ArucoDetector: Marker {marker_id} final screen {px:.1f},{py:.1f} -> SVG {wx_svg:.1f},{wy_svg:.1f}"
+            )
 
             tokens.append(
                 Token(

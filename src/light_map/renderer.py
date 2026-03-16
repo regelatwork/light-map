@@ -1,3 +1,4 @@
+import logging
 from typing import Any, List, Optional, TYPE_CHECKING
 
 import numpy as np
@@ -111,6 +112,11 @@ class Renderer:
                     patches, version = layer.render(current_time)
                     self.last_layer_versions[layer] = version
 
+                if patches:
+                    logging.debug(
+                        f"Renderer: Compositing {len(patches)} patches from dynamic layer {layer_name}"
+                    )
+
                 with track_wait(f"layer_composite_{layer_name}", instrument):
                     for patch in patches:
                         self._composite_patch(
@@ -157,7 +163,13 @@ class Renderer:
                 roi = buffer[y1:y2, x1:x2].astype(np.uint16)
                 patch_bgr = patch_slice[:, :, :3].astype(np.uint16)
 
+                if np.mean(alpha_channel) > 200:
+                    logging.debug(
+                        f"Renderer: Compositing highly opaque patch at ({x1}, {y1}) size {x2 - x1}x{y2 - y1}. Mode: {mode}"
+                    )
+
                 # Integer blending formula: (src * alpha + dst * (ALPHA_OPAQUE - alpha)) // ALPHA_OPAQUE
+
                 blended = (
                     patch_bgr * alpha + roi * (ALPHA_OPAQUE - alpha)
                 ) // ALPHA_OPAQUE

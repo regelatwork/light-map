@@ -264,3 +264,22 @@ def test_menu_scene_handles_calibrate_extrinsics(mock_app_context):
     with patch.object(scene.menu_system, "update", return_value=mock_menu_state):
         transition = scene.update(inputs=[], actions=[], current_time=0.0)
     assert transition.target_scene == SceneId.CALIBRATE_EXTRINSICS
+
+
+def test_menu_scene_handles_calibrate_projector_3d(mock_app_context):
+    scene = MenuScene(mock_app_context)
+    mock_menu_state = MenuState(
+        current_menu_title="",
+        active_items=[],
+        item_rects=[],
+        hovered_item_index=None,
+        feedback_item_index=None,
+        prime_progress=0.0,
+        summon_progress=0.0,
+        cursor_pos=None,
+        is_visible=True,
+        just_triggered_action=MenuActions.CALIBRATE_PROJECTOR_3D,
+    )
+    with patch.object(scene.menu_system, "update", return_value=mock_menu_state):
+        transition = scene.update(inputs=[], actions=[], current_time=0.0)
+    assert transition.target_scene == SceneId.CALIBRATE_PROJECTOR_3D

@@ -17,12 +17,16 @@ class TestProjector3DCalibrationScene(unittest.TestCase):
         self.mock_context.app_config.calibration_box_height_mm = 78.0
         self.mock_context.app_config.storage_manager = MagicMock()
         self.mock_context.notifications = MagicMock()
+        self.mock_context.raw_aruco = {"ids": [], "corners": []}
+        self.mock_context.state = MagicMock()
+        self.mock_context.state.scene_timestamp = 1
 
     def test_initialization(self):
         scene = Projector3DCalibrationScene(self.mock_context)
         self.assertEqual(scene.stage, Projector3DCalibStage.START)
         self.assertEqual(len(scene.correspondences), 0)
-        self.assertIsNotNone(scene.layer)
+        self.assertIsNotNone(scene.pattern_layer)
+        self.assertIsNotNone(scene.feedback_layer)
 
     def test_stage_transition_start_to_place(self):
         scene = Projector3DCalibrationScene(self.mock_context)
@@ -33,24 +37,45 @@ class TestProjector3DCalibrationScene(unittest.TestCase):
         self.assertIsNone(transition)
         self.assertEqual(scene.stage, Projector3DCalibStage.PLACE_BOX)
 
-    def test_victory_gesture_triggers_capture(self):
+    def test_alternating_gestures_trigger_capture(self):
         scene = Projector3DCalibrationScene(self.mock_context)
         scene.on_enter()
-        scene.update([], [], 1.0)  # Move to PLACE_BOX
+        scene.update([], [], 1.0)  # Move to PLACE_BOX (Step 1)
+        self.assertEqual(scene.current_box_pos_idx, 0)
 
-        # Mock hand input with Victory gesture
-        mock_input = MagicMock()
-        mock_input.gesture = GestureType.VICTORY
+        # 1. Step 1 expects VICTORY
+        mock_victory = MagicMock()
+        mock_victory.gesture = GestureType.VICTORY
 
-        # Update with victory gesture
-        with patch.object(scene, "_do_capture") as mock_capture:
-            scene.update([mock_input], [], 5.0)
+        with patch.object(
+            scene,
+            "_do_capture",
+            side_effect=lambda: setattr(scene, "current_box_pos_idx", 1),
+        ):
+            scene.update([mock_victory], [], 5.0)
             self.assertEqual(scene.stage, Projector3DCalibStage.CAPTURING)
-
-            # Next update should move back to PLACE_BOX (since index < max)
-            scene.update([], [], 6.0)
+            scene.update([], [], 6.0)  # Finish capture
             self.assertEqual(scene.stage, Projector3DCalibStage.PLACE_BOX)
-            mock_capture.assert_called_once()
+            self.assertEqual(scene.current_box_pos_idx, 1)
+
+        # 2. Step 2 expects SHAKA
+        mock_shaka = MagicMock()
+        mock_shaka.gesture = GestureType.SHAKA
+
+        with patch.object(
+            scene,
+            "_do_capture",
+            side_effect=lambda: setattr(scene, "current_box_pos_idx", 2),
+        ):
+            # VICTORY should be ignored now
+            scene.update([mock_victory], [], 10.0)
+            self.assertEqual(scene.stage, Projector3DCalibStage.PLACE_BOX)
+
+            # SHAKA should work
+            scene.update([mock_shaka], [], 11.0)
+            self.assertEqual(scene.stage, Projector3DCalibStage.CAPTURING)
+            scene.update([], [], 12.0)
+            self.assertEqual(scene.current_box_pos_idx, 2)
 
     def test_layer_rendering_no_crash(self):
         scene = Projector3DCalibrationScene(self.mock_context)
@@ -58,7 +83,7 @@ class TestProjector3DCalibrationScene(unittest.TestCase):
         # This will call _update_layer_markers which sets instructions
 
         # Manually trigger a render update
-        patches = scene.layer._generate_patches(1.0)
+        patches = scene.pattern_layer._generate_patches(1.0)
         self.assertEqual(len(patches), 1)
         self.assertEqual(patches[0].data.shape[2], 4)  # Should be BGRA
 
@@ -69,7 +94,8 @@ class TestProjector3DCalibrationScene(unittest.TestCase):
         mock_app.cursor_layer = MagicMock()
 
         layers = scene.get_active_layers(mock_app)
-        self.assertIn(scene.layer, layers)
+        self.assertIn(scene.pattern_layer, layers)
+        self.assertIn(scene.feedback_layer, layers)
         self.assertIn(mock_app.notification_layer, layers)
         self.assertIn(mock_app.cursor_layer, layers)
         # Menu layer should NOT be here

@@ -1,4 +1,4 @@
-from typing import List, Tuple, TYPE_CHECKING
+from typing import List, Tuple, Set, TYPE_CHECKING
 import numpy as np
 import cv2
 from .common_types import Layer, ImagePatch, LayerMode
@@ -8,10 +8,10 @@ if TYPE_CHECKING:
     from .core.world_state import WorldState
 
 
-class Projector3DCalibrationLayer(Layer):
+class Projector3DPatternLayer(Layer):
     """
-    Renders the calibration grid for 3D projector calibration.
-    Displays a grid of ArUco markers and informational text.
+    Renders the static calibration pattern (ArUco markers and box outline).
+    Only re-renders when the target box moves to a new position.
     """
 
     def __init__(
@@ -21,28 +21,26 @@ class Projector3DCalibrationLayer(Layer):
         height: int,
         box_markers: List[Tuple[int, np.ndarray]] = None,
         table_markers: List[Tuple[int, np.ndarray]] = None,
-        instructions: str = "",
+        box_outline: np.ndarray = None,
     ):
-        super().__init__(state=state, is_static=False, layer_mode=LayerMode.BLOCKING)
+        # is_static=True means it uses the versioning system to cache its output
+        super().__init__(state=state, is_static=True, layer_mode=LayerMode.BLOCKING)
         self.width = width
         self.height = height
         self.box_markers = box_markers or []
         self.table_markers = table_markers or []
-        self.instructions = instructions
-        self._is_dynamic = True
+        self.box_outline = box_outline
+        self._version = 0
         self._aruco_dict = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_4X4_50)
 
     def get_current_version(self) -> int:
-        # Depend on the scene timestamp for versioning
-        if self.state:
-            return self.state.scene_timestamp
-        return 0
+        return self._version
+
+    def increment_version(self):
+        self._version += 1
 
     def _generate_patches(self, current_time: float) -> List[ImagePatch]:
         if self.width <= 0 or self.height <= 0:
-            import logging
-
-            logging.error("Projector3DCalibrationLayer: Invalid dimensions!")
             return []
 
         # Create full black background (BGRA)
@@ -62,23 +60,19 @@ class Projector3DCalibrationLayer(Layer):
         for aruco_id, corners in self.box_markers:
             self._draw_marker(img, aruco_id, corners, (0, 255, 255, 255))
 
-        # Draw Instructions
-        if self.instructions:
-            draw_text_with_background(
+        # Draw Box Outline if provided
+        if self.box_outline is not None:
+            cv2.polylines(
                 img,
-                self.instructions,
-                (100, 150),
-                scale=2.0,
-                thickness=4,
-                color=(255, 255, 255, 255),
-                bg_color=(0, 0, 128),  # Dark blue
-                alpha=0.9,
+                [self.box_outline.astype(np.int32)],
+                True,
+                (0, 255, 255, 255),
+                2,
             )
 
         return [ImagePatch(0, 0, self.width, self.height, img)]
 
     def _draw_marker(self, img, aruco_id, corners, color):
-        # corners is (4, 2) in projector pixels
         marker_size = int(np.linalg.norm(corners[0] - corners[1]))
         if marker_size < 10:
             return
@@ -89,19 +83,24 @@ class Projector3DCalibrationLayer(Layer):
         )
         marker_bgr = cv2.cvtColor(marker_img, cv2.COLOR_GRAY2BGR)
 
-        # Create a white border/background for contrast
+        # Create a thicker white border/background for contrast
+        # Increased padding from 4 to 12 to give a larger quiet zone for detection
+        padding = 12
         padded_marker = np.full(
-            (marker_size + 4, marker_size + 4, 3), 255, dtype=np.uint8
+            (marker_size + padding, marker_size + padding, 3), 255, dtype=np.uint8
         )
-        padded_marker[2 : 2 + marker_size, 2 : 2 + marker_size] = marker_bgr
+        padded_marker[
+            padding // 2 : padding // 2 + marker_size,
+            padding // 2 : padding // 2 + marker_size,
+        ] = marker_bgr
 
         # Warp marker to the designated corners
         src_pts = np.array(
             [
                 [0, 0],
-                [marker_size + 4, 0],
-                [marker_size + 4, marker_size + 4],
-                [0, marker_size + 4],
+                [marker_size + padding, 0],
+                [marker_size + padding, marker_size + padding],
+                [0, marker_size + padding],
             ],
             dtype=np.float32,
         )
@@ -115,14 +114,86 @@ class Projector3DCalibrationLayer(Layer):
         mask = (temp > 0).any(axis=2)
         img[mask, :3] = temp[mask]
 
-        # Draw ID for debugging/info
-        center = np.mean(corners, axis=0).astype(int)
+        # Draw ID for debugging/info - Move below the marker
+        # corners are [TL, TR, BR, BL]
+        bl = corners[3]
+        br = corners[2]
+        bottom_center = ((bl + br) / 2).astype(int)
+
         cv2.putText(
             img,
             str(aruco_id),
-            (center[0], center[1]),
+            (bottom_center[0] - 10, bottom_center[1] + 25),
             cv2.FONT_HERSHEY_SIMPLEX,
-            0.5,
-            color[:3],  # Use only BGR for putText
-            1,
+            0.6,
+            color[:3],
+            2,
         )
+
+
+class Projector3DFeedbackLayer(Layer):
+    """
+    Renders dynamic feedback (detection indicators and instructions).
+    Re-renders every frame to show real-time detection status.
+    """
+
+    def __init__(
+        self,
+        state: "WorldState",
+        width: int,
+        height: int,
+        box_markers: List[Tuple[int, np.ndarray]] = None,
+        table_markers: List[Tuple[int, np.ndarray]] = None,
+        instructions: str = "",
+        instruction_pos: Tuple[int, int] = (100, 100),
+    ):
+        super().__init__(state=state, is_static=False, layer_mode=LayerMode.NORMAL)
+        self.width = width
+        self.height = height
+        self.box_markers = box_markers or []
+        self.table_markers = table_markers or []
+        self.instructions = instructions
+        self.instruction_pos = instruction_pos
+        self.detected_ids: Set[int] = set()
+        self._is_dynamic = True
+
+    def get_current_version(self) -> int:
+        # Dynamic layers don't rely on versions for caching in Renderer
+        return self.state.scene_timestamp if self.state else 0
+
+    def _generate_patches(self, current_time: float) -> List[ImagePatch]:
+        if self.width <= 0 or self.height <= 0:
+            return []
+
+        # Use a transparent background for NORMAL blending
+        img = np.zeros((self.height, self.width, 4), dtype=np.uint8)
+
+        # Draw Detection Indicators for both sets of markers
+        all_markers = self.table_markers + self.box_markers
+        for aruco_id, corners in all_markers:
+            if aruco_id in self.detected_ids:
+                self._draw_detection_indicator(img, corners)
+
+        # Draw Instructions
+        if self.instructions:
+            draw_text_with_background(
+                img,
+                self.instructions,
+                self.instruction_pos,
+                scale=1.0,
+                thickness=2,
+                color=(255, 255, 255, 255),
+                bg_color=(0, 0, 128),
+                alpha=0.9,
+            )
+
+        return [ImagePatch(0, 0, self.width, self.height, img)]
+
+    def _draw_detection_indicator(self, img, corners):
+        tl = corners[0]
+        center = np.mean(corners, axis=0)
+        vec = tl - center
+        pos = (tl + vec * 0.2).astype(int)
+
+        cv2.circle(img, (pos[0], pos[1]), 8, (0, 255, 0, 255), -1)
+        cv2.circle(img, (pos[0], pos[1]), 10, (255, 255, 255, 255), 2)

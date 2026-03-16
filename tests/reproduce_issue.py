@@ -1,39 +1,52 @@
-from light_map.vision.camera_operator import CameraOperator
-from light_map.vision.frame_producer import FrameProducer
+import numpy as np
+import cv2
 
 
-def test_reproduce_index_error():
-    width, height = 100, 100
-    num_consumers = 1
+def reproduce():
+    # Simulate camera extrinsics
+    rvec_c = np.array([0, 0, 0], dtype=np.float32)
+    tvec_c = np.array(
+        [[10], [20], [30]], dtype=np.float32
+    )  # (3, 1) as returned by some cv2 functions
 
-    # Producer
-    operator = CameraOperator(width=width, height=height, num_consumers=num_consumers)
-    shm_name = operator.shm_name
-    lock = operator.lock
+    R_c, _ = cv2.Rodrigues(rvec_c)
+    C_w = -R_c.T @ tvec_c  # (3, 3) @ (3, 1) -> (3, 1)
 
-    # Consumer
-    producer = FrameProducer(
-        shm_name=shm_name, width=width, height=height, num_consumers=num_consumers
-    )
-    producer.lock = lock
+    print(f"C_w shape: {C_w.shape}")
 
-    # Manually corrupt latest_id to something out of bounds
-    print(f"Num buffers (n): {producer.n}")
-    with lock:
-        operator._latest_id[0] = 256
+    # Simulate ray vector
+    v_w = np.array([0.1, 0.2, 0.3], dtype=np.float32)  # (3,)
+    print(f"v_w shape: {v_w.shape}")
 
-    print(f"Corrupted Latest ID: {producer._latest_id[0]}")
+    t = 100.0
+    P_world = C_w + t * v_w
+    print(f"P_world shape: {P_world.shape}")
+    print(f"P_world content:\n{P_world}")
 
-    # This should raise IndexError
-    try:
-        ts = producer.get_latest_timestamp()
-        print(f"Latest TS: {ts}")
-    except IndexError as e:
-        print(f"Caught expected IndexError: {e}")
+    # Now simulate the calibration preparation
+    correspondences = [(P_world, np.array([100, 200], dtype=np.float32))]
 
-    # Clean up
-    operator.cleanup()
+    # This is what's in calibrate_projector_3d
+    obj_points = [
+        np.ascontiguousarray([c[0] for c in correspondences], dtype=np.float32).reshape(
+            -1, 1, 3
+        )
+    ]
+    img_points = [
+        np.ascontiguousarray([c[1] for c in correspondences], dtype=np.float32).reshape(
+            -1, 1, 2
+        )
+    ]
+
+    print(f"Obj Points shape: {obj_points[0].shape}")
+    print(f"Img Points shape: {img_points[0].shape}")
+
+    if obj_points[0].shape[0] != img_points[0].shape[0]:
+        print("MISMATCH DETECTED!")
+        print(
+            f"Expected {img_points[0].shape[0]} object points, but got {obj_points[0].shape[0]}"
+        )
 
 
 if __name__ == "__main__":
-    test_reproduce_index_error()
+    reproduce()

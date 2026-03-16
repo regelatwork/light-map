@@ -282,12 +282,29 @@ def calibrate_projector_3d(
         )
         return None
 
-    obj_points = np.array([c[0] for c in correspondences], dtype=np.float32).reshape(
-        1, -1, 3
-    )
-    img_points = np.array([c[1] for c in correspondences], dtype=np.float32).reshape(
-        1, -1, 2
-    )
+    # OpenCV calibrateCamera expects a list of views.
+    # Each view should be a (N, 3) or (N, 2) float32 array.
+    # We use ascontiguousarray to ensure the memory layout matches C++ expectations.
+    # We explicitly reshape to (-1, 1, 3) and (-1, 1, 2) as this is the most robust format
+    # that handles both list-of-lists and flattening issues in cv2.
+    obj_points = [
+        np.ascontiguousarray([c[0] for c in correspondences], dtype=np.float32).reshape(
+            -1, 1, 3
+        )
+    ]
+    img_points = [
+        np.ascontiguousarray([c[1] for c in correspondences], dtype=np.float32).reshape(
+            -1, 1, 2
+        )
+    ]
+
+    # Final count validation before OpenCV call
+    for i in range(len(obj_points)):
+        if obj_points[i].shape[0] != img_points[i].shape[0]:
+            raise ValueError(
+                f"Point count mismatch in View {i}: obj_points has {obj_points[i].shape[0]}, "
+                f"img_points has {img_points[i].shape[0]}. Check for NumPy broadcasting errors."
+            )
 
     if initial_mtx is None:
         # Provide a reasonable initial guess for the intrinsic matrix
@@ -297,6 +314,13 @@ def calibrate_projector_3d(
         initial_mtx = np.array(
             [[f, 0, w / 2], [0, f, h / 2], [0, 0, 1]], dtype=np.float32
         )
+    else:
+        initial_mtx = np.ascontiguousarray(initial_mtx, dtype=np.float32)
+
+    if initial_dist is None:
+        initial_dist = np.zeros(5, dtype=np.float32)
+    else:
+        initial_dist = np.ascontiguousarray(initial_dist, dtype=np.float32)
 
     flags = cv2.CALIB_USE_INTRINSIC_GUESS
 
@@ -304,12 +328,13 @@ def calibrate_projector_3d(
     # flags |= cv2.CALIB_FIX_ASPECT_RATIO
 
     try:
+        # Using positional arguments for the matrices can be more robust in some cv2 versions
         ret, mtx, dist, rvecs, tvecs = cv2.calibrateCamera(
             obj_points,
             img_points,
             projector_resolution,
-            cameraMatrix=initial_mtx,
-            distCoeffs=initial_dist,
+            initial_mtx,
+            initial_dist,
             flags=flags,
         )
 

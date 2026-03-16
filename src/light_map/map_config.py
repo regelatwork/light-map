@@ -89,6 +89,8 @@ class GlobalMapConfig:
     aruco_mask_padding: int = 10
     parallax_factor: float = -1.0
     calibration_box_height_mm: float = 78.0
+    calibration_box_width_mm: float = 188.0
+    calibration_box_length_mm: float = 295.0
     use_projector_3d_model: bool = False
     gm_position: GmPosition = GmPosition.NONE
     naming_style: NamingStyle = NamingStyle.SCI_FI

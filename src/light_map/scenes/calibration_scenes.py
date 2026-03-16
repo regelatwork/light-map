@@ -1350,13 +1350,20 @@ class Projector3DCalibrationScene(Scene):
         self._last_gesture_time = 0.0
         self._cooldown = 2.0
 
-        from light_map.projector_3d_layer import Projector3DCalibrationLayer
+        from light_map.projector_3d_layer import (
+            Projector3DPatternLayer,
+            Projector3DFeedbackLayer,
+        )
 
-        self.layer = Projector3DCalibrationLayer(
+        self.pattern_layer = Projector3DPatternLayer(
+            context.state, context.app_config.width, context.app_config.height
+        )
+        self.feedback_layer = Projector3DFeedbackLayer(
             context.state, context.app_config.width, context.app_config.height
         )
 
     def on_enter(self, payload: dict | None = None) -> None:
+        logging.info("Projector3DCalibrationScene: Scene started.")
         self.stage = Projector3DCalibStage.START
         self.correspondences = []
         self.current_box_pos_idx = 0
@@ -1368,20 +1375,48 @@ class Projector3DCalibrationScene(Scene):
         return True
 
     def get_active_layers(self, app: InteractiveApp) -> List[Layer]:
-        return [self.layer, app.notification_layer, app.cursor_layer]
+        return [
+            self.pattern_layer,
+            self.feedback_layer,
+            app.notification_layer,
+            app.cursor_layer,
+        ]
 
     def update(
         self, inputs: List[HandInput], actions: List[Action], current_time: float
     ) -> Optional[SceneTransition]:
+        old_stage = self.stage
+
+        # Continuously update detected IDs for feedback
+        raw = self.context.raw_aruco
+        if raw and raw.get("ids") is not None:
+            # ids can be a list or a numpy array of arrays
+            ids = raw.get("ids", [])
+            detected = []
+            for item in ids:
+                if isinstance(item, (list, np.ndarray)):
+                    detected.append(int(item[0]))
+                else:
+                    detected.append(int(item))
+            self.feedback_layer.detected_ids = set(detected)
+        else:
+            self.feedback_layer.detected_ids = set()
+
         if self.stage == Projector3DCalibStage.START:
             self.stage = Projector3DCalibStage.PLACE_BOX
             self._update_layer_markers()
 
         elif self.stage == Projector3DCalibStage.PLACE_BOX:
-            # Check for Victory gesture to capture
+            # Alternate gestures to prevent double-triggering
+            expected_gesture = (
+                GestureType.VICTORY
+                if self.current_box_pos_idx % 2 == 0
+                else GestureType.SHAKA
+            )
+
             for inp in inputs:
                 if (
-                    inp.gesture == GestureType.VICTORY
+                    inp.gesture == expected_gesture
                     and (current_time - self._last_gesture_time) > self._cooldown
                 ):
                     self._last_gesture_time = current_time
@@ -1407,6 +1442,9 @@ class Projector3DCalibrationScene(Scene):
             if current_time - self._last_gesture_time > 3.0:
                 return SceneTransition(SceneId.MENU)
 
+        if self.stage != old_stage:
+            logging.info("Projector3DCalibrationScene: Stage changed to %s", self.stage)
+
         return None
 
     def render(self, frame: np.ndarray) -> np.ndarray:
@@ -1414,116 +1452,286 @@ class Projector3DCalibrationScene(Scene):
         return frame
 
     def _update_layer_markers(self):
-        """Generates markers to display based on current stage."""
+        """Generates markers and box outline to display based on current stage."""
         w, h = self.context.app_config.width, self.context.app_config.height
+        ppi = getattr(self.context.app_config, "projector_ppi", 96.0)
 
-        # Define 6 markers for the box top
-        # We'll use IDs 10-15 for the box
+        # 1. Define Box Position and Outline
+        # Physical box: 295mm (length) x 188mm (width)
+        # Orient horizontally: longest side along Screen X (width)
+        bl_mm = self.context.app_config.calibration_box_length_mm  # 295
+        bw_mm = self.context.app_config.calibration_box_width_mm  # 188
+
+        # Approximate pixels using PPI
+        # Now length is Screen X, width is Screen Y
+        bl_px = int((bl_mm / 25.4) * ppi)
+        bw_px = int((bw_mm / 25.4) * ppi)
+
+        # Structured Positions: Center-Top, Center-Bottom, TL, TR, BL, BR
+        # Coordinates for the center of the box
+        pos_list = [
+            (w // 2, h // 4),  # Center-Top
+            (w // 2, 3 * h // 4),  # Center-Bottom
+            (w // 4, h // 4),  # Top-Left
+            (3 * w // 4, h // 4),  # Top-Right
+            (w // 4, 3 * h // 4),  # Bottom-Left
+            (3 * w // 4, 3 * h // 4),  # Bottom-Right
+        ]
+        self.max_box_positions = len(pos_list)  # Update max steps to 6
+
+        s_idx = self.current_box_pos_idx % len(pos_list)
+        center_x, center_y = pos_list[s_idx]
+
+        # Clamp center to keep box on screen with 20px margin
+        center_x = max(bl_px // 2 + 20, min(w - bl_px // 2 - 20, center_x))
+        center_y = max(bw_px // 2 + 20, min(h - bw_px // 2 - 20, center_y))
+
+        # Box corners for outline (Longest side horizontal)
+        box_rect = np.array(
+            [
+                [center_x - bl_px // 2, center_y - bw_px // 2],
+                [center_x + bl_px // 2, center_y - bw_px // 2],
+                [center_x + bl_px // 2, center_y + bw_px // 2],
+                [center_x - bl_px // 2, center_y + bw_px // 2],
+            ]
+        )
+
+        # 2. Define 6 markers for the box top (3x2 grid)
         box_ids = [10, 11, 12, 13, 14, 15]
         box_markers = []
 
-        # Shift the box grid based on current_box_pos_idx to ensure coverage
-        # For simplicity, let's just use a central grid for now
-        # In a real impl, we might shift this based on current_box_pos_idx
-        grid_w, grid_h = 400, 300
-        start_x = (w - grid_w) // 2
-        start_y = (h - grid_h) // 2
+        # Use a safe margin inside the box
+        margin = 40
+        msize = 100
 
-        # 3x2 grid
-        for i in range(3):
-            for j in range(2):
-                idx = i * 2 + j
-                mx = start_x + i * (grid_w // 2)
-                my = start_y + j * (grid_h // 1)
-                size = 120
+        # Markers distributed along the long horizontal side (3 columns)
+        # and short vertical side (2 rows)
+        if bl_px > (msize * 3 + margin * 2):
+            col_xs = np.linspace(
+                center_x - bl_px // 2 + margin + msize // 2,
+                center_x + bl_px // 2 - margin - msize // 2,
+                3,
+            )
+        else:
+            col_xs = [center_x] * 3
+
+        if bw_px > (msize * 2 + margin * 2):
+            row_ys = np.linspace(
+                center_y - bw_px // 2 + margin + msize // 2,
+                center_y + bw_px // 2 - margin - msize // 2,
+                2,
+            )
+        else:
+            row_ys = [center_y] * 2
+
+        for i, mx in enumerate(col_xs):
+            for j, my in enumerate(row_ys):
+                # Correct indexing for 3 columns x 2 rows
+                marker_idx = i + j * 3
+                if marker_idx >= len(box_ids):
+                    continue
+
                 corners = np.array(
                     [
-                        [mx - size // 2, my - size // 2],
-                        [mx + size // 2, my - size // 2],
-                        [mx + size // 2, my + size // 2],
-                        [mx - size // 2, my + size // 2],
+                        [mx - msize // 2, my - msize // 2],
+                        [mx + msize // 2, my - msize // 2],
+                        [mx + msize // 2, my + msize // 2],
+                        [mx - msize // 2, my + msize // 2],
                     ]
                 )
-                box_markers.append((box_ids[idx], corners))
+                box_markers.append((box_ids[marker_idx], corners))
 
-        # Define 4 reference markers for the table
-        # We'll use IDs 20-23
-        tsize = 120
-        table_markers = [
-            (
-                20,
-                np.array(
-                    [
-                        [50, 50],
-                        [50 + tsize, 50],
-                        [50 + tsize, 50 + tsize],
-                        [50, 50 + tsize],
-                    ]
-                ),
-            ),
-            (
-                21,
-                np.array(
-                    [
-                        [w - 50 - tsize, 50],
-                        [w - 50, 50],
-                        [w - 50, 50 + tsize],
-                        [w - 50 - tsize, 50 + tsize],
-                    ]
-                ),
-            ),
-            (
-                22,
-                np.array(
-                    [
-                        [50, h - 50 - tsize],
-                        [50 + tsize, h - 50 - tsize],
-                        [50 + tsize, h - 50],
-                        [50, h - 50],
-                    ]
-                ),
-            ),
-            (
-                23,
-                np.array(
-                    [
-                        [w - 50 - tsize, h - 50 - tsize],
-                        [w - 50, h - 50 - tsize],
-                        [w - 50, h - 50],
-                        [w - 50 - tsize, h - 50],
-                    ]
-                ),
-            ),
-        ]
+        # 3. Define 4 reference markers for the table (Corners)
+        # We'll place them at the corners but hide if they overlap with the box
+        tsize = 120  # Increased from 100
 
-        self.layer.box_markers = box_markers
-        self.layer.table_markers = table_markers
-        self.layer.instructions = (
+        # Determine instruction position: if box is in top half, move instructions to bottom
+        if center_y < h // 2:
+            self.feedback_layer.instruction_pos = (100, h - 100)
+            # Top markers can be at 50 if instructions moved to bottom
+            raw_table_markers = [
+                (20, 50, 50),
+                (21, w - 50 - tsize, 50),
+                (22, 50, h - 250),  # BL (Offset for instructions at bottom)
+                (23, w - 50 - tsize, h - 250),  # BR
+            ]
+        else:
+            self.feedback_layer.instruction_pos = (100, 100)
+            raw_table_markers = [
+                (20, 50, 200),  # TL (Offset for instructions at top)
+                (21, w - 50 - tsize, 200),  # TR
+                (22, 50, h - 50 - tsize),  # BL
+                (23, w - 50 - tsize, h - 50 - tsize),  # BR
+            ]
+
+        table_markers = []
+        for tid, tx, ty in raw_table_markers:
+            # Check if this reference marker overlaps with the box outline
+            # A simple bounding box check
+            m_rect = [tx, ty, tx + tsize, ty + tsize]
+            b_rect = [
+                center_x - bw_px // 2,
+                center_y - bl_px // 2,
+                center_x + bw_px // 2,
+                center_y + bl_px // 2,
+            ]
+
+            # If no overlap, add it
+            if (
+                m_rect[0] > b_rect[2]
+                or m_rect[2] < b_rect[0]
+                or m_rect[1] > b_rect[3]
+                or m_rect[3] < b_rect[1]
+            ):
+                corners = np.array(
+                    [
+                        [tx, ty],
+                        [tx + tsize, ty],
+                        [tx + tsize, ty + tsize],
+                        [tx, ty + tsize],
+                    ]
+                )
+                table_markers.append((tid, corners))
+            else:
+                logging.debug("Hiding reference marker %d due to box overlap", tid)
+
+        self.pattern_layer.box_markers = box_markers
+        self.pattern_layer.table_markers = table_markers
+        self.pattern_layer.box_outline = box_rect
+        self.pattern_layer.increment_version()
+
+        self.feedback_layer.box_markers = box_markers
+        self.feedback_layer.table_markers = table_markers
+
+        expected_gesture_name = (
+            "Victory" if self.current_box_pos_idx % 2 == 0 else "Shaka"
+        )
+        self.feedback_layer.instructions = (
             f"Step {self.current_box_pos_idx + 1}/{self.max_box_positions}: "
             f"Place box (H={self.context.app_config.calibration_box_height_mm}mm) "
-            "and show Victory gesture."
+            f"and show {expected_gesture_name} gesture."
+        )
+        logging.info(
+            "Projector3DCalibrationScene: Instructions: %s",
+            self.feedback_layer.instructions,
         )
 
     def _do_capture(self):
         """Captures the current frame and reconstructs 3D points."""
-        # This requires the tracking coordinator to detect ArUco markers
-        # We'll use the camera's current extrinsics to find world points
-        # For each detected marker corner:
-        # 1. Back-project ray
-        # 2. Intersect with plane Z=H or Z=0
-        # 3. Store (Projector Pixel, World Point)
+        logging.info("Projector3DCalibrationScene: Capturing 3D Projector Points...")
 
-        # In this implementation, we rely on the InteractiveApp to have
-        # latest detections available. For now, we'll stub the vision call
-        # or use a simplified approach since actual hardware is not available.
-        logging.info("Capturing 3D Projector Points...")
+        raw = self.context.raw_aruco
+        if not raw or raw.get("ids") is None:
+            logging.warning(
+                "Projector3DCalibrationScene: No ArUco markers detected for capture!"
+            )
+            self.context.notifications.add_notification("No markers detected!")
+            return
 
-        # Actual implementation would use app.vision_results or similar
-        # For now, let's increment the counter
-        self.current_box_pos_idx += 1
-        self.context.notifications.add_notification(
-            f"Captured position {self.current_box_pos_idx}."
+        ids = raw.get("ids")
+        corners_cam = raw.get("corners")
+
+        # Load camera calibration for back-projection from AppContext
+        K = self.context.camera_matrix
+        D = self.context.dist_coeffs
+        rvec_c = self.context.camera_rvec
+        tvec_c = self.context.camera_tvec
+
+        if K is None or rvec_c is None:
+            logging.error(
+                "Projector3DCalibrationScene: Camera calibration missing in AppContext!"
+            )
+            return
+
+        R_c, _ = cv2.Rodrigues(rvec_c)
+        # Camera position in world coordinates: C = -R^T * t
+        # We flatten to ensure it's a (3,) vector, avoiding broadcasting issues in P_world calculation
+        C_w = (-R_c.T @ tvec_c).flatten()
+
+        # Collect all expected marker info from the layers
+        marker_map = {}  # id -> (corners_proj, height, is_box)
+        for aid, c_p in self.pattern_layer.box_markers:
+            marker_map[aid] = (
+                c_p,
+                self.context.app_config.calibration_box_height_mm,
+                True,
+            )
+        for aid, c_p in self.pattern_layer.table_markers:
+            marker_map[aid] = (c_p, 0.0, False)
+
+        found_count = 0
+        box_count = 0
+        table_count = 0
+
+        for i, marker_id_raw in enumerate(ids):
+            aid = (
+                int(marker_id_raw[0])
+                if isinstance(marker_id_raw, (list, np.ndarray))
+                else int(marker_id_raw)
+            )
+
+            if aid not in marker_map:
+                continue
+
+            corners_p, height, is_box = marker_map[aid]
+            corners_c = corners_cam[i]  # (4, 2)
+
+            if is_box:
+                box_count += 1
+            else:
+                table_count += 1
+
+            # For each corner (0-3):
+            for j in range(4):
+                proj_px = corners_p[j]  # (2,) [u, v] in projector pixels
+                # cam_px might be a list if it came from serialized state
+                cam_px = np.array(
+                    corners_c[j], dtype=np.float32
+                )  # (2,) [u, v] in camera pixels
+
+                # 1. Undistort and convert to normalized camera coordinates
+                pt_norm = cv2.undistortPoints(cam_px.reshape(1, 1, 2), K, D).reshape(2)
+
+                # 2. Convert to world ray
+                v_c = np.array([pt_norm[0], pt_norm[1], 1.0])
+                v_w = R_c.T @ v_c
+                v_w /= np.linalg.norm(v_w)
+
+                # 3. Intersect with plane Z = height
+                if abs(v_w[2]) < 1e-6:
+                    continue  # Ray parallel to plane
+
+                t = (height - C_w[2]) / v_w[2]
+                P_world = C_w + t * v_w
+
+                self.correspondences.append(
+                    (P_world.astype(np.float32), proj_px.astype(np.float32))
+                )
+                found_count += 1
+
+        logging.info(
+            "Projector3DCalibrationScene: Captured %d points (%d box, %d table markers).",
+            found_count,
+            box_count,
+            table_count,
         )
+
+        if found_count > 0:
+            self.current_box_pos_idx += 1
+            logging.info(
+                "Projector3DCalibrationScene: Step %d complete. Total accumulated points: %d",
+                self.current_box_pos_idx,
+                len(self.correspondences),
+            )
+
+            msg = f"Captured step {self.current_box_pos_idx}: {box_count} box, {table_count} table markers."
+            if box_count == 0:
+                msg += " (Warning: No box markers found!)"
+            self.context.notifications.add_notification(msg)
+        else:
+            self.context.notifications.add_notification(
+                "Capture failed: No markers detected."
+            )
 
     def _run_calibration(self):
         """Solves for Projector Intrinsics and Extrinsics."""

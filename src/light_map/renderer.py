@@ -8,7 +8,7 @@ from .core.analytics import LatencyInstrument, track_wait
 from .constants import ALPHA_OPAQUE
 
 if TYPE_CHECKING:
-    from .vision.projector import Projector3DModel
+    from .vision.projection import Projector3DModel
 
 
 class Renderer:

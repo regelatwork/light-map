@@ -2,6 +2,7 @@ from __future__ import annotations
 import cv2
 import numpy as np
 import mediapipe as mp
+import logging
 from typing import List, Tuple, Any, Dict, TYPE_CHECKING
 
 from light_map.core.scene import HandInput
@@ -65,31 +66,21 @@ class InputProcessor:
         # 1. 3D Model Projection
         if self.config.projector_3d_model and self.config.projector_3d_model.use_3d:
             # Reconstruct world points at Z=0
-            if (
-                self.config.camera_matrix is not None
-                and self.config.rvec is not None
-                and self.config.tvec is not None
-            ):
+            projection_model = self.config.camera_projection_model
+            if projection_model is not None:
                 try:
-                    mtx_inv = np.linalg.inv(self.config.camera_matrix)
-                    rvec = np.array(self.config.rvec).reshape(3, 1)
-                    tvec = np.array(self.config.tvec).reshape(3, 1)
-                    R, _ = cv2.Rodrigues(rvec)
-                    RT = R.T
-                    camera_center = -(RT @ tvec).flatten()
-
-                    pts_homog = np.hstack([cam_pts, np.ones((cam_pts.shape[0], 1))])
-                    rays_cam = mtx_inv @ pts_homog.T
-                    rays_world = RT @ rays_cam
-
-                    cz = camera_center[2]
-                    vz = rays_world[2, :]
-                    s = (0.0 - cz) / (vz + 1e-9)
-                    p_world = camera_center.reshape(3, 1) + s * rays_world
-                    return self.config.projector_3d_model.project_world_to_projector(
-                        p_world.T
+                    p_world_2d = projection_model.reconstruct_world_points(
+                        cam_pts, height_mm=0.0
                     )
-                except Exception:
+                    # Add Z=0 for 3D model
+                    p_world_3d = np.hstack(
+                        [p_world_2d, np.zeros((p_world_2d.shape[0], 1))]
+                    )
+                    return self.config.projector_3d_model.project_world_to_projector(
+                        p_world_3d
+                    )
+                except Exception as e:
+                    logging.warning(f"InputProcessor: 3D projection failed: {e}")
                     pass
 
         # 2. Fallback to Homography

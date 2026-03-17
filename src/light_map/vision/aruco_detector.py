@@ -5,10 +5,11 @@ import logging
 from typing import List, Tuple, Optional, Dict, Any, TYPE_CHECKING
 from light_map.common_types import Token
 from light_map.map_system import MapSystem
+from light_map.vision.projection import CameraProjectionModel
 
 if TYPE_CHECKING:
     from light_map.projector import ProjectorDistortionModel
-    from light_map.vision.projector import Projector3DModel
+    from light_map.vision.projection import Projector3DModel
 
 
 class ArucoTokenDetector:
@@ -24,9 +25,7 @@ class ArucoTokenDetector:
         self.dist_coeffs = None
         self.rvec = None
         self.tvec = None
-        self.R = None
-        self.RT = None
-        self.camera_center_world = None
+        self.projection_model: Optional[CameraProjectionModel] = None
 
         # Performance optimization
         self.target_width = 1920
@@ -68,16 +67,25 @@ class ArucoTokenDetector:
     def set_calibration(self, camera_matrix: np.ndarray, dist_coeffs: np.ndarray):
         self.camera_matrix = camera_matrix
         self.dist_coeffs = dist_coeffs
+        self._update_projection_model()
         logging.debug("ArucoDetector: Camera intrinsics updated.")
 
     def set_extrinsics(self, rvec: np.ndarray, tvec: np.ndarray):
         self.rvec = rvec
         self.tvec = tvec
-        self.R, _ = cv2.Rodrigues(self.rvec)
-        self.RT = self.R.T
-        # Camera center in world coordinates: C = -R^T * t
-        self.camera_center_world = -self.RT @ self.tvec.flatten()
+        self._update_projection_model()
         logging.debug("ArucoDetector: Camera extrinsics updated.")
+
+    def _update_projection_model(self):
+        """Updates the shared projection model if all calibration is present."""
+        if (
+            self.camera_matrix is not None
+            and self.rvec is not None
+            and self.tvec is not None
+        ):
+            self.projection_model = CameraProjectionModel(
+                self.camera_matrix, self.dist_coeffs, self.rvec, self.tvec
+            )
 
     def get_fov_roi(
         self,
@@ -185,10 +193,8 @@ class ArucoTokenDetector:
         """
         Maps raw ArUco detections (corners, ids) to Token objects in world coordinates.
         """
-        if self.camera_matrix is None or self.RT is None:
-            logging.debug(
-                f"ArucoDetector: map_to_tokens missing calibration. camera_matrix={self.camera_matrix is not None}, RT={self.RT is not None}"
-            )
+        if self.projection_model is None:
+            logging.debug("ArucoDetector: map_to_tokens missing projection model.")
             return []
 
         corners = raw_data.get("corners", [])
@@ -212,7 +218,11 @@ class ArucoTokenDetector:
                 height_mm = config.get("height_mm", default_height_mm)
                 token_type = config.get("type", "NPC")
 
-            wx_mm, wy_mm = self._parallax_correction(u, v, height_mm)
+            # Vectorized model handles single points efficiently
+            p_cam = np.array([[u, v]], dtype=np.float32)
+            world_pts = self.projection_model.reconstruct_world_points(p_cam, height_mm)
+            wx_mm, wy_mm = world_pts[0]
+
             logging.debug(
                 f"ArucoDetector: Marker {marker_id} at cam {u:.1f},{v:.1f} -> world {wx_mm:.1f},{wy_mm:.1f} (h={height_mm})"
             )
@@ -331,37 +341,3 @@ class ArucoTokenDetector:
             return mask
         except Exception:
             return None
-
-    def _parallax_correction(self, u: float, v: float, h: float) -> Tuple[float, float]:
-        """
-        Intersects the ray from camera through (u, v) with the plane z = h.
-        Returns (X, Y) in world space.
-        Uses precomputed extrinsics and cv2.undistortPoints for performance and accuracy.
-        """
-        if self.camera_matrix is None or self.RT is None:
-            return 0.0, 0.0
-
-        # 1. Undistort point and convert to normalized camera coordinates
-        # cv2.undistortPoints returns points in the normalized camera frame [x, y]
-        # such that P_cam = [x, y, 1]
-        pts = np.array([[[u, v]]], dtype=np.float32)
-        undistorted = cv2.undistortPoints(pts, self.camera_matrix, self.dist_coeffs)
-        xn, yn = undistorted[0][0]
-
-        # 2. Transform ray direction to world space
-        # v_world = R^T * [xn, yn, 1]^T
-        v_world = self.RT @ np.array([xn, yn, 1.0])
-
-        # 3. Intersect ray with plane z = h
-        # P = C + s * v_world
-        # P.z = C.z + s * v_world.z = h  => s = (h - C.z) / v_world.z
-        cz = self.camera_center_world[2]
-        vz = v_world[2]
-
-        if abs(vz) < 1e-6:
-            return 0.0, 0.0
-
-        s = (h - cz) / vz
-        p_world = self.camera_center_world + s * v_world
-
-        return p_world[0], p_world[1]

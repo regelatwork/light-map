@@ -22,7 +22,7 @@ from .constants import (
 
 if TYPE_CHECKING:
     from light_map.core.world_state import WorldState
-    from .vision.projector import Projector3DModel
+    from .vision.projection import Projector3DModel, CameraProjectionModel
 
 
 class LayerMode(StrEnum):
@@ -243,6 +243,7 @@ class AppConfig:
     distortion_model: Optional[Any] = None
     storage_manager: Optional[Any] = None
     projector_3d_model: Optional[Projector3DModel] = None
+    camera_projection_model: Optional[CameraProjectionModel] = None
     log_level: str = "INFO"
     log_file: str = _DEFAULT_STORAGE.get_state_path("light_map.log")
 

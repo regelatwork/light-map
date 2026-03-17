@@ -9,6 +9,7 @@ sys.path.insert(0, os.path.abspath("src"))
 
 from light_map.vision.aruco_detector import ArucoTokenDetector
 from light_map.map_system import MapSystem
+from light_map.vision.projection import CameraProjectionModel
 
 
 class TestArucoResizing(unittest.TestCase):
@@ -46,9 +47,12 @@ class TestArucoResizing(unittest.TestCase):
 
         # Mock calibration and map_system
         detector.camera_matrix = np.eye(3)
-        detector.R = np.eye(3)
-        detector.RT = np.eye(3)
-        detector.camera_center_world = np.zeros(3)
+        detector.rvec = np.zeros((3, 1))
+        detector.tvec = np.zeros((3, 1))
+        detector.projection_model = MagicMock(spec=CameraProjectionModel)
+        detector.projection_model.reconstruct_world_points.return_value = np.array(
+            [[100.0, 200.0]]
+        )
 
         mock_map_system = MagicMock(spec=MapSystem)
         mock_map_system.width = 1920
@@ -65,14 +69,14 @@ class TestArucoResizing(unittest.TestCase):
         # u, v should be (1920, 1080)
         # In our mock, corners are at 640, 360 in small image -> 1920, 1080 in large image.
 
-        # Since we scaled back, _parallax_correction should receive (1920, 1080)
-        with unittest.mock.patch.object(
-            detector, "_parallax_correction", return_value=(50.0, 60.0)
-        ) as mock_parallax:
-            detector.detect(frame, mock_map_system)
-            u_call, v_call = mock_parallax.call_args[0][:2]
-            self.assertAlmostEqual(u_call, 1920.0, places=1)
-            self.assertAlmostEqual(v_call, 1080.0, places=1)
+        # Since we scaled back, reconstruct_world_points should receive (1920, 1080)
+        tokens = detector.detect(frame, mock_map_system)
+        call_args = detector.projection_model.reconstruct_world_points.call_args[0]
+        pts_call = call_args[0]
+        u_call, v_call = pts_call[0]
+
+        self.assertAlmostEqual(u_call, 1920.0, places=1)
+        self.assertAlmostEqual(v_call, 1080.0, places=1)
 
 
 if __name__ == "__main__":

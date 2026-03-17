@@ -8,7 +8,7 @@ from light_map.vision.debug_utils import DebugVisualizer
 
 if TYPE_CHECKING:
     from light_map.projector import ProjectorDistortionModel
-    from light_map.vision.projector import Projector3DModel
+    from light_map.vision.projection import Projector3DModel
 
 
 class FlashTokenDetector:

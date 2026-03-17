@@ -1,7 +1,7 @@
 import unittest
 import numpy as np
 import cv2
-from light_map.vision.projector import Projector3DModel
+from light_map.vision.projection import Projector3DModel
 from light_map.calibration_logic import calibrate_projector_3d
 
 

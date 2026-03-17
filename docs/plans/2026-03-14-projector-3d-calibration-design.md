@@ -46,7 +46,7 @@ A single box of known dimensions ($78 \\times 188 \\times 295$ mm) serves as a p
 
 ## 6. Centralized Projection API
 
-To prevent fragmented logic, a new `Projector3DModel` class will be created in `src/light_map/vision/projector.py`.
+To prevent fragmented logic, a new `Projector3DModel` class will be created in `src/light_map/vision/projection.py`.
 
 ```python
 class Projector3DModel:

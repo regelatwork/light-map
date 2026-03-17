@@ -5,6 +5,7 @@ from unittest.mock import MagicMock
 from light_map.aruco_mask_layer import ArucoMaskLayer
 from light_map.common_types import AppConfig
 from light_map.core.world_state import WorldState
+from light_map.vision.projection import CameraProjectionModel
 
 
 @pytest.fixture
@@ -19,11 +20,13 @@ def mock_config():
     config.camera_matrix = None
     config.rvec = None
     config.tvec = None
-    config.projector_ppi = 96.0
+    config.projector_ppi = 25.4  # 1mm = 1px for simple tests
     config.token_profiles = {}
     config.aruco_defaults = {}
     config.storage_manager = None
     config.projector_3d_model = None
+    config.projector_matrix_resolution = (10000, 10000)
+    config.camera_projection_model = None
     return config
 
 
@@ -123,25 +126,23 @@ def test_aruco_mask_layer_list_corners(mock_state, mock_config):
 
 def test_aruco_mask_layer_parallax_rendering(mock_state, mock_config):
     """Verifies that height changes the projection coordinates (parallax)."""
-    # 1. Setup camera calibration (simplified identity-ish)
+    # 1. Setup camera calibration (Looking down from Z=1000)
     mock_config.camera_matrix = np.array(
         [[1000, 0, 960], [0, 1000, 540], [0, 0, 1]], dtype=np.float32
     )
-    # Rotate camera slightly so ray is not perfectly vertical
-    # 10 degrees around X axis
-    mock_config.rvec = np.array([0.174, 0, 0], dtype=np.float32)
-    # Re-calculate tvec for C=(0,0,500)
-    R, _ = cv2.Rodrigues(mock_config.rvec)
-    mock_config.tvec = -R @ np.array([0, 0, 500], dtype=np.float32)
-    mock_config.projector_ppi = 96.0
-    # Projector maps world (0,0) to projector (1000, 1000) with 2x zoom
-    mock_config.projector_matrix = np.array(
-        [[2, 0, 1000], [0, 2, 1000], [0, 0, 1]], dtype=np.float32
+    # Camera at (0, 0, 1000) in world, looking down
+    R = np.array(
+        [[1.0, 0.0, 0.0], [0.0, -1.0, 0.0], [0.0, 0.0, -1.0]], dtype=np.float32
     )
+    mock_config.rvec, _ = cv2.Rodrigues(R)
+    mock_config.tvec = np.array([[0], [0], [1000]], dtype=np.float32)
 
-    # Marker near principal point (960, 540) to be in camera view
+    mock_config.projector_ppi = 25.4  # 1mm = 1px
+    mock_config.projector_matrix_resolution = (10000, 10000)
+
+    # Marker corners in camera space
     corners = np.array(
-        [[1000, 600], [1100, 600], [1100, 700], [1000, 700]], dtype=np.float32
+        [[1010, 490], [1110, 490], [1110, 590], [1010, 590]], dtype=np.float32
     )
     mock_state.raw_aruco = {"corners": [corners], "ids": [42]}
 
@@ -155,32 +156,24 @@ def test_aruco_mask_layer_parallax_rendering(mock_state, mock_config):
     class Default:
         profile: str
 
-    mock_config.token_profiles = {"standard": Profile(height_mm=50.0)}
+    mock_config.token_profiles = {"standard": Profile(height_mm=0.0)}
     mock_config.aruco_defaults = {42: Default(profile="standard")}
+
+    # Initialize projection model
+    mock_config.camera_projection_model = CameraProjectionModel(
+        mock_config.camera_matrix, np.zeros(5), mock_config.rvec, mock_config.tvec
+    )
 
     layer = ArucoMaskLayer(mock_state, mock_config)
 
-    # Factor -1.0 (Projector at Infinity)
-    # This should shift the point INWARD (towards pix_ground)
-    mock_config.parallax_factor = -1.0
-    patches_inf = layer._generate_patches(0.0)
-    x_inf = patches_inf[0].x
+    # Height 0mm
+    patches_0 = layer._generate_patches(0.0)
+    assert len(patches_0) == 1
+    x0 = patches_0[0].x
 
-    # Factor 0.0 (Projector at Camera)
-    # This should be the same as standard homography
-    mock_config.parallax_factor = 0.0
-    patches_cam = layer._generate_patches(0.0)
-    x_cam = patches_cam[0].x
+    # Height 100mm
+    mock_config.token_profiles["standard"].height_mm = 100.0
+    patches_100 = layer._generate_patches(0.0)
+    x100 = patches_100[0].x
 
-    # Factor 1.0 (Extrapolated - OUTWARD)
-    mock_config.parallax_factor = 1.0
-    patches_extra = layer._generate_patches(0.0)
-    x_extra = patches_extra[0].x
-
-    # Verify directions:
-    # Marker is at x=1000 (right of camera principal point 960).
-    # Its floor intersection 'pix_ground' will be at x < 1000.
-    # Moving INWARD (factor -1) means x decreases.
-    # Moving OUTWARD (factor 1) means x increases.
-    assert x_inf < x_cam
-    assert x_extra > x_cam
+    assert x100 < x0

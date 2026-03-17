@@ -34,31 +34,28 @@ def test_aruco_parallax_correction_math():
     # Ray goes through (0, 0) in camera space.
     # Plane Z=0 (table) should give (0, 0) in world space.
     # Plane Z=100 (token top) should still give (0, 0) because it's directly under camera.
-    wx0, wy0 = detector._parallax_correction(960, 540, 0)
+    p0 = np.array([[960, 540]], dtype=np.float32)
+    res0 = detector.projection_model.reconstruct_world_points(p0, 0)
+    wx0, wy0 = res0[0]
     assert wx0 == pytest.approx(0.0, abs=1e-4)
     assert wy0 == pytest.approx(0.0, abs=1e-4)
 
-    wx100, wy100 = detector._parallax_correction(960, 540, 100)
+    res100 = detector.projection_model.reconstruct_world_points(p0, 100)
+    wx100, wy100 = res100[0]
     assert wx100 == pytest.approx(0.0, abs=1e-4)
     assert wy100 == pytest.approx(0.0, abs=1e-4)
 
     # 2. Test point offset
     # Let's say point is at (1060, 540) in pixels.
-    # x_cam = (1060 - 960) / 1000 = 0.1
-    # y_cam = 0
-    # Ray direction in camera: [0.1, 0, 1]
-    # Ray direction in world: R^T * [0.1, 0, 1] = [1 0 0; 0 -1 0; 0 0 -1] * [0.1, 0, 1] = [0.1, 0, -1]
-    # Camera center in world: C = [0, 0, 1000]
-    # P = C + s * [0.1, 0, -1]
-    # At Z=0: 1000 + s*(-1) = 0 => s = 1000.
-    # P = [0, 0, 1000] + 1000 * [0.1, 0, -1] = [100, 0, 0]
-    wx_off, wy_off = detector._parallax_correction(1060, 540, 0)
+    p_off = np.array([[1060, 540]], dtype=np.float32)
+    res_off = detector.projection_model.reconstruct_world_points(p_off, 0)
+    wx_off, wy_off = res_off[0]
     assert wx_off == pytest.approx(100.0, abs=1e-4)
     assert wy_off == pytest.approx(0.0, abs=1e-4)
 
     # At Z=100 (token top): 1000 + s*(-1) = 100 => s = 900.
-    # P = [0, 0, 1000] + 900 * [0.1, 0, -1] = [90, 0, 100]
-    wx_h, wy_h = detector._parallax_correction(1060, 540, 100)
+    res_h = detector.projection_model.reconstruct_world_points(p_off, 100)
+    wx_h, wy_h = res_h[0]
     assert wx_h == pytest.approx(90.0, abs=1e-4)
     assert wy_h == pytest.approx(0.0, abs=1e-4)
 

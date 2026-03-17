@@ -42,9 +42,9 @@ except ImportError:
         sys.exit(1)
 
 
-def camera_capture_loop(cam, operator, stop_event):
+def camera_capture_loop(camera, operator, stop_event):
     while not stop_event.is_set():
-        frame = cam.read()
+        frame = camera.read()
         if frame is not None:
             operator._publish_frame(frame, time.perf_counter_ns())
         else:
@@ -114,7 +114,7 @@ def run_app(args):
     extrinsics_path = storage.get_data_path("camera_extrinsics.npz")
 
     # Helper to load calibration
-    def load_calib(default_screen_w, default_screen_h):
+    def load_calibration(default_screen_width, default_screen_height):
         if not os.path.exists(calibration_file):
             msg = (
                 "\n" + "!" * 60 + "\n"
@@ -133,9 +133,9 @@ def run_app(args):
                     return None, 4608, 2592, None
                 matrix = data["projector_matrix"]
                 if "resolution" in data:
-                    w, h = data["resolution"]
+                    width, height = data["resolution"]
                 else:
-                    w, h = 4608, 2592
+                    width, height = 4608, 2592
 
                 model = None
                 if "camera_points" in data and "projector_points" in data:
@@ -144,16 +144,18 @@ def run_app(args):
                         matrix, data["camera_points"], data["projector_points"]
                     )
 
-                return matrix, w, h, model
+                return matrix, width, height, model
         except Exception as e:
             logger.error("Error loading calibration: %s", e, exc_info=True)
             return None, 4608, 2592, None
 
-    native_screen_w, native_screen_h = get_screen_resolution()
-    logger.info("Hardware Screen Resolution: %dx%d", native_screen_w, native_screen_h)
+    native_screen_width, native_screen_height = get_screen_resolution()
+    logger.info(
+        "Hardware Screen Resolution: %dx%d", native_screen_width, native_screen_height
+    )
 
-    transformation_matrix, cam_res_w, cam_res_h, dist_model = load_calib(
-        native_screen_w, native_screen_h
+    transformation_matrix, camera_res_width, camera_res_height, distortion_model = (
+        load_calibration(native_screen_width, native_screen_height)
     )
 
     if transformation_matrix is None:
@@ -163,7 +165,11 @@ def run_app(args):
         # Create a dummy identity matrix if calibration missing, so app doesn't crash
         transformation_matrix = np.eye(3, dtype=np.float32)
 
-    logger.info("Calibration loaded. Camera Resolution: %dx%d", cam_res_w, cam_res_h)
+    logger.info(
+        "Calibration loaded. Camera Resolution: %dx%d",
+        camera_res_width,
+        camera_res_height,
+    )
 
     # Register Maps
     map_sources = []
@@ -182,33 +188,42 @@ def run_app(args):
 
     # Load Camera Calibration for Parallax Correction
     camera_matrix = None
+    distortion_coefficients = None
     if os.path.exists(intrinsics_path):
         with np.load(intrinsics_path) as data:
             camera_matrix = data["camera_matrix"]
+            distortion_coefficients = data.get("distortion_coefficients")
+            if distortion_coefficients is None:
+                distortion_coefficients = data.get("dist_coeffs")
 
-    rvec, tvec = None, None
+    rotation_vector, translation_vector = None, None
     if os.path.exists(extrinsics_path):
         with np.load(extrinsics_path) as data:
-            rvec = data["rvec"]
-            tvec = data["tvec"]
+            rotation_vector = data.get("rotation_vector")
+            if rotation_vector is None:
+                rotation_vector = data.get("rvec")
+            translation_vector = data.get("translation_vector")
+            if translation_vector is None:
+                translation_vector = data.get("tvec")
 
     # Detect runtime camera resolution first
-    cam_w, cam_h = 0, 0
+    runtime_camera_width, runtime_camera_height = 0, 0
     with Camera() as cam:
-        cam_w, cam_h = cam.width, cam.height
+        runtime_camera_width, runtime_camera_height = cam.width, cam.height
 
     # 2. Setup App
     config = AppConfig(
-        width=native_screen_w,
-        height=native_screen_h,
+        width=native_screen_width,
+        height=native_screen_height,
         projector_matrix=transformation_matrix,
-        projector_matrix_resolution=(cam_res_w, cam_res_h),
-        camera_resolution=(cam_w, cam_h),
+        projector_matrix_resolution=(camera_res_width, camera_res_height),
+        camera_resolution=(runtime_camera_width, runtime_camera_height),
         camera_matrix=camera_matrix,
-        rvec=rvec,
-        tvec=tvec,
+        distortion_coefficients=distortion_coefficients,
+        rotation_vector=rotation_vector,
+        translation_vector=translation_vector,
         map_search_patterns=map_sources,
-        distortion_model=dist_model,
+        distortion_model=distortion_model,
         storage_manager=storage,
         log_level=args.log_level,
         log_file=log_file,
@@ -248,7 +263,7 @@ def run_app(args):
 
     # 3. Setup Projector Window (using tkinter to hide cursor)
     window_name = "projection"
-    app_win = ProjectorWindow(window_name, native_screen_w, native_screen_h)
+    app_win = ProjectorWindow(window_name, native_screen_width, native_screen_height)
 
     # 5. Main Loop
     startup_action_executed = False
@@ -256,15 +271,18 @@ def run_app(args):
     try:
         with Camera() as cam:
             # --- Resolution Mismatch Check ---
-            cam_w, cam_h = cam.width, cam.height
-            calib_w, calib_h = app.config.projector_matrix_resolution
+            current_camera_width, current_camera_height = cam.width, cam.height
+            calibrated_width, calibrated_height = app.config.projector_matrix_resolution
 
-            if calib_w > 0 and (cam_w != calib_w or cam_h != calib_h):
+            if calibrated_width > 0 and (
+                current_camera_width != calibrated_width
+                or current_camera_height != calibrated_height
+            ):
                 msg = (
                     "\n" + "!" * 60 + "\n"
                     "CRITICAL WARNING: Camera Resolution Mismatch!\n"
-                    f"  Runtime:     {cam_w}x{cam_h}\n"
-                    f"  Calibration: {calib_w}x{calib_h}\n"
+                    f"  Runtime:     {current_camera_width}x{current_camera_height}\n"
+                    f"  Calibration: {calibrated_width}x{calibrated_height}\n"
                     "  The projector matrix will map points incorrectly.\n"
                     "  PLEASE RE-CALIBRATE: light-map projector-calibrate\n"
                     "!" * 60 + "\n"
@@ -273,8 +291,8 @@ def run_app(args):
 
             # Populate initial config mirror
             state_mirror["config"] = {
-                "cam_res": (cam_w, cam_h),
-                "proj_res": (native_screen_w, native_screen_h),
+                "cam_res": (current_camera_width, current_camera_height),
+                "proj_res": (native_screen_width, native_screen_height),
                 "remote_hands": args.remote_hands,
                 "remote_tokens": args.remote_tokens,
                 "remote_port": args.remote_port,
@@ -292,15 +310,15 @@ def run_app(args):
 
             # Start Process Manager
             manager = VisionProcessManager(
-                width=cam_w,
-                height=cam_h,
+                width=current_camera_width,
+                height=current_camera_height,
                 num_consumers=active_consumers,
                 projector_matrix=app.config.projector_matrix,
                 map_dims=(app.config.width, app.config.height),
                 intrinsics_path=intrinsics_path,
                 extrinsics_path=extrinsics_path,
                 camera_matrix=app.app_context.camera_matrix,
-                dist_coeffs=app.app_context.dist_coeffs,
+                distortion_coefficients=app.app_context.distortion_coefficients,
                 remote_mode_hands=args.remote_hands,
                 remote_mode_tokens=args.remote_tokens,
                 remote_port=args.remote_port,
@@ -313,8 +331,8 @@ def run_app(args):
             state = app.state
             producer = FrameProducer(
                 shm_name=manager.shm_name,
-                width=cam_w,
-                height=cam_h,
+                width=current_camera_width,
+                height=current_camera_height,
                 num_consumers=active_consumers,
             )
             producer.lock = manager.lock
@@ -345,8 +363,8 @@ def run_app(args):
                 # A. Update State Mirror for Remote Driver
                 if state_mirror is not None:
                     state_mirror["config"] = {
-                        "cam_res": (cam_w, cam_h),
-                        "proj_res": (native_screen_w, native_screen_h),
+                        "cam_res": (current_camera_width, current_camera_height),
+                        "proj_res": (native_screen_width, native_screen_height),
                         "remote_hands": args.remote_hands,
                         "remote_tokens": args.remote_tokens,
                         "remote_port": args.remote_port,
@@ -442,7 +460,7 @@ def run_app(args):
                         cv2.putText(
                             output_image,
                             f"FPS: {app.fps:.1f}",
-                            (10, native_screen_h - 60),
+                            (10, native_screen_height - 60),
                             cv2.FONT_HERSHEY_SIMPLEX,
                             1,
                             (0, 255, 255),

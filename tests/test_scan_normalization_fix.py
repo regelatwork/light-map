@@ -30,17 +30,28 @@ def test_interactive_app_resolution_sync(tmp_path):
 
     # Create dummy calibration files
     data_dir = storage.data_dir
-    K = np.eye(3, dtype=np.float32)
-    dist = np.zeros(5, dtype=np.float32)
-    rvec = np.zeros((3, 1), dtype=np.float32)
-    tvec = np.zeros((3, 1), dtype=np.float32)
+    camera_matrix = np.eye(3, dtype=np.float32)
+    distortion_coefficients = np.zeros(5, dtype=np.float32)
+    rotation_vector = np.zeros((3, 1), dtype=np.float32)
+    translation_vector = np.zeros((3, 1), dtype=np.float32)
 
-    np.savez(data_dir / "camera_calibration.npz", camera_matrix=K, dist_coeffs=dist)
-    np.savez(data_dir / "camera_extrinsics.npz", rvec=rvec, tvec=tvec)
+    np.savez(
+        data_dir / "camera_calibration.npz",
+        camera_matrix=camera_matrix,
+        distortion_coefficients=distortion_coefficients,
+    )
+    np.savez(
+        data_dir / "camera_extrinsics.npz",
+        rotation_vector=rotation_vector,
+        translation_vector=translation_vector,
+    )
 
-    m = np.eye(3, dtype=np.float32)
+    transformation_matrix = np.eye(3, dtype=np.float32)
     config = AppConfig(
-        width=640, height=480, projector_matrix=m, storage_manager=storage
+        width=640,
+        height=480,
+        projector_matrix=transformation_matrix,
+        storage_manager=storage,
     )
     # Still use patch for instantiation if we want, but reload_config will call it again.
     # It's better to just have the files.
@@ -50,7 +61,10 @@ def test_interactive_app_resolution_sync(tmp_path):
     assert app.map_system.height == 480
 
     new_config = AppConfig(
-        width=1280, height=720, projector_matrix=m, storage_manager=storage
+        width=1280,
+        height=720,
+        projector_matrix=transformation_matrix,
+        storage_manager=storage,
     )
     app.reload_config(new_config)
 
@@ -63,10 +77,10 @@ def test_token_tracker_determinism():
 
     tracker = TokenTracker()
 
-    _, pts1 = tracker.get_scan_pattern(1000, 1000, 100)
-    _, pts2 = tracker.get_scan_pattern(1000, 1000, 100)
+    _, points1 = tracker.get_scan_pattern(1000, 1000, 100)
+    _, points2 = tracker.get_scan_pattern(1000, 1000, 100)
 
-    assert pts1 == pts2
+    assert points1 == points2
 
 
 def test_interactive_app_load_map_normalization(tmp_path):
@@ -78,18 +92,29 @@ def test_interactive_app_load_map_normalization(tmp_path):
 
     # Create dummy calibration files
     data_dir = storage.data_dir
-    K = np.eye(3, dtype=np.float32)
-    dist = np.zeros(5, dtype=np.float32)
-    rvec = np.zeros((3, 1), dtype=np.float32)
-    tvec = np.zeros((3, 1), dtype=np.float32)
+    camera_matrix = np.eye(3, dtype=np.float32)
+    distortion_coefficients = np.zeros(5, dtype=np.float32)
+    rotation_vector = np.zeros((3, 1), dtype=np.float32)
+    translation_vector = np.zeros((3, 1), dtype=np.float32)
 
-    np.savez(data_dir / "camera_calibration.npz", camera_matrix=K, dist_coeffs=dist)
-    np.savez(data_dir / "camera_extrinsics.npz", rvec=rvec, tvec=tvec)
+    np.savez(
+        data_dir / "camera_calibration.npz",
+        camera_matrix=camera_matrix,
+        distortion_coefficients=distortion_coefficients,
+    )
+    np.savez(
+        data_dir / "camera_extrinsics.npz",
+        rotation_vector=rotation_vector,
+        translation_vector=translation_vector,
+    )
 
     # Setup
-    m = np.eye(3, dtype=np.float32)
+    transformation_matrix = np.eye(3, dtype=np.float32)
     config = AppConfig(
-        width=100, height=100, projector_matrix=m, storage_manager=storage
+        width=100,
+        height=100,
+        projector_matrix=transformation_matrix,
+        storage_manager=storage,
     )
     app = InteractiveApp(config)
 

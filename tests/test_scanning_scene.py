@@ -25,8 +25,12 @@ def mock_app_context():
     mock_context.map_config_manager.data.maps.get.return_value = None
     mock_context.map_config_manager.get_ppi.return_value = 96.0
     mock_context.notifications = MagicMock()
-    mock_context.camera_rvec = np.zeros(3)
-    mock_context.camera_tvec = np.zeros(3)
+
+    # Use numpy arrays for rotation and translation to satisfy OpenCV requirements
+    mock_context.camera_matrix = np.eye(3, dtype=np.float32)
+    mock_context.distortion_coefficients = np.zeros(5, dtype=np.float32)
+    mock_context.camera_rotation_vector = np.zeros((3, 1), dtype=np.float32)
+    mock_context.camera_translation_vector = np.zeros((3, 1), dtype=np.float32)
 
     return mock_context
 

@@ -60,7 +60,7 @@ class InputProcessor:
         self.hand_masker = HandMasker()
 
     def _project_to_projector(
-        self, cam_pts: np.ndarray, frame_shape: Tuple[int, int, int]
+        self, camera_points: np.ndarray, frame_shape: Tuple[int, int, int]
     ) -> np.ndarray:
         """Helper to project camera pixels to projector space."""
         # 1. 3D Model Projection
@@ -69,29 +69,31 @@ class InputProcessor:
             projection_model = self.config.camera_projection_model
             if projection_model is not None:
                 try:
-                    p_world_2d = projection_model.reconstruct_world_points(
-                        cam_pts, height_mm=0.0
+                    world_points_2d = projection_model.reconstruct_world_points(
+                        camera_points, height_mm=0.0
                     )
                     # Add Z=0 for 3D model
-                    p_world_3d = np.hstack(
-                        [p_world_2d, np.zeros((p_world_2d.shape[0], 1))]
+                    world_points_3d = np.hstack(
+                        [world_points_2d, np.zeros((world_points_2d.shape[0], 1))]
                     )
                     return self.config.projector_3d_model.project_world_to_projector(
-                        p_world_3d
+                        world_points_3d
                     )
                 except Exception as e:
                     logging.warning(f"InputProcessor: 3D projection failed: {e}")
                     pass
 
         # 2. Fallback to Homography
-        cam_pts_reshaped = cam_pts.reshape(-1, 1, 2).astype(np.float32)
+        camera_points_reshaped = camera_points.reshape(-1, 1, 2).astype(np.float32)
         if self.config.distortion_model:
-            proj_pts = self.config.distortion_model.apply_correction(cam_pts_reshaped)
-        else:
-            proj_pts = cv2.perspectiveTransform(
-                cam_pts_reshaped, self.config.projector_matrix
+            projector_points = self.config.distortion_model.apply_correction(
+                camera_points_reshaped
             )
-        return proj_pts.reshape(-1, 2)
+        else:
+            projector_points = cv2.perspectiveTransform(
+                camera_points_reshaped, self.config.projector_matrix
+            )
+        return projector_points.reshape(-1, 2)
 
     def convert_mediapipe_to_inputs(
         self, results: Any, frame_shape: Tuple[int, int, int]
@@ -109,73 +111,79 @@ class InputProcessor:
                 landmarks.landmark, handedness.classification[0].label
             )
 
-            tip_lm = landmarks.landmark[
+            tip_landmark = landmarks.landmark[
                 mp.solutions.hands.HandLandmark.INDEX_FINGER_TIP
             ]
-            cam_point = np.array(
-                [[tip_lm.x * frame_shape[1], tip_lm.y * frame_shape[0]]],
+            camera_point = np.array(
+                [[tip_landmark.x * frame_shape[1], tip_landmark.y * frame_shape[0]]],
                 dtype=np.float32,
             )
 
-            proj_point = self._project_to_projector(cam_point, frame_shape)[0]
-            px, py = int(proj_point[0]), int(proj_point[1])
+            projector_point = self._project_to_projector(camera_point, frame_shape)[0]
+            projector_x, projector_y = int(projector_point[0]), int(projector_point[1])
 
             # Virtual Pointer Direction Calculation (POINTING)
             from light_map.common_types import GestureType
 
-            ux, uy = 0.0, 0.0
+            unit_x, unit_y = 0.0, 0.0
             if gesture == GestureType.POINTING:
                 # Calculate direction from PIP to TIP
-                pip_lm = landmarks.landmark[
+                pip_landmark = landmarks.landmark[
                     mp.solutions.hands.HandLandmark.INDEX_FINGER_PIP
                 ]
 
                 # Direction in camera coordinates (normalized)
-                dx_cam = tip_lm.x - pip_lm.x
-                dy_cam = tip_lm.y - pip_lm.y
-                mag = np.sqrt(dx_cam**2 + dy_cam**2)
+                dx_camera = tip_landmark.x - pip_landmark.x
+                dy_camera = tip_landmark.y - pip_landmark.y
+                magnitude = np.sqrt(dx_camera**2 + dy_camera**2)
 
-                if mag > 0.0001:
+                if magnitude > 0.0001:
                     # Approximate transformation of the direction vector to projector space
                     # Let's project another point 10% further along the finger ray
-                    tip_ext_cam = np.array(
+                    tip_extended_camera = np.array(
                         [
                             [
-                                (tip_lm.x + (dx_cam / mag) * 0.1) * frame_shape[1],
-                                (tip_lm.y + (dy_cam / mag) * 0.1) * frame_shape[0],
+                                (tip_landmark.x + (dx_camera / magnitude) * 0.1)
+                                * frame_shape[1],
+                                (tip_landmark.y + (dy_camera / magnitude) * 0.1)
+                                * frame_shape[0],
                             ]
                         ],
                         dtype=np.float32,
                     )
 
-                    proj_ext = self._project_to_projector(tip_ext_cam, frame_shape)[0]
+                    projector_extended = self._project_to_projector(
+                        tip_extended_camera, frame_shape
+                    )[0]
 
                     # Direction in projector space
-                    pdx = proj_ext[0] - proj_point[0]
-                    pdy = proj_ext[1] - proj_point[1]
-                    pmag = np.sqrt(pdx**2 + pdy**2)
+                    pdx = projector_extended[0] - projector_point[0]
+                    pdy = projector_extended[1] - projector_point[1]
+                    pmagnitude = np.sqrt(pdx**2 + pdy**2)
 
-                    if pmag > 0.0001:
-                        ux = pdx / pmag
-                        uy = pdy / pmag
+                    if pmagnitude > 0.0001:
+                        unit_x = pdx / pmagnitude
+                        unit_y = pdy / pmagnitude
 
             # --- VIRTUAL CURSOR POSITION ---
             cursor_pos = None
             if gesture == GestureType.POINTING:
                 ppi = getattr(self.config, "projector_ppi", 96.0)
-                ext = getattr(self.config, "pointer_extension_inches", 2.0)
-                cx = int(px + ux * ppi * ext)
-                cy = int(py + uy * ppi * ext)
-                cursor_pos = (cx, cy)
+                extension_inches = getattr(self.config, "pointer_extension_inches", 2.0)
+                cursor_x = int(projector_x + unit_x * ppi * extension_inches)
+                cursor_y = int(projector_y + unit_y * ppi * extension_inches)
+                cursor_pos = (cursor_x, cursor_y)
 
             # Input Masking (Filter by GM Position)
-            if self.hand_masker.is_point_masked(px, py, self.config.gm_position, res):
+            if self.hand_masker.is_point_masked(
+                projector_x, projector_y, self.config.gm_position, res
+            ):
                 continue
 
             hi = HandInput(
                 gesture=gesture,
-                proj_pos=(px, py),
-                unit_direction=(ux, uy),
+                proj_pos=(projector_x, projector_y),
+                unit_direction=(unit_x, unit_y),
                 raw_landmarks=landmarks,
             )
             hi.cursor_pos = cursor_pos

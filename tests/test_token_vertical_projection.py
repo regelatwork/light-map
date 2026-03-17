@@ -13,14 +13,14 @@ def test_token_vertical_projection():
     projecting its 3D position (at Z=h) vertically down, rather than following
     the camera ray to Z=0.
     """
-    K = np.array(
+    camera_matrix = np.array(
         [[1000.0, 0.0, 960.0], [0.0, 1000.0, 540.0], [0.0, 0.0, 1.0]], dtype=np.float32
     )
-    dist = np.zeros(5, dtype=np.float32)
+    distortion_coefficients = np.zeros(5, dtype=np.float32)
 
     # Camera looking down but tilted 30 degrees around X axis (tilting forward)
     angle = np.radians(150)
-    R = np.array(
+    rotation_matrix = np.array(
         [
             [1, 0, 0],
             [0, np.cos(angle), -np.sin(angle)],
@@ -30,13 +30,21 @@ def test_token_vertical_projection():
     )
 
     # Position camera at (0, -500, 866) in world space
-    cam_center = np.array([0, -500, 866.0], dtype=np.float32).reshape(3, 1)
-    tvec = -R @ cam_center
-    rvec, _ = cv2.Rodrigues(R)
+    camera_center = np.array([0, -500, 866.0], dtype=np.float32).reshape(3, 1)
+    translation_vector = -rotation_matrix @ camera_center
+    rotation_vector, _ = cv2.Rodrigues(rotation_matrix)
 
     # Create Detector
-    np.savez("tdd_cam_calib.npz", camera_matrix=K, dist_coeffs=dist)
-    np.savez("tdd_cam_ext.npz", rvec=rvec, tvec=tvec)
+    np.savez(
+        "tdd_cam_calib.npz",
+        camera_matrix=camera_matrix,
+        distortion_coefficients=distortion_coefficients,
+    )
+    np.savez(
+        "tdd_cam_ext.npz",
+        rotation_vector=rotation_vector,
+        translation_vector=translation_vector,
+    )
 
     # We patch the ArucoDetector class BEFORE creating our wrapper
     with patch("cv2.aruco.ArucoDetector") as MockDetector:
@@ -50,12 +58,12 @@ def test_token_vertical_projection():
         token_top_world = np.array([100.0, 200.0, 50.0], dtype=np.float32)
 
         # 3. Find where the marker appears in the CAMERA frame
-        p_top_cam = R @ token_top_world.reshape(3, 1) + tvec
-        u = K[0, 0] * (p_top_cam[0] / p_top_cam[2]) + K[0, 2]
-        v = K[1, 1] * (p_top_cam[1] / p_top_cam[2]) + K[1, 2]
+        p_top_cam = rotation_matrix @ token_top_world.reshape(3, 1) + translation_vector
+        u = camera_matrix[0, 0] * (p_top_cam[0] / p_top_cam[2]) + camera_matrix[0, 2]
+        v = camera_matrix[1, 1] * (p_top_cam[1] / p_top_cam[2]) + camera_matrix[1, 2]
 
-        u = float(u[0])
-        v = float(v[0])
+        u_coord = float(u[0])
+        v_coord = float(v[0])
 
         # Integration Check: detect() method
         map_system = MapSystem(
@@ -64,26 +72,33 @@ def test_token_vertical_projection():
         frame = np.zeros((1080, 1920, 3), dtype=np.uint8)
 
         # Mock corners: (1, 4, 2)
-        c = np.array(
-            [[[u - 5, v - 5], [u + 5, v - 5], [u + 5, v + 5], [u - 5, v + 5]]],
+        corners = np.array(
+            [
+                [
+                    [u_coord - 5, v_coord - 5],
+                    [u_coord + 5, v_coord - 5],
+                    [u_coord + 5, v_coord + 5],
+                    [u_coord - 5, v_coord + 5],
+                ]
+            ],
             dtype=np.float32,
         )
-        mock_instance.detectMarkers.return_value = ([c], np.array([[42]]), [])
+        mock_instance.detectMarkers.return_value = ([corners], np.array([[42]]), [])
 
         # ppi=25.4 (1mm = 1px)
         tokens = detector.detect(frame, map_system, ppi=25.4, default_height_mm=50.0)
 
         assert len(tokens) == 1
-        t = tokens[0]
-        assert t.id == 42
+        token = tokens[0]
+        assert token.id == 42
         # Vertical projection to map surface (Z=0)
-        assert t.world_x == pytest.approx(100.0, abs=1e-1)
-        assert t.world_y == pytest.approx(200.0, abs=1e-1)
-        assert t.world_z == 0.0
+        assert token.world_x == pytest.approx(100.0, abs=1e-1)
+        assert token.world_y == pytest.approx(200.0, abs=1e-1)
+        assert token.world_z == 0.0
         # Marker position
-        assert t.marker_x == pytest.approx(100.0, abs=1e-1)
-        assert t.marker_y == pytest.approx(200.0, abs=1e-1)
-        assert t.marker_z == 50.0
+        assert token.marker_x == pytest.approx(100.0, abs=1e-1)
+        assert token.marker_y == pytest.approx(200.0, abs=1e-1)
+        assert token.marker_z == 50.0
 
     # Cleanup
     if os.path.exists("tdd_cam_calib.npz"):

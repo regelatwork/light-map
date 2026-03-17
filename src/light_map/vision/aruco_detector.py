@@ -21,10 +21,10 @@ class ArucoTokenDetector:
         debug_mode: bool = False,
     ):
         self.debug_mode = debug_mode
-        self.camera_matrix = None
-        self.dist_coeffs = None
-        self.rvec = None
-        self.tvec = None
+        self.camera_matrix: Optional[np.ndarray] = None
+        self.distortion_coefficients: Optional[np.ndarray] = None
+        self.rotation_vector: Optional[np.ndarray] = None
+        self.translation_vector: Optional[np.ndarray] = None
         self.projection_model: Optional[CameraProjectionModel] = None
 
         # Performance optimization
@@ -37,7 +37,9 @@ class ArucoTokenDetector:
             if os.path.exists(calibration_file):
                 data = np.load(calibration_file)
                 self.camera_matrix = data["camera_matrix"]
-                self.dist_coeffs = data["dist_coeffs"]
+                self.distortion_coefficients = data.get("distortion_coefficients")
+                if self.distortion_coefficients is None:
+                    self.distortion_coefficients = data.get("dist_coeffs")
                 logging.info(
                     f"ArucoDetector: Loaded camera calibration from {calibration_file}."
                 )
@@ -50,7 +52,13 @@ class ArucoTokenDetector:
         if extrinsics_file:
             if os.path.exists(extrinsics_file):
                 data = np.load(extrinsics_file)
-                self.set_extrinsics(data["rvec"], data["tvec"])
+                rotation_vector = data.get("rotation_vector")
+                if rotation_vector is None:
+                    rotation_vector = data.get("rvec")
+                translation_vector = data.get("translation_vector")
+                if translation_vector is None:
+                    translation_vector = data.get("tvec")
+                self.set_extrinsics(rotation_vector, translation_vector)
                 logging.info(
                     f"ArucoDetector: Loaded camera extrinsics from {extrinsics_file}."
                 )
@@ -64,15 +72,19 @@ class ArucoTokenDetector:
         parameters = cv2.aruco.DetectorParameters()
         self.detector = cv2.aruco.ArucoDetector(dictionary, parameters)
 
-    def set_calibration(self, camera_matrix: np.ndarray, dist_coeffs: np.ndarray):
+    def set_calibration(
+        self, camera_matrix: np.ndarray, distortion_coefficients: np.ndarray
+    ):
         self.camera_matrix = camera_matrix
-        self.dist_coeffs = dist_coeffs
+        self.distortion_coefficients = distortion_coefficients
         self._update_projection_model()
         logging.debug("ArucoDetector: Camera intrinsics updated.")
 
-    def set_extrinsics(self, rvec: np.ndarray, tvec: np.ndarray):
-        self.rvec = rvec
-        self.tvec = tvec
+    def set_extrinsics(
+        self, rotation_vector: np.ndarray, translation_vector: np.ndarray
+    ):
+        self.rotation_vector = rotation_vector
+        self.translation_vector = translation_vector
         self._update_projection_model()
         logging.debug("ArucoDetector: Camera extrinsics updated.")
 
@@ -80,11 +92,14 @@ class ArucoTokenDetector:
         """Updates the shared projection model if all calibration is present."""
         if (
             self.camera_matrix is not None
-            and self.rvec is not None
-            and self.tvec is not None
+            and self.rotation_vector is not None
+            and self.translation_vector is not None
         ):
             self.projection_model = CameraProjectionModel(
-                self.camera_matrix, self.dist_coeffs, self.rvec, self.tvec
+                self.camera_matrix,
+                self.distortion_coefficients,
+                self.rotation_vector,
+                self.translation_vector,
             )
 
     def get_fov_roi(
@@ -219,25 +234,31 @@ class ArucoTokenDetector:
                 token_type = config.get("type", "NPC")
 
             # Vectorized model handles single points efficiently
-            p_cam = np.array([[u, v]], dtype=np.float32)
-            world_pts = self.projection_model.reconstruct_world_points(p_cam, height_mm)
-            wx_mm, wy_mm = world_pts[0]
+            pixel_points = np.array([[u, v]], dtype=np.float32)
+            world_points = self.projection_model.reconstruct_world_points(
+                pixel_points, height_mm
+            )
+            world_x_mm, world_y_mm = world_points[0]
 
             logging.debug(
-                f"ArucoDetector: Marker {marker_id} at cam {u:.1f},{v:.1f} -> world {wx_mm:.1f},{wy_mm:.1f} (h={height_mm})"
+                f"ArucoDetector: Marker {marker_id} at cam {u:.1f},{v:.1f} -> world {world_x_mm:.1f},{world_y_mm:.1f} (h={height_mm})"
             )
 
             if projector_3d_model and projector_3d_model.use_3d:
-                p_world = np.array([[wx_mm, wy_mm, height_mm]], dtype=np.float32)
-                p_proj_real = projector_3d_model.project_world_to_projector(p_world)[0]
-                px, py = p_proj_real[0], p_proj_real[1]
+                world_points_3d = np.array(
+                    [[world_x_mm, world_y_mm, height_mm]], dtype=np.float32
+                )
+                projector_pixels = projector_3d_model.project_world_to_projector(
+                    world_points_3d
+                )[0]
+                px, py = projector_pixels[0], projector_pixels[1]
                 logging.debug(
                     f"ArucoDetector: Marker {marker_id} 3D projection -> proj {px:.1f},{py:.1f}"
                 )
             else:
                 # Map to projector pixels (Z=0 vertical projection)
-                px = wx_mm * ppi_mm
-                py = wy_mm * ppi_mm
+                px = world_x_mm * ppi_mm
+                py = world_y_mm * ppi_mm
                 logging.debug(
                     f"ArucoDetector: Marker {marker_id} 2D map -> proj {px:.1f},{py:.1f} (ppi_mm={ppi_mm:.2f})"
                 )

@@ -131,12 +131,15 @@ def create_app(
                     num_consumers=num_consumers,
                 )
                 producer.lock = lock
-                last_processed_ts = -1
+                last_processed_timestamp = -1
 
                 logging.info(f"Video stream capture loop started (SHM: {shm_name})")
                 while not stop_event.is_set():
-                    latest_ts = producer.get_latest_timestamp()
-                    if latest_ts is None or latest_ts <= last_processed_ts:
+                    latest_timestamp = producer.get_latest_timestamp()
+                    if (
+                        latest_timestamp is None
+                        or latest_timestamp <= last_processed_timestamp
+                    ):
                         time.sleep(0.01)
                         continue
 
@@ -147,10 +150,13 @@ def create_app(
                             continue
 
                         # Resize for web stream to reduce bandwidth
-                        h, w = frame_view.shape[:2]
-                        scale = min(1280 / w, 720 / h)
-                        new_w, new_h = int(w * scale), int(h * scale)
-                        frame_copy = cv2.resize(frame_view, (new_w, new_h))
+                        frame_height, frame_width = frame_view.shape[:2]
+                        scale = min(1280 / frame_width, 720 / frame_height)
+                        new_width, new_height = (
+                            int(frame_width * scale),
+                            int(frame_height * scale),
+                        )
+                        frame_copy = cv2.resize(frame_view, (new_width, new_height))
                     finally:
                         producer.release()
                         frame_view = None
@@ -166,7 +172,7 @@ def create_app(
                                 video_state["new_frame_event"].set
                             )
 
-                    last_processed_ts = latest_ts
+                    last_processed_timestamp = latest_timestamp
             except Exception as e:
                 logging.error(f"Video capture loop error: {e}", exc_info=True)
             finally:
@@ -283,11 +289,11 @@ def create_app(
     def inject_hands(hands: List[RemoteHandInput]):
         """Injects virtual hand inputs into the results queue."""
         processed_hands = []
-        for h in hands:
+        for hand in hands:
             processed_hands.append(
                 HandInput(
-                    gesture=h.gesture,
-                    proj_pos=(h.x, h.y),
+                    gesture=hand.gesture,
+                    proj_pos=(hand.x, hand.y),
                     unit_direction=(0.0, 0.0),  # Default to no specific direction
                     raw_landmarks=None,  # Virtual hands don't have landmarks
                 )
@@ -305,7 +311,8 @@ def create_app(
     def inject_hands_world(hands: List[RemoteWorldHandInput]):
         """Injects virtual hand inputs using world coordinates."""
         hands_data = [
-            h.model_dump() if hasattr(h, "model_dump") else h.dict() for h in hands
+            hand.model_dump() if hasattr(hand, "model_dump") else hand.dict()
+            for hand in hands
         ]
         res = DetectionResult(
             timestamp=time.monotonic_ns(),
@@ -319,9 +326,15 @@ def create_app(
     def inject_tokens(tokens: List[RemoteToken]):
         """Injects virtual ArUco tokens into the results queue."""
         processed_tokens = []
-        for t in tokens:
+        for token in tokens:
             processed_tokens.append(
-                Token(id=t.id, world_x=t.x, world_y=t.y, world_z=t.z, confidence=1.0)
+                Token(
+                    id=token.id,
+                    world_x=token.x,
+                    world_y=token.y,
+                    world_z=token.z,
+                    confidence=1.0,
+                )
             )
 
         # Wrapped as ARUCO result type
@@ -338,11 +351,11 @@ def create_app(
         """Injects raw ArUco corners for testing mask rendering."""
         try:
             # Convert list of lists to list of numpy arrays for consistency
-            np_corners = [np.array(c, dtype=np.float32) for c in corners]
+            marker_corners = [np.array(c, dtype=np.float32) for c in corners]
             res = DetectionResult(
                 timestamp=time.perf_counter_ns(),
                 type=ResultType.ARUCO,
-                data={"corners": np_corners, "ids": ids},
+                data={"corners": marker_corners, "ids": ids},
             )
             results_queue.put(res)
             return {"status": "injected", "count": len(ids)}

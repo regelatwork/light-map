@@ -24,7 +24,12 @@ def app_with_real_scenes(tmp_path):
     with (
         patch(
             "light_map.interactive_app.InteractiveApp._load_camera_calibration",
-            return_value=(np.eye(3), np.zeros(5), np.zeros((3, 1)), np.zeros((3, 1))),
+            return_value=(
+                np.eye(3),
+                np.zeros(5),
+                np.zeros((3, 1)),
+                np.zeros((3, 1)),
+            ),
         ),
         patch("light_map.map_config.MapConfigManager._load", return_value=MagicMock()),
     ):

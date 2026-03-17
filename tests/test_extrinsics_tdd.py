@@ -30,7 +30,7 @@ def mock_context():
     context.map_config_manager.resolve_token_profile.side_effect = mock_resolve
     context.projector_matrix = np.eye(3)
     context.camera_matrix = np.eye(3)
-    context.dist_coeffs = np.zeros(5)
+    context.distortion_coefficients = np.zeros(5)
     context.last_camera_frame = np.zeros((480, 640, 3), dtype=np.uint8)
     context.raw_aruco = {"ids": [], "corners": []}
     return context
@@ -47,7 +47,7 @@ def test_extrinsics_scene_passes_known_targets(
     """
     mock_exists.return_value = False  # No ground points file
 
-    # Mock return for calibrate_extrinsics: (rvec, tvec, obj_points, img_points)
+    # Mock return for calibrate_extrinsics: (rotation_vector, translation_vector, object_points, image_points)
     mock_calibrate.return_value = (
         np.zeros(3),
         np.zeros(3),

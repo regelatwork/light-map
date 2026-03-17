@@ -39,8 +39,8 @@ def test_aruco_detection_snapped_to_detected_grid(grid_svg_file, tmp_path):
     # We need dummy calibration files for InteractiveApp._load_camera_calibration
     intr_path = tmp_path / "camera_calibration.npz"
     extr_path = tmp_path / "camera_extrinsics.npz"
-    np.savez(intr_path, camera_matrix=np.eye(3), dist_coeffs=np.zeros(5))
-    np.savez(extr_path, rvec=np.zeros(3), tvec=np.zeros(3))
+    np.savez(intr_path, camera_matrix=np.eye(3), distortion_coefficients=np.zeros(5))
+    np.savez(extr_path, rotation_vector=np.zeros(3), translation_vector=np.zeros(3))
 
     app = InteractiveApp(config)
     app.load_map(grid_svg_file)

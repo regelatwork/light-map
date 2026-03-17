@@ -115,11 +115,15 @@ class InteractiveApp:
         self.input_coordinator = InputCoordinator(self)
 
         # Load Camera Calibration
-        camera_matrix, dist_coeffs, rvec, tvec = self._load_camera_calibration()
+        camera_matrix, distortion_coefficients, rotation_vector, translation_vector = (
+            self._load_camera_calibration()
+        )
 
         # Normalize calibration if resolution mismatch
-        camera_matrix, rvec, tvec = self._normalize_calibration(
-            camera_matrix, rvec, tvec
+        camera_matrix, rotation_vector, translation_vector = (
+            self._normalize_calibration(
+                camera_matrix, rotation_vector, translation_vector
+            )
         )
 
         # Scan for maps if provided
@@ -129,11 +133,11 @@ class InteractiveApp:
         # AppContext (shared state for scenes)
         # Sync calibration to background tracker
         self.tracking_coordinator.token_tracker.set_aruco_calibration(
-            camera_matrix, dist_coeffs, rvec, tvec
+            camera_matrix, distortion_coefficients, rotation_vector, translation_vector
         )
 
         self.app_context = self._create_app_context(
-            camera_matrix, dist_coeffs, rvec, tvec
+            camera_matrix, distortion_coefficients, rotation_vector, translation_vector
         )
 
         # Layer Management
@@ -215,7 +219,10 @@ class InteractiveApp:
         return self.layer_manager.exclusive_vision_layer
 
     def _normalize_calibration(
-        self, camera_matrix: np.ndarray, rvec: np.ndarray, tvec: np.ndarray
+        self,
+        camera_matrix: np.ndarray,
+        rotation_vector: np.ndarray,
+        translation_vector: np.ndarray,
     ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
         """
         Normalizes camera_matrix and projector_matrix if the current camera resolution
@@ -225,10 +232,10 @@ class InteractiveApp:
         calib_w, calib_h = self.config.projector_matrix_resolution
 
         if cam_w == 0 or calib_w == 0:
-            return camera_matrix, rvec, tvec
+            return camera_matrix, rotation_vector, translation_vector
 
         if cam_w == calib_w and cam_h == calib_h:
-            return camera_matrix, rvec, tvec
+            return camera_matrix, rotation_vector, translation_vector
 
         logging.info(
             f"InteractiveApp: Normalizing calibration from {calib_w}x{calib_h} to {cam_w}x{cam_h}"
@@ -252,13 +259,13 @@ class InteractiveApp:
         inv_scale_x = calib_w / cam_w
         inv_scale_y = calib_h / cam_h
 
-        S = np.array(
+        scale_matrix = np.array(
             [[inv_scale_x, 0, 0], [0, inv_scale_y, 0], [0, 0, 1]], dtype=np.float32
         )
 
-        self.config.projector_matrix = self.config.projector_matrix @ S
+        self.config.projector_matrix = self.config.projector_matrix @ scale_matrix
 
-        return new_camera_matrix, rvec, tvec
+        return new_camera_matrix, rotation_vector, translation_vector
 
     def _load_camera_calibration(
         self,
@@ -269,9 +276,9 @@ class InteractiveApp:
         np.ndarray,
     ]:
         camera_matrix = None
-        dist_coeffs = None
-        rvec = None
-        tvec = None
+        distortion_coefficients = None
+        rotation_vector = None
+        translation_vector = None
 
         storage = self.config.storage_manager
         intrinsics_path = (
@@ -304,27 +311,40 @@ class InteractiveApp:
             sys.exit(1)
 
         try:
-            calib = np.load(intrinsics_path)
-            camera_matrix = calib["camera_matrix"]
-            dist_coeffs = calib["dist_coeffs"]
+            intrinsics_data = np.load(intrinsics_path)
+            camera_matrix = intrinsics_data.get("camera_matrix")
+            if camera_matrix is None:
+                camera_matrix = intrinsics_data.get("mtx")
+            distortion_coefficients = intrinsics_data.get("distortion_coefficients")
+            if distortion_coefficients is None:
+                distortion_coefficients = intrinsics_data.get("dist_coeffs")
             logging.info("Loaded camera intrinsics from %s.", intrinsics_path)
 
-            ext = np.load(extrinsics_path)
-            rvec = ext["rvec"]
-            tvec = ext["tvec"]
+            extrinsics_data = np.load(extrinsics_path)
+            rotation_vector = extrinsics_data.get("rotation_vector")
+            if rotation_vector is None:
+                rotation_vector = extrinsics_data.get("rvec")
+            translation_vector = extrinsics_data.get("translation_vector")
+            if translation_vector is None:
+                translation_vector = extrinsics_data.get("tvec")
             logging.info("Loaded camera extrinsics from %s.", extrinsics_path)
         except Exception as e:
             logging.critical("Failed to load calibration data: %s", e)
             sys.exit(1)
 
-        return camera_matrix, dist_coeffs, rvec, tvec
+        return (
+            camera_matrix,
+            distortion_coefficients,
+            rotation_vector,
+            translation_vector,
+        )
 
     def _create_app_context(
         self,
         camera_matrix,
-        dist_coeffs,
-        rvec=None,
-        tvec=None,
+        distortion_coefficients,
+        rotation_vector=None,
+        translation_vector=None,
         debug_mode=False,
         show_tokens=True,
     ) -> AppContext:
@@ -342,15 +362,22 @@ class InteractiveApp:
         # Fallback if for some reason they weren't loaded in constructor
         # (though our check above makes this unlikely to be None if we reached here)
         if aruco_detector.camera_matrix is None and camera_matrix is not None:
-            aruco_detector.set_calibration(camera_matrix, dist_coeffs)
-        if aruco_detector.rvec is None and rvec is not None:
-            aruco_detector.set_extrinsics(rvec, tvec)
+            aruco_detector.set_calibration(camera_matrix, distortion_coefficients)
+        if aruco_detector.rotation_vector is None and rotation_vector is not None:
+            aruco_detector.set_extrinsics(rotation_vector, translation_vector)
 
         # Initialize Camera Projection Model
         camera_projection_model = None
-        if camera_matrix is not None and rvec is not None and tvec is not None:
+        if (
+            camera_matrix is not None
+            and rotation_vector is not None
+            and translation_vector is not None
+        ):
             camera_projection_model = CameraProjectionModel(
-                camera_matrix, dist_coeffs, rvec, tvec
+                camera_matrix=camera_matrix,
+                distortion_coefficients=distortion_coefficients,
+                rotation_vector=rotation_vector,
+                translation_vector=translation_vector,
             )
             self.config.camera_projection_model = camera_projection_model
 
@@ -366,9 +393,9 @@ class InteractiveApp:
             aruco_detector=aruco_detector,
             camera_projection_model=camera_projection_model,
             camera_matrix=camera_matrix,
-            dist_coeffs=dist_coeffs,
-            camera_rvec=rvec,
-            camera_tvec=tvec,
+            distortion_coefficients=distortion_coefficients,
+            camera_rotation_vector=rotation_vector,
+            camera_translation_vector=translation_vector,
             debug_mode=debug_mode,
             show_tokens=show_tokens,
             raw_tokens=self.state.raw_tokens,
@@ -446,18 +473,20 @@ class InteractiveApp:
         self.map_system.width = self.config.width
         self.map_system.height = self.config.height
 
-        camera_matrix, dist_coeffs, rvec, tvec = self._load_camera_calibration()
+        camera_matrix, distortion_coefficients, rotation_vector, translation_vector = (
+            self._load_camera_calibration()
+        )
 
         # Sync calibration to background tracker
         self.tracking_coordinator.token_tracker.set_aruco_calibration(
-            camera_matrix, dist_coeffs, rvec, tvec
+            camera_matrix, distortion_coefficients, rotation_vector, translation_vector
         )
 
         self.app_context = self._create_app_context(
             camera_matrix,
-            dist_coeffs,
-            rvec,
-            tvec,
+            distortion_coefficients,
+            rotation_vector,
+            translation_vector,
             debug_mode=self.app_context.debug_mode,
             show_tokens=self.app_context.show_tokens,
         )

@@ -121,11 +121,11 @@ def calibrate_extrinsics(
     frame: np.ndarray,
     projector_matrix: np.ndarray,
     camera_matrix: np.ndarray,
-    dist_coeffs: np.ndarray,
+    distortion_coefficients: np.ndarray,
     token_heights: Dict[int, float],
     ppi: float,
-    ground_points_cam: Optional[np.ndarray] = None,
-    ground_points_proj: Optional[np.ndarray] = None,
+    ground_points_camera: Optional[np.ndarray] = None,
+    ground_points_projector: Optional[np.ndarray] = None,
     known_targets: Optional[Dict[int, Tuple[float, float]]] = None,
     aruco_corners: Optional[Tuple[np.ndarray, ...]] = None,
     aruco_ids: Optional[np.ndarray] = None,
@@ -137,17 +137,17 @@ def calibrate_extrinsics(
         frame: The camera frame containing ArUco markers (fallback if corners/ids missing).
         projector_matrix: Homography (Camera -> Projector).
         camera_matrix: Camera intrinsic matrix.
-        dist_coeffs: Camera distortion coefficients.
+        distortion_coefficients: Camera distortion coefficients.
         token_heights: Mapping of ArUco ID to token height in mm.
         ppi: Projector PPI (Pixels Per Inch).
-        ground_points_cam: (N, 2) array of camera coordinates at Z=0.
-        ground_points_proj: (N, 2) array of projector coordinates corresponding to ground_points_cam.
+        ground_points_camera: (N, 2) array of camera coordinates at Z=0.
+        ground_points_projector: (N, 2) array of projector coordinates corresponding to ground_points_camera.
         known_targets: Optional mapping of ArUco ID to (x, y) projector coordinates.
         aruco_corners: Pre-detected ArUco corners.
         aruco_ids: Pre-detected ArUco IDs.
 
     Returns:
-        (rvec, tvec, obj_points, img_points) or None.
+        (rotation_vector, translation_vector, object_points, image_points) or None.
     """
     if aruco_ids is None or aruco_corners is None:
         if frame is not None:
@@ -157,20 +157,20 @@ def calibrate_extrinsics(
             detector = cv2.aruco.ArucoDetector(aruco_dict, parameters)
             aruco_corners, aruco_ids, _ = detector.detectMarkers(gray)
 
-    obj_points_list = []  # 3D points in World Space (mm)
-    img_points_list = []  # 2D points in Camera Space (px)
+    object_points_list = []  # 3D points in World Space (mm)
+    image_points_list = []  # 2D points in Camera Space (px)
 
     ppi_mm = ppi / 25.4
 
     # 1. Add Ground Points (Z=0) from Step 1 if available
-    if ground_points_cam is not None and ground_points_proj is not None:
-        for i in range(len(ground_points_cam)):
-            px, py = ground_points_proj[i]
+    if ground_points_camera is not None and ground_points_projector is not None:
+        for i in range(len(ground_points_camera)):
+            px, py = ground_points_projector[i]
             wx = px / ppi_mm
             wy = py / ppi_mm
             wz = 0.0
-            obj_points_list.append([wx, wy, wz])
-            img_points_list.append(ground_points_cam[i])
+            object_points_list.append([wx, wy, wz])
+            image_points_list.append(ground_points_camera[i])
 
     # 2. Add Token Points (Z=h)
     if aruco_ids is not None and aruco_corners is not None:
@@ -197,60 +197,65 @@ def calibrate_extrinsics(
             wy = py / ppi_mm
             wz = h
 
-            obj_points_list.append([wx, wy, wz])
-            img_points_list.append(c_cam)
+            object_points_list.append([wx, wy, wz])
+            image_points_list.append(c_cam)
 
-    if len(obj_points_list) < 4:
+    if len(object_points_list) < 4:
         logging.warning(
             "Extrinsics: Not enough points detected (need at least 4 combined points)."
         )
         return None
 
-    obj_points = np.array(obj_points_list, dtype=np.float32)
-    img_points = np.array(img_points_list, dtype=np.float32)
+    object_points = np.array(object_points_list, dtype=np.float32)
+    image_points = np.array(image_points_list, dtype=np.float32)
 
     num_tokens = len(aruco_ids) if aruco_ids is not None else 0
-    num_ground = len(obj_points_list) - num_tokens
+    num_ground = len(object_points_list) - num_tokens
 
     logging.info(
-        f"Extrinsics: Solving for {len(obj_points)} points ({num_ground} ground, {num_tokens} tokens)."
+        f"Extrinsics: Solving for {len(object_points)} points ({num_ground} ground, {num_tokens} tokens)."
     )
 
     # Solve PnP
     # SQPNP is highly robust to both planar and non-planar configurations.
     # We still provide an initial guess to help it converge to the "looking down" solution.
-    rvec_guess = np.array([np.pi, 0, 0], dtype=np.float32).reshape(3, 1)
-    tvec_guess = np.array([0, 0, 1000], dtype=np.float32).reshape(3, 1)
+    rotation_vector_guess = np.array([np.pi, 0, 0], dtype=np.float32).reshape(3, 1)
+    translation_vector_guess = np.array([0, 0, 1000], dtype=np.float32).reshape(3, 1)
 
-    ret, rvec, tvec = cv2.solvePnP(
-        obj_points,
-        img_points,
+    ret, rotation_vector, translation_vector = cv2.solvePnP(
+        object_points,
+        image_points,
         camera_matrix,
-        dist_coeffs,
-        rvec=rvec_guess,
-        tvec=tvec_guess,
+        distortion_coefficients,
+        rvec=rotation_vector_guess,
+        tvec=translation_vector_guess,
         useExtrinsicGuess=True,
         flags=cv2.SOLVEPNP_SQPNP,
     )
 
     if ret:
         # Physical plausibility check: tz MUST be positive for the table to be in front of the camera
-        if tvec[2] < 0:
+        if translation_vector[2] < 0:
             logging.warning(
                 "Extrinsics: solvePnP returned inverted solution (tz < 0). Attempting flip."
             )
             # Flip the solution
-            R, _ = cv2.Rodrigues(rvec)
-            C = -R.T @ tvec
+            rotation_matrix, _ = cv2.Rodrigues(rotation_vector)
+            camera_center = -(rotation_matrix.T @ translation_vector)
 
-            R_flip = np.array([[1, 0, 0], [0, -1, 0], [0, 0, -1]], dtype=np.float32)
-            R_new = R_flip @ R
-            rvec_new, _ = cv2.Rodrigues(R_new)
-            tvec_new = -R_new @ C
+            rotation_matrix_flip = np.array(
+                [[1, 0, 0], [0, -1, 0], [0, 0, -1]], dtype=np.float32
+            )
+            rotation_matrix_new = rotation_matrix_flip @ rotation_matrix
+            rotation_vector_new, _ = cv2.Rodrigues(rotation_matrix_new)
+            translation_vector_new = -rotation_matrix_new @ camera_center
 
-            rvec, tvec = rvec_new, tvec_new
+            rotation_vector, translation_vector = (
+                rotation_vector_new,
+                translation_vector_new,
+            )
 
-        return rvec, tvec, obj_points, img_points
+        return rotation_vector, translation_vector, object_points, image_points
 
     return None
 
@@ -258,22 +263,22 @@ def calibrate_extrinsics(
 def calibrate_projector_3d(
     correspondences: List[Tuple[np.ndarray, np.ndarray]],
     projector_resolution: Tuple[int, int],
-    initial_mtx: Optional[np.ndarray] = None,
-    initial_dist: Optional[np.ndarray] = None,
+    initial_intrinsic_matrix: Optional[np.ndarray] = None,
+    initial_distortion_coefficients: Optional[np.ndarray] = None,
 ) -> Optional[Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, float]]:
     """
     Computes Projector Intrinsics and Extrinsics using 3D-to-2D correspondences.
 
     Args:
-        correspondences: List of (world_pt_3d, proj_pt_2d) tuples.
-                         world_pt_3d is (3,) array [X, Y, Z] in mm.
-                         proj_pt_2d is (2,) array [u, v] in pixels.
+        correspondences: List of (world_point_3d, projector_point_2d) tuples.
+                         world_point_3d is (3,) array [X, Y, Z] in mm.
+                         projector_point_2d is (2,) array [u, v] in pixels.
         projector_resolution: (width, height) of the projector.
-        initial_mtx: Optional initial intrinsic matrix.
-        initial_dist: Optional initial distortion coefficients.
+        initial_intrinsic_matrix: Optional initial intrinsic matrix.
+        initial_distortion_coefficients: Optional initial distortion coefficients.
 
     Returns:
-        (mtx, dist, rvec, tvec, rms) or None if calibration fails.
+        (intrinsic_matrix, distortion_coefficients, rotation_vector, translation_vector, rms) or None if calibration fails.
     """
     if len(correspondences) < 10:
         logging.warning(
@@ -287,40 +292,45 @@ def calibrate_projector_3d(
     # We use ascontiguousarray to ensure the memory layout matches C++ expectations.
     # We explicitly reshape to (-1, 1, 3) and (-1, 1, 2) as this is the most robust format
     # that handles both list-of-lists and flattening issues in cv2.
-    obj_points = [
+    object_points = [
         np.ascontiguousarray([c[0] for c in correspondences], dtype=np.float32).reshape(
             -1, 1, 3
         )
     ]
-    img_points = [
+    image_points = [
         np.ascontiguousarray([c[1] for c in correspondences], dtype=np.float32).reshape(
             -1, 1, 2
         )
     ]
 
     # Final count validation before OpenCV call
-    for i in range(len(obj_points)):
-        if obj_points[i].shape[0] != img_points[i].shape[0]:
+    for i in range(len(object_points)):
+        if object_points[i].shape[0] != image_points[i].shape[0]:
             raise ValueError(
-                f"Point count mismatch in View {i}: obj_points has {obj_points[i].shape[0]}, "
-                f"img_points has {img_points[i].shape[0]}. Check for NumPy broadcasting errors."
+                f"Point count mismatch in View {i}: object_points has {object_points[i].shape[0]}, "
+                f"image_points has {image_points[i].shape[0]}. Check for NumPy broadcasting errors."
             )
 
-    if initial_mtx is None:
+    if initial_intrinsic_matrix is None:
         # Provide a reasonable initial guess for the intrinsic matrix
         # f = max(width, height), principal point = center
-        w, h = projector_resolution
-        f = max(w, h)
-        initial_mtx = np.array(
-            [[f, 0, w / 2], [0, f, h / 2], [0, 0, 1]], dtype=np.float32
+        width, height = projector_resolution
+        focal_length = max(width, height)
+        initial_intrinsic_matrix = np.array(
+            [[focal_length, 0, width / 2], [0, focal_length, height / 2], [0, 0, 1]],
+            dtype=np.float32,
         )
     else:
-        initial_mtx = np.ascontiguousarray(initial_mtx, dtype=np.float32)
+        initial_intrinsic_matrix = np.ascontiguousarray(
+            initial_intrinsic_matrix, dtype=np.float32
+        )
 
-    if initial_dist is None:
-        initial_dist = np.zeros(5, dtype=np.float32)
+    if initial_distortion_coefficients is None:
+        initial_distortion_coefficients = np.zeros(5, dtype=np.float32)
     else:
-        initial_dist = np.ascontiguousarray(initial_dist, dtype=np.float32)
+        initial_distortion_coefficients = np.ascontiguousarray(
+            initial_distortion_coefficients, dtype=np.float32
+        )
 
     flags = cv2.CALIB_USE_INTRINSIC_GUESS
 
@@ -329,19 +339,31 @@ def calibrate_projector_3d(
 
     try:
         # Using positional arguments for the matrices can be more robust in some cv2 versions
-        ret, mtx, dist, rvecs, tvecs = cv2.calibrateCamera(
-            obj_points,
-            img_points,
+        (
+            ret,
+            intrinsic_matrix,
+            distortion_coefficients,
+            rotation_vectors,
+            translation_vectors,
+        ) = cv2.calibrateCamera(
+            object_points,
+            image_points,
             projector_resolution,
-            initial_mtx,
-            initial_dist,
+            initial_intrinsic_matrix,
+            initial_distortion_coefficients,
             flags=flags,
         )
 
         if ret:
             # calibrateCamera returns a list of rvecs/tvecs (one per 'view').
             # Since we treat all points as one 'view', we take the first one.
-            return mtx, dist, rvecs[0], tvecs[0], ret
+            return (
+                intrinsic_matrix,
+                distortion_coefficients,
+                rotation_vectors[0],
+                translation_vectors[0],
+                ret,
+            )
 
     except Exception as e:
         logging.error("calibrate_projector_3d: Error during calibration: %s", e)

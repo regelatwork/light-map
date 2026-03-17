@@ -32,16 +32,16 @@ class TrackingCoordinator:
         Maps raw ArUco detections (corners, ids) to filtered and snapped Token objects.
         Returns a dict with {"tokens": snapped_list, "raw_tokens": unsnapped_list}.
         """
-        map_file = map_system.svg_loader.filename if map_system.svg_loader else None
+        map_filename = map_system.svg_loader.filename if map_system.svg_loader else None
         current_time = self.time_provider()
 
         # 1. Map to raw Token objects
-        detector = getattr(self.token_tracker, "_aruco_detector", None)
-        if not detector:
+        aruco_detector = getattr(self.token_tracker, "_aruco_detector", None)
+        if not aruco_detector:
             return {"tokens": [], "raw_tokens": []}
 
-        token_configs = map_config.get_aruco_configs(map_file)
-        detections = detector.map_to_tokens(
+        token_configs = map_config.get_aruco_configs(map_filename)
+        raw_detections = aruco_detector.map_to_tokens(
             raw_data,
             map_system,
             token_configs=token_configs,
@@ -52,10 +52,12 @@ class TrackingCoordinator:
 
         from dataclasses import asdict
 
-        for d in detections:
-            if d.id not in token_configs:
-                resolved = map_config.resolve_token_profile(d.id, map_file)
-                token_configs[d.id] = asdict(resolved)
+        for token in raw_detections:
+            if token.id not in token_configs:
+                resolved_profile = map_config.resolve_token_profile(
+                    token.id, map_filename
+                )
+                token_configs[token.id] = asdict(resolved_profile)
 
         # 2. Get Grid Parameters
         grid_spacing = 0.0
@@ -63,33 +65,38 @@ class TrackingCoordinator:
         grid_origin_y = 0.0
         map_bounds = None
 
-        if map_file:
-            entry = map_config.data.maps.get(map_file)
-            if entry:
-                grid_spacing = entry.grid_spacing_svg
-                grid_origin_x = entry.grid_origin_svg_x
-                grid_origin_y = entry.grid_origin_svg_y
+        if map_filename:
+            map_entry = map_config.data.maps.get(map_filename)
+            if map_entry:
+                grid_spacing = map_entry.grid_spacing_svg
+                grid_origin_x = map_entry.grid_origin_svg_x
+                grid_origin_y = map_entry.grid_origin_svg_y
 
             if map_system.svg_loader and map_system.svg_loader.svg:
                 try:
-                    svg = map_system.svg_loader.svg
-                    if hasattr(svg, "viewbox") and svg.viewbox:
-                        vb = svg.viewbox
+                    svg_doc = map_system.svg_loader.svg
+                    if hasattr(svg_doc, "viewbox") and svg_doc.viewbox:
+                        viewbox = svg_doc.viewbox
                         map_bounds = (
-                            float(vb.x),
-                            float(vb.y),
-                            float(vb.x + vb.width),
-                            float(vb.y + vb.height),
+                            float(viewbox.x),
+                            float(viewbox.y),
+                            float(viewbox.x + viewbox.width),
+                            float(viewbox.y + viewbox.height),
                         )
                     else:
-                        map_bounds = (0.0, 0.0, float(svg.width), float(svg.height))
+                        map_bounds = (
+                            0.0,
+                            0.0,
+                            float(svg_doc.width),
+                            float(svg_doc.height),
+                        )
                 except (TypeError, ValueError, AttributeError):
                     pass
 
         # 3. Update filter once (smoothing and occlusion handling)
         # We pass grid_spacing=0 to get smoothed but unsnapped base tokens
         base_filtered_tokens = self.token_filter.update(
-            detections,
+            raw_detections,
             current_time,
             grid_spacing=0.0,
             token_configs=token_configs,
@@ -100,24 +107,24 @@ class TrackingCoordinator:
         from dataclasses import replace
 
         snapped_tokens = []
-        raw_tokens = []
+        raw_tokens_output = []
 
-        for bt in base_filtered_tokens:
+        for base_token in base_filtered_tokens:
             # The raw version is just the smoothed base
-            raw_tokens.append(bt)
+            raw_tokens_output.append(base_token)
 
             # The snapped version is a copy that we run through snapping
-            snapped_t = replace(bt)
+            snapped_token = replace(base_token)
             self.token_filter._apply_grid_snapping(
-                snapped_t,
+                snapped_token,
                 grid_spacing,
                 grid_origin_x,
                 grid_origin_y,
                 token_configs,
             )
-            snapped_tokens.append(snapped_t)
+            snapped_tokens.append(snapped_token)
 
-        return {"tokens": snapped_tokens, "raw_tokens": raw_tokens}
+        return {"tokens": snapped_tokens, "raw_tokens": raw_tokens_output}
 
     def process_aruco_tracking(
         self,
@@ -126,9 +133,9 @@ class TrackingCoordinator:
         map_system: MapSystem,
         map_config: MapConfigManager,
         camera_matrix: Optional[np.ndarray] = None,
-        dist_coeffs: Optional[np.ndarray] = None,
-        rvec: Optional[np.ndarray] = None,
-        tvec: Optional[np.ndarray] = None,
+        distortion_coefficients: Optional[np.ndarray] = None,
+        rotation_vector: Optional[np.ndarray] = None,
+        translation_vector: Optional[np.ndarray] = None,
         debug_mode: bool = False,
     ):
         """Performs background ArUco tracking and updates the map system tokens."""
@@ -140,17 +147,16 @@ class TrackingCoordinator:
         if camera_matrix is not None:
             self.token_tracker.set_aruco_calibration(
                 camera_matrix=camera_matrix,
-                dist_coeffs=dist_coeffs,
-                rvec=rvec,
-                tvec=tvec,
+                distortion_coefficients=distortion_coefficients,
+                rotation_vector=rotation_vector,
+                translation_vector=translation_vector,
             )
 
         # 1. Detect tokens from the frame
-        token_configs = map_config.get_aruco_configs(
-            map_system.svg_loader.filename if map_system.svg_loader else None
-        )
+        map_filename = map_system.svg_loader.filename if map_system.svg_loader else None
+        token_configs = map_config.get_aruco_configs(map_filename)
 
-        detections = self.token_tracker.detect_tokens(
+        raw_detections = self.token_tracker.detect_tokens(
             frame_white=frame,
             projector_matrix=config.projector_matrix,
             map_system=map_system,
@@ -162,19 +168,19 @@ class TrackingCoordinator:
             projector_3d_model=config.projector_3d_model,
         )
 
-        if detections:
-            logging.debug(f"TrackingCoord: Detected {len(detections)} tokens raw.")
+        if raw_detections:
+            logging.debug(f"TrackingCoord: Detected {len(raw_detections)} tokens raw.")
             # Ensure all detected IDs are in token_configs for name/color resolution
-            map_file = map_system.svg_loader.filename if map_system.svg_loader else None
-            for d in detections:
-                if d.id not in token_configs:
-                    resolved = map_config.resolve_token_profile(d.id, map_file)
+            for token in raw_detections:
+                if token.id not in token_configs:
+                    resolved_profile = map_config.resolve_token_profile(
+                        token.id, map_filename
+                    )
                     from dataclasses import asdict
 
-                    token_configs[d.id] = asdict(resolved)
+                    token_configs[token.id] = asdict(resolved_profile)
 
         # 2. Get Grid Parameters and Filter/Snap
-        map_file = map_system.svg_loader.filename if map_system.svg_loader else None
         current_time = self.time_provider()
 
         grid_spacing = 0.0
@@ -182,33 +188,38 @@ class TrackingCoordinator:
         grid_origin_y = 0.0
         map_bounds = None
 
-        if map_file:
-            entry = map_config.data.maps.get(map_file)
-            if entry:
-                grid_spacing = entry.grid_spacing_svg
-                grid_origin_x = entry.grid_origin_svg_x
-                grid_origin_y = entry.grid_origin_svg_y
+        if map_filename:
+            map_entry = map_config.data.maps.get(map_filename)
+            if map_entry:
+                grid_spacing = map_entry.grid_spacing_svg
+                grid_origin_x = map_entry.grid_origin_svg_x
+                grid_origin_y = map_entry.grid_origin_svg_y
 
             # Calculate map bounds from SVG document
             if map_system.svg_loader and map_system.svg_loader.svg:
                 try:
-                    svg = map_system.svg_loader.svg
-                    if hasattr(svg, "viewbox") and svg.viewbox:
-                        vb = svg.viewbox
+                    svg_doc = map_system.svg_loader.svg
+                    if hasattr(svg_doc, "viewbox") and svg_doc.viewbox:
+                        viewbox = svg_doc.viewbox
                         map_bounds = (
-                            float(vb.x),
-                            float(vb.y),
-                            float(vb.x + vb.width),
-                            float(vb.y + vb.height),
+                            float(viewbox.x),
+                            float(viewbox.y),
+                            float(viewbox.x + viewbox.width),
+                            float(viewbox.y + viewbox.height),
                         )
                     else:
-                        map_bounds = (0.0, 0.0, float(svg.width), float(svg.height))
+                        map_bounds = (
+                            0.0,
+                            0.0,
+                            float(svg_doc.width),
+                            float(svg_doc.height),
+                        )
                 except (TypeError, ValueError, AttributeError):
                     pass
 
         # Temporal Filtering and Grid Snapping
-        tokens = self.token_filter.update(
-            detections,
+        filtered_tokens = self.token_filter.update(
+            raw_detections,
             current_time,
             grid_spacing=grid_spacing,
             grid_origin_x=grid_origin_x,
@@ -218,4 +229,4 @@ class TrackingCoordinator:
         )
 
         # 3. Update map system
-        map_system.ghost_tokens = tokens
+        map_system.ghost_tokens = filtered_tokens

@@ -47,8 +47,8 @@ class TestArucoResizing(unittest.TestCase):
 
         # Mock calibration and map_system
         detector.camera_matrix = np.eye(3)
-        detector.rvec = np.zeros((3, 1))
-        detector.tvec = np.zeros((3, 1))
+        detector.rotation_vector = np.zeros((3, 1))
+        detector.translation_vector = np.zeros((3, 1))
         detector.projection_model = MagicMock(spec=CameraProjectionModel)
         detector.projection_model.reconstruct_world_points.return_value = np.array(
             [[100.0, 200.0]]
@@ -72,8 +72,8 @@ class TestArucoResizing(unittest.TestCase):
         # Since we scaled back, reconstruct_world_points should receive (1920, 1080)
         tokens = detector.detect(frame, mock_map_system)
         call_args = detector.projection_model.reconstruct_world_points.call_args[0]
-        pts_call = call_args[0]
-        u_call, v_call = pts_call[0]
+        pixel_points_call = call_args[0]
+        u_call, v_call = pixel_points_call[0]
 
         self.assertAlmostEqual(u_call, 1920.0, places=1)
         self.assertAlmostEqual(v_call, 1080.0, places=1)

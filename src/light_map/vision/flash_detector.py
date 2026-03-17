@@ -5,6 +5,7 @@ from typing import List, Tuple, Optional, TYPE_CHECKING
 from light_map.common_types import Token
 from light_map.map_system import MapSystem
 from light_map.vision.debug_utils import DebugVisualizer
+from light_map.vision.projection import CameraProjectionModel
 
 if TYPE_CHECKING:
     from light_map.projector import ProjectorDistortionModel
@@ -27,23 +28,39 @@ class FlashTokenDetector:
 
     def __init__(self, debug_mode: bool = False):
         self.debug_mode = debug_mode
-        self.camera_matrix = None
-        self.dist_coeffs = None
-        self.rvec = None
-        self.tvec = None
-        self.R = None
-        self.camera_center_world = None
+        self.camera_matrix: Optional[np.ndarray] = None
+        self.distortion_coefficients: Optional[np.ndarray] = None
+        self.rotation_vector: Optional[np.ndarray] = None
+        self.translation_vector: Optional[np.ndarray] = None
+        self.projection_model: Optional[CameraProjectionModel] = None
 
-    def set_calibration(self, camera_matrix: np.ndarray, dist_coeffs: np.ndarray):
+    def set_calibration(
+        self, camera_matrix: np.ndarray, distortion_coefficients: np.ndarray
+    ):
         self.camera_matrix = camera_matrix
-        self.dist_coeffs = dist_coeffs
+        self.distortion_coefficients = distortion_coefficients
+        self._update_projection_model()
 
-    def set_extrinsics(self, rvec: np.ndarray, tvec: np.ndarray):
-        self.rvec = rvec
-        self.tvec = tvec
-        if self.rvec is not None and self.tvec is not None:
-            self.R, _ = cv2.Rodrigues(self.rvec)
-            self.camera_center_world = -self.R.T @ self.tvec.flatten()
+    def set_extrinsics(
+        self, rotation_vector: np.ndarray, translation_vector: np.ndarray
+    ):
+        self.rotation_vector = rotation_vector
+        self.translation_vector = translation_vector
+        self._update_projection_model()
+
+    def _update_projection_model(self):
+        """Updates the shared projection model if all calibration is present."""
+        if (
+            self.camera_matrix is not None
+            and self.rotation_vector is not None
+            and self.translation_vector is not None
+        ):
+            self.projection_model = CameraProjectionModel(
+                self.camera_matrix,
+                self.distortion_coefficients,
+                self.rotation_vector,
+                self.translation_vector,
+            )
 
     def detect(
         self,
@@ -267,34 +284,44 @@ class FlashTokenDetector:
         distortion_model=None,
         projector_3d_model=None,
     ):
-        M = cv2.moments(blob_mask)
-        if M["m00"] > 0:
-            sx, sy = M["m10"] / M["m00"], M["m01"] / M["m00"]
+        moments = cv2.moments(blob_mask)
+        if moments["m00"] > 0:
+            screen_x, screen_y = (
+                moments["m10"] / moments["m00"],
+                moments["m01"] / moments["m00"],
+            )
 
-            if self.camera_matrix is not None and self.R is not None:
+            if self.projection_model is not None:
                 # 3D projection: Un-warp from projector to camera space
-                # sx, sy are in Projector pixels (warped frame)
+                # screen_x, screen_y are in Projector pixels (warped frame)
                 # Use inverse homography to find camera (u, v)
-                inv_h = np.linalg.inv(projector_matrix)
-                p_proj = np.array([sx, sy], dtype=np.float32).reshape(1, 1, 2)
-                p_cam = cv2.perspectiveTransform(p_proj, inv_h)[0][0]
-                u, v = p_cam[0], p_cam[1]
+                inv_homography = np.linalg.inv(projector_matrix)
+                projector_point = np.array(
+                    [screen_x, screen_y], dtype=np.float32
+                ).reshape(1, 1, 2)
+                camera_point = cv2.perspectiveTransform(
+                    projector_point, inv_homography
+                )[0][0]
 
-                # Apply vertical projection
-                wx_mm, wy_mm = self._parallax_correction(u, v, default_height_mm)
+                # Apply vertical projection (parallax correction)
+                camera_pixels = camera_point.reshape(1, 2)
+                world_points = self.projection_model.reconstruct_world_points(
+                    camera_pixels, default_height_mm
+                )
+                world_x_mm, world_y_mm = world_points[0]
 
                 if projector_3d_model and projector_3d_model.use_3d:
-                    p_world = np.array(
-                        [[wx_mm, wy_mm, default_height_mm]], dtype=np.float32
+                    world_point_3d = np.array(
+                        [[world_x_mm, world_y_mm, default_height_mm]], dtype=np.float32
                     )
-                    p_proj_real = projector_3d_model.project_world_to_projector(
-                        p_world
-                    )[0]
-                    px, py = p_proj_real[0], p_proj_real[1]
+                    projector_pixel_coord = (
+                        projector_3d_model.project_world_to_projector(world_point_3d)[0]
+                    )
+                    px, py = projector_pixel_coord[0], projector_pixel_coord[1]
                 else:
                     ppi_mm = ppi / 25.4
-                    px = wx_mm * ppi_mm
-                    py = wy_mm * ppi_mm
+                    px = world_x_mm * ppi_mm
+                    py = world_y_mm * ppi_mm
 
                     if distortion_model:
                         px, py = distortion_model.correct_theoretical_point(px, py)
@@ -303,8 +330,10 @@ class FlashTokenDetector:
             else:
                 # Fallback to simple 2D projection
                 if distortion_model:
-                    sx, sy = distortion_model.correct_theoretical_point(sx, sy)
-                wx, wy = map_system.screen_to_world(sx, sy)
+                    screen_x, screen_y = distortion_model.correct_theoretical_point(
+                        screen_x, screen_y
+                    )
+                wx, wy = map_system.screen_to_world(screen_x, screen_y)
 
             tokens.append(
                 Token(
@@ -354,34 +383,3 @@ class FlashTokenDetector:
 
         DebugVisualizer.draw_tokens(debug_img, tokens, map_system)
         DebugVisualizer.save_debug_image("debug_token_detection_flash", debug_img)
-
-    def _parallax_correction(self, u: float, v: float, h: float) -> Tuple[float, float]:
-        """
-        Intersects the ray from camera through (u, v) with the plane z = h.
-        Returns (X, Y) in world space.
-        """
-        if self.camera_matrix is None or self.R is None:
-            # Fallback if no 3D pose is available
-            return 0.0, 0.0
-
-        # 1. Back-project to ray in camera space
-        p_pixel = np.array([u, v, 1.0]).reshape(3, 1)
-        ray_cam = np.linalg.inv(self.camera_matrix) @ p_pixel
-
-        # 2. Transform ray to world space
-        v_world = self.R.T @ ray_cam
-        v_world = v_world.flatten()
-
-        # 3. Intersect with plane z = h
-        cz = self.camera_center_world[2]
-        vz = v_world[2]
-
-        if abs(vz) < 1e-6:
-            return 0.0, 0.0
-
-        s = (h - cz) / vz
-        if s < 0:
-            return 0.0, 0.0
-
-        p_world = self.camera_center_world + s * v_world
-        return p_world[0], p_world[1]

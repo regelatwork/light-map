@@ -133,11 +133,14 @@ class ScanningScene(Scene):
             # Generate pattern if not already
             if self._pattern_image is None:
                 ppi = self.context.map_config_manager.get_ppi()
-                w, h = self.context.app_config.width, self.context.app_config.height
+                width, height = (
+                    self.context.app_config.width,
+                    self.context.app_config.height,
+                )
 
                 # The pattern generation is now deterministic with its own seed
                 self._pattern_image, self._cached_pattern_points = (
-                    self.token_tracker.get_scan_pattern(w, h, ppi)
+                    self.token_tracker.get_scan_pattern(width, height, ppi)
                 )
 
             self._change_stage(ScanStage.WAIT_PATTERN, current_time)
@@ -248,9 +251,9 @@ class ScanningScene(Scene):
         # Sync calibration
         self.token_tracker.set_aruco_calibration(
             camera_matrix=self.context.camera_matrix,
-            dist_coeffs=self.context.dist_coeffs,
-            rvec=self.context.camera_rvec,
-            tvec=self.context.camera_tvec,
+            distortion_coefficients=self.context.distortion_coefficients,
+            rotation_vector=self.context.camera_rotation_vector,
+            translation_vector=self.context.camera_translation_vector,
         )
 
         tokens = self.token_tracker.detect_tokens(

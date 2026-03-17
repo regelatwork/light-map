@@ -115,27 +115,29 @@ def test_calibrate_extrinsics_flip_inverted(mock_cv2):
     mock_cv2.aruco.ArucoDetector.return_value = mock_detector
 
     frame = np.zeros((100, 100, 3), dtype=np.uint8)
-    proj_matrix = np.eye(3)
-    cam_matrix = np.eye(3)
-    dist_coeffs = np.zeros(5)
+    projector_matrix = np.eye(3)
+    camera_matrix = np.eye(3)
+    distortion_coefficients = np.zeros(5)
 
     # Run
     result = calibrate_extrinsics(
         frame,
-        proj_matrix,
-        cam_matrix,
-        dist_coeffs,
+        projector_matrix,
+        camera_matrix,
+        distortion_coefficients,
         {1: 5.0},
         100.0,
-        ground_points_cam=np.array([[50, 50], [60, 60], [70, 70], [80, 80]]),
-        ground_points_proj=np.array([[100, 100], [120, 120], [140, 140], [160, 160]]),
+        ground_points_camera=np.array([[50, 50], [60, 60], [70, 70], [80, 80]]),
+        ground_points_projector=np.array(
+            [[100, 100], [120, 120], [140, 140], [160, 160]]
+        ),
     )
 
     assert result is not None
-    rvec, tvec, obj_pts, img_pts = result
+    rotation_vector, translation_vector, object_points, image_points = result
 
-    # Verify tz is now positive
-    assert tvec[2] > 0
+    # Verify translation_vector[2] is now positive
+    assert translation_vector[2] > 0
     # Check it called solvePnP with useExtrinsicGuess and SQPNP
     args, kwargs = mock_cv2.solvePnP.call_args
     assert kwargs["useExtrinsicGuess"] is True

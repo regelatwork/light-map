@@ -18,8 +18,8 @@ def mock_config():
     config.projector_matrix = np.eye(3)
     config.distortion_model = None
     config.camera_matrix = None
-    config.rvec = None
-    config.tvec = None
+    config.rotation_vector = None
+    config.translation_vector = None
     config.projector_ppi = 25.4  # 1mm = 1px for simple tests
     config.token_profiles = {}
     config.aruco_defaults = {}
@@ -131,11 +131,11 @@ def test_aruco_mask_layer_parallax_rendering(mock_state, mock_config):
         [[1000, 0, 960], [0, 1000, 540], [0, 0, 1]], dtype=np.float32
     )
     # Camera at (0, 0, 1000) in world, looking down
-    R = np.array(
+    rotation_matrix = np.array(
         [[1.0, 0.0, 0.0], [0.0, -1.0, 0.0], [0.0, 0.0, -1.0]], dtype=np.float32
     )
-    mock_config.rvec, _ = cv2.Rodrigues(R)
-    mock_config.tvec = np.array([[0], [0], [1000]], dtype=np.float32)
+    mock_config.rotation_vector, _ = cv2.Rodrigues(rotation_matrix)
+    mock_config.translation_vector = np.array([[0], [0], [1000]], dtype=np.float32)
 
     mock_config.projector_ppi = 25.4  # 1mm = 1px
     mock_config.projector_matrix_resolution = (10000, 10000)
@@ -161,7 +161,10 @@ def test_aruco_mask_layer_parallax_rendering(mock_state, mock_config):
 
     # Initialize projection model
     mock_config.camera_projection_model = CameraProjectionModel(
-        mock_config.camera_matrix, np.zeros(5), mock_config.rvec, mock_config.tvec
+        mock_config.camera_matrix,
+        np.zeros(5),
+        mock_config.rotation_vector,
+        mock_config.translation_vector,
     )
 
     layer = ArucoMaskLayer(mock_state, mock_config)

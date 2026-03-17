@@ -9,6 +9,7 @@ from datetime import datetime
 from light_map.common_types import Token
 from light_map.map_system import MapSystem
 from light_map.vision.debug_utils import DebugVisualizer
+from light_map.vision.projection import CameraProjectionModel
 
 if TYPE_CHECKING:
     from light_map.projector import ProjectorDistortionModel
@@ -38,27 +39,43 @@ class StructuredLightTokenDetector:
 
     def __init__(self, debug_mode: bool = False):
         self.debug_mode = debug_mode
-        self.camera_matrix = None
-        self.dist_coeffs = None
-        self.rvec = None
-        self.tvec = None
-        self.R = None
-        self.camera_center_world = None
+        self.camera_matrix: Optional[np.ndarray] = None
+        self.distortion_coefficients: Optional[np.ndarray] = None
+        self.rotation_vector: Optional[np.ndarray] = None
+        self.translation_vector: Optional[np.ndarray] = None
+        self.projection_model: Optional[CameraProjectionModel] = None
 
         # Performance optimization
         self._fov_mask = None
         self._fov_mask_params = None
 
-    def set_calibration(self, camera_matrix: np.ndarray, dist_coeffs: np.ndarray):
+    def set_calibration(
+        self, camera_matrix: np.ndarray, distortion_coefficients: np.ndarray
+    ):
         self.camera_matrix = camera_matrix
-        self.dist_coeffs = dist_coeffs
+        self.distortion_coefficients = distortion_coefficients
+        self._update_projection_model()
 
-    def set_extrinsics(self, rvec: np.ndarray, tvec: np.ndarray):
-        self.rvec = rvec
-        self.tvec = tvec
-        if self.rvec is not None and self.tvec is not None:
-            self.R, _ = cv2.Rodrigues(self.rvec)
-            self.camera_center_world = -self.R.T @ self.tvec.flatten()
+    def set_extrinsics(
+        self, rotation_vector: np.ndarray, translation_vector: np.ndarray
+    ):
+        self.rotation_vector = rotation_vector
+        self.translation_vector = translation_vector
+        self._update_projection_model()
+
+    def _update_projection_model(self):
+        """Updates the shared projection model if all calibration is present."""
+        if (
+            self.camera_matrix is not None
+            and self.rotation_vector is not None
+            and self.translation_vector is not None
+        ):
+            self.projection_model = CameraProjectionModel(
+                self.camera_matrix,
+                self.distortion_coefficients,
+                self.rotation_vector,
+                self.translation_vector,
+            )
 
     def get_scan_pattern(
         self, width: int, height: int, ppi: float
@@ -147,7 +164,7 @@ class StructuredLightTokenDetector:
             _, thresh = cv2.threshold(gray, dynamic_thresh, 255, cv2.THRESH_BINARY)
 
         # 4. Extract Observed Centroids
-        observed_points_cam = []
+        observed_points_camera = []
         contours, _ = cv2.findContours(
             thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE
         )
@@ -157,48 +174,54 @@ class StructuredLightTokenDetector:
             if M["m00"] > 0 and cv2.contourArea(cnt) > self.SL_MIN_CONTOUR_AREA:
                 cx = M["m10"] / M["m00"]
                 cy = M["m01"] / M["m00"]
-                observed_points_cam.append((cx, cy))
+                observed_points_camera.append((cx, cy))
 
-        if not observed_points_cam:
+        if not observed_points_camera:
             return []
 
         # 5. Project to Projector Space (with parallax correction)
-        observed_points_proj = []
+        observed_points_projector = []
         ppi_mm = ppi / 25.4
 
         # We need a list for debug logging later that matches the old format (N, 1, 2)
-        dst_pts_list = []
+        projector_points_list = []
 
-        for u, v in observed_points_cam:
-            if self.camera_matrix is not None and self.R is not None:
-                # Use 3D projection
-                wx_mm, wy_mm = self._parallax_correction(u, v, default_height_mm)
+        for u, v in observed_points_camera:
+            if self.projection_model is not None:
+                # Use 3D projection (parallax correction)
+                camera_pixels = np.array([[u, v]], dtype=np.float32)
+                world_points = self.projection_model.reconstruct_world_points(
+                    camera_pixels, default_height_mm
+                )
+                world_x_mm, world_y_mm = world_points[0]
 
                 if projector_3d_model and projector_3d_model.use_3d:
-                    p_world = np.array(
-                        [[wx_mm, wy_mm, default_height_mm]], dtype=np.float32
+                    world_point_3d = np.array(
+                        [[world_x_mm, world_y_mm, default_height_mm]], dtype=np.float32
                     )
-                    p_proj_real = projector_3d_model.project_world_to_projector(
-                        p_world
-                    )[0]
-                    px, py = p_proj_real[0], p_proj_real[1]
+                    projector_pixel_coord = (
+                        projector_3d_model.project_world_to_projector(world_point_3d)[0]
+                    )
+                    px, py = projector_pixel_coord[0], projector_pixel_coord[1]
                 else:
-                    px = wx_mm * ppi_mm
-                    py = wy_mm * ppi_mm
+                    px = world_x_mm * ppi_mm
+                    py = world_y_mm * ppi_mm
             else:
                 # Fallback to homography
-                pt = np.array([u, v], dtype=np.float32).reshape(1, 1, 2)
-                p_proj = cv2.perspectiveTransform(pt, projector_matrix)[0][0]
-                px, py = p_proj[0], p_proj[1]
+                point = np.array([u, v], dtype=np.float32).reshape(1, 1, 2)
+                projected_point = cv2.perspectiveTransform(point, projector_matrix)[0][
+                    0
+                ]
+                px, py = projected_point[0], projected_point[1]
 
             if distortion_model:
                 px, py = distortion_model.correct_theoretical_point(px, py)
 
-            dst_pts_list.append([[px, py]])
+            projector_points_list.append([[px, py]])
             if 0 <= px <= w_proj and 0 <= py <= h_proj:
-                observed_points_proj.append((px, py))
+                observed_points_projector.append((px, py))
 
-        dst_pts = np.array(dst_pts_list, dtype=np.float32)
+        projector_points_array = np.array(projector_points_list, dtype=np.float32)
 
         if self.debug_mode:
             self._log_sl_debug_data(
@@ -209,19 +232,19 @@ class StructuredLightTokenDetector:
                 max_val,
                 dynamic_thresh,
                 contours,
-                observed_points_cam,
-                dst_pts,
+                observed_points_camera,
+                projector_points_array,
                 w_proj,
                 h_proj,
             )
 
         expected_arr = np.array(expected_points)
-        if not observed_points_proj:
+        if not observed_points_projector:
             return []
 
         # --- Global Drift Correction ---
         shifts = []
-        for obs_p in observed_points_proj:
+        for obs_p in observed_points_projector:
             dists = np.linalg.norm(expected_arr - np.array(obs_p), axis=1)
             idx = np.argmin(dists)
             nearest = expected_arr[idx]
@@ -229,14 +252,14 @@ class StructuredLightTokenDetector:
 
         median_shift = np.median(np.array(shifts), axis=0)
         corrected_points = [
-            tuple(np.array(p) - median_shift) for p in observed_points_proj
+            tuple(np.array(p) - median_shift) for p in observed_points_projector
         ]
 
         detected_tokens_points = []
         for i, corr_p in enumerate(corrected_points):
             dists = np.linalg.norm(expected_arr - np.array(corr_p), axis=1)
             if np.min(dists) > self.SL_SHIFT_THRESHOLD_PX:
-                detected_tokens_points.append(observed_points_proj[i])
+                detected_tokens_points.append(observed_points_projector[i])
 
         # --- Missing Dot Detection ---
         inv_proj_matrix = np.linalg.inv(projector_matrix)
@@ -382,7 +405,7 @@ class StructuredLightTokenDetector:
             self._handle_structured_light_debug(
                 frame_pattern,
                 projector_matrix,
-                dst_pts,
+                projector_points_array,
                 expected_arr,
                 expected_points,
                 tokens,
@@ -399,7 +422,7 @@ class StructuredLightTokenDetector:
         self,
         frame_pattern,
         projector_matrix,
-        dst_pts,
+        projector_points_array,
         expected_arr,
         expected_points,
         tokens,
@@ -414,7 +437,7 @@ class StructuredLightTokenDetector:
             frame_pattern, projector_matrix, (map_system.width, map_system.height)
         )
         debug_vectors = []
-        for raw_p in dst_pts:
+        for raw_p in projector_points_array:
             p = tuple(raw_p[0])
             dists = np.linalg.norm(expected_arr - np.array(p), axis=1)
             idx = np.argmin(dists)
@@ -441,8 +464,8 @@ class StructuredLightTokenDetector:
         max_val,
         dynamic_thresh,
         contours,
-        observed_points_cam,
-        dst_pts,
+        observed_points_camera,
+        projector_points_array,
         w_proj,
         h_proj,
     ):
@@ -455,15 +478,17 @@ class StructuredLightTokenDetector:
         logging.debug("SL Debug: Found %d raw contours.", len(contours))
         logging.debug(
             "SL Debug: Extracted %d observed centroids from %d contours.",
-            len(observed_points_cam),
+            len(observed_points_camera),
             len(contours),
         )
-        if len(observed_points_cam) > 0:
-            logging.debug("SL Debug: Sample Camera Coords: %s", observed_points_cam[:5])
-        if len(dst_pts) > 0:
+        if len(observed_points_camera) > 0:
+            logging.debug(
+                "SL Debug: Sample Camera Coords: %s", observed_points_camera[:5]
+            )
+        if len(projector_points_array) > 0:
             logging.debug(
                 "SL Debug: Sample Projector Coords: %s",
-                [tuple(p[0]) for p in dst_pts[:5]],
+                [tuple(p[0]) for p in projector_points_array[:5]],
             )
 
         # Save debug images
@@ -534,37 +559,6 @@ class StructuredLightTokenDetector:
 
         DebugVisualizer.draw_tokens(debug_img, tokens, map_system)
         DebugVisualizer.save_debug_image("debug_token_detection_sl", debug_img)
-
-    def _parallax_correction(self, u: float, v: float, h: float) -> Tuple[float, float]:
-        """
-        Intersects the ray from camera through (u, v) with the plane z = h.
-        Returns (X, Y) in world space.
-        """
-        if self.camera_matrix is None or self.R is None:
-            # Fallback if no 3D pose is available
-            return 0.0, 0.0
-
-        # 1. Back-project to ray in camera space
-        p_pixel = np.array([u, v, 1.0]).reshape(3, 1)
-        ray_cam = np.linalg.inv(self.camera_matrix) @ p_pixel
-
-        # 2. Transform ray to world space
-        v_world = self.R.T @ ray_cam
-        v_world = v_world.flatten()
-
-        # 3. Intersect with plane z = h
-        cz = self.camera_center_world[2]
-        vz = v_world[2]
-
-        if abs(vz) < 1e-6:
-            return 0.0, 0.0
-
-        s = (h - cz) / vz
-        if s < 0:
-            return 0.0, 0.0
-
-        p_world = self.camera_center_world + s * v_world
-        return p_world[0], p_world[1]
 
     def _get_fov_mask(
         self,

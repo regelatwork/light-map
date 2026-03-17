@@ -210,7 +210,7 @@ class IntrinsicsCalibrationScene(Scene):
             calibration_result = process_chessboard_images(self._captured_images)
 
             if calibration_result:
-                (camera_matrix, dist_coeffs), _ = calibration_result
+                (camera_matrix, distortion_coefficients), _ = calibration_result
                 storage = self.context.app_config.storage_manager
                 output_file = (
                     storage.get_data_path("camera_calibration.npz")
@@ -218,7 +218,7 @@ class IntrinsicsCalibrationScene(Scene):
                     else "camera_calibration.npz"
                 )
                 save_camera_calibration(
-                    camera_matrix, dist_coeffs, output_file=output_file
+                    camera_matrix, distortion_coefficients, output_file=output_file
                 )
                 self.context.notifications.add_notification(
                     "Camera calibrated successfully."
@@ -416,15 +416,15 @@ class ExtrinsicsCalibrationScene(Scene):
         self._detected_ids: Dict[int, Tuple[float, float]] = {}  # id -> (u, v) cam
         self._known_targets: Dict[int, Tuple[float, float]] = {}  # id -> (px, py) proj
         self._ppi = 0.0
-        self._rvec: Optional[np.ndarray] = None
-        self._tvec: Optional[np.ndarray] = None
+        self._rotation_vector: Optional[np.ndarray] = None
+        self._translation_vector: Optional[np.ndarray] = None
         self._token_heights: Dict[int, float] = {}
         self._token_sizes: Dict[int, int] = {}
-        self._ground_points_cam: Optional[np.ndarray] = None
-        self._ground_points_proj: Optional[np.ndarray] = None
+        self._ground_points_camera: Optional[np.ndarray] = None
+        self._ground_points_projector: Optional[np.ndarray] = None
         self._reprojection_error: float = 0.0
-        self._obj_points: Optional[np.ndarray] = None
-        self._img_points: Optional[np.ndarray] = None
+        self._object_points: Optional[np.ndarray] = None
+        self._image_points: Optional[np.ndarray] = None
         self._target_status: List[str] = []
         self._target_info: List[Dict[str, Any]] = []
         self._animation_start_times: Dict[int, float] = {}
@@ -439,8 +439,8 @@ class ExtrinsicsCalibrationScene(Scene):
         self.increment_version()
         self._ppi = self.context.map_config_manager.get_ppi()
         self._reprojection_error = 0.0
-        self._obj_points = None
-        self._img_points = None
+        self._object_points = None
+        self._image_points = None
         self._retry_gesture_start_time = 0.0
         self._current_time = 0.0
         self._known_targets = {}
@@ -449,16 +449,16 @@ class ExtrinsicsCalibrationScene(Scene):
         try:
             if os.path.exists("projector_calibration.npz"):
                 data = np.load("projector_calibration.npz")
-                self._ground_points_cam = data["camera_points"]
-                self._ground_points_proj = data["projector_points"]
+                self._ground_points_camera = data["camera_points"]
+                self._ground_points_projector = data["projector_points"]
                 logging.info(
                     "Loaded %d ground points from projector calibration.",
-                    len(self._ground_points_cam),
+                    len(self._ground_points_camera),
                 )
         except Exception as e:
             logging.error("Failed to load projector calibration points: %s", e)
-            self._ground_points_cam = None
-            self._ground_points_proj = None
+            self._ground_points_camera = None
+            self._ground_points_projector = None
 
         # Load token heights, names, and sizes from global config
         self._token_heights = {}
@@ -598,30 +598,35 @@ class ExtrinsicsCalibrationScene(Scene):
                 None,
                 self.context.projector_matrix,
                 self.context.camera_matrix,
-                self.context.dist_coeffs,
+                self.context.distortion_coefficients,
                 self._token_heights,
                 self._ppi,
-                ground_points_cam=self._ground_points_cam,
-                ground_points_proj=self._ground_points_proj,
+                ground_points_camera=self._ground_points_camera,
+                ground_points_projector=self._ground_points_projector,
                 known_targets=self._known_targets,
                 aruco_corners=formatted_corners,
                 aruco_ids=formatted_ids,
             )
 
             if result:
-                self._rvec, self._tvec, self._obj_points, self._img_points = result
+                (
+                    self._rotation_vector,
+                    self._translation_vector,
+                    self._object_points,
+                    self._image_points,
+                ) = result
 
                 # Calculate Reprojection Error
                 projected_points, _ = cv2.projectPoints(
-                    self._obj_points,
-                    self._rvec,
-                    self._tvec,
+                    self._object_points,
+                    self._rotation_vector,
+                    self._translation_vector,
                     self.context.camera_matrix,
-                    self.context.dist_coeffs,
+                    self.context.distortion_coefficients,
                 )
                 projected_points = projected_points.reshape(-1, 2)
 
-                errors = np.linalg.norm(self._img_points - projected_points, axis=1)
+                errors = np.linalg.norm(self._image_points - projected_points, axis=1)
                 self._reprojection_error = np.sqrt(np.mean(errors**2))
 
                 self.context.notifications.add_notification(
@@ -635,7 +640,10 @@ class ExtrinsicsCalibrationScene(Scene):
         elif self._stage == "VALIDATION":
             # Accept
             if inputs and inputs[0].gesture == GestureType.VICTORY:
-                if self._rvec is not None and self._tvec is not None:
+                if (
+                    self._rotation_vector is not None
+                    and self._translation_vector is not None
+                ):
                     storage = self.context.app_config.storage_manager
                     output_file = (
                         storage.get_data_path("camera_extrinsics.npz")
@@ -643,7 +651,9 @@ class ExtrinsicsCalibrationScene(Scene):
                         else "camera_extrinsics.npz"
                     )
                     save_camera_extrinsics(
-                        self._rvec, self._tvec, output_file=output_file
+                        self._rotation_vector,
+                        self._translation_vector,
+                        output_file=output_file,
                     )
                     self.context.notifications.add_notification("Extrinsics saved.")
                 return SceneTransition(SceneId.MENU)
@@ -694,7 +704,7 @@ class ExtrinsicsCalibrationScene(Scene):
             "stage": self._stage,
             "target_status": self._target_status.copy(),
             "target_info": self._target_info.copy(),
-            "has_reprojection": self._obj_points is not None,
+            "has_reprojection": self._object_points is not None,
             "ppi": ppi,
         }
 
@@ -775,35 +785,37 @@ class ExtrinsicsCalibrationScene(Scene):
             # Verification Overlay: Visual Feedback
             if (
                 self._stage == "VALIDATION"
-                and self._rvec is not None
-                and self._tvec is not None
-                and self._obj_points is not None
+                and self._rotation_vector is not None
+                and self._translation_vector is not None
+                and self._object_points is not None
             ):
                 # Calculate reprojected points (Camera Space)
-                proj_pts_cam, _ = cv2.projectPoints(
-                    self._obj_points,
-                    self._rvec,
-                    self._tvec,
+                projected_points, _ = cv2.projectPoints(
+                    self._object_points,
+                    self._rotation_vector,
+                    self._translation_vector,
                     self.context.camera_matrix,
-                    self.context.dist_coeffs,
+                    self.context.distortion_coefficients,
                 )
-                proj_pts_cam = proj_pts_cam.reshape(-1, 2)
+                projected_points = projected_points.reshape(-1, 2)
 
                 # Transform both sets to Projector Space for rendering
-                img_pts_reshaped = self._img_points.reshape(-1, 1, 2)
+                image_pts_reshaped = self._image_points.reshape(-1, 1, 2)
                 detected_proj = cv2.perspectiveTransform(
-                    img_pts_reshaped, self.context.projector_matrix
+                    image_pts_reshaped, self.context.projector_matrix
                 ).reshape(-1, 2)
 
                 reprojected_proj = cv2.perspectiveTransform(
-                    proj_pts_cam.reshape(-1, 1, 2), self.context.projector_matrix
+                    projected_points.reshape(-1, 1, 2), self.context.projector_matrix
                 ).reshape(-1, 2)
 
                 # Draw residuals
                 for i in range(len(detected_proj)):
                     p_det = detected_proj[i]
                     p_rep = reprojected_proj[i]
-                    error_px = np.linalg.norm(self._img_points[i] - proj_pts_cam[i])
+                    error_px = np.linalg.norm(
+                        self._image_points[i] - projected_points[i]
+                    )
                     color = (
                         (0, 255, 0)
                         if error_px < 2.0
@@ -1629,27 +1641,29 @@ class Projector3DCalibrationScene(Scene):
             return
 
         ids = raw.get("ids")
-        corners_cam = raw.get("corners")
+        corners_camera = raw.get("corners")
 
         # Load camera calibration for back-projection from AppContext
-        K = self.context.camera_matrix
-        D = self.context.dist_coeffs
-        rvec_c = self.context.camera_rvec
-        tvec_c = self.context.camera_tvec
+        camera_matrix = self.context.camera_matrix
+        distortion_coefficients = self.context.distortion_coefficients
+        rotation_vector_camera = self.context.camera_rotation_vector
+        translation_vector_camera = self.context.camera_translation_vector
 
-        if K is None or rvec_c is None:
+        if camera_matrix is None or rotation_vector_camera is None:
             logging.error(
                 "Projector3DCalibrationScene: Camera calibration missing in AppContext!"
             )
             return
 
-        R_c, _ = cv2.Rodrigues(rvec_c)
+        rotation_matrix_camera, _ = cv2.Rodrigues(rotation_vector_camera)
         # Camera position in world coordinates: C = -R^T * t
-        # We flatten to ensure it's a (3,) vector, avoiding broadcasting issues in P_world calculation
-        C_w = (-R_c.T @ tvec_c).flatten()
+        # We flatten to ensure it's a (3,) vector, avoiding broadcasting issues in world_point calculation
+        camera_center_world = (
+            -rotation_matrix_camera.T @ translation_vector_camera
+        ).flatten()
 
         # Collect all expected marker info from the layers
-        marker_map = {}  # id -> (corners_proj, height, is_box)
+        marker_map = {}  # id -> (corners_projector, height, is_box)
         for aid, c_p in self.pattern_layer.box_markers:
             marker_map[aid] = (
                 c_p,
@@ -1673,8 +1687,8 @@ class Projector3DCalibrationScene(Scene):
             if aid not in marker_map:
                 continue
 
-            corners_p, height, is_box = marker_map[aid]
-            corners_c = corners_cam[i]  # (4, 2)
+            corners_projector, height, is_box = marker_map[aid]
+            corners_camera_current = corners_camera[i]  # (4, 2)
 
             if is_box:
                 box_count += 1
@@ -1683,29 +1697,38 @@ class Projector3DCalibrationScene(Scene):
 
             # For each corner (0-3):
             for j in range(4):
-                proj_px = corners_p[j]  # (2,) [u, v] in projector pixels
-                # cam_px might be a list if it came from serialized state
-                cam_px = np.array(
-                    corners_c[j], dtype=np.float32
+                projector_pixels = corners_projector[
+                    j
+                ]  # (2,) [u, v] in projector pixels
+                # camera_pixels might be a list if it came from serialized state
+                camera_pixels = np.array(
+                    corners_camera_current[j], dtype=np.float32
                 )  # (2,) [u, v] in camera pixels
 
                 # 1. Undistort and convert to normalized camera coordinates
-                pt_norm = cv2.undistortPoints(cam_px.reshape(1, 1, 2), K, D).reshape(2)
+                point_normalized = cv2.undistortPoints(
+                    camera_pixels.reshape(1, 1, 2),
+                    camera_matrix,
+                    distortion_coefficients,
+                ).reshape(2)
 
                 # 2. Convert to world ray
-                v_c = np.array([pt_norm[0], pt_norm[1], 1.0])
-                v_w = R_c.T @ v_c
-                v_w /= np.linalg.norm(v_w)
+                ray_camera = np.array([point_normalized[0], point_normalized[1], 1.0])
+                ray_world = rotation_matrix_camera.T @ ray_camera
+                ray_world /= np.linalg.norm(ray_world)
 
                 # 3. Intersect with plane Z = height
-                if abs(v_w[2]) < 1e-6:
+                if abs(ray_world[2]) < 1e-6:
                     continue  # Ray parallel to plane
 
-                t = (height - C_w[2]) / v_w[2]
-                P_world = C_w + t * v_w
+                ray_distance = (height - camera_center_world[2]) / ray_world[2]
+                world_point = camera_center_world + ray_distance * ray_world
 
                 self.correspondences.append(
-                    (P_world.astype(np.float32), proj_px.astype(np.float32))
+                    (
+                        world_point.astype(np.float32),
+                        projector_pixels.astype(np.float32),
+                    )
                 )
                 found_count += 1
 
@@ -1741,18 +1764,34 @@ class Projector3DCalibrationScene(Scene):
 
         from light_map.calibration_logic import calibrate_projector_3d
 
-        res = (self.context.app_config.width, self.context.app_config.height)
-        result = calibrate_projector_3d(self.correspondences, res)
+        projector_resolution = (
+            self.context.app_config.width,
+            self.context.app_config.height,
+        )
+        result = calibrate_projector_3d(self.correspondences, projector_resolution)
 
         if result:
-            mtx, dist, rvec, tvec, rms = result
+            (
+                intrinsic_matrix,
+                distortion_coefficients,
+                rotation_vector,
+                translation_vector,
+                rms,
+            ) = result
             logging.info("Projector 3D Calibration Successful! RMS: %.3f", rms)
             # Save results
             ext_file = os.path.join(
                 self.context.app_config.storage_manager.get_config_dir(),
                 "projector_3d_calibration.npz",
             )
-            np.savez(ext_file, mtx=mtx, dist=dist, rvec=rvec, tvec=tvec, rms=rms)
+            np.savez(
+                ext_file,
+                intrinsic_matrix=intrinsic_matrix,
+                distortion_coefficients=distortion_coefficients,
+                rotation_vector=rotation_vector,
+                translation_vector=translation_vector,
+                rms=rms,
+            )
             self.context.notifications.add_notification("3D Calibration Saved.")
         else:
             logging.error("Projector 3D Calibration Failed.")

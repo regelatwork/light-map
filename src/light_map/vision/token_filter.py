@@ -42,53 +42,59 @@ class TokenFilter:
         # 1. Process new detections
         from dataclasses import replace
 
-        for raw_dt in detected_tokens:
-            dt = replace(raw_dt)  # WORK ON A COPY
+        for raw_token in detected_tokens:
+            token = replace(raw_token)  # WORK ON A COPY
             # Masking check: filter out tokens outside map boundaries if provided
             if map_bounds is not None:
                 min_x, min_y, max_x, max_y = map_bounds
-                if not (min_x <= dt.world_x <= max_x and min_y <= dt.world_y <= max_y):
+                if not (
+                    min_x <= token.world_x <= max_x and min_y <= token.world_y <= max_y
+                ):
                     # If this token was previously tracked, purge it immediately
                     # as it is now in a "forbidden" zone.
-                    if dt.id in self.last_seen_tokens:
-                        del self.last_seen_tokens[dt.id]
-                    if dt.id in self.last_seen_times:
-                        del self.last_seen_times[dt.id]
+                    if token.id in self.last_seen_tokens:
+                        del self.last_seen_tokens[token.id]
+                    if token.id in self.last_seen_times:
+                        del self.last_seen_times[token.id]
                     continue
 
-            new_seen_ids.add(dt.id)
+            new_seen_ids.add(token.id)
 
             # Smoothing
-            if dt.id in self.last_seen_tokens:
-                lt = self.last_seen_tokens[dt.id]
+            if token.id in self.last_seen_tokens:
+                last_token = self.last_seen_tokens[token.id]
                 # Apply Alpha-Beta (simple Alpha here for now)
-                dt.world_x = lt.world_x * (1.0 - self.alpha) + dt.world_x * self.alpha
-                dt.world_y = lt.world_y * (1.0 - self.alpha) + dt.world_y * self.alpha
+                token.world_x = (
+                    last_token.world_x * (1.0 - self.alpha) + token.world_x * self.alpha
+                )
+                token.world_y = (
+                    last_token.world_y * (1.0 - self.alpha) + token.world_y * self.alpha
+                )
 
-            self.last_seen_tokens[dt.id] = dt
-            self.last_seen_times[dt.id] = current_time
+            self.last_seen_tokens[token.id] = token
+            self.last_seen_times[token.id] = current_time
 
         # 2. Handle occlusion (keep lost tokens for a while)
         active_tokens = []
         ids_to_remove = []
 
-        for tid, last_time in self.last_seen_times.items():
-            dt = self.last_seen_tokens[tid]
+        for token_id, last_time in self.last_seen_times.items():
+            token = self.last_seen_tokens[token_id]
             elapsed = current_time - last_time
 
             if elapsed < self.occlusion_timeout_s:
                 # Token is still "active"
                 # If it's not in the new detections, it's occluded
-                is_occluded = tid not in new_seen_ids
+                is_occluded = token_id not in new_seen_ids
 
                 # Copy to avoid modifying state directly if needed
                 from dataclasses import replace
 
-                token_to_return = replace(dt, is_occluded=is_occluded)
+                token_to_return = replace(token, is_occluded=is_occluded)
 
                 # Populate name and color if available in config
-                if token_configs and tid in token_configs:
-                    config = token_configs[tid]
+                if token_configs and token_id in token_configs:
+                    config = token_configs[token_id]
                     token_to_return.name = config.get("name")
                     token_to_return.color = config.get("color")
                     token_to_return.type = config.get("type", "NPC")
@@ -104,40 +110,40 @@ class TokenFilter:
 
                 active_tokens.append(final_token)
             else:
-                ids_to_remove.append(tid)
+                ids_to_remove.append(token_id)
 
         # 3. Cleanup stale tokens
-        for tid in ids_to_remove:
-            del self.last_seen_tokens[tid]
-            del self.last_seen_times[tid]
+        for token_id in ids_to_remove:
+            del self.last_seen_tokens[token_id]
+            del self.last_seen_times[token_id]
 
         return active_tokens
 
     def _apply_grid_snapping(
         self,
         token: Token,
-        spacing: float,
-        ox: float,
-        oy: float,
+        grid_spacing: float,
+        grid_origin_x: float,
+        grid_origin_y: float,
         token_configs: Dict[int, Dict] = None,
     ) -> Token:
-        if spacing <= 0:
+        if grid_spacing <= 0:
             return token
 
         # Get token size from config
-        size = 1
+        token_size = 1
         if token_configs and token.id in token_configs:
-            size = token_configs[token.id].get("size", 1)
+            token_size = token_configs[token.id].get("size", 1)
 
         # Snapping logic:
         # Odd Size: Center of grid cell.
         # Even Size: Intersection (corner) of grid cells.
 
         # Cell coordinate (fractional)
-        gx_raw = (token.world_x - ox) / spacing
-        gy_raw = (token.world_y - oy) / spacing
+        grid_x_raw = (token.world_x - grid_origin_x) / grid_spacing
+        grid_y_raw = (token.world_y - grid_origin_y) / grid_spacing
 
-        if size % 2 == 1:
+        if token_size % 2 == 1:
             # Odd: round to nearest integer (center is i + 0.5, but we use i for cell ID)
             # Actually if world_x = ox + (gx + 0.5) * spacing
             # Then gx = floor((world_x - ox) / spacing)
@@ -152,22 +158,22 @@ class TokenFilter:
             # Snapped centroid for size 1 should be floor(gx_raw) + 0.5.
             # Snapped centroid for size 3 should be floor(gx_raw) + 0.5.
 
-            snapped_gx = math.floor(gx_raw)
-            snapped_gy = math.floor(gy_raw)
+            snapped_grid_x = math.floor(grid_x_raw)
+            snapped_grid_y = math.floor(grid_y_raw)
 
-            token.world_x = ox + (snapped_gx + 0.5) * spacing
-            token.world_y = oy + (snapped_gy + 0.5) * spacing
-            token.grid_x = int(snapped_gx)
-            token.grid_y = int(snapped_gy)
+            token.world_x = grid_origin_x + (snapped_grid_x + 0.5) * grid_spacing
+            token.world_y = grid_origin_y + (snapped_grid_y + 0.5) * grid_spacing
+            token.grid_x = int(snapped_grid_x)
+            token.grid_y = int(snapped_grid_y)
 
         else:
             # Even: round to nearest intersection (integer gx_raw)
-            snapped_gx = round(gx_raw)
-            snapped_gy = round(gy_raw)
+            snapped_grid_x = round(grid_x_raw)
+            snapped_grid_y = round(grid_y_raw)
 
-            token.world_x = ox + snapped_gx * spacing
-            token.world_y = oy + snapped_gy * spacing
-            token.grid_x = int(snapped_gx)
-            token.grid_y = int(snapped_gy)
+            token.world_x = grid_origin_x + snapped_grid_x * grid_spacing
+            token.world_y = grid_origin_y + snapped_grid_y * grid_spacing
+            token.grid_x = int(snapped_grid_x)
+            token.grid_y = int(snapped_grid_y)
 
         return token

@@ -70,16 +70,16 @@ class Renderer:
         # Calculate aggregate version of static layers and check for any changes
         current_background_version = 0
         for layer in layers:
-            v = layer.get_current_version()
+            layer_version = layer.get_current_version()
 
             # If any layer (static or dynamic) has a new version, we must composite a new frame
             if getattr(
                 layer, "_is_dynamic", False
-            ) or v != self.last_layer_versions.get(layer, -1):
+            ) or layer_version != self.last_layer_versions.get(layer, -1):
                 should_composite_frame = True
 
             if layer.is_static:
-                current_background_version += v
+                current_background_version += layer_version
 
         if not should_composite_frame:
             return None
@@ -91,11 +91,11 @@ class Renderer:
                 if layer.is_static:
                     layer_name = layer.__class__.__name__
                     with track_wait(f"layer_render_{layer_name}", instrument):
-                        patches, version = layer.render(current_time)
-                        self.last_layer_versions[layer] = version
+                        layer_patches, layer_version = layer.render(current_time)
+                        self.last_layer_versions[layer] = layer_version
 
                     with track_wait(f"layer_composite_{layer_name}", instrument):
-                        for patch in patches:
+                        for patch in layer_patches:
                             self._composite_patch(
                                 self.background_cache, patch, layer.layer_mode
                             )
@@ -109,16 +109,16 @@ class Renderer:
             if not layer.is_static:
                 layer_name = layer.__class__.__name__
                 with track_wait(f"layer_render_{layer_name}", instrument):
-                    patches, version = layer.render(current_time)
-                    self.last_layer_versions[layer] = version
+                    layer_patches, layer_version = layer.render(current_time)
+                    self.last_layer_versions[layer] = layer_version
 
-                if patches:
+                if layer_patches:
                     logging.debug(
-                        f"Renderer: Compositing {len(patches)} patches from dynamic layer {layer_name}"
+                        f"Renderer: Compositing {len(layer_patches)} patches from dynamic layer {layer_name}"
                     )
 
                 with track_wait(f"layer_composite_{layer_name}", instrument):
-                    for patch in patches:
+                    for patch in layer_patches:
                         self._composite_patch(
                             self.output_buffer, patch, layer.layer_mode
                         )
@@ -128,23 +128,26 @@ class Renderer:
     def _composite_patch(self, buffer: np.ndarray, patch: ImagePatch, mode: LayerMode):
         """Internal helper to blend a patch onto a buffer."""
         # Bound checks
-        x1, y1 = max(0, patch.x), max(0, patch.y)
-        x2, y2 = (
+        buffer_x1, buffer_y1 = max(0, patch.x), max(0, patch.y)
+        buffer_x2, buffer_y2 = (
             min(self.screen_width, patch.x + patch.width),
             min(self.screen_height, patch.y + patch.height),
         )
 
-        if x1 >= x2 or y1 >= y2:
+        if buffer_x1 >= buffer_x2 or buffer_y1 >= buffer_y2:
             return
 
         # Slice patch data if it's partially off-screen
-        px1, py1 = x1 - patch.x, y1 - patch.y
-        px2, py2 = px1 + (x2 - x1), py1 + (y2 - y1)
-        patch_slice = patch.data[py1:py2, px1:px2]
+        patch_x1, patch_y1 = buffer_x1 - patch.x, buffer_y1 - patch.y
+        patch_x2, patch_y2 = (
+            patch_x1 + (buffer_x2 - buffer_x1),
+            patch_y1 + (buffer_y2 - buffer_y1),
+        )
+        patch_slice = patch.data[patch_y1:patch_y2, patch_x1:patch_x2]
 
         if mode == LayerMode.BLOCKING:
             # Fast slice assignment (ignore alpha)
-            buffer[y1:y2, x1:x2] = patch_slice[:, :, :3]
+            buffer[buffer_y1:buffer_y2, buffer_x1:buffer_x2] = patch_slice[:, :, :3]
         else:
             # NORMAL mode: Alpha blending
             # OPTIMIZATION: Check if patch is mostly transparent
@@ -160,12 +163,12 @@ class Renderer:
                 # Using uint16 to avoid overflow (255 * 255 = 65025 < 65535)
                 # and then back to uint8
                 alpha = alpha_channel[:, :, np.newaxis].astype(np.uint16)
-                roi = buffer[y1:y2, x1:x2].astype(np.uint16)
+                roi = buffer[buffer_y1:buffer_y2, buffer_x1:buffer_x2].astype(np.uint16)
                 patch_bgr = patch_slice[:, :, :3].astype(np.uint16)
 
                 if np.mean(alpha_channel) > 200:
                     logging.debug(
-                        f"Renderer: Compositing highly opaque patch at ({x1}, {y1}) size {x2 - x1}x{y2 - y1}. Mode: {mode}"
+                        f"Renderer: Compositing highly opaque patch at ({buffer_x1}, {buffer_y1}) size {buffer_x2 - buffer_x1}x{buffer_y2 - buffer_y1}. Mode: {mode}"
                     )
 
                 # Integer blending formula: (src * alpha + dst * (ALPHA_OPAQUE - alpha)) // ALPHA_OPAQUE
@@ -173,7 +176,9 @@ class Renderer:
                 blended = (
                     patch_bgr * alpha + roi * (ALPHA_OPAQUE - alpha)
                 ) // ALPHA_OPAQUE
-                buffer[y1:y2, x1:x2] = blended.astype(np.uint8)
+                buffer[buffer_y1:buffer_y2, buffer_x1:buffer_x2] = blended.astype(
+                    np.uint8
+                )
             else:
                 # No alpha channel, treat as blocking
-                buffer[y1:y2, x1:x2] = patch_slice[:, :, :3]
+                buffer[buffer_y1:buffer_y2, buffer_x1:buffer_x2] = patch_slice[:, :, :3]

@@ -35,9 +35,9 @@ class AppContext:
     aruco_detector: Optional[ArucoTokenDetector] = None
     camera_projection_model: Optional[CameraProjectionModel] = None
     camera_matrix: Optional[np.ndarray] = None
-    dist_coeffs: Optional[np.ndarray] = None
-    camera_rvec: Optional[np.ndarray] = None
-    camera_tvec: Optional[np.ndarray] = None
+    distortion_coefficients: Optional[np.ndarray] = None
+    camera_rotation_vector: Optional[np.ndarray] = None
+    camera_translation_vector: Optional[np.ndarray] = None
     distortion_model: Optional[ProjectorDistortionModel] = None
     visibility_engine: Optional[Any] = None  # Avoid circular import
     show_tokens: bool = True

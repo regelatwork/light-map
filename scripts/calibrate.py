@@ -37,13 +37,15 @@ def run_calibrate(args):
     logger.info("Found %d images. Starting calibration...", len(images))
 
     try:
-        matrix, distortion = calibrate_camera_from_images(images)
+        camera_matrix, distortion_coefficients = calibrate_camera_from_images(images)
 
-        logger.info("Camera matrix:\n%s", matrix)
-        logger.info("Distortion coefficients:\n%s", distortion)
+        logger.info("Camera matrix:\n%s", camera_matrix)
+        logger.info("Distortion coefficients:\n%s", distortion_coefficients)
 
         output_file = storage.get_data_path("camera_calibration.npz")
-        save_camera_calibration(matrix, distortion, output_file=output_file)
+        save_camera_calibration(
+            camera_matrix, distortion_coefficients, output_file=output_file
+        )
         logger.info("Calibration saved to %s", output_file)
 
     except RuntimeError as e:

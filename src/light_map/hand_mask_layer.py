@@ -54,22 +54,30 @@ class HandMaskLayer(Layer):
             if (
                 hasattr(self.config, "camera_matrix")
                 and self.config.camera_matrix is not None
+                and self.config.rotation_vector is not None
+                and self.config.translation_vector is not None
             ):
                 try:
-                    mtx_inv = np.linalg.inv(self.config.camera_matrix)
-                    rvec = np.array(self.config.rvec).reshape(3, 1)
-                    tvec = np.array(self.config.tvec).reshape(3, 1)
-                    R, _ = cv2.Rodrigues(rvec)
-                    RT = R.T
-                    camera_center = -(RT @ tvec).flatten()
+                    camera_matrix_inv = np.linalg.inv(self.config.camera_matrix)
+                    rotation_vector = np.array(self.config.rotation_vector).reshape(
+                        3, 1
+                    )
+                    translation_vector = np.array(
+                        self.config.translation_vector
+                    ).reshape(3, 1)
+                    rotation_matrix, _ = cv2.Rodrigues(rotation_vector)
+                    rotation_matrix_inv = rotation_matrix.T
+                    camera_center = -(
+                        rotation_matrix_inv @ translation_vector
+                    ).flatten()
 
                     pts_homog = np.hstack([cam_pts, np.ones((cam_pts.shape[0], 1))])
-                    rays_cam = mtx_inv @ pts_homog.T
-                    rays_world = RT @ rays_cam
+                    rays_cam = camera_matrix_inv @ pts_homog.T
+                    rays_world = rotation_matrix_inv @ rays_cam
 
-                    cz = camera_center[2]
-                    vz = rays_world[2, :]
-                    s = (0.0 - cz) / (vz + 1e-9)
+                    camera_center_z = camera_center[2]
+                    rays_world_z = rays_world[2, :]
+                    s = (0.0 - camera_center_z) / (rays_world_z + 1e-9)
                     p_world = camera_center.reshape(3, 1) + s * rays_world
                     return self.config.projector_3d_model.project_world_to_projector(
                         p_world.T

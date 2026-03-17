@@ -8,16 +8,24 @@ from light_map.map_system import MapSystem
 
 def test_aruco_fov_masking():
     # Setup mock calibration
-    K = np.array(
+    camera_matrix = np.array(
         [[1000.0, 0.0, 320.0], [0.0, 1000.0, 240.0], [0.0, 0.0, 1.0]], dtype=np.float32
     )
-    dist = np.zeros(5, dtype=np.float32)
-    R = np.eye(3, dtype=np.float32)
-    rvec, _ = cv2.Rodrigues(R)
-    tvec = np.array([[0.0], [0.0], [1000.0]], dtype=np.float32)
+    distortion_coefficients = np.zeros(5, dtype=np.float32)
+    rotation_matrix = np.eye(3, dtype=np.float32)
+    rotation_vector, _ = cv2.Rodrigues(rotation_matrix)
+    translation_vector = np.array([[0.0], [0.0], [1000.0]], dtype=np.float32)
 
-    np.savez("test_fov_cam_calib.npz", camera_matrix=K, dist_coeffs=dist)
-    np.savez("test_fov_cam_ext.npz", rvec=rvec, tvec=tvec)
+    np.savez(
+        "test_fov_cam_calib.npz",
+        camera_matrix=camera_matrix,
+        distortion_coefficients=distortion_coefficients,
+    )
+    np.savez(
+        "test_fov_cam_ext.npz",
+        rotation_vector=rotation_vector,
+        translation_vector=translation_vector,
+    )
 
     detector = ArucoTokenDetector(
         calibration_file="test_fov_cam_calib.npz",

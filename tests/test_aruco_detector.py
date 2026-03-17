@@ -8,23 +8,31 @@ from light_map.map_system import MapSystem
 
 def test_aruco_parallax_correction_math():
     # Setup mock calibration
-    K = np.array(
+    camera_matrix = np.array(
         [[1000.0, 0.0, 960.0], [0.0, 1000.0, 540.0], [0.0, 0.0, 1.0]], dtype=np.float32
     )
-    dist = np.zeros(5, dtype=np.float32)
+    distortion_coefficients = np.zeros(5, dtype=np.float32)
 
     # Camera at (0, 0, 1000mm) looking straight down
     # World Z is up, Camera Z is forward.
-    # R = [1 0 0; 0 -1 0; 0 0 -1]
-    R = np.array(
+    # rotation_matrix = [1 0 0; 0 -1 0; 0 0 -1]
+    rotation_matrix = np.array(
         [[1.0, 0.0, 0.0], [0.0, -1.0, 0.0], [0.0, 0.0, -1.0]], dtype=np.float32
     )
-    rvec, _ = cv2.Rodrigues(R)
-    tvec = np.array([[0.0], [0.0], [1000.0]], dtype=np.float32)
+    rotation_vector, _ = cv2.Rodrigues(rotation_matrix)
+    translation_vector = np.array([[0.0], [0.0], [1000.0]], dtype=np.float32)
 
     # Save to temp files
-    np.savez("test_cam_calib.npz", camera_matrix=K, dist_coeffs=dist)
-    np.savez("test_cam_ext.npz", rvec=rvec, tvec=tvec)
+    np.savez(
+        "test_cam_calib.npz",
+        camera_matrix=camera_matrix,
+        distortion_coefficients=distortion_coefficients,
+    )
+    np.savez(
+        "test_cam_ext.npz",
+        rotation_vector=rotation_vector,
+        translation_vector=translation_vector,
+    )
 
     detector = ArucoTokenDetector(
         calibration_file="test_cam_calib.npz", extrinsics_file="test_cam_ext.npz"
@@ -34,30 +42,38 @@ def test_aruco_parallax_correction_math():
     # Ray goes through (0, 0) in camera space.
     # Plane Z=0 (table) should give (0, 0) in world space.
     # Plane Z=100 (token top) should still give (0, 0) because it's directly under camera.
-    p0 = np.array([[960, 540]], dtype=np.float32)
-    res0 = detector.projection_model.reconstruct_world_points(p0, 0)
-    wx0, wy0 = res0[0]
-    assert wx0 == pytest.approx(0.0, abs=1e-4)
-    assert wy0 == pytest.approx(0.0, abs=1e-4)
+    pixel_points_center = np.array([[960, 540]], dtype=np.float32)
+    world_points_res0 = detector.projection_model.reconstruct_world_points(
+        pixel_points_center, 0
+    )
+    world_x0, world_y0 = world_points_res0[0]
+    assert world_x0 == pytest.approx(0.0, abs=1e-4)
+    assert world_y0 == pytest.approx(0.0, abs=1e-4)
 
-    res100 = detector.projection_model.reconstruct_world_points(p0, 100)
-    wx100, wy100 = res100[0]
-    assert wx100 == pytest.approx(0.0, abs=1e-4)
-    assert wy100 == pytest.approx(0.0, abs=1e-4)
+    world_points_res100 = detector.projection_model.reconstruct_world_points(
+        pixel_points_center, 100
+    )
+    world_x100, world_y100 = world_points_res100[0]
+    assert world_x100 == pytest.approx(0.0, abs=1e-4)
+    assert world_y100 == pytest.approx(0.0, abs=1e-4)
 
     # 2. Test point offset
     # Let's say point is at (1060, 540) in pixels.
-    p_off = np.array([[1060, 540]], dtype=np.float32)
-    res_off = detector.projection_model.reconstruct_world_points(p_off, 0)
-    wx_off, wy_off = res_off[0]
-    assert wx_off == pytest.approx(100.0, abs=1e-4)
-    assert wy_off == pytest.approx(0.0, abs=1e-4)
+    pixel_points_offset = np.array([[1060, 540]], dtype=np.float32)
+    world_points_res_off = detector.projection_model.reconstruct_world_points(
+        pixel_points_offset, 0
+    )
+    world_x_off, world_y_off = world_points_res_off[0]
+    assert world_x_off == pytest.approx(100.0, abs=1e-4)
+    assert world_y_off == pytest.approx(0.0, abs=1e-4)
 
     # At Z=100 (token top): 1000 + s*(-1) = 100 => s = 900.
-    res_h = detector.projection_model.reconstruct_world_points(p_off, 100)
-    wx_h, wy_h = res_h[0]
-    assert wx_h == pytest.approx(90.0, abs=1e-4)
-    assert wy_h == pytest.approx(0.0, abs=1e-4)
+    world_points_res_h = detector.projection_model.reconstruct_world_points(
+        pixel_points_offset, 100
+    )
+    world_x_h, world_y_h = world_points_res_h[0]
+    assert world_x_h == pytest.approx(90.0, abs=1e-4)
+    assert world_y_h == pytest.approx(0.0, abs=1e-4)
 
     # Cleanup
     os.remove("test_cam_calib.npz")
@@ -66,18 +82,26 @@ def test_aruco_parallax_correction_math():
 
 def test_aruco_detect_integration():
     # Setup mock calibration
-    K = np.array(
+    camera_matrix = np.array(
         [[1000.0, 0.0, 320.0], [0.0, 1000.0, 240.0], [0.0, 0.0, 1.0]], dtype=np.float32
     )
-    dist = np.zeros(5, dtype=np.float32)
-    R = np.array(
+    distortion_coefficients = np.zeros(5, dtype=np.float32)
+    rotation_matrix = np.array(
         [[1.0, 0.0, 0.0], [0.0, -1.0, 0.0], [0.0, 0.0, -1.0]], dtype=np.float32
     )
-    rvec, _ = cv2.Rodrigues(R)
-    tvec = np.array([[0.0], [0.0], [1000.0]], dtype=np.float32)
+    rotation_vector, _ = cv2.Rodrigues(rotation_matrix)
+    translation_vector = np.array([[0.0], [0.0], [1000.0]], dtype=np.float32)
 
-    np.savez("test_cam_calib.npz", camera_matrix=K, dist_coeffs=dist)
-    np.savez("test_cam_ext.npz", rvec=rvec, tvec=tvec)
+    np.savez(
+        "test_cam_calib.npz",
+        camera_matrix=camera_matrix,
+        distortion_coefficients=distortion_coefficients,
+    )
+    np.savez(
+        "test_cam_ext.npz",
+        rotation_vector=rotation_vector,
+        translation_vector=translation_vector,
+    )
 
     detector = ArucoTokenDetector(
         calibration_file="test_cam_calib.npz", extrinsics_file="test_cam_ext.npz"
@@ -100,21 +124,11 @@ def test_aruco_detect_integration():
     # MapSystem (Identity for simplicity)
     map_system = MapSystem(1920, 1080)
 
-    # PPI = 100 / 25.4 (so 1mm = 1 projector pixel)
-    # If 1mm = 1px, then 1 inch = 25.4px. PPI = 25.4.
-
     # Detect
     tokens = detector.detect(frame, map_system, ppi=25.4, default_height_mm=0.0)
 
     assert len(tokens) == 1
     assert tokens[0].id == 42
-
-    # dx = 419.5 - 320 = 99.5 pixels.
-    # dy = 239.5 - 240 = -0.5 pixels.
-    # Since K_fx = 1000, t_z = 1000, h=0:
-    # wx = (99.5 / 1000) * 1000 = 99.5mm.
-    # wy = (0.5 / 1000) * 1000 = 0.5mm. (Y flip by R)
-    # wx_svg should be 99.5 (identity map_system)
 
     assert tokens[0].world_x == pytest.approx(99.5, abs=1e-1)
     assert tokens[0].world_y == pytest.approx(0.5, abs=1e-1)

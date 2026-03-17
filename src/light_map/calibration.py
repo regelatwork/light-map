@@ -24,7 +24,7 @@ def find_corners(image, checkerboard_dims, criteria):
 
     Returns:
         ret (bool): Whether corners were found.
-        corners2: Refined corner coordinates.
+        refined_corners: Refined corner coordinates.
         image: Image with corners drawn (if found).
         gray: Grayscale version of the image (used for calibration shape).
     """
@@ -38,13 +38,13 @@ def find_corners(image, checkerboard_dims, criteria):
 
     ret, corners = cv2.findChessboardCorners(gray, checkerboard_dims, flags)
 
-    corners2 = None
+    refined_corners = None
     if ret:
-        corners2 = cv2.cornerSubPix(gray, corners, (11, 11), (-1, -1), criteria)
+        refined_corners = cv2.cornerSubPix(gray, corners, (11, 11), (-1, -1), criteria)
         # Draw corners for visualization (optional, usually done by caller)
-        # image = cv2.drawChessboardCorners(image, checkerboard_dims, corners2, ret)
+        # image = cv2.drawChessboardCorners(image, checkerboard_dims, refined_corners, ret)
 
-    return ret, corners2, gray
+    return ret, refined_corners, gray
 
 
 def process_chessboard_images(
@@ -59,40 +59,49 @@ def process_chessboard_images(
 
     Returns:
         A tuple containing:
-            - (camera_matrix, dist_coeffs) if calibration is successful.
-            - list of rotation and translation vectors (rvecs, tvecs)
+            - (camera_matrix, distortion_coefficients) if calibration is successful.
+            - list of rotation and translation vectors (rotation_vectors, translation_vectors)
         Returns None if calibration fails.
     """
     criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 0.001)
-    objp = np.zeros((1, checkerboard_dims[0] * checkerboard_dims[1], 3), np.float32)
-    objp[0, :, :2] = np.mgrid[
+    object_point_template = np.zeros(
+        (1, checkerboard_dims[0] * checkerboard_dims[1], 3), np.float32
+    )
+    object_point_template[0, :, :2] = np.mgrid[
         0 : checkerboard_dims[0], 0 : checkerboard_dims[1]
     ].T.reshape(-1, 2)
 
-    objpoints = []  # 3d point in real world space
-    imgpoints = []  # 2d points in image plane.
+    object_points = []  # 3d point in real world space
+    image_points = []  # 2d points in image plane.
 
     image_shape = None
 
     for img in images:
-        ret, corners2, gray = find_corners(img, checkerboard_dims, criteria)
+        ret, refined_corners, gray = find_corners(img, checkerboard_dims, criteria)
 
         if ret:
-            objpoints.append(objp)
-            imgpoints.append(corners2)
+            object_points.append(object_point_template)
+            image_points.append(refined_corners)
             if image_shape is None:
                 image_shape = gray.shape[::-1]
 
-    if not objpoints or image_shape is None:
+    if not object_points or image_shape is None:
         logging.error("No chessboard corners found in any images for calibration.")
         return None
 
     try:
-        ret, matrix, distortion, r_vecs, t_vecs = cv2.calibrateCamera(
-            objpoints, imgpoints, image_shape, None, None
-        )
+        (
+            ret,
+            camera_matrix,
+            distortion_coefficients,
+            rotation_vectors,
+            translation_vectors,
+        ) = cv2.calibrateCamera(object_points, image_points, image_shape, None, None)
         if ret:
-            return (matrix, distortion), (r_vecs, t_vecs)
+            return (camera_matrix, distortion_coefficients), (
+                rotation_vectors,
+                translation_vectors,
+            )
     except cv2.error as e:
         logging.error("OpenCV calibration error: %s", e)
 
@@ -101,19 +110,29 @@ def process_chessboard_images(
 
 def save_camera_calibration(
     camera_matrix: np.ndarray,
-    dist_coeffs: np.ndarray,
+    distortion_coefficients: np.ndarray,
     output_file: str = CALIBRATION_FILE,
 ):
     """Saves the camera matrix and distortion coefficients to a file."""
-    np.savez(output_file, camera_matrix=camera_matrix, dist_coeffs=dist_coeffs)
+    np.savez(
+        output_file,
+        camera_matrix=camera_matrix,
+        distortion_coefficients=distortion_coefficients,
+    )
     logging.info("Camera calibration saved to %s", output_file)
 
 
 def save_camera_extrinsics(
-    rvec: np.ndarray, tvec: np.ndarray, output_file: str = "camera_extrinsics.npz"
+    rotation_vector: np.ndarray,
+    translation_vector: np.ndarray,
+    output_file: str = "camera_extrinsics.npz",
 ):
     """Saves the camera extrinsic parameters (R, t) to a file."""
-    np.savez(output_file, rvec=rvec, tvec=tvec)
+    np.savez(
+        output_file,
+        rotation_vector=rotation_vector,
+        translation_vector=translation_vector,
+    )
     logging.info("Camera extrinsics saved to %s", output_file)
 
 
@@ -127,13 +146,15 @@ def calibrate_camera_from_images(
     criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 0.001)
 
     # 3D points in real world space
-    objp = np.zeros((1, checkerboard_dims[0] * checkerboard_dims[1], 3), np.float32)
-    objp[0, :, :2] = np.mgrid[
+    object_point_template = np.zeros(
+        (1, checkerboard_dims[0] * checkerboard_dims[1], 3), np.float32
+    )
+    object_point_template[0, :, :2] = np.mgrid[
         0 : checkerboard_dims[0], 0 : checkerboard_dims[1]
     ].T.reshape(-1, 2)
 
-    objpoints = []  # 3d point in real world space
-    imgpoints = []  # 2d points in image plane.
+    object_points = []  # 3d point in real world space
+    image_points = []  # 2d points in image plane.
 
     image_shape = None
 
@@ -143,19 +164,23 @@ def calibrate_camera_from_images(
             logging.warning("Could not read image %s", fname)
             continue
 
-        ret, corners2, gray = find_corners(img, checkerboard_dims, criteria)
+        ret, refined_corners, gray = find_corners(img, checkerboard_dims, criteria)
 
         if ret:
-            objpoints.append(objp)
-            imgpoints.append(corners2)
+            object_points.append(object_point_template)
+            image_points.append(refined_corners)
             if image_shape is None:
                 image_shape = gray.shape[::-1]
 
-    if not objpoints:
+    if not object_points:
         raise RuntimeError("No chessboard corners found in any images.")
 
-    ret, matrix, distortion, r_vecs, t_vecs = cv2.calibrateCamera(
-        objpoints, imgpoints, image_shape, None, None
-    )
+    (
+        ret,
+        camera_matrix,
+        distortion_coefficients,
+        rotation_vectors,
+        translation_vectors,
+    ) = cv2.calibrateCamera(object_points, image_points, image_shape, None, None)
 
-    return matrix, distortion
+    return camera_matrix, distortion_coefficients

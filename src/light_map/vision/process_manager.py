@@ -23,7 +23,7 @@ class VisionProcessManager:
         intrinsics_path: Optional[str] = None,
         extrinsics_path: Optional[str] = None,
         camera_matrix: Optional[np.ndarray] = None,
-        dist_coeffs: Optional[np.ndarray] = None,
+        distortion_coefficients: Optional[np.ndarray] = None,
         remote_mode_hands: str = "ignore",
         remote_mode_tokens: str = "ignore",
         remote_port: int = 8000,
@@ -38,7 +38,7 @@ class VisionProcessManager:
         self.intrinsics_path = intrinsics_path
         self.extrinsics_path = extrinsics_path
         self.camera_matrix = camera_matrix
-        self.dist_coeffs = dist_coeffs
+        self.distortion_coefficients = distortion_coefficients
 
         self.remote_mode_hands = remote_mode_hands
         self.remote_mode_tokens = remote_mode_tokens
@@ -77,7 +77,7 @@ class VisionProcessManager:
 
         # ArUco Worker (Physical)
         if self.remote_mode_tokens != "exclusive":
-            p_aruco = mp.Process(
+            aruco_worker_process = mp.Process(
                 target=aruco_worker,
                 args=(self.shm_name, self.results_queue, self.lock, self.stop_event),
                 kwargs={
@@ -89,15 +89,15 @@ class VisionProcessManager:
                     "intrinsics_path": self.intrinsics_path,
                     "extrinsics_path": self.extrinsics_path,
                     "camera_matrix": self.camera_matrix,
-                    "dist_coeffs": self.dist_coeffs,
+                    "distortion_coefficients": self.distortion_coefficients,
                 },
                 name="ArucoWorker",
             )
-            self.processes.append(p_aruco)
+            self.processes.append(aruco_worker_process)
 
         # Hand Worker (Physical)
         if self.remote_mode_hands != "exclusive":
-            p_hand = mp.Process(
+            hand_worker_process = mp.Process(
                 target=hand_worker,
                 args=(self.shm_name, self.results_queue, self.lock, self.stop_event),
                 kwargs={
@@ -109,11 +109,11 @@ class VisionProcessManager:
                 },
                 name="HandWorker",
             )
-            self.processes.append(p_hand)
+            self.processes.append(hand_worker_process)
 
         # Remote Driver Worker
         if self.remote_mode_hands != "ignore" or self.remote_mode_tokens != "ignore":
-            p_remote = mp.Process(
+            remote_worker_process = mp.Process(
                 target=remote_driver_worker,
                 args=(
                     self.results_queue,
@@ -131,7 +131,7 @@ class VisionProcessManager:
                 },
                 name="RemoteDriverWorker",
             )
-            self.processes.append(p_remote)
+            self.processes.append(remote_worker_process)
 
         for p in self.processes:
             p.daemon = True

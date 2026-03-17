@@ -24,7 +24,7 @@ def aruco_worker(
     intrinsics_path: Optional[str] = None,
     extrinsics_path: Optional[str] = None,
     camera_matrix: Optional[np.ndarray] = None,
-    dist_coeffs: Optional[np.ndarray] = None,
+    distortion_coefficients: Optional[np.ndarray] = None,
 ):
     """
     Worker function for ArUco detection. Consumes frames from shared memory,
@@ -42,18 +42,18 @@ def aruco_worker(
         extrinsics_file=extrinsics_path,
         dictionary_type=aruco_dict_type,
     )
-    if camera_matrix is not None and dist_coeffs is not None:
-        detector.set_calibration(camera_matrix, dist_coeffs)
+    if camera_matrix is not None and distortion_coefficients is not None:
+        detector.set_calibration(camera_matrix, distortion_coefficients)
 
     logging.info(f"ArUco Worker started (SHM: {shm_name})")
-    last_processed_ts = -1
+    last_processed_timestamp = -1
 
     try:
         while not stop_event.is_set():
-            latest_ts = producer.get_latest_timestamp()
+            latest_timestamp = producer.get_latest_timestamp()
 
             # Frame dropping: if no new frame, wait
-            if latest_ts is None or latest_ts <= last_processed_ts:
+            if latest_timestamp is None or latest_timestamp <= last_processed_timestamp:
                 time.sleep(0.005)
                 continue
 
@@ -65,7 +65,7 @@ def aruco_worker(
                     time.sleep(0.005)
                     continue
 
-                ts_to_process = latest_ts
+                timestamp_to_process = latest_timestamp
                 ts_shm_pushed = producer.get_shm_pushed_timestamp()
 
                 # OPTIMIZATION: If we have FOV parameters, crop inside the lease to copy less data
@@ -90,7 +90,7 @@ def aruco_worker(
                 frame_view = None
 
             # Perform detection outside the lease
-            corners, ids = detector.detect_raw(
+            marker_corners, marker_ids = detector.detect_raw(
                 frame_copy,
                 projector_matrix=projector_matrix,
                 map_dims=map_dims,
@@ -99,11 +99,16 @@ def aruco_worker(
             ts_work_done = time.perf_counter_ns()
 
             # Serialize results
-            # corners are already a list of numpy arrays, convert to lists of lists
-            data = {"corners": [c.tolist() for c in corners], "ids": ids}
+            # marker_corners are already a list of numpy arrays, convert to lists of lists
+            detection_data = {
+                "corners": [c.tolist() for c in marker_corners],
+                "ids": marker_ids,
+            }
 
             result = DetectionResult(
-                timestamp=ts_to_process, type=ResultType.ARUCO, data=data
+                timestamp=timestamp_to_process,
+                type=ResultType.ARUCO,
+                data=detection_data,
             )
             result.metadata["ts_shm_pushed"] = ts_shm_pushed
             result.metadata["ts_shm_pulled"] = ts_shm_pulled
@@ -116,7 +121,7 @@ def aruco_worker(
             except mp.queues.Full:
                 logging.warning("ArUco Worker: results_queue is full, dropping result.")
 
-            last_processed_ts = ts_to_process
+            last_processed_timestamp = timestamp_to_process
 
     except Exception as e:
         logging.error(f"ArUco Worker error: {e}", exc_info=True)
@@ -159,14 +164,14 @@ def hand_worker(
     aruco_detector = ArucoTokenDetector()
 
     logging.info(f"Hand Worker started (SHM: {shm_name})")
-    last_processed_ts = -1
+    last_processed_timestamp = -1
 
     try:
         while not stop_event.is_set():
-            latest_ts = producer.get_latest_timestamp()
+            latest_timestamp = producer.get_latest_timestamp()
 
             # Frame dropping
-            if latest_ts is None or latest_ts <= last_processed_ts:
+            if latest_timestamp is None or latest_timestamp <= last_processed_timestamp:
                 time.sleep(0.005)
                 continue
 
@@ -178,7 +183,7 @@ def hand_worker(
                     time.sleep(0.005)
                     continue
 
-                ts_to_process = latest_ts
+                timestamp_to_process = latest_timestamp
                 ts_shm_pushed = producer.get_shm_pushed_timestamp()
 
                 # OPTIMIZATION: Crop inside the lease to copy less data
@@ -214,10 +219,10 @@ def hand_worker(
             handedness_data = []
             if results.multi_hand_landmarks:
                 for i, hand_landmarks in enumerate(results.multi_hand_landmarks):
-                    lm_list = []
-                    for lm in hand_landmarks.landmark:
-                        lx = lm.x
-                        ly = lm.y
+                    landmark_list = []
+                    for landmark in hand_landmarks.landmark:
+                        lx = landmark.x
+                        ly = landmark.y
                         if crop_offset:
                             rx, ry = crop_offset
                             ch, cw = frame_rgb.shape[:2]
@@ -228,21 +233,21 @@ def hand_worker(
                             lx = px / width
                             ly = py / height
 
-                        lm_list.append({"x": lx, "y": ly, "z": lm.z})
+                        landmark_list.append({"x": lx, "y": ly, "z": landmark.z})
 
-                    landmarks_data.append(lm_list)
+                    landmarks_data.append(landmark_list)
 
                     # Handedness info
-                    handedness = results.multi_handedness[i]
+                    handedness_classification = results.multi_handedness[i]
                     handedness_data.append(
                         {
-                            "label": handedness.classification[0].label,
-                            "score": handedness.classification[0].score,
+                            "label": handedness_classification.classification[0].label,
+                            "score": handedness_classification.classification[0].score,
                         }
                     )
 
             result = DetectionResult(
-                timestamp=ts_to_process,
+                timestamp=timestamp_to_process,
                 type=ResultType.HANDS,
                 data={"landmarks": landmarks_data, "handedness": handedness_data},
             )
@@ -256,7 +261,7 @@ def hand_worker(
             except mp.queues.Full:
                 logging.warning("Hand Worker: results_queue is full, dropping result.")
 
-            last_processed_ts = ts_to_process
+            last_processed_timestamp = timestamp_to_process
 
     except Exception as e:
         logging.error(f"Hand Worker error: {e}", exc_info=True)

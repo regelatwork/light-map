@@ -60,7 +60,7 @@ def generate_calibration_pattern(
 
 
 def compute_projector_homography(
-    camera_image, pattern_params, camera_matrix=None, dist_coeffs=None
+    camera_image, pattern_params, camera_matrix=None, distortion_coefficients=None
 ):
     """
     Computes the homography matrix to map camera coordinates to projector coordinates.
@@ -156,8 +156,8 @@ class ProjectorDistortionModel:
         projector_points: np.ndarray,
     ):
         self.homography = homography
-        self.cam_pts = camera_points
-        self.proj_pts = projector_points
+        self.camera_points = camera_points
+        self.projector_points = projector_points
 
         # 1. Calculate theoretical points for each camera point
         src_pts = camera_points.reshape(-1, 1, 2)
@@ -188,17 +188,17 @@ class ProjectorDistortionModel:
             iy = np.where(self.unique_proj_y == py)[0][0]
             self.grid_residuals[iy, ix] = self.residuals[i]
 
-    def apply_correction(self, points_cam: np.ndarray) -> np.ndarray:
+    def apply_correction(self, points_camera: np.ndarray) -> np.ndarray:
         """
         Applies homography followed by non-linear residual correction.
-        points_cam: (N, 2) or (N, 1, 2)
+        points_camera: (N, 2) or (N, 1, 2)
         """
-        if points_cam.size == 0:
-            return points_cam
+        if points_camera.size == 0:
+            return points_camera
 
-        pts = points_cam.reshape(-1, 1, 2)
+        points = points_camera.reshape(-1, 1, 2)
         # Linear transform
-        pts_proj_raw = cv2.perspectiveTransform(pts, self.homography).reshape(-1, 2)
+        pts_proj_raw = cv2.perspectiveTransform(points, self.homography).reshape(-1, 2)
 
         corrected_pts = []
         for p in pts_proj_raw:

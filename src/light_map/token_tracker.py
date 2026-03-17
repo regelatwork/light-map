@@ -19,10 +19,10 @@ class TokenTracker:
     # or we will fix it if tests fail.
 
     def __init__(self):
-        self.debug_mode = False
-        self._flash_detector = FlashTokenDetector(debug_mode=self.debug_mode)
-        self._sl_detector = StructuredLightTokenDetector(debug_mode=self.debug_mode)
-        self._aruco_detector = ArucoTokenDetector(debug_mode=self.debug_mode)
+        self._debug_mode = False
+        self._flash_detector = FlashTokenDetector(debug_mode=self._debug_mode)
+        self._sl_detector = StructuredLightTokenDetector(debug_mode=self._debug_mode)
+        self._aruco_detector = ArucoTokenDetector(debug_mode=self._debug_mode)
 
     @property
     def debug_mode(self):
@@ -50,18 +50,18 @@ class TokenTracker:
     def set_aruco_calibration(
         self,
         camera_matrix: Optional[np.ndarray] = None,
-        dist_coeffs: Optional[np.ndarray] = None,
-        rvec: Optional[np.ndarray] = None,
-        tvec: Optional[np.ndarray] = None,
+        distortion_coefficients: Optional[np.ndarray] = None,
+        rotation_vector: Optional[np.ndarray] = None,
+        translation_vector: Optional[np.ndarray] = None,
     ):
-        if camera_matrix is not None and dist_coeffs is not None:
-            self._aruco_detector.set_calibration(camera_matrix, dist_coeffs)
-            self._flash_detector.set_calibration(camera_matrix, dist_coeffs)
-            self._sl_detector.set_calibration(camera_matrix, dist_coeffs)
-        if rvec is not None and tvec is not None:
-            self._aruco_detector.set_extrinsics(rvec, tvec)
-            self._flash_detector.set_extrinsics(rvec, tvec)
-            self._sl_detector.set_extrinsics(rvec, tvec)
+        if camera_matrix is not None and distortion_coefficients is not None:
+            self._aruco_detector.set_calibration(camera_matrix, distortion_coefficients)
+            self._flash_detector.set_calibration(camera_matrix, distortion_coefficients)
+            self._sl_detector.set_calibration(camera_matrix, distortion_coefficients)
+        if rotation_vector is not None and translation_vector is not None:
+            self._aruco_detector.set_extrinsics(rotation_vector, translation_vector)
+            self._flash_detector.set_extrinsics(rotation_vector, translation_vector)
+            self._sl_detector.set_extrinsics(rotation_vector, translation_vector)
 
     def detect_tokens(
         self,

@@ -27,48 +27,52 @@ class ArucoMaskLayer(Layer):
         # Use raw_aruco_timestamp to ensure masks persist even if logical tokens change
         return (self.state.raw_aruco_timestamp << 1) | enabled_bit
 
-    def _transform_pts(self, pts: Any, height_mm: float = 0.0) -> np.ndarray:
+    def _transform_pts(self, camera_pixels: Any, height_mm: float = 0.0) -> np.ndarray:
         """
         Transforms camera pixel points to projector space.
         Outputs coordinates in Calibration Space (e.g. 4608x2592).
         """
-        if isinstance(pts, list):
-            pts = np.array(pts, dtype=np.float32)
+        if isinstance(camera_pixels, list):
+            camera_pixels = np.array(camera_pixels, dtype=np.float32)
         else:
-            pts = pts.astype(np.float32)
+            camera_pixels = camera_pixels.astype(np.float32)
 
         # 1. Project to World Space (X, Y, height_mm)
         projection_model = self.config.camera_projection_model
         if projection_model is not None:
-            world_pts = projection_model.reconstruct_world_points(pts, height_mm)
-            wx_mm = world_pts[:, 0]
-            wy_mm = world_pts[:, 1]
+            world_points = projection_model.reconstruct_world_points(
+                camera_pixels, height_mm
+            )
+            world_x_mm = world_points[:, 0]
+            world_y_mm = world_points[:, 1]
         else:
             # Fallback if camera calibration missing: assume identity mm mapping
             # This allows unit tests without full calibration to still pass.
-            wx_mm = pts[:, 0]
-            wy_mm = pts[:, 1]
+            world_x_mm = camera_pixels[:, 0]
+            world_y_mm = camera_pixels[:, 1]
 
         # 2. Map World (mm) to Projector Pixels (Calibration Space)
         ppi = self.config.projector_ppi
         ppi_mm = ppi / 25.4 if ppi > 0 else 0.0
 
-        px = wx_mm * ppi_mm
-        py = wy_mm * ppi_mm
+        projector_x = world_x_mm * ppi_mm
+        projector_y = world_y_mm * ppi_mm
 
-        proj_pts = np.column_stack([px, py]).astype(np.float32)
+        projector_points = np.column_stack([projector_x, projector_y]).astype(
+            np.float32
+        )
 
         # 3. Apply Distortion Model if available
         if self.config.distortion_model:
             corrected = []
-            for pt in proj_pts:
+            for pt in projector_points:
                 c_px, c_py = self.config.distortion_model.correct_theoretical_point(
                     pt[0], pt[1]
                 )
                 corrected.append([c_px, c_py])
-            proj_pts = np.array(corrected, dtype=np.float32)
+            projector_points = np.array(corrected, dtype=np.float32)
 
-        return proj_pts
+        return projector_points
 
     def _generate_patches(self, current_time: float) -> List[ImagePatch]:
         if not self.config.enable_aruco_masking or self.state is None:
@@ -81,7 +85,7 @@ class ArucoMaskLayer(Layer):
             return []
 
         patches = []
-        pad = self.config.aruco_mask_padding
+        padding = self.config.aruco_mask_padding
         color = DEFAULT_ARUCO_MASK_COLOR
 
         # Calibration resolution for clamping
@@ -109,41 +113,43 @@ class ArucoMaskLayer(Layer):
                     height_mm = self.config.token_profiles[profile_name].height_mm
 
             # corners is (4, 2) in camera pixel coordinates
-            proj_corners = self._transform_pts(corners, height_mm=height_mm)
-            proj_corners = np.array(proj_corners, dtype=np.float32).reshape(-1, 2)
+            projector_corners = self._transform_pts(corners, height_mm=height_mm)
+            projector_corners = np.array(projector_corners, dtype=np.float32).reshape(
+                -1, 2
+            )
 
             # Get bounding box in projector space
-            x, y, w, h = cv2.boundingRect(proj_corners)
+            x, y, w, h = cv2.boundingRect(projector_corners)
 
-            x1 = max(0, x - pad)
-            y1 = max(0, y - pad)
-            x2 = min(limit_w, x + w + pad)
-            y2 = min(limit_h, y + h + pad)
+            x1 = max(0, x - padding)
+            y1 = max(0, y - padding)
+            x2 = min(limit_w, x + w + padding)
+            y2 = min(limit_h, y + h + padding)
 
-            pw, ph = int(x2 - x1), int(y2 - y1)
-            if pw <= 0 or ph <= 0:
+            patch_w, patch_h = int(x2 - x1), int(y2 - y1)
+            if patch_w <= 0 or patch_h <= 0:
                 logging.debug(
                     f"ArucoMaskLayer: Marker {marker_id} off-limits: x1={x1}, y1={y1}, x2={x2}, y2={y2}"
                 )
                 continue
 
             logging.debug(
-                f"ArucoMaskLayer: Final patch for marker {marker_id}: x={x1}, y={y1}, w={pw}, h={ph}"
+                f"ArucoMaskLayer: Final patch for marker {marker_id}: x={x1}, y={y1}, w={patch_w}, h={patch_h}"
             )
 
             # Local coordinates for the patch
-            local_corners = proj_corners - [x1, y1]
+            local_corners = projector_corners - [x1, y1]
 
             # Create patch data (BGRA)
-            patch_data = np.zeros((ph, pw, 4), dtype=np.uint8)
+            patch_data = np.zeros((patch_h, patch_w, 4), dtype=np.uint8)
 
             # Draw polygon on a mask
-            mask = np.zeros((ph, pw), dtype=np.uint8)
+            mask = np.zeros((patch_h, patch_w), dtype=np.uint8)
             cv2.fillConvexPoly(mask, local_corners.astype(np.int32), 255)
 
-            if pad > 0:
+            if padding > 0:
                 kernel = cv2.getStructuringElement(
-                    cv2.MORPH_ELLIPSE, (pad * 2 + 1, pad * 2 + 1)
+                    cv2.MORPH_ELLIPSE, (padding * 2 + 1, padding * 2 + 1)
                 )
                 mask = cv2.dilate(mask, kernel)
 
@@ -152,7 +158,9 @@ class ArucoMaskLayer(Layer):
             patch_data[mask > 0, 3] = color[3]
 
             patches.append(
-                ImagePatch(x=int(x1), y=int(y1), width=pw, height=ph, data=patch_data)
+                ImagePatch(
+                    x=int(x1), y=int(y1), width=patch_w, height=patch_h, data=patch_data
+                )
             )
 
         return patches

@@ -30,52 +30,58 @@ def run_projector_calibrate(args):
     setup_logging()
     logger = logging.getLogger(__name__)
 
-    proj_width, proj_height = get_screen_resolution()
-    logger.info("Detected Screen Resolution: %dx%d", proj_width, proj_height)
+    projector_width, projector_height = get_screen_resolution()
+    logger.info("Detected Screen Resolution: %dx%d", projector_width, projector_height)
 
     map_config = MapConfigManager(storage=storage)
 
     # State variables
     projector_matrix = None
     ppi = map_config.get_ppi()
-    ground_points_cam = None
-    ground_points_proj = None
+    ground_points_camera = None
+    ground_points_projector = None
 
     # Try to load existing projector calibration if needed
-    calib_file = storage.get_data_path("projector_calibration.npz")
-    if os.path.exists(calib_file):
+    calibration_file = storage.get_data_path("projector_calibration.npz")
+    if os.path.exists(calibration_file):
         try:
-            data = np.load(calib_file)
+            data = np.load(calibration_file)
             projector_matrix = data["projector_matrix"]
-            ground_points_cam = data.get("camera_points")
-            ground_points_proj = data.get("projector_points")
+            ground_points_camera = data.get("camera_points")
+            ground_points_projector = data.get("projector_points")
             logger.info("Loaded existing projector calibration.")
         except Exception as e:
             logger.warning("Failed to load existing projector calibration: %s", e)
 
     # Initialize Camera
     logger.info("Initializing Camera...")
-    with Camera() as cam:
+    with Camera() as camera:
         for step in args.steps:
             if step == "projector":
                 logger.info("--- Step 1: Projector Calibration (Homography) ---")
                 result = run_calibration_sequence(
-                    cam, projector_width=proj_width, projector_height=proj_height
+                    camera,
+                    projector_width=projector_width,
+                    projector_height=projector_height,
                 )
 
                 if result is not None:
-                    projector_matrix, ground_points_cam, ground_points_proj = result
+                    projector_matrix, ground_points_camera, ground_points_projector = (
+                        result
+                    )
                     logger.info("Saving projector calibration...")
                     np.savez(
-                        calib_file,
+                        calibration_file,
                         projector_matrix=projector_matrix,
-                        camera_points=ground_points_cam,
-                        projector_points=ground_points_proj,
-                        resolution=np.array([cam.width, cam.height]),
-                        camera_resolution=np.array([cam.width, cam.height]),
-                        projector_resolution=np.array([proj_width, proj_height]),
+                        camera_points=ground_points_camera,
+                        projector_points=ground_points_projector,
+                        resolution=np.array([camera.width, camera.height]),
+                        camera_resolution=np.array([camera.width, camera.height]),
+                        projector_resolution=np.array(
+                            [projector_width, projector_height]
+                        ),
                     )
-                    logger.info("Projector calibration saved to %s", calib_file)
+                    logger.info("Projector calibration saved to %s", calibration_file)
                 else:
                     logger.error("Projector calibration failed!")
                     return
@@ -87,10 +93,10 @@ def run_projector_calibrate(args):
                     continue
 
                 new_ppi = calculate_ppi_from_frame(
-                    cam,
+                    camera,
                     projector_matrix,
-                    proj_width,
-                    proj_height,
+                    projector_width,
+                    projector_height,
                     current_ppi=ppi,
                 )
                 if new_ppi:
@@ -118,30 +124,34 @@ def run_projector_calibrate(args):
                     continue
 
                 with np.load(intrinsics_file) as data:
-                    mtx = data["mtx"]
-                    dist = data["dist"]
+                    camera_matrix = data["camera_matrix"]
+                    distortion_coefficients = data["distortion_coefficients"]
 
                 # Use ground points from step 1
-                if ground_points_cam is None or ground_points_proj is None:
+                if ground_points_camera is None or ground_points_projector is None:
                     logger.error("Ground points missing! Run 'projector' step first.")
                     continue
 
                 ext_result = calibrate_extrinsics(
-                    cam,
-                    mtx,
-                    dist,
+                    camera,
+                    camera_matrix,
+                    distortion_coefficients,
                     projector_matrix,
-                    ground_points_cam,
-                    ground_points_proj,
-                    proj_width,
-                    proj_height,
+                    ground_points_camera,
+                    ground_points_projector,
+                    projector_width,
+                    projector_height,
                 )
 
                 if ext_result is not None:
-                    rvec, tvec = ext_result
-                    ext_file = storage.get_data_path("camera_extrinsics.npz")
-                    np.savez(ext_file, rvec=rvec, tvec=tvec)
-                    logger.info("Extrinsics saved to %s", ext_file)
+                    rotation_vector, translation_vector = ext_result
+                    extrinsics_file = storage.get_data_path("camera_extrinsics.npz")
+                    np.savez(
+                        extrinsics_file,
+                        rotation_vector=rotation_vector,
+                        translation_vector=translation_vector,
+                    )
+                    logger.info("Extrinsics saved to %s", extrinsics_file)
                 else:
                     logger.error("Extrinsics calibration failed!")
 

@@ -22,7 +22,7 @@ def mock_context():
     context.map_config_manager.resolve_token_profile.return_value.height_mm = 25.0
     context.projector_matrix = np.eye(3)
     context.camera_matrix = np.eye(3)
-    context.dist_coeffs = np.zeros(5)
+    context.distortion_coefficients = np.zeros(5)
     context.last_camera_frame = np.zeros((480, 640, 3), dtype=np.uint8)
     return context
 
@@ -37,22 +37,27 @@ def test_extrinsics_scene_uses_ground_points(
     mock_exists.return_value = True
 
     # Mock data in npz
-    cam_pts = np.array([[100, 100], [200, 200]], dtype=np.float32)
-    proj_pts = np.array([[150, 150], [250, 250]], dtype=np.float32)
+    camera_points = np.array([[100, 100], [200, 200]], dtype=np.float32)
+    projector_points = np.array([[150, 150], [250, 250]], dtype=np.float32)
 
-    # Mock return: rvec, tvec, obj_points, img_points
-    # obj_points (N, 3), img_points (N, 2)
-    obj_pts = np.zeros((4, 3), dtype=np.float32)
-    img_pts = np.zeros((4, 2), dtype=np.float32)
-    mock_calibrate.return_value = (np.zeros(3), np.zeros(3), obj_pts, img_pts)
+    # Mock return: rotation_vector, translation_vector, object_points, image_points
+    # object_points (N, 3), image_points (N, 2)
+    object_points = np.zeros((4, 3), dtype=np.float32)
+    image_points = np.zeros((4, 2), dtype=np.float32)
+    mock_calibrate.return_value = (
+        np.zeros(3),
+        np.zeros(3),
+        object_points,
+        image_points,
+    )
 
     mock_npz = MagicMock()
     # Mock dictionary behavior for np.load context manager
     # Correct way to mock context manager result is usually simpler but here np.load returns an NpzFile object
     # which acts as a dict.
     mock_npz.__getitem__.side_effect = lambda key: {
-        "camera_points": cam_pts,
-        "projector_points": proj_pts,
+        "camera_points": camera_points,
+        "projector_points": projector_points,
     }[key]
     mock_load.return_value = mock_npz
 
@@ -102,17 +107,21 @@ def test_extrinsics_scene_uses_ground_points(
     args, kwargs = mock_calibrate.call_args
 
     # Check that ground points were passed (now at index 7 and 8 due to new aruco params)
-    if "ground_points_cam" in kwargs:
-        np.testing.assert_array_equal(kwargs["ground_points_cam"], cam_pts)
-        np.testing.assert_array_equal(kwargs["ground_points_proj"], proj_pts)
+    if "ground_points_camera" in kwargs:
+        np.testing.assert_array_equal(kwargs["ground_points_camera"], camera_points)
+        np.testing.assert_array_equal(
+            kwargs["ground_points_projector"], projector_points
+        )
     else:
-        # p_matrix(0), c_matrix(1), dist(2), heights(3), ppi(4), corners(5), ids(6), g_cam(7), g_proj(8)
-        if len(args) > 8:
-            np.testing.assert_array_equal(args[7], cam_pts)
-            np.testing.assert_array_equal(args[8], proj_pts)
+        # calibrate_extrinsics(frame, projector_matrix, camera_matrix, distortion_coefficients, token_heights, ppi, g_cam, g_proj, ...)
+        # Actually it's better to check by name if possible or by position.
+        # Current signature: calibrate_extrinsics(frame, projector_matrix, camera_matrix, distortion_coefficients, token_heights, ppi, ground_points_camera, ground_points_projector, ...)
+        if len(args) > 7:
+            np.testing.assert_array_equal(args[6], camera_points)
+            np.testing.assert_array_equal(args[7], projector_points)
         else:
             pytest.fail(
-                f"ground_points_cam and ground_points_proj were not passed to calibrate_extrinsics. Args: {len(args)}"
+                f"ground_points_camera and ground_points_projector were not passed to calibrate_extrinsics. Args: {len(args)}"
             )
 
 
@@ -121,19 +130,24 @@ def test_extrinsics_scene_uses_ground_points(
 def test_extrinsics_scene_validation_flow(mock_save, mock_calibrate, mock_context):
     # Setup
     mock_context.camera_matrix = np.eye(3)
-    mock_context.dist_coeffs = np.zeros(5)
+    mock_context.distortion_coefficients = np.zeros(5)
 
-    # Mock return: rvec, tvec, obj_points, img_points
-    obj_pts = np.array(
+    # Mock return: rotation_vector, translation_vector, object_points, image_points
+    object_points = np.array(
         [[0, 0, 0], [10, 0, 0], [0, 10, 0], [0, 0, 10]], dtype=np.float32
     )
-    img_pts = np.array(
+    image_points = np.array(
         [[100, 100], [110, 100], [100, 110], [100, 100]], dtype=np.float32
     )  # Dummy
-    rvec = np.zeros((3, 1))
-    tvec = np.zeros((3, 1))
+    rotation_vector = np.zeros((3, 1))
+    translation_vector = np.zeros((3, 1))
 
-    mock_calibrate.return_value = (rvec, tvec, obj_pts, img_pts)
+    mock_calibrate.return_value = (
+        rotation_vector,
+        translation_vector,
+        object_points,
+        image_points,
+    )
 
     scene = ExtrinsicsCalibrationScene(mock_context)
     scene.on_enter()

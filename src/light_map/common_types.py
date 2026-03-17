@@ -237,8 +237,9 @@ class AppConfig:
     projector_matrix_resolution: Tuple[int, int] = DEFAULT_PROJECTOR_RESOLUTION
     camera_resolution: Tuple[int, int] = (0, 0)  # Runtime camera resolution
     camera_matrix: Optional[np.ndarray] = None
-    rvec: Optional[np.ndarray] = None
-    tvec: Optional[np.ndarray] = None
+    distortion_coefficients: Optional[np.ndarray] = None
+    rotation_vector: Optional[np.ndarray] = None
+    translation_vector: Optional[np.ndarray] = None
     map_search_patterns: List[str] = field(default_factory=list)
     distortion_model: Optional[Any] = None
     storage_manager: Optional[Any] = None

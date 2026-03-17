@@ -250,16 +250,16 @@ class ScanningScene(Scene):
 
         # Sync calibration
         self.token_tracker.set_aruco_calibration(
-            camera_matrix=self.context.camera_matrix,
-            distortion_coefficients=self.context.distortion_coefficients,
-            rotation_vector=self.context.camera_rotation_vector,
-            translation_vector=self.context.camera_translation_vector,
+            camera_matrix=self.context.app_config.camera_matrix,
+            distortion_coefficients=self.context.app_config.distortion_coefficients,
+            rotation_vector=self.context.app_config.rotation_vector,
+            translation_vector=self.context.app_config.translation_vector,
         )
 
         tokens = self.token_tracker.detect_tokens(
             frame_white=frame_white,
             frame_pattern=self._pattern_frame,
-            projector_matrix=self.context.projector_matrix,
+            projector_matrix=self.context.app_config.projector_matrix,
             map_system=map_system,
             frame_dark=self._dark_frame,
             grid_spacing_svg=grid_spacing,
@@ -269,7 +269,7 @@ class ScanningScene(Scene):
             algorithm=algorithm,
             token_configs=token_configs,
             default_height_mm=25.0,  # Default for minis
-            distortion_model=self.context.distortion_model,
+            distortion_model=self.context.app_config.distortion_model,
         )
 
         self._last_scan_result_count = len(tokens)

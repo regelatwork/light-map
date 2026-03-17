@@ -28,17 +28,11 @@ class AppContext:
     renderer: Renderer
     map_system: MapSystem
     map_config_manager: MapConfigManager
-    projector_matrix: np.ndarray
     notifications: NotificationManager
     analytics: AnalyticsManager
     events: TemporalEventManager
     aruco_detector: Optional[ArucoTokenDetector] = None
     camera_projection_model: Optional[CameraProjectionModel] = None
-    camera_matrix: Optional[np.ndarray] = None
-    distortion_coefficients: Optional[np.ndarray] = None
-    camera_rotation_vector: Optional[np.ndarray] = None
-    camera_translation_vector: Optional[np.ndarray] = None
-    distortion_model: Optional[ProjectorDistortionModel] = None
     visibility_engine: Optional[Any] = None  # Avoid circular import
     show_tokens: bool = True
     debug_mode: bool = False

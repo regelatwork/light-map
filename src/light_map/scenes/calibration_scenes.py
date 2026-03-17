@@ -111,7 +111,7 @@ class FlashCalibrationScene(Scene):
                 intensity = self._test_levels[self._current_level_idx]
                 tokens = self.token_tracker.detect_tokens(
                     frame_white=self.context.last_camera_frame,
-                    projector_matrix=self.context.projector_matrix,
+                    projector_matrix=self.context.app_config.projector_matrix,
                     map_system=self.context.map_system,
                     default_height_mm=0.0,  # Calibrate against table surface
                 )
@@ -356,7 +356,7 @@ class ProjectorCalibrationScene(Scene):
                         ),
                     )
                     # Update context
-                    self.context.projector_matrix = matrix
+                    self.context.app_config.projector_matrix = matrix
                     self.context.notifications.add_notification(
                         "Projector calibrated successfully."
                     )
@@ -522,7 +522,7 @@ class ExtrinsicsCalibrationScene(Scene):
                     # Project to projector space for target matching (Z=0 assumption for matching)
                     pts_cam = np.array([c_cam], dtype=np.float32).reshape(-1, 1, 2)
                     pts_proj = cv2.perspectiveTransform(
-                        pts_cam, self.context.projector_matrix
+                        pts_cam, self.context.app_config.projector_matrix
                     ).reshape(-1, 2)
                     px, py = pts_proj[0]
 
@@ -576,7 +576,7 @@ class ExtrinsicsCalibrationScene(Scene):
 
         elif self._stage == "CAPTURE":
             # Run solvePnP
-            if self.context.camera_matrix is None:
+            if self.context.app_config.camera_matrix is None:
                 self.context.notifications.add_notification(
                     "Error: Camera intrinsics missing."
                 )
@@ -596,9 +596,9 @@ class ExtrinsicsCalibrationScene(Scene):
             # instead of estimating (X, Y) from a potentially parallax-distorted homography.
             result = calibrate_extrinsics(
                 None,
-                self.context.projector_matrix,
-                self.context.camera_matrix,
-                self.context.distortion_coefficients,
+                self.context.app_config.projector_matrix,
+                self.context.app_config.camera_matrix,
+                self.context.app_config.distortion_coefficients,
                 self._token_heights,
                 self._ppi,
                 ground_points_camera=self._ground_points_camera,
@@ -621,8 +621,8 @@ class ExtrinsicsCalibrationScene(Scene):
                     self._object_points,
                     self._rotation_vector,
                     self._translation_vector,
-                    self.context.camera_matrix,
-                    self.context.distortion_coefficients,
+                    self.context.app_config.camera_matrix,
+                    self.context.app_config.distortion_coefficients,
                 )
                 projected_points = projected_points.reshape(-1, 2)
 
@@ -794,19 +794,19 @@ class ExtrinsicsCalibrationScene(Scene):
                     self._object_points,
                     self._rotation_vector,
                     self._translation_vector,
-                    self.context.camera_matrix,
-                    self.context.distortion_coefficients,
+                    self.context.app_config.camera_matrix,
+                    self.context.app_config.distortion_coefficients,
                 )
                 projected_points = projected_points.reshape(-1, 2)
 
                 # Transform both sets to Projector Space for rendering
                 image_pts_reshaped = self._image_points.reshape(-1, 1, 2)
                 detected_proj = cv2.perspectiveTransform(
-                    image_pts_reshaped, self.context.projector_matrix
+                    image_pts_reshaped, self.context.app_config.projector_matrix
                 ).reshape(-1, 2)
 
                 reprojected_proj = cv2.perspectiveTransform(
-                    projected_points.reshape(-1, 1, 2), self.context.projector_matrix
+                    projected_points.reshape(-1, 1, 2), self.context.app_config.projector_matrix
                 ).reshape(-1, 2)
 
                 # Draw residuals
@@ -1022,7 +1022,7 @@ class PpiCalibrationScene(Scene):
             ) and self.context.last_camera_frame is not None:
                 ppi = calculate_ppi_from_frame(
                     self.context.last_camera_frame,
-                    self.context.projector_matrix,
+                    self.context.app_config.projector_matrix,
                     target_dist_mm=100.0,
                 )
             elif 0 in flat_ids and 1 in flat_ids:
@@ -1032,7 +1032,7 @@ class PpiCalibrationScene(Scene):
 
                 ppi = calculate_ppi_from_frame(
                     None,
-                    self.context.projector_matrix,
+                    self.context.app_config.projector_matrix,
                     target_dist_mm=100.0,
                     aruco_corners=formatted_corners,
                     aruco_ids=formatted_ids,
@@ -1073,12 +1073,19 @@ class PpiCalibrationScene(Scene):
 class GridOverlay:
     """Manages the state of the calibration grid overlay."""
 
-    def __init__(self, start_spacing: float, width: int, height: int):
+    def __init__(self, start_spacing: float, config: AppConfig):
         self.spacing = start_spacing
         self.offset_x = 0.0
         self.offset_y = 0.0
-        self.width = width
-        self.height = height
+        self.config = config
+
+    @property
+    def width(self) -> int:
+        return self.config.width
+
+    @property
+    def height(self) -> int:
+        return self.config.height
 
     def pan(self, dx: float, dy: float) -> None:
         self.offset_x += dx
@@ -1121,8 +1128,7 @@ class MapGridCalibrationScene(Scene):
             start_spacing = entry.grid_spacing_svg * map_system.state.zoom
             self.grid_overlay = GridOverlay(
                 start_spacing,
-                self.context.app_config.width,
-                self.context.app_config.height,
+                self.context.app_config,
             )
             # Use world_to_screen to find the current screen position of the saved world origin
             sx, sy = map_system.world_to_screen(
@@ -1146,8 +1152,7 @@ class MapGridCalibrationScene(Scene):
             start_spacing = ppi * self.calib_map_grid_size_inches
             self.grid_overlay = GridOverlay(
                 start_spacing,
-                self.context.app_config.width,
-                self.context.app_config.height,
+                self.context.app_config,
             )
 
             # Center the grid initially
@@ -1644,10 +1649,10 @@ class Projector3DCalibrationScene(Scene):
         corners_camera = raw.get("corners")
 
         # Load camera calibration for back-projection from AppContext
-        camera_matrix = self.context.camera_matrix
-        distortion_coefficients = self.context.distortion_coefficients
-        rotation_vector_camera = self.context.camera_rotation_vector
-        translation_vector_camera = self.context.camera_translation_vector
+        camera_matrix = self.context.app_config.camera_matrix
+        distortion_coefficients = self.context.app_config.distortion_coefficients
+        rotation_vector_camera = self.context.app_config.rotation_vector
+        translation_vector_camera = self.context.app_config.translation_vector
 
         if camera_matrix is None or rotation_vector_camera is None:
             logging.error(

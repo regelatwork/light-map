@@ -83,18 +83,12 @@ class InteractiveApp:
         )
 
         self.renderer = Renderer(
-            config.width, config.height, self.config.projector_3d_model
+            config, self.config.projector_3d_model
         )
-        self.map_system = MapSystem(config.width, config.height)
+        self.map_system = MapSystem(config)
 
         # Sync AppConfig with MapConfig global settings
-        gs = self.map_config.data.global_settings
-        self.config.enable_hand_masking = gs.enable_hand_masking
-        self.config.hand_mask_padding = gs.hand_mask_padding
-        self.config.gm_position = gs.gm_position
-        self.config.projector_ppi = gs.projector_ppi
-        self.config.inspection_linger_duration = gs.inspection_linger_duration
-        self.config.door_thickness_multiplier = gs.door_thickness_multiplier
+        self.config.sync_from_global_settings(self.map_config.data.global_settings)
 
         # Visibility and FoW Systems
         # Use a temporary engine until map is loaded
@@ -126,6 +120,12 @@ class InteractiveApp:
             )
         )
 
+        # Sync calibration to config
+        self.config.camera_matrix = camera_matrix
+        self.config.distortion_coefficients = distortion_coefficients
+        self.config.rotation_vector = rotation_vector
+        self.config.translation_vector = translation_vector
+
         # Scan for maps if provided
         if config.map_search_patterns:
             self.map_config.scan_for_maps(config.map_search_patterns)
@@ -137,7 +137,8 @@ class InteractiveApp:
         )
 
         self.app_context = self._create_app_context(
-            camera_matrix, distortion_coefficients, rotation_vector, translation_vector
+            debug_mode=False,
+            show_tokens=True,
         )
 
         # Layer Management
@@ -341,10 +342,6 @@ class InteractiveApp:
 
     def _create_app_context(
         self,
-        camera_matrix,
-        distortion_coefficients,
-        rotation_vector=None,
-        translation_vector=None,
         debug_mode=False,
         show_tokens=True,
     ) -> AppContext:
@@ -361,23 +358,27 @@ class InteractiveApp:
         )
         # Fallback if for some reason they weren't loaded in constructor
         # (though our check above makes this unlikely to be None if we reached here)
-        if aruco_detector.camera_matrix is None and camera_matrix is not None:
-            aruco_detector.set_calibration(camera_matrix, distortion_coefficients)
-        if aruco_detector.rotation_vector is None and rotation_vector is not None:
-            aruco_detector.set_extrinsics(rotation_vector, translation_vector)
+        if aruco_detector.camera_matrix is None and self.config.camera_matrix is not None:
+            aruco_detector.set_calibration(
+                self.config.camera_matrix, self.config.distortion_coefficients
+            )
+        if aruco_detector.rotation_vector is None and self.config.rotation_vector is not None:
+            aruco_detector.set_extrinsics(
+                self.config.rotation_vector, self.config.translation_vector
+            )
 
         # Initialize Camera Projection Model
         camera_projection_model = None
         if (
-            camera_matrix is not None
-            and rotation_vector is not None
-            and translation_vector is not None
+            self.config.camera_matrix is not None
+            and self.config.rotation_vector is not None
+            and self.config.translation_vector is not None
         ):
             camera_projection_model = CameraProjectionModel(
-                camera_matrix=camera_matrix,
-                distortion_coefficients=distortion_coefficients,
-                rotation_vector=rotation_vector,
-                translation_vector=translation_vector,
+                camera_matrix=self.config.camera_matrix,
+                distortion_coefficients=self.config.distortion_coefficients,
+                rotation_vector=self.config.rotation_vector,
+                translation_vector=self.config.translation_vector,
             )
             self.config.camera_projection_model = camera_projection_model
 
@@ -386,16 +387,10 @@ class InteractiveApp:
             renderer=self.renderer,
             map_system=self.map_system,
             map_config_manager=self.map_config,
-            projector_matrix=self.config.projector_matrix,
             notifications=self.notifications,
-            distortion_model=self.config.distortion_model,
             visibility_engine=self.visibility_engine,
             aruco_detector=aruco_detector,
             camera_projection_model=camera_projection_model,
-            camera_matrix=camera_matrix,
-            distortion_coefficients=distortion_coefficients,
-            camera_rotation_vector=rotation_vector,
-            camera_translation_vector=translation_vector,
             debug_mode=debug_mode,
             show_tokens=show_tokens,
             raw_tokens=self.state.raw_tokens,
@@ -466,16 +461,25 @@ class InteractiveApp:
     def reload_config(self, new_config: AppConfig):
         """Reloads application configuration, rebuilding context and scenes."""
         self.config = new_config
-        self.renderer = Renderer(new_config.width, new_config.height)
+        # Ensure latest global settings are reflected
+        self.config.sync_from_global_settings(self.map_config.data.global_settings)
+
+        self.renderer = Renderer(new_config, self.config.projector_3d_model)
         self.input_processor = InputProcessor(new_config)
 
-        # We keep the map system and config manager to preserve state
-        self.map_system.width = self.config.width
-        self.map_system.height = self.config.height
+        # Update core systems with new config/resolution
+        self.map_system.config = new_config
+        self.fow_manager.sync_resolution(new_config.width, new_config.height)
 
         camera_matrix, distortion_coefficients, rotation_vector, translation_vector = (
             self._load_camera_calibration()
         )
+
+        # Sync calibration back to config
+        self.config.camera_matrix = camera_matrix
+        self.config.distortion_coefficients = distortion_coefficients
+        self.config.rotation_vector = rotation_vector
+        self.config.translation_vector = translation_vector
 
         # Sync calibration to background tracker
         self.tracking_coordinator.token_tracker.set_aruco_calibration(
@@ -483,10 +487,6 @@ class InteractiveApp:
         )
 
         self.app_context = self._create_app_context(
-            camera_matrix,
-            distortion_coefficients,
-            rotation_vector,
-            translation_vector,
             debug_mode=self.app_context.debug_mode,
             show_tokens=self.app_context.show_tokens,
         )

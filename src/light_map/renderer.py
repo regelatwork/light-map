@@ -19,28 +19,42 @@ class Renderer:
 
     def __init__(
         self,
-        screen_width: int,
-        screen_height: int,
+        config: "AppConfig",
         projector_3d_model: Optional["Projector3DModel"] = None,
     ):
-        self.screen_width = screen_width
-        self.screen_height = screen_height
+        self.config = config
         self.projector_3d_model = projector_3d_model
 
         # Main output buffer (BGR)
         self.output_buffer = np.zeros(
-            (self.screen_height, self.screen_width, 3), dtype=np.uint8
+            (self.height, self.width, 3), dtype=np.uint8
         )
 
         # Cache for static layers (BGR)
         self.background_cache = np.zeros(
-            (self.screen_height, self.screen_width, 3), dtype=np.uint8
+            (self.height, self.width, 3), dtype=np.uint8
         )
 
         # Version tracking: Dict[Layer, int]
         self.last_layer_versions = {}
         self._last_background_aggregate_version = -1
         self._last_layer_stack: List[Layer] = []
+
+    @property
+    def width(self) -> int:
+        return self.config.width
+
+    @property
+    def height(self) -> int:
+        return self.config.height
+
+    @property
+    def screen_width(self) -> int:
+        return self.width
+
+    @property
+    def screen_height(self) -> int:
+        return self.height
 
     def render(
         self,

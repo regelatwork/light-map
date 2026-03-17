@@ -266,6 +266,24 @@ class AppConfig:
     inspection_linger_duration: float = DEFAULT_INSPECTION_LINGER_DURATION
     door_thickness_multiplier: float = DEFAULT_DOOR_THICKNESS_MULTIPLIER
 
+    def sync_from_global_settings(self, gs: Any):
+        """Syncs config fields from GlobalMapConfig object while avoiding circular imports."""
+        self.enable_hand_masking = getattr(gs, "enable_hand_masking", self.enable_hand_masking)
+        self.hand_mask_padding = getattr(gs, "hand_mask_padding", self.hand_mask_padding)
+        self.enable_aruco_masking = getattr(gs, "enable_aruco_masking", self.enable_aruco_masking)
+        self.aruco_mask_padding = getattr(gs, "aruco_mask_padding", self.aruco_mask_padding)
+        self.gm_position = getattr(gs, "gm_position", self.gm_position)
+        self.projector_ppi = getattr(gs, "projector_ppi", self.projector_ppi)
+        self.parallax_factor = getattr(gs, "parallax_factor", self.parallax_factor)
+        self.calibration_box_height_mm = getattr(gs, "calibration_box_height_mm", self.calibration_box_height_mm)
+        self.calibration_box_width_mm = getattr(gs, "calibration_box_width_mm", self.calibration_box_width_mm)
+        self.calibration_box_length_mm = getattr(gs, "calibration_box_length_mm", self.calibration_box_length_mm)
+        self.use_projector_3d_model = getattr(gs, "use_projector_3d_model", self.use_projector_3d_model)
+        self.aruco_defaults = getattr(gs, "aruco_defaults", self.aruco_defaults)
+        self.token_profiles = getattr(gs, "token_profiles", self.token_profiles)
+        self.inspection_linger_duration = getattr(gs, "inspection_linger_duration", self.inspection_linger_duration)
+        self.door_thickness_multiplier = getattr(gs, "door_thickness_multiplier", self.door_thickness_multiplier)
+
 
 @dataclass
 class ViewportState:

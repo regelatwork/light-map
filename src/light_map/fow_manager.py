@@ -21,6 +21,24 @@ class FogOfWarManager:
         # GM Override: If True, everything is visible
         self.is_disabled = False
 
+    def sync_resolution(self, width: int, height: int):
+        """Re-allocates or resizes masks if the provided dimensions have changed."""
+        h, w = self.explored_mask.shape
+        if w != width or h != height:
+            logging.info(f"FogOfWarManager: Syncing resolution to {width}x{height}")
+            self.width = width
+            self.height = height
+            self.explored_mask = cv2.resize(
+                self.explored_mask,
+                (width, height),
+                interpolation=cv2.INTER_NEAREST,
+            )
+            self.visible_mask = cv2.resize(
+                self.visible_mask,
+                (width, height),
+                interpolation=cv2.INTER_NEAREST,
+            )
+
     def reveal_area(self, mask: np.ndarray):
         """Unions the provided mask into the explored state."""
         if mask.shape != self.explored_mask.shape:

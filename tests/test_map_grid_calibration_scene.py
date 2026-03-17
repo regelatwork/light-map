@@ -167,7 +167,10 @@ def test_map_grid_calibration_interaction_updates_overlay(
 
 def test_grid_overlay_logic():
     """Verify GridOverlay pan and zoom logic (Anchor and Scale)."""
-    overlay = GridOverlay(start_spacing=100.0, width=500, height=500)
+    mock_config = MagicMock(spec=AppConfig)
+    mock_config.width = 500
+    mock_config.height = 500
+    overlay = GridOverlay(start_spacing=100.0, config=mock_config)
 
     # Test Pan
     overlay.pan(10, 20)
@@ -194,8 +197,9 @@ def test_map_grid_calibration_render(map_grid_calib_scene, mock_app_context):
     map_grid_calib_scene.grid_overlay.spacing = 100.0
     map_grid_calib_scene.grid_overlay.offset_x = 50.0
     map_grid_calib_scene.grid_overlay.offset_y = 50.0
-    map_grid_calib_scene.grid_overlay.width = 100
-    map_grid_calib_scene.grid_overlay.height = 100
+    # Width and height are now properties fetching from context.app_config
+    mock_app_context.app_config.width = 100
+    mock_app_context.app_config.height = 100
 
     with patch("cv2.line") as mock_line, patch("cv2.circle") as mock_circle:
         map_grid_calib_scene.render(frame)

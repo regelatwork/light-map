@@ -17,7 +17,6 @@ class HandMaskLayer(Layer):
         super().__init__(state=state, is_static=False, layer_mode=LayerMode.NORMAL)
         self.config = config
         self.hand_masker = HandMasker()
-        self._last_enabled = config.enable_hand_masking
 
     def get_current_version(self) -> int:
         if self.state is None:
@@ -96,7 +95,6 @@ class HandMaskLayer(Layer):
         return proj_pts.reshape(-1, 2)
 
     def _generate_patches(self, current_time: float) -> List[ImagePatch]:
-        self._last_enabled = self.config.enable_hand_masking
         if not self.config.enable_hand_masking:
             return []
 

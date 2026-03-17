@@ -25,9 +25,8 @@ class MapState:
 
 
 class MapSystem:
-    def __init__(self, screen_width: int, screen_height: int):
-        self.width = screen_width
-        self.height = screen_height
+    def __init__(self, config: "AppConfig"):
+        self.config = config
         self.state = MapState()
         self.svg_loader: Optional[SVGLoader] = None
         self.base_scale: float = 1.0
@@ -39,6 +38,14 @@ class MapSystem:
         self.undo_stack: List[MapState] = []
         self.redo_stack: List[MapState] = []
         self.max_stack_size = 50
+
+    @property
+    def width(self) -> int:
+        return self.config.width
+
+    @property
+    def height(self) -> int:
+        return self.config.height
 
     def is_map_loaded(self) -> bool:
         """Returns True if an SVG map is currently loaded."""

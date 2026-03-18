@@ -21,8 +21,8 @@ export const TokenPropertiesEditor: React.FC<TokenPropertiesEditorProps> = ({
   const [localHeightMm, setLocalHeightMm] = useState<number | null>(null);
   const [showAdvanced, setShowAdvanced] = useState(false);
 
-  const arucoDefault = config.aruco_defaults?.[token.id];
-  const isOverridden = config.current_map_path
+  const arucoDefault = config?.aruco_defaults?.[token.id];
+  const isOverridden = config?.current_map_path && maps && maps[config.current_map_path]
     ? !!maps[config.current_map_path]?.aruco_overrides?.[token.id]
     : false;
 
@@ -31,7 +31,7 @@ export const TokenPropertiesEditor: React.FC<TokenPropertiesEditorProps> = ({
   const tokenProfile =
     localProfile !== null ? localProfile : (token.profile as string) || arucoDefault?.profile || '';
   const isProfileSelected = tokenProfile !== '' && tokenProfile !== null;
-  const profileDef = isProfileSelected ? config.token_profiles?.[tokenProfile] : null;
+  const profileDef = isProfileSelected ? config?.token_profiles?.[tokenProfile] : null;
 
   const tokenName =
     localName !== null ? localName : (token.name as string) || arucoDefault?.name || '';
@@ -264,7 +264,7 @@ export const TokenPropertiesEditor: React.FC<TokenPropertiesEditorProps> = ({
               >
                 Token Profile
               </label>
-              {config.token_profiles ? (
+              {config?.token_profiles ? (
                 <select
                   id={`token-profile-${token.id}`}
                   value={tokenProfile}

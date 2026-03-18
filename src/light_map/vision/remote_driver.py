@@ -199,7 +199,7 @@ def create_app(
                     state = {
                         "world": world,
                         "tokens": state_mirror.get("tokens", []),
-                        "menu": state_mirror.get("menu", {}),
+                        "menu": state_mirror.get("menu", None),
                         "config": state_mirror.get("config", {}),
                         "maps": state_mirror.get("maps", {}),
                         "timestamp": time.monotonic(),

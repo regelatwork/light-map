@@ -47,7 +47,7 @@ export const ConfigurationSidebar: React.FC = () => {
 
   const displayId = activeTokenId !== null ? activeTokenId : parseInt(manualArUcoId);
   const activeToken = !isNaN(Number(displayId))
-    ? tokens.find((t) => t.id === Number(displayId)) || { id: Number(displayId) }
+    ? tokens?.find((t) => t.id === Number(displayId)) || { id: Number(displayId) }
     : null;
 
   return (
@@ -157,7 +157,7 @@ export const ConfigurationSidebar: React.FC = () => {
                   className="w-full px-2 py-1 text-sm border rounded focus:ring-blue-500 focus:border-blue-500 bg-white text-black"
                 />
                 <datalist id="known-aruco-ids">
-                  {Object.entries(config.aruco_defaults || {}).map(([id, def]) => (
+                  {Object.entries(config?.aruco_defaults || {}).map(([id, def]) => (
                     <option key={id} value={id}>
                       {def.name}
                     </option>

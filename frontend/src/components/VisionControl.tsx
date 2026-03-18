@@ -75,12 +75,12 @@ export const VisionControl: FC = () => {
         <button
           onClick={handleToggleHandMasking}
           className={`px-3 py-1 text-xs font-semibold rounded transition-colors ${
-            config.enable_hand_masking
+            config?.enable_hand_masking
               ? 'bg-green-100 text-green-800 hover:bg-green-200'
               : 'bg-gray-100 text-gray-800 hover:bg-gray-200'
           }`}
         >
-          {config.enable_hand_masking ? 'ENABLED' : 'DISABLED'}
+          {config?.enable_hand_masking ? 'ENABLED' : 'DISABLED'}
         </button>
       </div>
 
@@ -89,12 +89,12 @@ export const VisionControl: FC = () => {
         <button
           onClick={handleToggleArucoMasking}
           className={`px-3 py-1 text-xs font-semibold rounded transition-colors ${
-            config.enable_aruco_masking
+            config?.enable_aruco_masking
               ? 'bg-green-100 text-green-800 hover:bg-green-200'
               : 'bg-gray-100 text-gray-800 hover:bg-gray-200'
           }`}
         >
-          {config.enable_aruco_masking ? 'ENABLED' : 'DISABLED'}
+          {config?.enable_aruco_masking ? 'ENABLED' : 'DISABLED'}
         </button>
       </div>
 
@@ -102,7 +102,7 @@ export const VisionControl: FC = () => {
         <div className="flex justify-between items-center">
           <label className="block text-xs font-medium text-gray-700">Parallax Factor</label>
           <span className="text-[10px] text-gray-500 font-mono">
-            {config.parallax_factor?.toFixed(2) || '0.00'}
+            {config?.parallax_factor?.toFixed(2) || '0.00'}
           </span>
         </div>
         <input
@@ -110,7 +110,7 @@ export const VisionControl: FC = () => {
           min="-2.0"
           max="1.0"
           step="0.05"
-          value={config.parallax_factor || 0}
+          value={config?.parallax_factor || 0}
           onChange={(e) => handleParallaxChange(e.target.value)}
           className="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
         />
@@ -126,12 +126,12 @@ export const VisionControl: FC = () => {
         <button
           onClick={handleToggleFow}
           className={`px-3 py-1 text-xs font-semibold rounded transition-colors ${
-            !config.fow_disabled
+            !config?.fow_disabled
               ? 'bg-green-100 text-green-800 hover:bg-green-200'
               : 'bg-gray-100 text-gray-800 hover:bg-gray-200'
           }`}
         >
-          {config.fow_disabled ? 'DISABLED' : 'ENABLED'}
+          {config?.fow_disabled ? 'DISABLED' : 'ENABLED'}
         </button>
       </div>
 
@@ -202,19 +202,19 @@ export const VisionControl: FC = () => {
         <button
           onClick={handleToggleDebug}
           className={`px-3 py-1 text-xs font-semibold rounded transition-colors ${
-            config.debug_mode
-              ? 'bg-blue-100 text-blue-800 hover:bg-blue-200'
+            config?.debug_mode
+              ? 'bg-blue-100 text-blue-800 hover:bg-green-200'
               : 'bg-gray-100 text-gray-800 hover:bg-gray-200'
           }`}
         >
-          {config.debug_mode ? 'ON' : 'OFF'}
+          {config?.debug_mode ? 'ON' : 'OFF'}
         </button>
       </div>
 
       <div className="space-y-1">
         <label className="block text-xs font-medium text-gray-700">GM Position</label>
         <select
-          value={config.gm_position}
+          value={config?.gm_position || 'None'}
           onChange={(e) => handleSetGmPosition(e.target.value)}
           className="w-full px-2 py-1 text-sm border rounded focus:ring-blue-500 focus:border-blue-500 bg-white text-black"
         >

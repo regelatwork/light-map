@@ -393,6 +393,9 @@ def run_app(args):
             last_gm_position = None
             last_hand_masking = None
             last_aruco_masking = None
+            last_world_ts = -1
+            last_tokens_ts = -1
+            last_menu_ts = -1
 
             def render_cb(state, actions):
                 nonlocal \
@@ -404,7 +407,10 @@ def run_app(args):
                     last_parallax_factor, \
                     last_gm_position, \
                     last_hand_masking, \
-                    last_aruco_masking
+                    last_aruco_masking, \
+                    last_world_ts, \
+                    last_tokens_ts, \
+                    last_menu_ts
 
                 # A. Handle Startup Actions (Execute once)
                 if args.action and not startup_action_executed:
@@ -459,22 +465,39 @@ def run_app(args):
 
                 # D. Update State Mirror for Remote Driver (AFTER process_state)
                 if state_mirror is not None:
-                    # 1. Update Frequent State (World, Tokens, Menu)
-                    state_mirror["world"] = state.to_dict()
-                    state_mirror["tokens"] = [t.to_dict() for t in state.tokens]
+                    # 1. Update Frequent State (World, Tokens, Menu) if they changed
+                    # WorldState tracks granular timestamps for all components
+                    current_world_ts = max(
+                        state.scene_timestamp,
+                        state.viewport_timestamp,
+                        state.hands_timestamp,
+                        state.fow_timestamp,
+                        state.visibility_timestamp,
+                        state.map_timestamp,
+                    )
 
-                    if state.menu_state:
-                        state_mirror["menu"] = {
-                            "title": state.menu_state.current_menu_title,
-                            "depth": len(
-                                getattr(state.menu_state, "node_stack_titles", [])
-                            ),
-                            "items": [
-                                item.title for item in state.menu_state.active_items
-                            ],
-                        }
-                    else:
-                        state_mirror["menu"] = None
+                    if current_world_ts != last_world_ts:
+                        state_mirror["world"] = state.to_dict()
+                        last_world_ts = current_world_ts
+
+                    if state.tokens_timestamp != last_tokens_ts:
+                        state_mirror["tokens"] = [t.to_dict() for t in state.tokens]
+                        last_tokens_ts = state.tokens_timestamp
+
+                    if state.menu_timestamp != last_menu_ts:
+                        if state.menu_state:
+                            state_mirror["menu"] = {
+                                "title": state.menu_state.current_menu_title,
+                                "depth": len(
+                                    getattr(state.menu_state, "node_stack_titles", [])
+                                ),
+                                "items": [
+                                    item.title for item in state.menu_state.active_items
+                                ],
+                            }
+                        else:
+                            state_mirror["menu"] = None
+                        last_menu_ts = state.menu_timestamp
 
                     # 2. Update Configuration (Only if changed)
                     current_map_config_version = getattr(app.map_config, "version", 0)

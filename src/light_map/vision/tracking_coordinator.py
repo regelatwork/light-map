@@ -41,6 +41,30 @@ class TrackingCoordinator:
             return {"tokens": [], "raw_tokens": []}
 
         token_configs = map_config.get_aruco_configs(map_filename)
+
+        # 1. Resolve unknown IDs before mapping to ensure correct types/heights
+        from dataclasses import asdict
+
+        ids = raw_data.get("ids", [])
+        if ids is not None:
+            for marker_id_entry in ids:
+                # Handle both list of ints and numpy array from cv2 (N, 1)
+                if isinstance(
+                    marker_id_entry, (list, np.ndarray, getattr(np, "ndarray", type(None)))
+                ):
+                    try:
+                        mid = int(marker_id_entry[0])
+                    except (TypeError, IndexError):
+                        mid = int(marker_id_entry)
+                else:
+                    mid = int(marker_id_entry)
+
+                if mid not in token_configs:
+                    resolved_profile = map_config.resolve_token_profile(
+                        mid, map_filename
+                    )
+                    token_configs[mid] = asdict(resolved_profile)
+
         raw_detections = aruco_detector.map_to_tokens(
             raw_data,
             map_system,
@@ -49,15 +73,6 @@ class TrackingCoordinator:
             distortion_model=projector_config.distortion_model,
             projector_3d_model=projector_config.projector_3d_model,
         )
-
-        from dataclasses import asdict
-
-        for token in raw_detections:
-            if token.id not in token_configs:
-                resolved_profile = map_config.resolve_token_profile(
-                    token.id, map_filename
-                )
-                token_configs[token.id] = asdict(resolved_profile)
 
         # 2. Get Grid Parameters
         grid_spacing = 0.0
@@ -156,6 +171,14 @@ class TrackingCoordinator:
         map_filename = map_system.svg_loader.filename if map_system.svg_loader else None
         token_configs = map_config.get_aruco_configs(map_filename)
 
+        # We use the higher-level detect_tokens method to ensure all logic (resizing, masking) is applied.
+        # To be proactive, we rely on the fact that detect_tokens will call map_to_tokens,
+        # which now handles unknown IDs via token_configs resolution if we provide it.
+        # Wait, detect_tokens doesn't take map_filename, so it can't resolve profiles itself.
+        
+        # Actually, the best way is to keep the logic that detect_tokens uses but inject the resolution.
+        # But for compatibility with tests that mock detect_tokens, we should call it.
+        
         raw_detections = self.token_tracker.detect_tokens(
             frame_white=frame,
             projector_matrix=config.projector_matrix,
@@ -170,15 +193,18 @@ class TrackingCoordinator:
 
         if raw_detections:
             logging.debug(f"TrackingCoord: Detected {len(raw_detections)} tokens raw.")
-            # Ensure all detected IDs are in token_configs for name/color resolution
+            # Ensure all detected IDs are in token_configs for name/color resolution in filtering
+            from dataclasses import asdict
             for token in raw_detections:
                 if token.id not in token_configs:
-                    resolved_profile = map_config.resolve_token_profile(
-                        token.id, map_filename
-                    )
-                    from dataclasses import asdict
-
-                    token_configs[token.id] = asdict(resolved_profile)
+                    resolved = map_config.resolve_token_profile(token.id, map_filename)
+                    token_configs[token.id] = asdict(resolved)
+                    # Also update the token object itself since it was just created with defaults
+                    token.name = resolved.name
+                    token.type = resolved.type
+                    token.color = resolved.color
+                    token.size = resolved.size
+                    token.height_mm = resolved.height_mm
 
         # 2. Get Grid Parameters and Filter/Snap
         current_time = self.time_provider()

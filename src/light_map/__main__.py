@@ -389,6 +389,10 @@ def run_app(args):
             last_debug_mode = None
             last_map_path = None
             last_fow_disabled = None
+            last_parallax_factor = None
+            last_gm_position = None
+            last_hand_masking = None
+            last_aruco_masking = None
 
             def render_cb(state, actions):
                 nonlocal \
@@ -396,7 +400,11 @@ def run_app(args):
                     last_map_config_version, \
                     last_debug_mode, \
                     last_map_path, \
-                    last_fow_disabled
+                    last_fow_disabled, \
+                    last_parallax_factor, \
+                    last_gm_position, \
+                    last_hand_masking, \
+                    last_aruco_masking
 
                 # A. Handle Startup Actions (Execute once)
                 if args.action and not startup_action_executed:
@@ -479,6 +487,10 @@ def run_app(args):
                         or app.debug_mode != last_debug_mode
                         or app.current_map_path != last_map_path
                         or fow_disabled != last_fow_disabled
+                        or app.config.parallax_factor != last_parallax_factor
+                        or str(app.config.gm_position) != last_gm_position
+                        or app.config.enable_hand_masking != last_hand_masking
+                        or app.config.enable_aruco_masking != last_aruco_masking
                     ):
                         state_mirror["config"] = {
                             "cam_res": (current_camera_width, current_camera_height),
@@ -540,6 +552,10 @@ def run_app(args):
                         last_debug_mode = app.debug_mode
                         last_map_path = app.current_map_path
                         last_fow_disabled = fow_disabled
+                        last_parallax_factor = app.config.parallax_factor
+                        last_gm_position = str(app.config.gm_position)
+                        last_hand_masking = app.config.enable_hand_masking
+                        last_aruco_masking = app.config.enable_aruco_masking
 
                 # E. Process Actions
                 should_break = False

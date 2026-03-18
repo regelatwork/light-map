@@ -15,7 +15,6 @@ if TYPE_CHECKING:
     from .notification import NotificationManager
     from light_map.renderer import Renderer
     from light_map.common_types import AppConfig
-    from light_map.projector import ProjectorDistortionModel
     from light_map.vision.aruco_detector import ArucoTokenDetector
     from light_map.vision.projection import CameraProjectionModel
 

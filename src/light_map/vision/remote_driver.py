@@ -50,6 +50,12 @@ class TokenUpdate(BaseModel):
     is_map_override: Optional[bool] = None
 
 
+class ProfileUpdate(BaseModel):
+    name: str
+    size: int
+    height_mm: float
+
+
 class ViewportConfig(BaseModel):
     zoom: Optional[float] = None
     pan_x: Optional[float] = None
@@ -411,6 +417,36 @@ def create_app(
         )
         results_queue.put(res)
         return {"status": "delete_queued", "id": token_id}
+
+    @app.put("/state/profiles")
+    def update_profile(update: ProfileUpdate):
+        """Updates or creates a token profile (shared template)."""
+        res = DetectionResult(
+            timestamp=time.monotonic_ns(),
+            type=ResultType.ACTION,
+            data={
+                "action": "UPDATE_TOKEN_PROFILE",
+                "name": update.name,
+                "size": update.size,
+                "height_mm": update.height_mm,
+            },
+        )
+        results_queue.put(res)
+        return {"status": "update_queued", "name": update.name}
+
+    @app.delete("/state/profiles/{name}")
+    def delete_profile(name: str):
+        """Removes a token profile."""
+        res = DetectionResult(
+            timestamp=time.monotonic_ns(),
+            type=ResultType.ACTION,
+            data={
+                "action": "DELETE_TOKEN_PROFILE",
+                "name": name,
+            },
+        )
+        results_queue.put(res)
+        return {"status": "delete_queued", "name": name}
 
     @app.post("/input/action")
     def inject_action(action: str, payload: Optional[str] = None):

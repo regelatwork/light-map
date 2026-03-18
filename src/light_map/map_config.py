@@ -488,6 +488,19 @@ class MapConfigManager:
 
     # --- New ArUco / Profile Methods ---
 
+    def set_token_profile(self, name: str, size: int, height_mm: float):
+        """Helper to set a global token profile."""
+        self.data.global_settings.token_profiles[name] = SizeProfile(
+            size=size, height_mm=height_mm
+        )
+        self.save()
+
+    def delete_token_profile(self, name: str):
+        """Removes a global token profile."""
+        if name in self.data.global_settings.token_profiles:
+            del self.data.global_settings.token_profiles[name]
+            self.save()
+
     def get_aruco_configs(self, map_name: Optional[str] = None) -> Dict[int, Dict]:
         """
         Returns a dictionary of all known ArUco IDs and their resolved properties

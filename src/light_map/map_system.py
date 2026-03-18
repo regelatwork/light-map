@@ -5,7 +5,7 @@ from typing import Dict, Any, Optional, Tuple, List, TYPE_CHECKING
 import svgelements
 
 from light_map.svg import SVGLoader
-from light_map.common_types import Token
+from light_map.common_types import Token, AppConfig
 
 if TYPE_CHECKING:
     from light_map.common_types import ViewportState

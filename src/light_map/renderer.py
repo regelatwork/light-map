@@ -3,7 +3,7 @@ from typing import Any, List, Optional, TYPE_CHECKING
 
 import numpy as np
 
-from .common_types import ImagePatch, Layer, LayerMode
+from .common_types import ImagePatch, Layer, LayerMode, AppConfig
 from .core.analytics import LatencyInstrument, track_wait
 from .constants import ALPHA_OPAQUE
 
@@ -26,14 +26,10 @@ class Renderer:
         self.projector_3d_model = projector_3d_model
 
         # Main output buffer (BGR)
-        self.output_buffer = np.zeros(
-            (self.height, self.width, 3), dtype=np.uint8
-        )
+        self.output_buffer = np.zeros((self.height, self.width, 3), dtype=np.uint8)
 
         # Cache for static layers (BGR)
-        self.background_cache = np.zeros(
-            (self.height, self.width, 3), dtype=np.uint8
-        )
+        self.background_cache = np.zeros((self.height, self.width, 3), dtype=np.uint8)
 
         # Version tracking: Dict[Layer, int]
         self.last_layer_versions = {}

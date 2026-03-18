@@ -16,7 +16,7 @@ from light_map.core.map_interaction import MapInteractionController
 from light_map.gestures import GestureType
 from light_map.token_tracker import TokenTracker
 from light_map.calibration_logic import calculate_ppi_from_frame, calibrate_extrinsics
-from light_map.common_types import SceneId, Action
+from light_map.common_types import SceneId, Action, AppConfig
 from light_map.calibration import (
     process_chessboard_images,
     save_camera_calibration,
@@ -806,7 +806,8 @@ class ExtrinsicsCalibrationScene(Scene):
                 ).reshape(-1, 2)
 
                 reprojected_proj = cv2.perspectiveTransform(
-                    projected_points.reshape(-1, 1, 2), self.context.app_config.projector_matrix
+                    projected_points.reshape(-1, 1, 2),
+                    self.context.app_config.projector_matrix,
                 ).reshape(-1, 2)
 
                 # Draw residuals

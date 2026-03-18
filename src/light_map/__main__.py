@@ -388,7 +388,7 @@ def run_app(args):
                             for k, v in app.map_config.data.global_settings.token_profiles.items()
                         },
                         "aruco_defaults": {
-                            k: {
+                            str(k): {
                                 "name": v.name,
                                 "type": v.type,
                                 "profile": v.profile,

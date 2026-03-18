@@ -63,6 +63,8 @@ class ActionDispatcher:
         self.register("UPDATE_TOKEN", handle_update_token)
         self.register("DELETE_TOKEN_OVERRIDE", handle_delete_token_override)
         self.register("DELETE_TOKEN", handle_delete_token)
+        self.register("UPDATE_TOKEN_PROFILE", handle_update_token_profile)
+        self.register("DELETE_TOKEN_PROFILE", handle_delete_token_profile)
         self.register("UPDATE_SYSTEM_CONFIG", handle_update_system_config)
         self.register("MENU_INTERACT", handle_menu_interact)
 
@@ -500,6 +502,31 @@ def handle_delete_token(
         logging.info(
             f"ActionDispatcher: Deleted GLOBAL definition for token {token_id}"
         )
+    return None
+
+
+def handle_update_token_profile(
+    app: "InteractiveApp", payload: Dict[str, Any], state: Optional["WorldState"] = None
+) -> Optional["SceneTransition"]:
+    name = payload.get("name")
+    size = payload.get("size")
+    height_mm = payload.get("height_mm")
+
+    if name is not None and size is not None and height_mm is not None:
+        app.map_config.set_token_profile(name, size, height_mm)
+        logging.info(
+            f"ActionDispatcher: Updated profile '{name}' (S:{size} H:{height_mm}mm)"
+        )
+    return None
+
+
+def handle_delete_token_profile(
+    app: "InteractiveApp", payload: Dict[str, Any], state: Optional["WorldState"] = None
+) -> Optional["SceneTransition"]:
+    name = payload.get("name")
+    if name is not None:
+        app.map_config.delete_token_profile(name)
+        logging.info(f"ActionDispatcher: Deleted profile '{name}'")
     return None
 
 

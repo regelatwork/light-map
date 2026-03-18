@@ -82,9 +82,7 @@ class InteractiveApp:
             use_3d=self.map_config.data.global_settings.use_projector_3d_model,
         )
 
-        self.renderer = Renderer(
-            config, self.config.projector_3d_model
-        )
+        self.renderer = Renderer(config, self.config.projector_3d_model)
         self.map_system = MapSystem(config)
 
         # Sync AppConfig with MapConfig global settings
@@ -358,11 +356,17 @@ class InteractiveApp:
         )
         # Fallback if for some reason they weren't loaded in constructor
         # (though our check above makes this unlikely to be None if we reached here)
-        if aruco_detector.camera_matrix is None and self.config.camera_matrix is not None:
+        if (
+            aruco_detector.camera_matrix is None
+            and self.config.camera_matrix is not None
+        ):
             aruco_detector.set_calibration(
                 self.config.camera_matrix, self.config.distortion_coefficients
             )
-        if aruco_detector.rotation_vector is None and self.config.rotation_vector is not None:
+        if (
+            aruco_detector.rotation_vector is None
+            and self.config.rotation_vector is not None
+        ):
             aruco_detector.set_extrinsics(
                 self.config.rotation_vector, self.config.translation_vector
             )

@@ -4,9 +4,10 @@ import { SchematicCanvas } from './SchematicCanvas';
 import { ConfigurationSidebar } from './ConfigurationSidebar';
 import { MapLibrary } from './MapLibrary';
 import { CalibrationWizard } from './CalibrationWizard';
+import { TokenLibrary } from './TokenLibrary';
 import { injectAction, interactMenu } from '../services/api';
 
-type ActiveTab = 'schematic' | 'calibration';
+type ActiveTab = 'schematic' | 'calibration' | 'library';
 
 export const Dashboard = () => {
   const { isConnected, world, tokens, menu } = useSystemState();
@@ -61,6 +62,16 @@ export const Dashboard = () => {
             >
               Calibration Wizards
             </button>
+            <button
+              onClick={() => setActiveTab('library')}
+              className={`text-left px-3 py-2 rounded-md transition-colors ${
+                activeTab === 'library'
+                  ? 'bg-blue-50 text-blue-700 font-medium'
+                  : 'text-gray-600 hover:bg-gray-50'
+              }`}
+            >
+              Token Library
+            </button>
           </nav>
         </div>
 
@@ -71,13 +82,13 @@ export const Dashboard = () => {
             </h3>
             <div className="space-y-1">
               <p className="text-sm">
-                <span className="text-gray-500">Scene:</span> {world.scene}
+                <span className="text-gray-500">Scene:</span> {world?.scene || 'Unknown'}
               </p>
               <p className="text-sm">
-                <span className="text-gray-500">FPS:</span> {world.fps?.toFixed(1)}
+                <span className="text-gray-500">FPS:</span> {world?.fps?.toFixed(1) || '0.0'}
               </p>
               <p className="text-sm">
-                <span className="text-gray-500">Tokens:</span> {tokens.length}
+                <span className="text-gray-500">Tokens:</span> {tokens?.length || 0}
               </p>
             </div>
           </div>
@@ -124,8 +135,15 @@ export const Dashboard = () => {
               <SchematicCanvas>{/* Layers will be added here */}</SchematicCanvas>
             </div>
           </>
-        ) : (
+        ) : activeTab === 'calibration' ? (
           <CalibrationWizard />
+        ) : (
+          <>
+            <h2 className="mb-4 text-xl font-semibold text-gray-800">Token Library</h2>
+            <div className="flex-1 min-h-0">
+              <TokenLibrary />
+            </div>
+          </>
         )}
       </main>
       <ConfigurationSidebar />

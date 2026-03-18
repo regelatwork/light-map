@@ -132,6 +132,36 @@ export const deleteTokenOverride = async (tokenId: number) => {
   return response.json();
 };
 
+export const updateProfile = async (name: string, size: number, height_mm: number) => {
+  const host = import.meta.env.DEV ? 'http://localhost:8000' : window.location.origin;
+  const response = await fetch(`${host}/state/profiles`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ name, size, height_mm }),
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to update profile: ${name}`);
+  }
+
+  return response.json();
+};
+
+export const deleteProfile = async (name: string) => {
+  const host = import.meta.env.DEV ? 'http://localhost:8000' : window.location.origin;
+  const response = await fetch(`${host}/state/profiles/${name}`, {
+    method: 'DELETE',
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to delete profile: ${name}`);
+  }
+
+  return response.json();
+};
+
 export const updateSystemConfig = async (update: {
   enable_hand_masking?: boolean;
   enable_aruco_masking?: boolean;

@@ -15,7 +15,7 @@ interface SchematicCanvasProps {
 }
 
 export const SchematicCanvas: FC<SchematicCanvasProps> = ({ children }) => {
-  const { world, config, grid_origin_svg_x, grid_origin_svg_y } = useSystemState();
+  const { world, config } = useSystemState();
   const rotation = world.viewport?.rotation || 0;
 
   const centerX = (config.proj_res?.[0] || 1000) / 2;

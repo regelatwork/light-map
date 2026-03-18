@@ -27,6 +27,42 @@ class SVGLoader:
             logging.error("Error loading SVG: %s", e)
             self.svg = None
 
+    @property
+    def width(self) -> float:
+        """Returns the width of the SVG in pixels."""
+        if not self.svg:
+            return 0.0
+        try:
+            # Try explicit width first
+            if self.svg.width is not None:
+                w = float(self.svg.width)
+                if w > 0:
+                    return w
+            # Fallback to viewbox width
+            if self.svg.viewbox is not None:
+                return float(self.svg.viewbox.width)
+        except (ValueError, TypeError):
+            pass
+        return 0.0
+
+    @property
+    def height(self) -> float:
+        """Returns the height of the SVG in pixels."""
+        if not self.svg:
+            return 0.0
+        try:
+            # Try explicit height first
+            if self.svg.height is not None:
+                h = float(self.svg.height)
+                if h > 0:
+                    return h
+            # Fallback to viewbox height
+            if self.svg.viewbox is not None:
+                return float(self.svg.viewbox.height)
+        except (ValueError, TypeError):
+            pass
+        return 0.0
+
     def _find_door_ids(self) -> set[int]:
         """Identifies door elements (including children of door groups)"""
         door_element_ids = set()

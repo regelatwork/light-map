@@ -296,6 +296,7 @@ def run_app(args):
                 "remote_hands": args.remote_hands,
                 "remote_tokens": args.remote_tokens,
                 "remote_port": args.remote_port,
+                "current_map_path": app.current_map_path,
             }
 
             # Calculate number of consumers for the camera frames
@@ -357,67 +358,20 @@ def run_app(args):
             )
             cam_thread.start()
 
+            last_map_config_version = -1
+            last_debug_mode = None
+            last_map_path = None
+            last_fow_disabled = None
+
             def render_cb(state, actions):
-                nonlocal startup_action_executed
+                nonlocal \
+                    startup_action_executed, \
+                    last_map_config_version, \
+                    last_debug_mode, \
+                    last_map_path, \
+                    last_fow_disabled
 
-                # A. Update State Mirror for Remote Driver
-                if state_mirror is not None:
-                    state_mirror["config"] = {
-                        "cam_res": (current_camera_width, current_camera_height),
-                        "proj_res": (native_screen_width, native_screen_height),
-                        "remote_hands": args.remote_hands,
-                        "remote_tokens": args.remote_tokens,
-                        "remote_port": args.remote_port,
-                        "enable_hand_masking": app.config.enable_hand_masking,
-                        "enable_aruco_masking": app.config.enable_aruco_masking,
-                        "parallax_factor": app.config.parallax_factor,
-                        "gm_position": str(app.config.gm_position),
-                        "debug_mode": app.debug_mode,
-                        "fow_disabled": app.fow_manager.is_disabled
-                        if app.fow_manager
-                        else True,
-                        "current_map_path": app.current_map_path,
-                        "map_width": float(app.map_system.svg_loader.svg.width)
-                        if app.map_system.svg_loader and app.map_system.svg_loader.svg
-                        else 0,
-                        "map_height": float(app.map_system.svg_loader.svg.height)
-                        if app.map_system.svg_loader and app.map_system.svg_loader.svg
-                        else 0,
-                        "token_profiles": {
-                            k: {"size": v.size, "height_mm": v.height_mm}
-                            for k, v in app.map_config.data.global_settings.token_profiles.items()
-                        },
-                        "aruco_defaults": {
-                            str(k): {
-                                "name": v.name,
-                                "type": v.type,
-                                "profile": v.profile,
-                                "size": v.size,
-                                "height_mm": v.height_mm,
-                                "color": v.color,
-                            }
-                            for k, v in app.map_config.data.global_settings.aruco_defaults.items()
-                        },
-                    }
-                    state_mirror["maps"] = {
-                        path: {
-                            "name": os.path.basename(path),
-                            "aruco_overrides": {
-                                str(aid): {
-                                    "name": v.name,
-                                    "type": v.type,
-                                    "profile": v.profile,
-                                    "size": v.size,
-                                    "height_mm": v.height_mm,
-                                    "color": v.color,
-                                }
-                                for aid, v in entry.aruco_overrides.items()
-                            },
-                        }
-                        for path, entry in app.map_config.data.maps.items()
-                    }
-
-                # B. Handle Startup Actions (Execute once)
+                # A. Handle Startup Actions (Execute once)
                 if args.action and not startup_action_executed:
                     logger.info("Executing Startup Action: %s", args.action)
                     startup_action_executed = True
@@ -445,7 +399,7 @@ def run_app(args):
                         if app.current_scene == app.scenes[SceneId.MENU]:
                             app.current_scene.on_enter()
 
-                # C. Process and Render
+                # B. Process and Render
                 main_loop.debug_mode = app.debug_mode
                 output_image, scene_actions = app.process_state(state, actions)
 
@@ -465,8 +419,100 @@ def run_app(args):
                             2,
                         )
 
-                    # D. Update Hardware Output
+                    # C. Update Hardware Output
                     app_win.update_image(output_image)
+
+                # D. Update State Mirror for Remote Driver (AFTER process_state)
+                if state_mirror is not None:
+                    # 1. Update Frequent State (World, Tokens, Menu)
+                    state_mirror["world"] = state.to_dict()
+                    state_mirror["tokens"] = [t.to_dict() for t in state.tokens]
+
+                    if state.menu_state:
+                        state_mirror["menu"] = {
+                            "title": state.menu_state.current_menu_title,
+                            "depth": len(
+                                getattr(state.menu_state, "node_stack_titles", [])
+                            ),
+                            "items": [
+                                item.title for item in state.menu_state.active_items
+                            ],
+                        }
+                    else:
+                        state_mirror["menu"] = None
+
+                    # 2. Update Configuration (Only if changed)
+                    current_map_config_version = getattr(app.map_config, "version", 0)
+                    fow_disabled = (
+                        app.fow_manager.is_disabled if app.fow_manager else True
+                    )
+
+                    if (
+                        current_map_config_version != last_map_config_version
+                        or app.debug_mode != last_debug_mode
+                        or app.current_map_path != last_map_path
+                        or fow_disabled != last_fow_disabled
+                    ):
+                        state_mirror["config"] = {
+                            "cam_res": (current_camera_width, current_camera_height),
+                            "proj_res": (native_screen_width, native_screen_height),
+                            "remote_hands": args.remote_hands,
+                            "remote_tokens": args.remote_tokens,
+                            "remote_port": args.remote_port,
+                            "enable_hand_masking": app.config.enable_hand_masking,
+                            "enable_aruco_masking": app.config.enable_aruco_masking,
+                            "parallax_factor": app.config.parallax_factor,
+                            "gm_position": str(app.config.gm_position),
+                            "debug_mode": app.debug_mode,
+                            "fow_disabled": fow_disabled,
+                            "current_map_path": app.current_map_path,
+                            "map_width": app.map_system.svg_loader.width
+                            if app.map_system.svg_loader
+                            else 0.0,
+                            "map_height": app.map_system.svg_loader.height
+                            if app.map_system.svg_loader
+                            else 0.0,
+                            "token_profiles": {
+                                k: {"size": v.size, "height_mm": v.height_mm}
+                                for k, v in app.map_config.data.global_settings.token_profiles.items()
+                            },
+                            "aruco_defaults": {
+                                str(k): {
+                                    "name": v.name,
+                                    "type": v.type,
+                                    "profile": v.profile,
+                                    "size": v.size,
+                                    "height_mm": v.height_mm,
+                                    "color": v.color,
+                                }
+                                for k, v in app.map_config.data.global_settings.aruco_defaults.items()
+                            },
+                        }
+
+                        # 3. Update Map List (if map config changed)
+                        if current_map_config_version != last_map_config_version:
+                            state_mirror["maps"] = {
+                                path: {
+                                    "name": os.path.basename(path),
+                                    "aruco_overrides": {
+                                        str(aid): {
+                                            "name": v.name,
+                                            "type": v.type,
+                                            "profile": v.profile,
+                                            "size": v.size,
+                                            "height_mm": v.height_mm,
+                                            "color": v.color,
+                                        }
+                                        for aid, v in entry.aruco_overrides.items()
+                                    },
+                                }
+                                for path, entry in app.map_config.data.maps.items()
+                            }
+                            last_map_config_version = current_map_config_version
+
+                        last_debug_mode = app.debug_mode
+                        last_map_path = app.current_map_path
+                        last_fow_disabled = fow_disabled
 
                 # E. Process Actions
                 should_break = False

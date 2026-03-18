@@ -21,7 +21,15 @@ function systemReducer(state: SystemState, action: Action): SystemState {
       if (import.meta.env.DEV) {
         console.debug('State Update:', action.payload);
       }
-      return { ...state, ...action.payload, isConnected: true, error: null };
+      return {
+        ...state,
+        ...action.payload,
+        // Deeply merge world and config if they exist in the payload
+        world: action.payload.world ? { ...state.world, ...action.payload.world } : state.world,
+        config: action.payload.config ? { ...state.config, ...action.payload.config } : state.config,
+        isConnected: true,
+        error: null,
+      };
     case 'SET_CONNECTED':
       return { ...state, isConnected: action.payload };
     case 'SET_ERROR':

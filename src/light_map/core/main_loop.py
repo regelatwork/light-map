@@ -122,26 +122,6 @@ class MainLoopController:
                 # Add any truthy result (Action enum, string, etc.)
                 actions.append(res)
 
-        # 6.5 Update State Mirror for Remote Driver
-        if self.state_mirror is not None:
-            self.state_mirror["world"] = self.state.to_dict()
-            self.state_mirror["tokens"] = [t.to_dict() for t in self.state.tokens]
-
-            # For menu, we need to extract current regions if available
-            if self.state.menu_state:
-                # We'll need a way to get bounds. For now, just title and depth.
-                self.state_mirror["menu"] = {
-                    "title": self.state.menu_state.current_menu_title,
-                    "depth": len(
-                        getattr(self.state.menu_state, "node_stack_titles", [])
-                    ),
-                    "items": [
-                        item.title for item in self.state.menu_state.active_items
-                    ],
-                }
-            else:
-                self.state_mirror["menu"] = None
-
         # 7. Periodic Performance Reporting (when debug is active)
         if self.debug_mode:
             current_time = time.perf_counter()
@@ -239,4 +219,5 @@ class MainLoopController:
         logging.info("Main loop stopping...")
         if self.producer:
             self.producer.close()
+            self.producer = None
         self.manager.stop()

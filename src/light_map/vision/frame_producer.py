@@ -63,6 +63,8 @@ class FrameProducer:
 
     def get_latest_timestamp(self) -> Optional[int]:
         """Returns the timestamp of the most recently published frame."""
+        if not hasattr(self, "_latest_id") or self._latest_id is None:
+            return None
         with self.lock:
             latest_id = self._latest_id[0]
             if latest_id == -1:
@@ -77,6 +79,8 @@ class FrameProducer:
 
     def get_shm_pushed_timestamp(self) -> Optional[int]:
         """Returns the timestamp of when the most recent frame was pushed to SHM."""
+        if not hasattr(self, "_latest_id") or self._latest_id is None:
+            return None
         with self.lock:
             latest_id = self._latest_id[0]
             if latest_id == -1:
@@ -90,6 +94,8 @@ class FrameProducer:
         Acquires a lease on the latest frame and returns it as a numpy view.
         MUST call release() before calling this again.
         """
+        if not hasattr(self, "_latest_id") or self._latest_id is None:
+            return None
         if self._current_buffer_id is not None:
             raise RuntimeError("Must release current frame before acquiring a new one.")
 
@@ -124,6 +130,11 @@ class FrameProducer:
         if self._current_buffer_id is None:
             return
 
+        if not hasattr(self, "_ref_counts") or self._ref_counts is None:
+            self._current_buffer_id = None
+            self._current_frame_view = None
+            return
+
         with self.lock:
             if self._ref_counts[self._current_buffer_id] > 0:
                 self._ref_counts[self._current_buffer_id] -= 1
@@ -139,15 +150,11 @@ class FrameProducer:
         except Exception:
             pass
 
-        # Clean up control block views
-        if hasattr(self, "_ref_counts"):
-            del self._ref_counts
-        if hasattr(self, "_timestamps"):
-            del self._timestamps
-        if hasattr(self, "_shm_pushed_ts"):
-            del self._shm_pushed_ts
-        if hasattr(self, "_latest_id"):
-            del self._latest_id
+        # Clean up control block views - Set to None instead of deleting to avoid AttributeError
+        self._ref_counts = None
+        self._timestamps = None
+        self._shm_pushed_ts = None
+        self._latest_id = None
 
         # Also clear internal frame view just in case
         self._current_frame_view = None

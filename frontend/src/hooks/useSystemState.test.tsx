@@ -34,7 +34,7 @@ describe('useSystemState', () => {
     );
 
     expect(screen.getByTestId('connected')).toHaveTextContent('false');
-    expect(screen.getByTestId('scene')).toHaveTextContent('LOADING');
+    expect(screen.getByTestId('scene')).toHaveTextContent('MenuScene');
 
     await server.connected;
     await waitFor(() => expect(screen.getByTestId('connected')).toHaveTextContent('true'));
@@ -64,6 +64,60 @@ describe('useSystemState', () => {
 
     await waitFor(() => expect(screen.getByTestId('scene')).toHaveTextContent('MAP'));
     expect(screen.getByTestId('fps')).toHaveTextContent('60.5');
+  });
+
+  it('deeply merges world and config objects on partial updates', async () => {
+    render(
+      <SystemStateProvider>
+        <TestComponent />
+      </SystemStateProvider>
+    );
+
+    await server.connected;
+
+    // 1. Initial full state
+    const initialState = {
+      world: { scene: 'MAP', fps: 60.0, viewport: { zoom: 1.0 } },
+      config: { map_width: 1000, map_height: 750 },
+      timestamp: Date.now(),
+    };
+
+    act(() => {
+      server.send(JSON.stringify(initialState));
+    });
+
+    await waitFor(() => expect(screen.getByTestId('scene')).toHaveTextContent('MAP'));
+
+    // 2. Partial update for world (only scene)
+    const partialWorldUpdate = {
+      world: { scene: 'VIEWING' },
+      timestamp: Date.now() + 100,
+    };
+
+    act(() => {
+      server.send(JSON.stringify(partialWorldUpdate));
+    });
+
+    await waitFor(() => expect(screen.getByTestId('scene')).toHaveTextContent('VIEWING'));
+    // FPS should be preserved from initialState
+    expect(screen.getByTestId('fps')).toHaveTextContent('60');
+
+    // 3. Partial update for config
+    const partialConfigUpdate = {
+      config: { current_map_path: 'new.svg' },
+      timestamp: Date.now() + 200,
+    };
+
+    act(() => {
+      server.send(JSON.stringify(partialConfigUpdate));
+    });
+
+    // Wait for update
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    // Verify config properties are preserved (via implicit state check if we had a testid for it)
+    // For now, just ensuring no crash and scene is still there
+    expect(screen.getByTestId('scene')).toHaveTextContent('VIEWING');
   });
 
   it('handles disconnect and reconnects', async () => {

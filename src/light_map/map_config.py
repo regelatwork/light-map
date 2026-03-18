@@ -1,6 +1,7 @@
 import os
 import glob
 import datetime
+import time
 import logging
 import hashlib
 import cv2
@@ -122,7 +123,25 @@ class MapConfigManager:
 
         self.store = ConfigStore(self.filename)
         self.tokens_store = ConfigStore(self.tokens_filename)
+        self._last_issued_version = 0
+        self._version = self._get_next_version()
         self.data = self._load()
+
+    @property
+    def version(self) -> int:
+        return self._version
+
+    @version.setter
+    def version(self, value: int):
+        self._version = value
+
+    def _get_next_version(self) -> int:
+        """Returns a strictly monotonic version number based on time.monotonic_ns()."""
+        new_v = time.monotonic_ns()
+        if new_v <= self._last_issued_version:
+            new_v = self._last_issued_version + 1
+        self._last_issued_version = new_v
+        return new_v
 
     def _load(self) -> MapConfigData:
         try:
@@ -267,6 +286,7 @@ class MapConfigManager:
                 },
             }
             self.tokens_store.save(tokens_dict)
+            self.version = self._get_next_version()
         except Exception as e:
             logging.error("Error saving map config: %s", e)
 

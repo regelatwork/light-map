@@ -209,6 +209,7 @@ def create_app(
                         "grid_spacing_svg",
                         "grid_origin_svg_x",
                         "grid_origin_svg_y",
+                        "visibility_timestamp",
                     ]:
                         if key in world:
                             state[key] = world[key]

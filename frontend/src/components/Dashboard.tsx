@@ -85,7 +85,8 @@ export const Dashboard = () => {
                 <span className="text-gray-500">Scene:</span> {world?.scene || 'Unknown'}
               </p>
               <p className="text-sm">
-                <span className="text-gray-500">FPS:</span> {world?.fps?.toFixed(1) || '0.0'}
+                <span className="text-gray-500">FPS:</span>{' '}
+                {typeof world?.fps === 'number' ? world.fps.toFixed(1) : '0.0'}
               </p>
               <p className="text-sm">
                 <span className="text-gray-500">Tokens:</span> {tokens?.length || 0}
@@ -105,7 +106,7 @@ export const Dashboard = () => {
                 Summon
               </button>
             </div>
-            {menu ? (
+            {menu && menu.title && Array.isArray(menu.items) ? (
               <div className="space-y-1">
                 <p className="text-sm font-medium text-blue-600">{menu.title}</p>
                 <ul className="text-xs space-y-1 pl-2 border-l border-gray-100 max-h-48 overflow-y-auto">

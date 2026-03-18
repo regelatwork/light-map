@@ -18,6 +18,9 @@ type Action =
 function systemReducer(state: SystemState, action: Action): SystemState {
   switch (action.type) {
     case 'UPDATE_STATE':
+      if (import.meta.env.DEV) {
+        console.debug('State Update:', action.payload);
+      }
       return { ...state, ...action.payload, isConnected: true, error: null };
     case 'SET_CONNECTED':
       return { ...state, isConnected: action.payload };

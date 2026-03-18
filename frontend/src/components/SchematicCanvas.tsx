@@ -3,12 +3,12 @@ import { GridLayer } from './GridLayer';
 import { TokenLayer } from './TokenLayer';
 import { MapLayer } from './MapLayer';
 import { DoorLayer } from './DoorLayer';
-import { FowLayer } from './FowLayer';
-import { CanvasProvider } from './CanvasContext';
-import { useSelection } from './SelectionContext';
-import { useGridEdit } from './GridEditContext';
-import { useSystemState } from '../hooks/useSystemState';
+import { CursorLayer } from './CursorLayer';
+import { HandMaskLayer } from './HandMaskLayer';
 import { SelectionType } from '../types/system';
+import { useSystemState } from '../hooks/useSystemState';
+import { useSelection } from './SelectionContext';
+import { CanvasProvider } from './CanvasContext';
 
 interface SchematicCanvasProps {
   children?: ReactNode;
@@ -16,8 +16,8 @@ interface SchematicCanvasProps {
 
 export const SchematicCanvas: FC<SchematicCanvasProps> = ({ children }) => {
   const { world, config, grid_origin_svg_x, grid_origin_svg_y } = useSystemState();
-  const { isGridEditMode } = useGridEdit();
   const rotation = world.viewport?.rotation || 0;
+
   const centerX = (config.proj_res?.[0] || 1000) / 2;
   const centerY = (config.proj_res?.[1] || 750) / 2;
 
@@ -32,17 +32,22 @@ export const SchematicCanvas: FC<SchematicCanvasProps> = ({ children }) => {
   // Use a ref to ensure we only do the initial centering once
   const initialCentered = useRef(false);
 
+  const resetView = () => {
+    // Center on the screen center since rotation happens around it
+    setViewBox({
+      x: centerX - 500,
+      y: centerY - 375,
+      w: 1000,
+      h: 750,
+    });
+  };
+
   useEffect(() => {
-    if (world.scene !== 'LOADING' && !initialCentered.current) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setViewBox((prev) => ({
-        ...prev,
-        x: (grid_origin_svg_x || 0) - prev.w / 2,
-        y: (grid_origin_svg_y || 0) - prev.h / 2,
-      }));
+    if (world.scene !== 'LOADING' && world.scene !== '' && !initialCentered.current) {
+      resetView();
       initialCentered.current = true;
     }
-  }, [world.scene, grid_origin_svg_x, grid_origin_svg_y]);
+  }, [world.scene, centerX, centerY]);
 
   const handleMouseDown = (e: React.MouseEvent) => {
     // Only pan if we didn't click an interactive element (handled by layers)
@@ -113,15 +118,6 @@ export const SchematicCanvas: FC<SchematicCanvasProps> = ({ children }) => {
     });
   };
 
-  const resetView = () => {
-    setViewBox({
-      x: (grid_origin_svg_x || 0) - 500,
-      y: (grid_origin_svg_y || 0) - 375,
-      w: 1000,
-      h: 750,
-    });
-  };
-
   return (
     <div className="relative h-full w-full overflow-hidden bg-white border-2 border-gray-200 rounded-lg shadow-inner text-black">
       <CanvasProvider
@@ -133,6 +129,7 @@ export const SchematicCanvas: FC<SchematicCanvasProps> = ({ children }) => {
       >
         <svg
           ref={svgRef}
+          data-testid="schematic-svg"
           className="h-full w-full cursor-move select-none"
           viewBox={`${viewBox.x} ${viewBox.y} ${viewBox.w} ${viewBox.h}`}
           onMouseDown={handleMouseDown}
@@ -151,21 +148,22 @@ export const SchematicCanvas: FC<SchematicCanvasProps> = ({ children }) => {
             onClick={handleBackgroundClick}
           />
 
-          <g transform={`rotate(${rotation}, ${centerX}, ${centerY})`}>
+          <g transform={`rotate(${rotation} ${centerX} ${centerY})`}>
             <MapLayer />
             <DoorLayer />
-            <GridLayer />
             <TokenLayer />
-            {!isGridEditMode && <FowLayer />}
-
-            {/* Layers will be rendered as children */}
-            {children}
           </g>
+
+          <GridLayer />
+          <HandMaskLayer />
+          <CursorLayer />
+
+          {children}
         </svg>
       </CanvasProvider>
 
-      {/* Control overlay */}
-      <div className="absolute bottom-4 right-4 flex flex-col gap-2">
+      {/* View controls */}
+      <div className="absolute bottom-4 right-4 flex flex-col space-y-2">
         <button
           onClick={resetView}
           className="rounded bg-white px-3 py-1 text-sm font-medium shadow hover:bg-gray-50 text-black border border-gray-300"

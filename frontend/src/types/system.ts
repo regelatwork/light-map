@@ -192,7 +192,7 @@ export interface SystemState {
 }
 
 export const INITIAL_STATE: SystemState = {
-  world: { scene: 'LOADING', fps: 0 },
+  world: { scene: 'MenuScene', fps: 0 },
   tokens: [],
   menu: null,
   config: {

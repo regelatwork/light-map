@@ -152,6 +152,9 @@ class InteractiveApp:
         # Scene Management
         self.scenes = self._initialize_scenes()
         self.current_scene: Scene = self.scenes[SceneId.MENU]
+        self.current_scene_name = self.current_scene.__class__.__name__
+        self.state.current_scene_name = self.current_scene_name
+        self.state.fps = 0.0
         self.current_scene.on_enter()
 
     def get_layer_stack(self) -> List[Layer]:
@@ -298,10 +301,11 @@ class InteractiveApp:
             missing.append(extrinsics_path)
 
         if missing:
+            missing_str = ", ".join(str(m) for m in missing)
             msg = (
                 "\n" + "!" * 60 + "\n"
                 "CRITICAL ERROR: Camera Calibration Files Missing!\n"
-                f"  Missing files: {', '.join(missing)}\n"
+                f"  Missing files: {missing_str}\n"
                 "  The system cannot map tokens without camera calibration.\n"
                 "  PLEASE RUN: python3 scripts/projector_calibration.py\n"
                 "!" * 60 + "\n"

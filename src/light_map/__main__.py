@@ -449,9 +449,7 @@ def run_app(args):
                 main_loop.debug_mode = app.debug_mode
                 output_image, scene_actions = app.process_state(state, actions)
 
-                did_render = False
                 if output_image is not None:
-                    did_render = True
                     # Update Debug View if requested
                     should_hide_overlays = getattr(
                         app.current_scene, "should_hide_overlays", False
@@ -501,7 +499,7 @@ def run_app(args):
                     logger.info("Stopping main loop because window is closed.")
                     main_loop.stop()
 
-                return did_render
+                return True
 
             try:
                 main_loop.run(render_cb)

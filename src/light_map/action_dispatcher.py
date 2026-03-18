@@ -28,6 +28,9 @@ class ActionDispatcher:
         if not isinstance(payload, dict):
             return None
 
+        action_name = payload.get("action")
+        logging.info(f"ActionDispatcher: Dispatching action: {action_name}")
+
         # Handle legacy "map_file" which isn't always in an "action" field
         if "map_file" in payload:
             self.app.load_map(payload["map_file"], payload.get("load_session", False))
@@ -45,6 +48,7 @@ class ActionDispatcher:
 
     def _register_default_handlers(self):
         self.register("SYNC_VISION", handle_sync_vision)
+        self.register("TRIGGER_MENU", handle_trigger_menu)
         self.register("RESET_ZOOM", handle_reset_zoom)
         self.register("UPDATE_GRID", handle_update_grid)
         self.register("INJECT_HANDS_WORLD", handle_inject_hands_world)
@@ -103,6 +107,15 @@ def handle_sync_vision(
         app._sync_vision(state)
     app.app_context.notifications.add_notification("Vision Synchronized")
     return None
+
+
+def handle_trigger_menu(
+    app: "InteractiveApp", payload: Dict[str, Any], state: Optional["WorldState"] = None
+) -> Optional["SceneTransition"]:
+    from .common_types import SceneId
+    from .core.scene import SceneTransition
+
+    return SceneTransition(SceneId.MENU)
 
 
 def handle_reset_zoom(

@@ -342,6 +342,9 @@ class Token:
     name: Optional[str] = None
     color: Optional[str] = None
     type: str = "NPC"
+    profile: Optional[str] = None
+    size: Optional[int] = None
+    height_mm: Optional[float] = None
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -362,6 +365,9 @@ class Token:
             "name": self.name,
             "color": self.color,
             "type": self.type,
+            "profile": self.profile,
+            "size": self.size,
+            "height_mm": self.height_mm,
         }
 
 

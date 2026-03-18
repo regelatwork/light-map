@@ -228,6 +228,8 @@ class MainLoopController:
 
         except KeyboardInterrupt:
             logging.info("Interrupted by user.")
+        except Exception as e:
+            logging.error("Main loop: Unexpected crash: %s", e, exc_info=True)
         finally:
             logging.info("Main loop finished loop execution.")
             self.stop()

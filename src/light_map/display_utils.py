@@ -61,6 +61,10 @@ class ProjectorWindow:
         if self.closed:
             return True
 
+        # Headless/Mock mode check
+        if os.environ.get("MOCK_CAMERA") == "1":
+            return False
+
         # Only check window properties after a few frames have been shown
         if self._frames_shown < WINDOW_CLOSE_CHECK_DELAY_FRAMES:
             return False

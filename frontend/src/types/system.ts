@@ -188,7 +188,16 @@ export interface SystemState {
   grid_spacing_svg: number;
   grid_origin_svg_x: number;
   grid_origin_svg_y: number;
+  map_timestamp: number;
+  menu_timestamp: number;
+  tokens_timestamp: number;
+  raw_aruco_timestamp: number;
+  hands_timestamp: number;
+  scene_timestamp: number;
+  notifications_timestamp: number;
+  viewport_timestamp: number;
   visibility_timestamp: number;
+  fow_timestamp: number;
 }
 
 export const INITIAL_STATE: SystemState = {
@@ -212,5 +221,14 @@ export const INITIAL_STATE: SystemState = {
   grid_spacing_svg: 0,
   grid_origin_svg_x: 0,
   grid_origin_svg_y: 0,
+  map_timestamp: 0,
+  menu_timestamp: 0,
+  tokens_timestamp: 0,
+  raw_aruco_timestamp: 0,
+  hands_timestamp: 0,
+  scene_timestamp: 0,
+  notifications_timestamp: 0,
+  viewport_timestamp: 0,
   visibility_timestamp: 0,
+  fow_timestamp: 0,
 };

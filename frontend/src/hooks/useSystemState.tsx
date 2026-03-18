@@ -9,6 +9,7 @@ import React, {
   type ReactNode,
 } from 'react';
 import { type SystemState, INITIAL_STATE } from '../types/system';
+export { INITIAL_STATE };
 
 type Action =
   | { type: 'UPDATE_STATE'; payload: Partial<SystemState> }

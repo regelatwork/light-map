@@ -346,7 +346,16 @@ class WorldState:
             "grid_spacing_svg": self.grid_spacing_svg,
             "grid_origin_svg_x": self.grid_origin_svg_x,
             "grid_origin_svg_y": self.grid_origin_svg_y,
+            "map_timestamp": self.map_timestamp,
+            "menu_timestamp": self.menu_timestamp,
+            "tokens_timestamp": self.tokens_timestamp,
+            "raw_aruco_timestamp": self.raw_aruco_timestamp,
+            "hands_timestamp": self.hands_timestamp,
+            "scene_timestamp": self.scene_timestamp,
+            "notifications_timestamp": self.notifications_timestamp,
+            "viewport_timestamp": self.viewport_timestamp,
             "visibility_timestamp": self.visibility_timestamp,
+            "fow_timestamp": self.fow_timestamp,
         }
 
     def clear_raw_aruco(self):

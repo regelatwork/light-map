@@ -2,42 +2,57 @@ import { render } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
 import { TokenLayer } from './TokenLayer';
 import { SelectionProvider } from './SelectionContext';
-import { GmPosition } from '../types/system';
 
 // Mock useSystemState hook
 vi.mock('../hooks/useSystemState', () => ({
   useSystemState: vi.fn(),
+  INITIAL_STATE: {
+    world: { scene: 'MenuScene', fps: 0 },
+    tokens: [],
+    menu: null,
+    config: {
+      cam_res: [0, 0],
+      proj_res: [0, 0],
+      enable_hand_masking: false,
+      enable_aruco_masking: true,
+      parallax_factor: -1.0,
+      gm_position: 'None',
+      debug_mode: false,
+      fow_disabled: false,
+    },
+    maps: {},
+    timestamp: 0,
+    isConnected: false,
+    error: null,
+    grid_spacing_svg: 0,
+    grid_origin_svg_x: 0,
+    grid_origin_svg_y: 0,
+    map_timestamp: 0,
+    menu_timestamp: 0,
+    tokens_timestamp: 0,
+    raw_aruco_timestamp: 0,
+    hands_timestamp: 0,
+    scene_timestamp: 0,
+    notifications_timestamp: 0,
+    viewport_timestamp: 0,
+    visibility_timestamp: 0,
+    fow_timestamp: 0,
+  },
 }));
 
-import { useSystemState } from '../hooks/useSystemState';
+import { useSystemState, INITIAL_STATE } from '../hooks/useSystemState';
 
 describe('TokenLayer', () => {
   it('renders NPC as a rect and PC as a circle', () => {
     vi.mocked(useSystemState).mockReturnValue({
+      ...INITIAL_STATE,
       isConnected: true,
       tokens: [
         { id: 1, world_x: 100, world_y: 100, type: 'NPC', name: 'Goblin' },
         { id: 2, world_x: 200, world_y: 200, type: 'PC', name: 'Hero' },
       ],
       world: { scene: 'VIEWING', fps: 60, blockers: [] },
-      menu: null,
-      config: {
-        cam_res: [0, 0],
-        proj_res: [0, 0],
-        gm_position: GmPosition.NONE,
-        debug_mode: false,
-        enable_hand_masking: false,
-        enable_aruco_masking: true,
-        parallax_factor: -1.0,
-        fow_disabled: false,
-      },
-      maps: {},
-      timestamp: 0,
-      error: null,
       grid_spacing_svg: 50,
-      grid_origin_svg_x: 0,
-      grid_origin_svg_y: 0,
-      visibility_timestamp: 0,
     });
 
     const { container } = render(
@@ -66,29 +81,13 @@ describe('TokenLayer', () => {
 
   it('renders PC as circle if type is missing', () => {
     vi.mocked(useSystemState).mockReturnValue({
+      ...INITIAL_STATE,
       isConnected: true,
       tokens: [
-        { id: 3, world_x: 300, world_y: 300 }, // type missing
+        { id: 3, world_x: 300, world_y: 300 } as any, // type missing
       ],
       world: { scene: 'VIEWING', fps: 60, blockers: [] },
-      menu: null,
-      config: {
-        cam_res: [0, 0],
-        proj_res: [0, 0],
-        gm_position: GmPosition.NONE,
-        debug_mode: false,
-        enable_hand_masking: false,
-        enable_aruco_masking: true,
-        parallax_factor: -1.0,
-        fow_disabled: false,
-      },
-      maps: {},
-      timestamp: 0,
-      error: null,
       grid_spacing_svg: 50,
-      grid_origin_svg_x: 0,
-      grid_origin_svg_y: 0,
-      visibility_timestamp: 0,
     });
 
     const { container } = render(

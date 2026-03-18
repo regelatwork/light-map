@@ -296,7 +296,34 @@ def run_app(args):
                 "remote_hands": args.remote_hands,
                 "remote_tokens": args.remote_tokens,
                 "remote_port": args.remote_port,
+                "enable_hand_masking": app.config.enable_hand_masking,
+                "enable_aruco_masking": app.config.enable_aruco_masking,
+                "parallax_factor": app.config.parallax_factor,
+                "gm_position": str(app.config.gm_position),
+                "debug_mode": app.debug_mode,
+                "fow_disabled": app.fow_manager.is_disabled if app.fow_manager else True,
                 "current_map_path": app.current_map_path,
+                "map_width": app.map_system.svg_loader.width
+                if app.map_system.svg_loader
+                else 0.0,
+                "map_height": app.map_system.svg_loader.height
+                if app.map_system.svg_loader
+                else 0.0,
+                "token_profiles": {
+                    k: {"size": v.size, "height_mm": v.height_mm}
+                    for k, v in app.map_config.data.global_settings.token_profiles.items()
+                },
+                "aruco_defaults": {
+                    str(k): {
+                        "name": v.name,
+                        "type": v.type,
+                        "profile": v.profile,
+                        "size": v.size,
+                        "height_mm": v.height_mm,
+                        "color": v.color,
+                    }
+                    for k, v in app.map_config.data.global_settings.aruco_defaults.items()
+                },
             }
 
             # Calculate number of consumers for the camera frames

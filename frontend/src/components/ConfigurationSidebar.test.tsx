@@ -47,6 +47,7 @@ describe('ConfigurationSidebar', () => {
     };
 
     vi.mocked(useSystemStateHook.useSystemState).mockReturnValue({
+      ...useSystemStateHook.INITIAL_STATE,
       tokens: [mockToken],
       world: { scene: 'VIEWING', fps: 60, blockers: [] },
       grid_origin_svg_x: 0,
@@ -114,6 +115,7 @@ describe('ConfigurationSidebar', () => {
     };
 
     vi.mocked(useSystemStateHook.useSystemState).mockReturnValue({
+      ...useSystemStateHook.INITIAL_STATE,
       tokens: [mockToken],
       world: { scene: 'VIEWING', fps: 60, blockers: [] },
       grid_origin_svg_x: 0,
@@ -180,6 +182,7 @@ describe('ConfigurationSidebar', () => {
     };
 
     vi.mocked(useSystemStateHook.useSystemState).mockReturnValue({
+      ...useSystemStateHook.INITIAL_STATE,
       tokens: [mockToken],
       world: { scene: 'VIEWING', fps: 60, blockers: [] },
       grid_origin_svg_x: 0,
@@ -249,6 +252,7 @@ describe('ConfigurationSidebar', () => {
 
   it('allows editing an arbitrary ArUco ID via Quick-Edit', () => {
     vi.mocked(useSystemStateHook.useSystemState).mockReturnValue({
+      ...useSystemStateHook.INITIAL_STATE,
       tokens: [], // No live tokens
       world: { scene: 'VIEWING', fps: 60, blockers: [] },
       grid_origin_svg_x: 0,

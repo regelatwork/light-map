@@ -204,12 +204,21 @@ def create_app(
                         "maps": state_mirror.get("maps", {}),
                         "timestamp": time.monotonic(),
                     }
-                    # Hoist grid metadata to top level for frontend SystemState compatibility
+                    # Hoist grid and version metadata to top level for frontend SystemState compatibility
                     for key in [
                         "grid_spacing_svg",
                         "grid_origin_svg_x",
                         "grid_origin_svg_y",
+                        "map_timestamp",
+                        "menu_timestamp",
+                        "tokens_timestamp",
+                        "raw_aruco_timestamp",
+                        "hands_timestamp",
+                        "scene_timestamp",
+                        "notifications_timestamp",
+                        "viewport_timestamp",
                         "visibility_timestamp",
+                        "fow_timestamp",
                     ]:
                         if key in world:
                             state[key] = world[key]

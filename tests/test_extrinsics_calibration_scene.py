@@ -10,6 +10,7 @@ from light_map.common_types import SceneId
 @pytest.fixture
 def mock_context():
     from light_map.common_types import AppConfig
+
     context = MagicMock()
     context.app_config = AppConfig(
         width=1920,

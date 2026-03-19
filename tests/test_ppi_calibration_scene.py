@@ -12,8 +12,11 @@ from light_map.core.scene import HandInput, SceneTransition
 def mock_app_context():
     """Creates a mock AppContext for testing."""
     from light_map.common_types import AppConfig
+
     mock_context = MagicMock()
-    mock_context.app_config = AppConfig(width=100, height=100, projector_matrix=np.eye(3))
+    mock_context.app_config = AppConfig(
+        width=100, height=100, projector_matrix=np.eye(3)
+    )
     mock_context.projector_matrix = np.eye(3)
     mock_context.last_camera_frame = np.zeros((100, 100, 3), dtype=np.uint8)
     mock_context.map_config_manager = MagicMock()

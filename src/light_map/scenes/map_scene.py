@@ -303,8 +303,11 @@ class ViewingScene(BaseMapScene):
             self._handle_dwell_trigger(cursor_pos)
             self.context.events.cancel(TimerKey.INSPECTION_LINGER)
 
-        # Toggle token visibility (using Action trigger)
-        if primary_gesture == GestureType.SHAKA:
+        # Multi-step menu summoning (Step 1: VICTORY for 2s, Step 2: SHAKA for 2s)
+        is_step1_ready = self.context.events.has_event(TimerKey.SUMMON_MENU)
+
+        # Toggle token visibility (only if not in middle of summoning step 2)
+        if primary_gesture == GestureType.SHAKA and not is_step1_ready:
             if not self.context.events.has_event(TimerKey.TOKEN_TOGGLE_COOLDOWN):
                 self.context.events.schedule(
                     1.0,
@@ -312,19 +315,39 @@ class ViewingScene(BaseMapScene):
                     key=TimerKey.TOKEN_TOGGLE_COOLDOWN,
                 )
 
-        if primary_gesture == config_vars.SUMMON_GESTURE:
-            if not self.context.events.has_event(TimerKey.SUMMON_MENU):
-                logging.debug("Summon gesture started")
+        # Step 1 logic
+        if primary_gesture == config_vars.SUMMON_STEP_1_GESTURE and not is_step1_ready:
+            if not self.context.events.has_event(TimerKey.SUMMON_MENU_STEP_1):
+                logging.debug("Menu summon step 1 started")
                 self.context.events.schedule(
-                    config_vars.SUMMON_TIME,
-                    lambda: Action.TRIGGER_MENU,
-                    key=TimerKey.SUMMON_MENU,
+                    config_vars.SUMMON_STEP_1_TIME,
+                    self._on_summon_step1_complete,
+                    key=TimerKey.SUMMON_MENU_STEP_1,
                 )
         else:
-            if self.context.events.has_event(TimerKey.SUMMON_MENU):
-                self.context.events.cancel(TimerKey.SUMMON_MENU)
+            self.context.events.cancel(TimerKey.SUMMON_MENU_STEP_1)
+
+        # Step 2 logic
+        if is_step1_ready and primary_gesture == config_vars.SUMMON_STEP_2_GESTURE:
+            if not self.context.events.has_event(TimerKey.SUMMON_MENU_STEP_2):
+                logging.debug("Menu summon step 2 started")
+                self.context.events.schedule(
+                    config_vars.SUMMON_STEP_2_TIME,
+                    lambda: Action.TRIGGER_MENU,
+                    key=TimerKey.SUMMON_MENU_STEP_2,
+                )
+        else:
+            self.context.events.cancel(TimerKey.SUMMON_MENU_STEP_2)
 
         return None
+
+    def _on_summon_step1_complete(self):
+        """Called when Step 1 of menu summoning is complete."""
+        self.context.notifications.add_notification(
+            "Ready to open menu... (SHAKA for 2s)"
+        )
+        # Create a 5-second window for step 2
+        self.context.events.schedule(5.0, lambda: None, key=TimerKey.SUMMON_MENU)
 
     def render(self, frame: np.ndarray) -> np.ndarray:
         return frame

@@ -376,8 +376,16 @@ class ProjectorCalibrationScene(Scene):
         return False
 
     def get_active_layers(self, app: InteractiveApp) -> List[Layer]:
-        """Calibration scenes only need standard scene + UI layers."""
-        return self.get_scene_with_ui_stack(app)
+        """
+        Calibration scenes only need standard scene + UI layers.
+        We exclude notification and debug layers to avoid pattern interference.
+        """
+        return [
+            app.scene_layer,
+            app.token_layer,
+            app.menu_layer,
+            app.cursor_layer,
+        ]
 
     def render(self, frame: np.ndarray) -> np.ndarray:
         if self._pattern_image is not None:

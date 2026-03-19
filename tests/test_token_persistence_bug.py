@@ -100,13 +100,21 @@ def test_tokens_persist_via_aruco_mapper_path():
 
     controller = MainLoopController(state, manager, input_mgr, aruco_mapper=mock_mapper)
 
-    # 1. Set initial tokens
+    # 1. Set initial tokens via apply() to ensure manager state is synced
     token1 = Token(id=1, world_x=100, world_y=100)
-    state.tokens = [token1]
-    state.tokens_timestamp = 1
+    res_init = DetectionResult(
+        timestamp=0,
+        type=ResultType.ARUCO,
+        data={"tokens": [token1], "raw_tokens": [token1]},
+    )
+    res_init.metadata["source"] = "physical"
+    state.apply(res_init)
+
+    assert len(state.tokens) == 1
 
     # 2. Set raw_aruco to something so the mapper is called
     state.raw_aruco = {"ids": [1], "corners": [None]}
+    state.raw_aruco_timestamp = 1  # Ensure it differs from _last_raw_aruco_ts
 
     controller.tick()
 

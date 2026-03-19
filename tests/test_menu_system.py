@@ -104,21 +104,17 @@ def test_navigation_and_hover(menu_system, mock_time):
     # Item 2: 460 -> 540
 
     # Hover Item 1
-    state = menu_system.update(
-        500, 400, GestureType.OPEN_PALM
-    )  # Y=400 is inside Item 1
+    state = menu_system.update(500, 400, GestureType.POINTING)  # Y=400 is inside Item 1
     assert state.hovered_item_index == 0
     assert state.active_items[0].title == "Item 1"
 
     # Hover Item 2
-    state = menu_system.update(
-        500, 500, GestureType.OPEN_PALM
-    )  # Y=500 is inside Item 2
+    state = menu_system.update(500, 500, GestureType.POINTING)  # Y=500 is inside Item 2
     assert state.hovered_item_index == 1
     assert state.active_items[1].title == "Item 2"
 
     # Hover Gap (Should NOT clear hover - sticky logic)
-    state = menu_system.update(500, 450, GestureType.OPEN_PALM)  # Y=450 is gap
+    state = menu_system.update(500, 450, GestureType.POINTING)  # Y=450 is gap
     assert state.hovered_item_index == 1  # Still Item 2
 
 
@@ -127,7 +123,7 @@ def test_pinning_logic(menu_system, mock_time):
 
     # 1. Fill history with movement
     # t=1000: (500, 500)
-    menu_system.update(500, 500, GestureType.OPEN_PALM)
+    menu_system.update(500, 500, GestureType.POINTING)
 
     # Advance time to t=1000 + LOCK_DELAY
     # We want the cursor to pin to t=1000 (500, 500)
@@ -146,7 +142,7 @@ def test_selection_trigger(menu_system, mock_time):
     menu_system.state = MenuSystemState.ACTIVE
 
     # Position over Item 1 (360-440)
-    menu_system.update(500, 400, GestureType.OPEN_PALM)
+    menu_system.update(500, 400, GestureType.POINTING)
 
     # Start Selection
     mock_time.advance(0.1)

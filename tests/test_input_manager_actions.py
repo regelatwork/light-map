@@ -18,10 +18,10 @@ def test_input_manager_semantic_actions():
 def test_input_manager_gesture_mapping():
     manager = InputManager()
 
-    # Open Palm -> Back
+    # Open Palm -> SELECT (used to be BACK)
     manager.update(x=100, y=100, gesture=GestureType.OPEN_PALM, is_present=True)
-    assert Action.BACK in manager.get_actions()
+    assert Action.SELECT in manager.get_actions()
 
-    # Pointing -> Move (Hover)
-    manager.update(x=100, y=100, gesture=GestureType.POINTING, is_present=True)
-    assert Action.MOVE in manager.get_actions()
+    # Closed Fist -> BACK (used to be SELECT)
+    manager.update(x=100, y=100, gesture=GestureType.CLOSED_FIST, is_present=True)
+    assert Action.BACK in manager.get_actions()

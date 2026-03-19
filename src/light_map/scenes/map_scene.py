@@ -223,7 +223,7 @@ class BaseMapScene(Scene):
         current_time: float,
     ) -> bool:
         """Centralized logic for dwell triggering and inspection linger."""
-        if primary_gesture == GestureType.POINTING and cursor_pos is not None:
+        if primary_gesture == GestureType.OPEN_PALM and cursor_pos is not None:
             target_id = self._find_target_at_point(cursor_pos)
             # Check if dwell triggered (handles both polling and event-based triggers)
             if self.dwell_tracker.update(cursor_pos, dt, target_id=target_id):

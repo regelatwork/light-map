@@ -67,9 +67,9 @@ class InputManager:
             self._pending_actions.add(Action.TOGGLE_DEBUG)
 
     def _map_gesture_to_action(self, gesture: GestureType) -> Optional[Action]:
-        if gesture in [GestureType.VICTORY, GestureType.CLOSED_FIST]:
+        if gesture in [GestureType.VICTORY, GestureType.OPEN_PALM]:
             return Action.SELECT
-        elif gesture == GestureType.OPEN_PALM:
+        elif gesture == GestureType.CLOSED_FIST:
             return Action.BACK
         elif gesture == GestureType.POINTING:
             return Action.MOVE

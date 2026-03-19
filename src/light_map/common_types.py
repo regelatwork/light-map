@@ -103,6 +103,13 @@ class GestureType(StrEnum):
     NONE = "None"
 
 
+class TokenMergePolicy(StrEnum):
+    PHYSICAL_PRIORITY = "PHYSICAL_PRIORITY"
+    REMOTE_PRIORITY = "REMOTE_PRIORITY"
+    PHYSICAL_ONLY = "PHYSICAL_ONLY"
+    REMOTE_ONLY = "REMOTE_ONLY"
+
+
 class TokenDetectionAlgorithm(StrEnum):
     FLASH = "FLASH"
     STRUCTURED_LIGHT = "STRUCTURED_LIGHT"

@@ -18,7 +18,7 @@ FONT_SCALE_BASE: float = 1.0  # Base font scale for text fitting
 PADDING: int = 20  # Pixels padding around text
 
 # --- Gesture Mapping ---
-SELECT_GESTURE = GestureType.CLOSED_FIST
+SELECT_GESTURE = GestureType.OPEN_PALM
 SUMMON_GESTURE = GestureType.VICTORY
 ZOOM_GESTURE = GestureType.POINTING  # Both hands must be this
 PAN_GESTURE = GestureType.CLOSED_FIST

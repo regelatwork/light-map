@@ -1,7 +1,53 @@
+import numpy as np
 from multiprocessing import Queue, Event
 from fastapi.testclient import TestClient
-from light_map.vision.remote_driver import create_app
+from light_map.vision.remote_driver import create_app, numpy_to_python
 from light_map.common_types import ResultType, DetectionResult
+
+
+def test_numpy_to_python_converter():
+    """Verifies that numpy_to_python correctly converts various numpy types."""
+    data = {
+        "array": np.array([1, 2, 3]),
+        "float": np.float32(10.5),
+        "int": np.int64(42),
+        "bool": np.bool_(True),
+        "nested": {"val": np.float64(1.23)},
+        "list": [np.int32(1), np.int32(2)],
+        "tuple": (np.float32(1.0),),
+    }
+    converted = numpy_to_python(data)
+    assert isinstance(converted["array"], list)
+    assert isinstance(converted["float"], float)
+    assert isinstance(converted["int"], int)
+    assert isinstance(converted["bool"], bool)
+    assert isinstance(converted["nested"]["val"], float)
+    assert isinstance(converted["list"][0], int)
+    assert isinstance(converted["tuple"], tuple)
+    assert isinstance(converted["tuple"][0], float)
+
+
+def test_remote_driver_numpy_serialization():
+    """Verifies that the API can handle numpy types in the state mirror."""
+    results_queue = Queue()
+    stop_event = Event()
+    state_mirror = {
+        "world": {
+            "grid_spacing": np.float32(50.0),
+            "offset": np.array([10.0, 20.0]),
+            "active": np.bool_(True),
+        }
+    }
+
+    app = create_app(results_queue, stop_event, state_mirror)
+    client = TestClient(app)
+
+    response = client.get("/state/world")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["grid_spacing"] == 50.0
+    assert data["offset"] == [10.0, 20.0]
+    assert data["active"] is True
 
 
 def test_remote_driver_hands_endpoint():

@@ -76,6 +76,37 @@ class SystemConfigUpdate(BaseModel):
     gm_position: Optional[str] = None
 
 
+def numpy_to_python(obj: Any) -> Any:
+    """Recursively convert NumPy types to native Python types for JSON serialization."""
+    if isinstance(obj, dict):
+        return {k: numpy_to_python(v) for k, v in obj.items()}
+    elif isinstance(obj, list):
+        return [numpy_to_python(i) for i in obj]
+    elif isinstance(obj, tuple):
+        return tuple(numpy_to_python(i) for i in obj)
+    elif isinstance(obj, np.ndarray):
+        return numpy_to_python(obj.tolist())
+    elif isinstance(obj, (np.float16, np.float32, np.float64)):
+        return float(obj)
+    elif isinstance(
+        obj,
+        (
+            np.int8,
+            np.int16,
+            np.int32,
+            np.int64,
+            np.uint8,
+            np.uint16,
+            np.uint32,
+            np.uint64,
+        ),
+    ):
+        return int(obj)
+    elif isinstance(obj, np.bool_):
+        return bool(obj)
+    return obj
+
+
 class ConnectionManager:
     def __init__(self):
         self.active_connections: list[WebSocket] = []
@@ -153,7 +184,7 @@ def create_app(
             ]:
                 if key in world:
                     state[key] = world[key]
-            return state
+            return numpy_to_python(state)
         except Exception as e:
             if not stop_event.is_set():
                 logging.error(f"Error fetching state from mirror: {e}")
@@ -584,27 +615,27 @@ def create_app(
 
     @app.get("/config")
     def get_config():
-        return state_mirror.get("config", {})
+        return numpy_to_python(state_mirror.get("config", {}))
 
     @app.get("/state/menu")
     def get_menu_state():
-        return state_mirror.get("menu", {})
+        return numpy_to_python(state_mirror.get("menu", {}))
 
     @app.get("/state/world")
     def get_world_state():
-        return state_mirror.get("world", {})
+        return numpy_to_python(state_mirror.get("world", {}))
 
     @app.get("/state/tokens")
     def get_tokens():
-        return state_mirror.get("tokens", [])
+        return numpy_to_python(state_mirror.get("tokens", []))
 
     @app.get("/state/blockers")
     def get_blockers():
-        return state_mirror.get("world", {}).get("blockers", [])
+        return numpy_to_python(state_mirror.get("world", {}).get("blockers", []))
 
     @app.get("/state/dwell")
     def get_dwell():
-        return state_mirror.get("world", {}).get("dwell_state", {})
+        return numpy_to_python(state_mirror.get("world", {}).get("dwell_state", {}))
 
     @app.get("/state/logs")
     def get_logs(lines: int = 100):
@@ -669,11 +700,13 @@ def create_app(
     def get_maps():
         """Returns a list of registered maps from the MapConfigManager."""
         maps_dict = state_mirror.get("maps", {})
-        return [
-            {"path": path, "name": info.get("name", os.path.basename(path))}
-            for path in maps_dict.keys()
-            for info in [maps_dict[path]]
-        ]
+        return numpy_to_python(
+            [
+                {"path": path, "name": info.get("name", os.path.basename(path))}
+                for path in maps_dict.keys()
+                for info in [maps_dict[path]]
+            ]
+        )
 
     @app.post("/map/load")
     def load_map(path: str, load_session: bool = True):

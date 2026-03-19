@@ -11,6 +11,8 @@ from fastapi.responses import StreamingResponse
 import threading
 import cv2
 import numpy as np
+import fastapi.encoders
+import fastapi.routing
 from light_map.vision.frame_producer import FrameProducer
 from pydantic import BaseModel
 from typing import List, Dict, Any, Optional
@@ -18,6 +20,25 @@ from multiprocessing import Queue, Event
 
 from light_map.common_types import DetectionResult, ResultType, Token, GestureType
 from light_map.core.scene import HandInput
+
+
+# --- Global monkeypatch for FastAPI to handle NumPy types ---
+_original_jsonable_encoder = fastapi.encoders.jsonable_encoder
+
+
+def custom_jsonable_encoder(obj: Any, **kwargs: Any) -> Any:
+    """Extension of jsonable_encoder that handles NumPy arrays and scalars."""
+    if isinstance(obj, np.ndarray):
+        return obj.tolist()
+    if isinstance(obj, np.generic):
+        return obj.item()
+    return _original_jsonable_encoder(obj, **kwargs)
+
+
+# Apply the monkeypatch to both the encoders module and the routing module's local reference
+fastapi.encoders.jsonable_encoder = custom_jsonable_encoder
+fastapi.routing.jsonable_encoder = custom_jsonable_encoder
+# -----------------------------------------------------------
 
 
 class RemoteHandInput(BaseModel):
@@ -78,33 +99,7 @@ class SystemConfigUpdate(BaseModel):
 
 def numpy_to_python(obj: Any) -> Any:
     """Recursively convert NumPy types to native Python types for JSON serialization."""
-    if isinstance(obj, dict):
-        return {k: numpy_to_python(v) for k, v in obj.items()}
-    elif isinstance(obj, list):
-        return [numpy_to_python(i) for i in obj]
-    elif isinstance(obj, tuple):
-        return tuple(numpy_to_python(i) for i in obj)
-    elif isinstance(obj, np.ndarray):
-        return numpy_to_python(obj.tolist())
-    elif isinstance(obj, (np.float16, np.float32, np.float64)):
-        return float(obj)
-    elif isinstance(
-        obj,
-        (
-            np.int8,
-            np.int16,
-            np.int32,
-            np.int64,
-            np.uint8,
-            np.uint16,
-            np.uint32,
-            np.uint64,
-        ),
-    ):
-        return int(obj)
-    elif isinstance(obj, np.bool_):
-        return bool(obj)
-    return obj
+    return fastapi.encoders.jsonable_encoder(obj)
 
 
 class ConnectionManager:
@@ -615,27 +610,27 @@ def create_app(
 
     @app.get("/config")
     def get_config():
-        return numpy_to_python(state_mirror.get("config", {}))
+        return state_mirror.get("config", {})
 
     @app.get("/state/menu")
     def get_menu_state():
-        return numpy_to_python(state_mirror.get("menu", {}))
+        return state_mirror.get("menu", {})
 
     @app.get("/state/world")
     def get_world_state():
-        return numpy_to_python(state_mirror.get("world", {}))
+        return state_mirror.get("world", {})
 
     @app.get("/state/tokens")
     def get_tokens():
-        return numpy_to_python(state_mirror.get("tokens", []))
+        return state_mirror.get("tokens", [])
 
     @app.get("/state/blockers")
     def get_blockers():
-        return numpy_to_python(state_mirror.get("world", {}).get("blockers", []))
+        return state_mirror.get("world", {}).get("blockers", [])
 
     @app.get("/state/dwell")
     def get_dwell():
-        return numpy_to_python(state_mirror.get("world", {}).get("dwell_state", {}))
+        return state_mirror.get("world", {}).get("dwell_state", {})
 
     @app.get("/state/logs")
     def get_logs(lines: int = 100):
@@ -700,13 +695,11 @@ def create_app(
     def get_maps():
         """Returns a list of registered maps from the MapConfigManager."""
         maps_dict = state_mirror.get("maps", {})
-        return numpy_to_python(
-            [
-                {"path": path, "name": info.get("name", os.path.basename(path))}
-                for path in maps_dict.keys()
-                for info in [maps_dict[path]]
-            ]
-        )
+        return [
+            {"path": path, "name": info.get("name", os.path.basename(path))}
+            for path in maps_dict.keys()
+            for info in [maps_dict[path]]
+        ]
 
     @app.post("/map/load")
     def load_map(path: str, load_session: bool = True):

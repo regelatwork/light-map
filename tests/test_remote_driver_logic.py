@@ -23,7 +23,7 @@ def test_numpy_to_python_converter():
     assert isinstance(converted["bool"], bool)
     assert isinstance(converted["nested"]["val"], float)
     assert isinstance(converted["list"][0], int)
-    assert isinstance(converted["tuple"], tuple)
+    assert isinstance(converted["tuple"], list)
     assert isinstance(converted["tuple"][0], float)
 
 

@@ -1,10 +1,14 @@
 import pytest
+import numpy as np
 from light_map.map_system import MapSystem
 
 
 @pytest.fixture
 def map_system():
-    return MapSystem(screen_width=1000, screen_height=1000)
+    from light_map.common_types import AppConfig
+
+    config = AppConfig(width=1000, height=1000, projector_matrix=np.eye(3))
+    return MapSystem(config)
 
 
 def test_undo_simple(map_system):

@@ -122,7 +122,10 @@ def test_aruco_detect_integration():
     frame[190:290, 370:470] = marker_img
 
     # MapSystem (Identity for simplicity)
-    map_system = MapSystem(1920, 1080)
+    from light_map.common_types import AppConfig
+
+    config = AppConfig(width=1920, height=1080, projector_matrix=np.eye(3))
+    map_system = MapSystem(config)
 
     # Detect
     tokens = detector.detect(frame, map_system, ppi=25.4, default_height_mm=0.0)

@@ -1,4 +1,5 @@
 import pytest
+import numpy as np
 from unittest.mock import MagicMock
 from light_map.scenes.map_scene import MapScene
 from light_map.core.app_context import AppContext
@@ -21,7 +22,10 @@ def context():
     ctx.app_config.width = 1000
     ctx.app_config.height = 1000
     ctx.app_config.projector_ppi = 96.0
-    ctx.map_system = MapSystem(1000, 1000)
+    from light_map.common_types import AppConfig
+
+    config = AppConfig(width=1000, height=1000, projector_matrix=np.eye(3))
+    ctx.map_system = MapSystem(config)
     ctx.map_config_manager = MagicMock()
     ctx.map_config_manager.data.maps = {}
     ctx.map_config_manager.get_map_grid_spacing.return_value = 50.0

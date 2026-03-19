@@ -47,7 +47,10 @@ def test_aruco_fov_masking():
     marker2 = cv2.aruco.generateImageMarker(aruco_dict, 2, 50)
     frame[375:425, 375:425] = cv2.cvtColor(marker2, cv2.COLOR_GRAY2BGR)
 
-    map_system = MapSystem(640, 480)
+    from light_map.common_types import AppConfig
+
+    config = AppConfig(width=640, height=480, projector_matrix=np.eye(3))
+    map_system = MapSystem(config)
 
     # Identity projector matrix: (0,0)->(0,0), (640,480)->(640,480)
     # Mask will be the whole 640x480 frame.
@@ -65,7 +68,8 @@ def test_aruco_fov_masking():
 
     # 3. Detect WITH partial masking (Top-Left 200x200)
     # Projector size 200x200.
-    map_system_small = MapSystem(200, 200)
+    config_small = AppConfig(width=200, height=200, projector_matrix=np.eye(3))
+    map_system_small = MapSystem(config_small)
     # Identity projector matrix means projector pixels (0-200, 0-200) map to camera (0-200, 0-200).
     tokens_masked = detector.detect(
         frame, map_system_small, projector_matrix=projector_matrix_full

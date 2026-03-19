@@ -240,7 +240,9 @@ def create_app(
             while not stop_event.is_set():
                 if manager.active_connections:
                     try:
-                        state = await asyncio.to_thread(get_formatted_state, state_mirror)
+                        state = await asyncio.to_thread(
+                            get_formatted_state, state_mirror
+                        )
                         if state:
                             await manager.broadcast(state)
                     except Exception as e:
@@ -389,6 +391,7 @@ def create_app(
             type=ResultType.ARUCO,
             data={"tokens": processed_tokens, "raw_tokens": processed_tokens},
         )
+        res.metadata["source"] = "remote"
         results_queue.put(res)
         return {"status": "injected", "count": len(processed_tokens)}
 

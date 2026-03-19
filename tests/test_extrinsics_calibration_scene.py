@@ -9,9 +9,15 @@ from light_map.common_types import SceneId
 
 @pytest.fixture
 def mock_context():
+    from light_map.common_types import AppConfig
     context = MagicMock()
-    context.app_config.width = 1920
-    context.app_config.height = 1080
+    context.app_config = AppConfig(
+        width=1920,
+        height=1080,
+        projector_matrix=np.eye(3),
+        camera_matrix=np.eye(3),
+        distortion_coefficients=np.zeros(5),
+    )
     context.map_config_manager.get_ppi.return_value = 96.0
     # Add dummy token profile
     context.map_config_manager.data.global_settings.aruco_defaults = {

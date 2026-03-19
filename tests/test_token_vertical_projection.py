@@ -66,9 +66,13 @@ def test_token_vertical_projection():
         v_coord = float(v[0])
 
         # Integration Check: detect() method
+        from light_map.common_types import AppConfig
+
+        config = AppConfig(width=1920, height=1080, projector_matrix=np.eye(3))
         map_system = MapSystem(
-            1920, 1080
+            config
         )  # Identity mapping mm -> projector pixels -> world
+
         frame = np.zeros((1080, 1920, 3), dtype=np.uint8)
 
         # Mock corners: (1, 4, 2)

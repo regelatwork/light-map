@@ -100,8 +100,6 @@ class FlashCalibrationScene(Scene):
             app.scene_layer,
             app.token_layer,
             app.menu_layer,
-            app.notification_layer,
-            app.debug_layer,
             app.cursor_layer,
         ]
 
@@ -395,8 +393,6 @@ class ProjectorCalibrationScene(Scene):
             app.scene_layer,
             app.token_layer,
             app.menu_layer,
-            app.notification_layer,
-            app.debug_layer,
             app.cursor_layer,
         ]
 
@@ -689,8 +685,6 @@ class ExtrinsicsCalibrationScene(Scene):
             app.scene_layer,
             app.token_layer,
             app.menu_layer,
-            app.notification_layer,
-            app.debug_layer,
             app.cursor_layer,
         ]
 
@@ -963,8 +957,6 @@ class PpiCalibrationScene(Scene):
             app.scene_layer,
             app.token_layer,
             app.menu_layer,
-            app.notification_layer,
-            app.debug_layer,
             app.cursor_layer,
         ]
 

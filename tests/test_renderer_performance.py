@@ -1,11 +1,12 @@
 import numpy as np
 import time
 from light_map.renderer import Renderer
-from light_map.common_types import ImagePatch, LayerMode
+from light_map.common_types import ImagePatch, LayerMode, AppConfig
 
 
 def test_renderer_correctness():
-    renderer = Renderer(100, 100)
+    config = AppConfig(width=100, height=100, projector_matrix=np.eye(3))
+    renderer = Renderer(config)
 
     # Create a background: half white, half black
     background = np.zeros((100, 100, 3), dtype=np.uint8)
@@ -44,7 +45,8 @@ def test_renderer_correctness():
 
 
 def test_renderer_binary_mask_optimization():
-    renderer = Renderer(100, 100)
+    config = AppConfig(width=100, height=100, projector_matrix=np.eye(3))
+    renderer = Renderer(config)
     renderer.output_buffer.fill(255)  # White
 
     # Create a patch: Blue with 100% alpha (255)
@@ -61,7 +63,8 @@ def test_renderer_binary_mask_optimization():
 
 def benchmark_renderer():
     width, height = 1920, 1080
-    renderer = Renderer(width, height)
+    config = AppConfig(width=width, height=height, projector_matrix=np.eye(3))
+    renderer = Renderer(config)
 
     # 10 large patches
     patches = []

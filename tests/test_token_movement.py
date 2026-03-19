@@ -20,7 +20,8 @@ def test_token_movement_propagation():
 
     world_state = WorldState()
 
-    map_system = MapSystem(1920, 1080)
+    config = AppConfig(width=1920, height=1080, projector_matrix=np.eye(3))
+    map_system = MapSystem(config)
     # Mock SVG loader to avoid file system dependency
     map_system.svg_loader = MagicMock()
     map_system.svg_loader.filename = "test.svg"

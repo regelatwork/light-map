@@ -40,6 +40,10 @@ class WorldState:
 
         self.tokens: List[Token] = []  # Logical/Snapped tokens
         self.raw_tokens: List[Token] = []  # Live/Unsnapped tokens
+        self._physical_tokens: List[Token] = []
+        self._remote_tokens: List[Token] = []
+        self._physical_raw_tokens: List[Token] = []
+        self._remote_raw_tokens: List[Token] = []
         self.raw_aruco: Dict[str, Any] = {"corners": [], "ids": []}
         self.hands: List[Any] = []  # Landmarks
         self.handedness: List[Any] = []
@@ -196,20 +200,46 @@ class WorldState:
         if result.type == ResultType.ARUCO:
             changed_tokens = False
             changed_raw = False
+            source = result.metadata.get("source", "physical")
+
             if "tokens" in result.data:
                 # Logical/Snapped tokens
                 new_tokens = result.data["tokens"]
+                new_raw_tokens = result.data.get("raw_tokens", [])
 
-                if not self._tokens_equal(self.tokens, new_tokens):
-                    self.tokens = new_tokens
+                if source == "remote":
+                    self._remote_tokens = new_tokens
+                    self._remote_raw_tokens = new_raw_tokens
+                else:
+                    self._physical_tokens = new_tokens
+                    self._physical_raw_tokens = new_raw_tokens
+
+                # Re-merge
+                merged_snapped = {}
+                merged_raw_dict = {}
+
+                # Remote tokens first
+                for t in self._remote_tokens:
+                    merged_snapped[t.id] = t
+                for t in self._remote_raw_tokens:
+                    merged_raw_dict[t.id] = t
+
+                # Physical tokens second (win conflicts)
+                for t in self._physical_tokens:
+                    merged_snapped[t.id] = t
+                for t in self._physical_raw_tokens:
+                    merged_raw_dict[t.id] = t
+
+                final_tokens = list(merged_snapped.values())
+                final_raw_tokens = list(merged_raw_dict.values())
+
+                if not self._tokens_equal(self.tokens, final_tokens):
+                    self.tokens = final_tokens
                     changed_tokens = True
 
-                # Update raw tokens if provided
-                if "raw_tokens" in result.data:
-                    new_raw_tokens = result.data["raw_tokens"]
-                    if not self._tokens_equal(self.raw_tokens, new_raw_tokens):
-                        self.raw_tokens = new_raw_tokens
-                        changed_tokens = True
+                if not self._tokens_equal(self.raw_tokens, final_raw_tokens):
+                    self.raw_tokens = final_raw_tokens
+                    changed_tokens = True
             else:
                 # Raw ArUco from workers (corners, ids)
                 new_ids = result.data.get("ids", [])
@@ -325,7 +355,12 @@ class WorldState:
         if len(self.raw_aruco["corners"]) != len(new_corners):
             return True
 
-        return self.raw_aruco["corners"] != new_corners
+        # Use np.array_equal for robust comparison of corner arrays
+        for old_c, new_c in zip(self.raw_aruco["corners"], new_corners):
+            if not np.array_equal(old_c, new_c):
+                return True
+
+        return False
 
     def to_dict(self) -> Dict[str, Any]:
         """Serializes the WorldState into a dictionary for the Remote Driver."""

@@ -21,7 +21,9 @@ class MockLayer(Layer):
 
 
 def test_renderer_visibility_composition():
-    renderer = Renderer(100, 100)
+    from light_map.common_types import AppConfig
+    config = AppConfig(width=100, height=100, projector_matrix=np.eye(3))
+    renderer = Renderer(config)
 
     # Layer 1: Base Map (Solid Red BGR: 0, 0, 255)
     map_layer = MockLayer((0, 0, 255), 255, is_static=True)

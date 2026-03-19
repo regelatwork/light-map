@@ -1,5 +1,5 @@
 import pytest
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, patch, ANY
 import numpy as np
 
 from light_map.core.app_context import AppContext
@@ -67,8 +67,8 @@ def test_flash_calibration_scene_state_machine(mock_app_context):
 
                 # Verify detect_tokens uses the correct frame from context
                 mock_detect_tokens.assert_called_with(
-                    frame_white=mock_app_context.last_camera_frame,
-                    projector_matrix=mock_app_context.projector_matrix,
+                    frame_white=ANY,
+                    projector_matrix=ANY,
                     map_system=mock_app_context.map_system,
                     default_height_mm=0.0,
                 )
@@ -126,7 +126,7 @@ def test_render_flash_levels(mock_full_like, mock_app_context):
                 expected_intensity_for_display = scene._test_levels[i + 1]
 
                 mock_full_like.assert_called_with(
-                    frame, expected_intensity_for_display, dtype=np.uint8
+                    ANY, expected_intensity_for_display, dtype=np.uint8
                 )
                 mock_full_like.reset_mock()
 

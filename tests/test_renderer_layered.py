@@ -1,6 +1,6 @@
 import numpy as np
 from light_map.renderer import Renderer
-from light_map.common_types import Layer, LayerMode, ImagePatch
+from light_map.common_types import Layer, LayerMode, ImagePatch, AppConfig
 from light_map.core.world_state import WorldState
 from typing import List, Optional
 
@@ -25,7 +25,8 @@ class MockLayer(Layer):
 
 
 def test_renderer_initialization():
-    renderer = Renderer(800, 600)
+    config = AppConfig(width=800, height=600, projector_matrix=np.eye(3))
+    renderer = Renderer(config)
     assert renderer.screen_width == 800
     assert renderer.screen_height == 600
     assert renderer.output_buffer.shape == (600, 800, 3)
@@ -33,7 +34,8 @@ def test_renderer_initialization():
 
 
 def test_renderer_blocking_layer():
-    renderer = Renderer(100, 100)
+    config = AppConfig(width=100, height=100, projector_matrix=np.eye(3))
+    renderer = Renderer(config)
     # Create a red patch
     red_data = np.zeros((50, 50, 4), dtype=np.uint8)
     red_data[:, :, 0:2] = 0
@@ -52,7 +54,8 @@ def test_renderer_blocking_layer():
 
 
 def test_renderer_normal_layer_alpha_blending():
-    renderer = Renderer(100, 100)
+    config = AppConfig(width=100, height=100, projector_matrix=np.eye(3))
+    renderer = Renderer(config)
 
     # 1. Bottom layer: Solid Blue (BLOCKING)
     blue_data = np.zeros((100, 100, 4), dtype=np.uint8)
@@ -80,7 +83,8 @@ def test_renderer_normal_layer_alpha_blending():
 
 
 def test_renderer_clipping():
-    renderer = Renderer(100, 100)
+    config = AppConfig(width=100, height=100, projector_matrix=np.eye(3))
+    renderer = Renderer(config)
 
     # 1. Patch partially off-left (x=-25, y=0, w=50, h=100)
     red_data = np.zeros((100, 50, 4), dtype=np.uint8)
@@ -111,7 +115,8 @@ def test_renderer_clipping():
 
 
 def test_renderer_skip_if_version_unchanged():
-    renderer = Renderer(100, 100)
+    config = AppConfig(width=100, height=100, projector_matrix=np.eye(3))
+    renderer = Renderer(config)
     state = WorldState()
     layer = MockLayer(state=state)
 
@@ -130,7 +135,8 @@ def test_renderer_skip_if_version_unchanged():
 
 
 def test_renderer_layer_stack_change_invalidates_cache():
-    renderer = Renderer(100, 100)
+    config = AppConfig(width=100, height=100, projector_matrix=np.eye(3))
+    renderer = Renderer(config)
     state = WorldState()
 
     # 1. First stack: Blue layer

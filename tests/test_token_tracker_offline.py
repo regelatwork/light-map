@@ -34,7 +34,10 @@ def test_token_tracker_offline_detection():
 
     # 2. Setup MapSystem
     h, w = image.shape[:2]
-    map_system = MapSystem(w, h)
+    from light_map.common_types import AppConfig
+
+    app_config = AppConfig(width=w, height=h, projector_matrix=np.eye(3))
+    map_system = MapSystem(app_config)
 
     # Set State
     map_system.set_state(

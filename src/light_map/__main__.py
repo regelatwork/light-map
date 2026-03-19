@@ -334,7 +334,9 @@ def run_app(args):
             if app.state.menu_state:
                 state_mirror["menu"] = {
                     "title": app.state.menu_state.current_menu_title,
-                    "depth": len(getattr(app.state.menu_state, "node_stack_titles", [])),
+                    "depth": len(
+                        getattr(app.state.menu_state, "node_stack_titles", [])
+                    ),
                     "items": [item.title for item in app.state.menu_state.active_items],
                 }
             else:

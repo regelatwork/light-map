@@ -4,6 +4,7 @@ import datetime
 import time
 import logging
 import hashlib
+import json
 import cv2
 from dataclasses import asdict, dataclass, field
 from typing import Dict, Optional, List, Any
@@ -151,16 +152,25 @@ class MapConfigManager:
             # Fallback: if tokens_raw is empty, try looking in the project root
             if not tokens_raw or not tokens_raw.get("token_profiles"):
                 root_tokens_path = os.path.join(os.getcwd(), "tokens.json")
-                if os.path.exists(root_tokens_path) and root_tokens_path != self.tokens_filename:
-                    logging.info(f"MapConfig: Primary tokens.json empty, trying root fallback: {root_tokens_path}")
+                if (
+                    os.path.exists(root_tokens_path)
+                    and root_tokens_path != self.tokens_filename
+                ):
+                    logging.info(
+                        f"MapConfig: Primary tokens.json empty, trying root fallback: {root_tokens_path}"
+                    )
                     try:
                         with open(root_tokens_path, "r") as f:
                             root_tokens = json.load(f)
                             if root_tokens and root_tokens.get("token_profiles"):
                                 tokens_raw = root_tokens
-                                logging.info("MapConfig: Successfully loaded tokens from root fallback.")
+                                logging.info(
+                                    "MapConfig: Successfully loaded tokens from root fallback."
+                                )
                     except Exception as e:
-                        logging.warning(f"MapConfig: Failed to load root tokens fallback: {e}")
+                        logging.warning(
+                            f"MapConfig: Failed to load root tokens fallback: {e}"
+                        )
 
             if not raw and not tokens_raw:
                 return MapConfigData()

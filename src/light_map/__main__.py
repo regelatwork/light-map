@@ -301,7 +301,9 @@ def run_app(args):
                 "parallax_factor": app.config.parallax_factor,
                 "gm_position": str(app.config.gm_position),
                 "debug_mode": app.debug_mode,
-                "fow_disabled": app.fow_manager.is_disabled if app.fow_manager else True,
+                "fow_disabled": app.fow_manager.is_disabled
+                if app.fow_manager
+                else True,
                 "current_map_path": app.current_map_path,
                 "map_width": app.map_system.svg_loader.width
                 if app.map_system.svg_loader
@@ -324,6 +326,37 @@ def run_app(args):
                     }
                     for k, v in app.map_config.data.global_settings.aruco_defaults.items()
                 },
+            }
+
+            # Populate initial state mirror for world, tokens, and menu
+            state_mirror["world"] = app.state.to_dict()
+            state_mirror["tokens"] = [t.to_dict() for t in app.state.tokens]
+            if app.state.menu_state:
+                state_mirror["menu"] = {
+                    "title": app.state.menu_state.current_menu_title,
+                    "depth": len(getattr(app.state.menu_state, "node_stack_titles", [])),
+                    "items": [item.title for item in app.state.menu_state.active_items],
+                }
+            else:
+                state_mirror["menu"] = None
+
+            # Populate initial maps list
+            state_mirror["maps"] = {
+                path: {
+                    "name": os.path.basename(path),
+                    "aruco_overrides": {
+                        str(aid): {
+                            "name": v.name,
+                            "type": v.type,
+                            "profile": v.profile,
+                            "size": v.size,
+                            "height_mm": v.height_mm,
+                            "color": v.color,
+                        }
+                        for aid, v in entry.aruco_overrides.items()
+                    },
+                }
+                for path, entry in app.map_config.data.maps.items()
             }
 
             # Calculate number of consumers for the camera frames
@@ -474,6 +507,9 @@ def run_app(args):
                         state.fow_timestamp,
                         state.visibility_timestamp,
                         state.map_timestamp,
+                        state.menu_timestamp,
+                        state.tokens_timestamp,
+                        state.notifications_timestamp,
                     )
 
                     if current_world_ts != last_world_ts:

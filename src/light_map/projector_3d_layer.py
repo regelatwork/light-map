@@ -123,7 +123,7 @@ class Projector3DPatternLayer(Layer):
         cv2.putText(
             img,
             str(aruco_id),
-            (bottom_center[0] - 10, bottom_center[1] + 25),
+            (bottom_center[0] - 10, bottom_center[1] + 50),
             cv2.FONT_HERSHEY_SIMPLEX,
             0.6,
             color[:3],

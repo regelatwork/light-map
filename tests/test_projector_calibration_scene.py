@@ -117,6 +117,7 @@ def test_projector_calibration_isolated_layers(mock_app_context):
     mock_app = MagicMock()
     mock_app.scene_layer = "scene"
     mock_app.token_layer = "token"
+    mock_app.menu_layer = "menu"
     mock_app.notification_layer = "notification"
     mock_app.debug_layer = "debug"
     mock_app.cursor_layer = "cursor"
@@ -125,8 +126,10 @@ def test_projector_calibration_isolated_layers(mock_app_context):
 
     assert "scene" in layers
     assert "token" in layers
+    assert "menu" in layers
     assert "cursor" in layers
-    # UI layers are now included
-    assert "notification" in layers
-    assert "debug" in layers
-    assert len(layers) == 6
+
+    # Notification and Debug layers are excluded to avoid pattern interference
+    assert "notification" not in layers
+    assert "debug" not in layers
+    assert len(layers) == 4

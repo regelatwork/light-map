@@ -28,9 +28,9 @@ def mock_context():
         return mock_token
 
     context.map_config_manager.resolve_token_profile.side_effect = mock_resolve
-    context.projector_matrix = np.eye(3)
-    context.camera_matrix = np.eye(3)
-    context.distortion_coefficients = np.zeros(5)
+    context.app_config.projector_matrix = np.eye(3, dtype=np.float32)
+    context.app_config.camera_matrix = np.eye(3, dtype=np.float32)
+    context.app_config.distortion_coefficients = np.zeros(5, dtype=np.float32)
     context.last_camera_frame = np.zeros((480, 640, 3), dtype=np.uint8)
     context.raw_aruco = {"ids": [], "corners": []}
     return context

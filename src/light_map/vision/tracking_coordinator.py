@@ -50,7 +50,8 @@ class TrackingCoordinator:
             for marker_id_entry in ids:
                 # Handle both list of ints and numpy array from cv2 (N, 1)
                 if isinstance(
-                    marker_id_entry, (list, np.ndarray, getattr(np, "ndarray", type(None)))
+                    marker_id_entry,
+                    (list, np.ndarray, getattr(np, "ndarray", type(None))),
                 ):
                     try:
                         mid = int(marker_id_entry[0])
@@ -175,10 +176,10 @@ class TrackingCoordinator:
         # To be proactive, we rely on the fact that detect_tokens will call map_to_tokens,
         # which now handles unknown IDs via token_configs resolution if we provide it.
         # Wait, detect_tokens doesn't take map_filename, so it can't resolve profiles itself.
-        
+
         # Actually, the best way is to keep the logic that detect_tokens uses but inject the resolution.
         # But for compatibility with tests that mock detect_tokens, we should call it.
-        
+
         raw_detections = self.token_tracker.detect_tokens(
             frame_white=frame,
             projector_matrix=config.projector_matrix,
@@ -195,6 +196,7 @@ class TrackingCoordinator:
             logging.debug(f"TrackingCoord: Detected {len(raw_detections)} tokens raw.")
             # Ensure all detected IDs are in token_configs for name/color resolution in filtering
             from dataclasses import asdict
+
             for token in raw_detections:
                 if token.id not in token_configs:
                     resolved = map_config.resolve_token_profile(token.id, map_filename)

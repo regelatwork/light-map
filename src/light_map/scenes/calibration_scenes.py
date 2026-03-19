@@ -746,7 +746,7 @@ class ExtrinsicsCalibrationScene(Scene):
                     draw_text_with_background(
                         canvas,
                         f"{label}: {height}mm",
-                        (tx - half_size, ty - half_size - 10),
+                        (tx - half_size, ty - half_size - 40),
                         cv2.FONT_HERSHEY_SIMPLEX,
                         0.5,
                         (0, 100, 0),
@@ -768,14 +768,11 @@ class ExtrinsicsCalibrationScene(Scene):
                     thickness,
                 )
 
-                # Center dot
-                cv2.circle(canvas, (tx, ty), 3, (0, 0, 0), -1)
-
                 # Label below
                 draw_text_with_background(
                     canvas,
                     label,
-                    (tx - half_size, ty + half_size + 20),
+                    (tx - half_size, ty + half_size + 45),
                     cv2.FONT_HERSHEY_SIMPLEX,
                     0.5,
                     color if thickness > 0 else (0, 100, 0),

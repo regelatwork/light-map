@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, type ReactNode, type FC } from 'react';
 import { GridLayer } from './GridLayer';
 import { TokenLayer } from './TokenLayer';
 import { MapLayer } from './MapLayer';
+import { FowLayer } from './FowLayer';
 import { DoorLayer } from './DoorLayer';
 import { CursorLayer } from './CursorLayer';
 import { HandMaskLayer } from './HandMaskLayer';
@@ -150,6 +151,7 @@ export const SchematicCanvas: FC<SchematicCanvasProps> = ({ children }) => {
 
           <g transform={`rotate(${rotation} ${centerX} ${centerY})`}>
             <MapLayer />
+            <FowLayer />
             <DoorLayer />
             <TokenLayer />
           </g>

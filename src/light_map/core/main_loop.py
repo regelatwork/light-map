@@ -51,17 +51,18 @@ class MainLoopController:
         current_mono = self.time_provider()
 
         # 1. Update Background from SHM
-        if self.producer:
+        producer = self.producer
+        if producer:
             # Check for new frame
-            ts = self.producer.get_latest_timestamp()
+            ts = producer.get_latest_timestamp()
             if ts is not None and ts > self.state.last_frame_timestamp:
                 self.instrument.record_capture(ts)
 
                 with track_wait("shm_wait_main", self.instrument):
-                    shm_view = self.producer.get_latest_frame()
+                    shm_view = producer.get_latest_frame()
 
                 if shm_view is not None:
-                    ts_shm_pushed = self.producer.get_shm_pushed_timestamp()
+                    ts_shm_pushed = producer.get_shm_pushed_timestamp()
                     if ts_shm_pushed:
                         self.instrument.record_interval(
                             "capture_to_shm", ts_shm_pushed - ts
@@ -72,7 +73,7 @@ class MainLoopController:
                         )
 
                     self.state.update_from_frame(shm_view, ts)
-                    self.producer.release()
+                    producer.release()
 
         # 2. Drain Vision Results from Queues
         with track_wait("queue_wait_main", self.instrument):

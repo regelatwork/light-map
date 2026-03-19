@@ -297,14 +297,8 @@ class MenuScene(Scene):
         return False
 
     def get_active_layers(self, app: InteractiveApp) -> List[Layer]:
-        """Menu only needs menu, notification, debug, and cursor layers."""
-        return [
-            app.token_layer,  # Hidden if show_tokens is False, but should be below menu regardless
-            app.menu_layer,
-            app.notification_layer,
-            app.debug_layer,
-            app.cursor_layer,
-        ]
+        """Menu only needs standard UI overlay layers."""
+        return self.get_standard_ui_stack(app)
 
     def render(self, frame: np.ndarray) -> np.ndarray:
         # Menu is now rendered by MenuLayer in the coordinator stack.

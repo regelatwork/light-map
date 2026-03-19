@@ -329,16 +329,8 @@ class ScanningScene(Scene):
         Scanning needs a black background during capture stages to avoid interference,
         but needs the map background to show results at the end.
         """
-        common_overlays = [
-            app.token_layer,  # Hidden/Shown dynamically by scene.show_tokens
-            app.menu_layer,  # Always present for consistent stacking
-            app.notification_layer,
-            app.debug_layer,
-            app.cursor_layer,
-        ]
-
         if self._stage in [ScanStage.SHOW_RESULT, ScanStage.DONE]:
             return app.layer_stack
 
         # During capture: only show the scene layer (projector pattern/flash) + overlays
-        return [app.scene_layer] + common_overlays
+        return self.get_scene_with_ui_stack(app)

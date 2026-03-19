@@ -97,6 +97,26 @@ class Scene(ABC):
         """Returns the list of layers that should be active for this scene."""
         return app.layer_stack
 
+    def get_standard_ui_stack(self, app: InteractiveApp) -> List[Layer]:
+        """
+        Returns the standard set of overlay layers (Bottom to Top).
+        Useful for scenes that want a clean UI-only view (e.g., Menu, Setup).
+        """
+        return [
+            app.token_layer,  # Hidden if show_tokens is False, but should be below menu regardless
+            app.menu_layer,
+            app.notification_layer,
+            app.debug_layer,
+            app.cursor_layer,
+        ]
+
+    def get_scene_with_ui_stack(self, app: InteractiveApp) -> List[Layer]:
+        """
+        Returns the scene layer plus standard UI overlay layers.
+        Useful for scenes that show interactive content (e.g., Calibration, Scanning).
+        """
+        return [app.scene_layer] + self.get_standard_ui_stack(app)
+
     def on_enter(self, payload: Any = None) -> None:
         """Called once when the scene becomes active."""
         pass

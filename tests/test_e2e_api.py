@@ -15,30 +15,36 @@ def find_free_port():
 
 
 @pytest.mark.e2e
-def test_full_app_api_sync_e2e():
+def test_full_app_api_sync_e2e(tmp_path):
     """
     End-to-End test that starts the full application and verifies API sync.
-    This test verifies that:
-    1. Remote tokens can be injected and retrieved.
-    2. Physical tokens (simulated via raw corners) don't overwrite remote tokens in merge mode.
-    3. Empty physical detections correctly clear physical tokens but preserve remote ones.
-    4. Token movements are correctly reflected in GET responses.
+    Isolates the environment using a temporary directory for config/data.
     """
     project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     python_bin = os.path.join(project_root, ".venv", "bin", "python3")
 
-    # 1. Prepare dummy calibration
-    calib_file = os.path.join(project_root, "projector_calibration.npz")
-    cam_calib = os.path.join(project_root, "camera_calibration.npz")
+    # 1. Setup isolated XDG environment
+    # App uses:
+    # - {XDG_CONFIG_HOME}/light_map for config
+    # - {XDG_DATA_HOME}/light_map for calibration/sessions
+    # - {XDG_STATE_HOME}/light_map for logs
+    xdg_config = tmp_path / "config"
+    xdg_data = tmp_path / "data"
+    xdg_state = tmp_path / "state"
 
-    # We'll restore these if they exist, or delete them if we created them
-    existed_proj = os.path.exists(calib_file)
-    existed_cam = os.path.exists(cam_calib)
+    # StorageManager appends /light_map to these, so we create the subdirs
+    (xdg_data / "light_map").mkdir(parents=True)
+    (xdg_config / "light_map").mkdir(parents=True)
+    (xdg_state / "light_map").mkdir(parents=True)
 
-    if not existed_proj:
-        np.savez(calib_file, projector_matrix=np.eye(3), resolution=[1920, 1080])
-    if not existed_cam:
-        np.savez(cam_calib, camera_matrix=np.eye(3), dist_coeffs=np.zeros(5))
+    # 2. Prepare dummy calibration inside the isolated data dir
+    calib_file = xdg_data / "light_map" / "projector_calibration.npz"
+    cam_calib = xdg_data / "light_map" / "camera_calibration.npz"
+    cam_ext = xdg_data / "light_map" / "camera_extrinsics.npz"
+
+    np.savez(calib_file, projector_matrix=np.eye(3), resolution=[1920, 1080])
+    np.savez(cam_calib, camera_matrix=np.eye(3), dist_coeffs=np.zeros(5))
+    np.savez(cam_ext, rotation_vector=np.zeros(3), translation_vector=np.zeros(3))
 
     port = find_free_port()
     cmd = [
@@ -62,6 +68,11 @@ def test_full_app_api_sync_e2e():
     env = os.environ.copy()
     env["MOCK_CAMERA"] = "1"
     env["PYTHONPATH"] = os.path.join(project_root, "src")
+
+    # The CRITICAL isolation part:
+    env["XDG_CONFIG_HOME"] = str(xdg_config)
+    env["XDG_DATA_HOME"] = str(xdg_data)
+    env["XDG_STATE_HOME"] = str(xdg_state)
 
     process = subprocess.Popen(
         cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, env=env
@@ -159,9 +170,3 @@ def test_full_app_api_sync_e2e():
             process.wait(timeout=5)
         except subprocess.TimeoutExpired:
             process.kill()
-
-        # Cleanup dummy calibration if we created them
-        if not existed_proj and os.path.exists(calib_file):
-            os.remove(calib_file)
-        if not existed_cam and os.path.exists(cam_calib):
-            os.remove(cam_calib)

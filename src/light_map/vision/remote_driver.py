@@ -116,6 +116,49 @@ def create_app(
 ):
     manager = ConnectionManager()
 
+    def get_formatted_state(mirror):
+        """Fetch and format state from mirror for WebSocket broadcast."""
+        try:
+            fetched = {
+                "world": mirror.get("world", {}),
+                "tokens": mirror.get("tokens", []),
+                "menu": mirror.get("menu", None),
+                "config": mirror.get("config", {}),
+                "maps": mirror.get("maps", {}),
+            }
+            world = fetched["world"]
+            state = {
+                "world": world,
+                "tokens": fetched["tokens"],
+                "menu": fetched["menu"],
+                "config": fetched["config"],
+                "maps": fetched["maps"],
+                "timestamp": time.monotonic(),
+            }
+            # Hoist grid and version metadata to top level for frontend SystemState compatibility
+            for key in [
+                "grid_spacing_svg",
+                "grid_origin_svg_x",
+                "grid_origin_svg_y",
+                "map_timestamp",
+                "menu_timestamp",
+                "tokens_timestamp",
+                "raw_aruco_timestamp",
+                "hands_timestamp",
+                "scene_timestamp",
+                "notifications_timestamp",
+                "viewport_timestamp",
+                "visibility_timestamp",
+                "fow_timestamp",
+            ]:
+                if key in world:
+                    state[key] = world[key]
+            return state
+        except Exception as e:
+            if not stop_event.is_set():
+                logging.error(f"Error fetching state from mirror: {e}")
+            return None
+
     # Shared state for video feed
     video_state = {"latest_jpeg": b"", "new_frame_event": None, "loop": None}
 
@@ -194,55 +237,11 @@ def create_app(
         async def broadcast_loop():
             logging.info("Starting WebSocket state broadcast loop.")
 
-            def fetch_state(mirror):
-                """Fetch all needed state from mirror in a single thread-bound operation."""
-                try:
-                    return {
-                        "world": mirror.get("world", {}),
-                        "tokens": mirror.get("tokens", []),
-                        "menu": mirror.get("menu", None),
-                        "config": mirror.get("config", {}),
-                        "maps": mirror.get("maps", {}),
-                    }
-                except Exception as e:
-                    # Don't log on every failure to avoid spamming if the manager is disconnected
-                    if not stop_event.is_set():
-                        logging.error(f"Error fetching state from mirror: {e}")
-                    return None
-
             while not stop_event.is_set():
                 if manager.active_connections:
                     try:
-                        fetched = await asyncio.to_thread(fetch_state, state_mirror)
-                        if fetched:
-                            world = fetched["world"]
-                            state = {
-                                "world": world,
-                                "tokens": fetched["tokens"],
-                                "menu": fetched["menu"],
-                                "config": fetched["config"],
-                                "maps": fetched["maps"],
-                                "timestamp": time.monotonic(),
-                            }
-                            # Hoist grid and version metadata to top level for frontend SystemState compatibility
-                            for key in [
-                                "grid_spacing_svg",
-                                "grid_origin_svg_x",
-                                "grid_origin_svg_y",
-                                "map_timestamp",
-                                "menu_timestamp",
-                                "tokens_timestamp",
-                                "raw_aruco_timestamp",
-                                "hands_timestamp",
-                                "scene_timestamp",
-                                "notifications_timestamp",
-                                "viewport_timestamp",
-                                "visibility_timestamp",
-                                "fow_timestamp",
-                            ]:
-                                if key in world:
-                                    state[key] = world[key]
-
+                        state = await asyncio.to_thread(get_formatted_state, state_mirror)
+                        if state:
                             await manager.broadcast(state)
                     except Exception as e:
                         if not stop_event.is_set():
@@ -317,6 +316,14 @@ def create_app(
     @app.websocket("/ws/state")
     async def websocket_endpoint(websocket: WebSocket):
         await manager.connect(websocket)
+        # Send initial state immediately to avoid waiting for the next broadcast loop
+        try:
+            initial_state = await asyncio.to_thread(get_formatted_state, state_mirror)
+            if initial_state:
+                await websocket.send_json(initial_state)
+        except Exception as e:
+            logging.error(f"Error sending initial state: {e}")
+
         try:
             while True:
                 # Keep connection open, handle incoming heartbeat/messages

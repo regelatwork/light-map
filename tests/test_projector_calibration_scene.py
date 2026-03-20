@@ -15,6 +15,9 @@ def mock_app_context():
     mock_context = MagicMock(spec=AppContext)
     mock_context.app_config = app_config
     mock_context.notifications = MagicMock()
+    mock_context.events = MagicMock()
+    mock_context.analytics = MagicMock()
+    mock_context.time_provider = MagicMock(return_value=0.0)
     mock_context.last_camera_frame = None
     return mock_context
 
@@ -44,11 +47,13 @@ def test_projector_calibration_flow_success(mock_app_context):
         # Advance to SETTLE
         mock_time += 1.1
         scene.update([], [], mock_time)
+        scene._on_calibration_timer_expired()
         assert scene._stage == "SETTLE"
 
         # Advance to CAPTURE
         mock_time += 2.1
         scene.update([], [], mock_time)
+        scene._on_calibration_timer_expired()
         assert scene._stage == "CAPTURE"
 
         # Advance to PROCESSING/DONE
@@ -79,10 +84,12 @@ def test_projector_calibration_no_camera_error(mock_app_context):
         # To SETTLE
         mock_time += 1.1
         scene.update([], [], mock_time)
+        scene._on_calibration_timer_expired()
 
         # To CAPTURE
         mock_time += 2.1
         scene.update([], [], mock_time)
+        scene._on_calibration_timer_expired()
 
         # Process and fail
         transition = scene.update([], [], mock_time)

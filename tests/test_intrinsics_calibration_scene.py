@@ -147,17 +147,19 @@ def test_intrinsics_calibration_isolated_layers(intrinsics_calib_scene):
     mock_app = MagicMock()
     mock_app.scene_layer = "scene"
     mock_app.token_layer = "token"
+    mock_app.menu_layer = "menu"
     mock_app.notification_layer = "notification"
     mock_app.debug_layer = "debug"
+    mock_app.selection_progress_layer = "selection_progress"
     mock_app.cursor_layer = "cursor"
 
     layers = intrinsics_calib_scene.get_active_layers(mock_app)
 
     assert "scene" in layers
     assert "token" in layers
-    assert "cursor" in layers
-    # UI layers are now included for consistency
+    assert "menu" in layers
     assert "notification" in layers
     assert "debug" in layers
+    assert "selection_progress" in layers
     assert "cursor" in layers
-    assert len(layers) == 6
+    assert len(layers) == 7

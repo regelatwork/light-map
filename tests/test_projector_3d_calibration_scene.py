@@ -17,6 +17,8 @@ class TestProjector3DCalibrationScene(unittest.TestCase):
         self.mock_context.app_config.calibration_box_height_mm = 78.0
         self.mock_context.app_config.storage_manager = MagicMock()
         self.mock_context.notifications = MagicMock()
+        self.mock_context.events = MagicMock()
+        self.mock_context.analytics = MagicMock()
         self.mock_context.raw_aruco = {"ids": [], "corners": []}
         self.mock_context.state = MagicMock()
         self.mock_context.state.scene_timestamp = 1
@@ -41,6 +43,9 @@ class TestProjector3DCalibrationScene(unittest.TestCase):
         scene = Projector3DCalibrationScene(self.mock_context)
         scene.on_enter()
         scene.update([], [], 1.0)  # Move to PLACE_BOX (Step 1)
+        # In current implementation, if START, it moves to PLACE_BOX immediately but we might need
+        # to ensure it's actually in PLACE_BOX for the next call to process gestures.
+        self.assertEqual(scene.stage, Projector3DCalibStage.PLACE_BOX)
         self.assertEqual(scene.current_box_pos_idx, 0)
 
         # 1. Step 1 expects VICTORY
@@ -70,6 +75,9 @@ class TestProjector3DCalibrationScene(unittest.TestCase):
             # VICTORY should be ignored now
             scene.update([mock_victory], [], 10.0)
             self.assertEqual(scene.stage, Projector3DCalibStage.PLACE_BOX)
+
+            # Reset cooldown state for test
+            scene._can_gesture = True
 
             # SHAKA should work
             scene.update([mock_shaka], [], 11.0)

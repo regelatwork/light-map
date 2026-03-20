@@ -42,6 +42,8 @@ def mock_app_context():
     mock_context.map_config_manager = mock_map_config_manager
 
     mock_context.notifications = MagicMock()
+    mock_context.events = MagicMock()
+    mock_context.analytics = MagicMock()
     return mock_context
 
 
@@ -118,9 +120,17 @@ def test_map_grid_calibration_confirm_saves_config(
         )
     ]
 
-    # First call sets start time
+    # First call - should trigger schedule
+    mock_app_context.events.has_event.return_value = False
     map_grid_calib_scene.update(inputs, [], mock_monotonic())
-    # Second call triggers save
+
+    # Check if schedule was called.
+    mock_app_context.events.schedule.assert_called()
+
+    # Manually trigger the callback
+    map_grid_calib_scene._on_save_triggered()
+
+    # Now the next update should return the transition
     transition = map_grid_calib_scene.update(inputs, [], mock_monotonic())
 
     assert isinstance(transition, SceneTransition)

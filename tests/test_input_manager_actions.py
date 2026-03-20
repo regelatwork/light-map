@@ -22,6 +22,9 @@ def test_input_manager_gesture_mapping():
     manager.update(x=100, y=100, gesture=GestureType.OPEN_PALM, is_present=True)
     assert Action.SELECT in manager.get_actions()
 
+    # Reset to avoid same-gesture/already-present logic skipping
+    manager.update(x=0, y=0, gesture=GestureType.NONE, is_present=False)
+
     # Closed Fist -> BACK (used to be SELECT)
     manager.update(x=100, y=100, gesture=GestureType.CLOSED_FIST, is_present=True)
     assert Action.BACK in manager.get_actions()

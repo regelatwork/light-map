@@ -31,6 +31,9 @@ def mock_context():
     context.camera_matrix = np.eye(3)
     context.distortion_coefficients = np.zeros(5)
     context.last_camera_frame = np.zeros((480, 640, 3), dtype=np.uint8)
+    context.events = MagicMock()
+    context.notifications = MagicMock()
+    context.analytics = MagicMock()
     return context
 
 
@@ -167,17 +170,20 @@ def test_extrinsics_scene_validation_flow(mock_save, mock_calibrate, mock_contex
     assert scene._reprojection_error >= 0.0
     mock_save.assert_not_called()  # Should not save yet
 
+    from light_map.common_types import TimerKey
+
     # 2. Validation - Retry Flow
-    # Hold Fist for 1.0s (not enough)
+    mock_context.events.has_event.return_value = False
     inputs = [HandInput(GestureType.CLOSED_FIST, (0, 0), (0.0, 0.0), None)]
     scene.update(inputs, [], 2.0)  # Start retry
-    assert scene._retry_gesture_start_time == 2.0
     assert scene._stage == "VALIDATION"
+    mock_context.events.schedule.assert_called_with(
+        2.0, scene._on_retry_triggered, key=TimerKey.CALIBRATION_STAGE
+    )
 
-    # Hold for another 2.5s (> 2s total)
-    scene.update(inputs, [], 4.6)
-    assert scene._stage == "PLACEMENT"  # Should reset
-    assert scene._retry_gesture_start_time == 0.0
+    # Trigger it manually for the test
+    scene._on_retry_triggered()
+    assert scene._stage == "PLACEMENT"
 
     # 3. Validation - Accept Flow
     scene._stage = "CAPTURE"  # Reset manually for test

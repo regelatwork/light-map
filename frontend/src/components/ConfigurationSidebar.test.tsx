@@ -4,7 +4,7 @@ import { ConfigurationSidebar } from './ConfigurationSidebar';
 import * as useSystemStateHook from '../hooks/useSystemState';
 import * as useSelectionHook from './SelectionContext';
 import * as useGridEditHook from './GridEditContext';
-import { SelectionType, GmPosition, INITIAL_STATE } from '../types/system';
+import { SelectionType, GmPosition } from '../types/system';
 import { updateToken } from '../services/api';
 
 // Mock the services/api to avoid actual network requests

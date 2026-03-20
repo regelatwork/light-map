@@ -1,22 +1,29 @@
 import logging
-from typing import List, Any
+from typing import List, Any, Optional
 import cv2
 import numpy as np
 from .common_types import Layer, LayerMode, ImagePatch, AppConfig
 from .core.world_state import WorldState
 from .constants import DEFAULT_ARUCO_MASK_COLOR
+from .vision.projection import ProjectionService
 
 
 class ArucoMaskLayer(Layer):
     """
     Renders solid grey patches over detected ArUco markers to stabilize vision.
     Prevents map content from interfering with marker recognition.
-    Uses parallax-corrected projection to handle markers at physical height.
+    Uses ProjectionService for parallax-corrected 3D mapping.
     """
 
-    def __init__(self, state: WorldState, config: AppConfig):
+    def __init__(
+        self,
+        state: WorldState,
+        config: AppConfig,
+        projection_service: Optional[ProjectionService] = None,
+    ):
         super().__init__(state=state, is_static=False, layer_mode=LayerMode.NORMAL)
         self.config = config
+        self.projection_service = projection_service
 
     def get_current_version(self) -> int:
         if self.state is None:
@@ -30,49 +37,29 @@ class ArucoMaskLayer(Layer):
     def _transform_pts(self, camera_pixels: Any, height_mm: float = 0.0) -> np.ndarray:
         """
         Transforms camera pixel points to projector space.
-        Outputs coordinates in Calibration Space (e.g. 4608x2592).
+        Uses ProjectionService if available, otherwise falls back to homography.
         """
         if isinstance(camera_pixels, list):
             camera_pixels = np.array(camera_pixels, dtype=np.float32)
         else:
             camera_pixels = camera_pixels.astype(np.float32)
 
-        # 1. Project to World Space (X, Y, height_mm)
-        projection_model = self.config.camera_projection_model
-        if projection_model is not None:
-            world_points = projection_model.reconstruct_world_points(
-                camera_pixels, height_mm
+        if self.projection_service:
+            return self.projection_service.project_camera_to_projector(
+                camera_pixels, height_mm=height_mm
             )
-            world_x_mm = world_points[:, 0]
-            world_y_mm = world_points[:, 1]
-        else:
-            # Fallback if camera calibration missing: assume identity mm mapping
-            # This allows unit tests without full calibration to still pass.
-            world_x_mm = camera_pixels[:, 0]
-            world_y_mm = camera_pixels[:, 1]
 
-        # 2. Map World (mm) to Projector Pixels (Calibration Space)
-        ppi = self.config.projector_ppi
-        ppi_mm = ppi / 25.4 if ppi > 0 else 0.0
-
-        projector_x = world_x_mm * ppi_mm
-        projector_y = world_y_mm * ppi_mm
-
-        projector_points = np.column_stack([projector_x, projector_y]).astype(
-            np.float32
-        )
-
-        # 3. Apply Distortion Model if available
+        # Fallback to standard surface homography (Z=0)
+        camera_pixels_reshaped = camera_pixels.reshape(-1, 1, 2).astype(np.float32)
         if self.config.distortion_model:
-            corrected = []
-            for pt in projector_points:
-                c_px, c_py = self.config.distortion_model.correct_theoretical_point(
-                    pt[0], pt[1]
-                )
-                corrected.append([c_px, c_py])
-            projector_points = np.array(corrected, dtype=np.float32)
-
-        return projector_points
+            proj_pts = self.config.distortion_model.apply_correction(
+                camera_pixels_reshaped
+            )
+        else:
+            proj_pts = cv2.perspectiveTransform(
+                camera_pixels_reshaped, self.config.projector_matrix
+            )
+        return proj_pts.reshape(-1, 2)
 
     def _generate_patches(self, current_time: float) -> List[ImagePatch]:
         if not self.config.enable_aruco_masking or self.state is None:

@@ -189,3 +189,39 @@ class Projector3DModel:
             homography_matrix=homography_matrix,
             use_3d=use_3d,
         )
+
+
+class ProjectionService:
+    """
+    High-level service that coordinates CameraProjectionModel and Projector3DModel
+    to provide end-to-end mapping (e.g., Camera Pixels -> Projector Pixels).
+    """
+
+    def __init__(
+        self, camera_model: CameraProjectionModel, projector_model: Projector3DModel
+    ):
+        self.camera_model = camera_model
+        self.projector_model = projector_model
+
+    def project_camera_to_projector(
+        self, camera_pixels: np.ndarray, height_mm: float = 0.0
+    ) -> np.ndarray:
+        """
+        Maps camera pixel coordinates to projector pixel coordinates,
+        accounting for physical height (parallax correction).
+        """
+        if camera_pixels.size == 0:
+            return np.zeros((0, 2), dtype=np.float32)
+
+        # 1. Camera Pixels -> World (X, Y) at Z = height_mm
+        world_points_2d = self.camera_model.reconstruct_world_points(
+            camera_pixels, height_mm=height_mm
+        )
+
+        # 2. World (X, Y, Z) -> Projector Pixels
+        N = world_points_2d.shape[0]
+        world_points_3d = np.hstack(
+            [world_points_2d, np.full((N, 1), height_mm)]
+        )  # (N, 3)
+
+        return self.projector_model.project_world_to_projector(world_points_3d)

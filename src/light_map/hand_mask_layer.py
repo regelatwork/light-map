@@ -1,21 +1,27 @@
-import logging
-from typing import List
+from typing import List, Optional, Callable
 import cv2
 import numpy as np
 from .common_types import Layer, LayerMode, ImagePatch, AppConfig
 from .core.world_state import WorldState
 from .vision.hand_masker import HandMasker
+from .vision.projection import ProjectionService
 
 
 class HandMaskLayer(Layer):
     """
     Renders black patches over hand regions to prevent projection on hands.
-    Uses HandMasker for geometry and focusing strictly on rendering.
+    Uses HandMasker for geometry and ProjectionService for 3D mapping.
     """
 
-    def __init__(self, state: WorldState, config: AppConfig):
+    def __init__(
+        self,
+        state: WorldState,
+        config: AppConfig,
+        projection_service: Optional[ProjectionService] = None,
+    ):
         super().__init__(state=state, is_static=False, layer_mode=LayerMode.NORMAL)
         self.config = config
+        self.projection_service = projection_service
         self.hand_masker = HandMasker()
 
     def get_current_version(self) -> int:
@@ -42,47 +48,13 @@ class HandMaskLayer(Layer):
         cam_pts[:, 0] *= frame_w
         cam_pts[:, 1] *= frame_h
 
-        # If using 3D model, we need to assume a Z-height for hands.
-        # For now, let's assume Z=0 (tabletop) or a slight offset.
-        if self.config.projector_3d_model and self.config.projector_3d_model.use_3d:
-            # Note: The Projector3DModel.project_world_to_projector expects WORLD points.
-            # Here cam_pts are CAMERA pixels. We need to convert CAMERA pixels to WORLD.
-
-            # TODO: Move the world_to_pix / pix_to_world logic into a centralized VisionService.
-            # For now, if we have extrinsics, we can reconstruct world points at Z=0.
-            if (
-                hasattr(self.config, "camera_matrix")
-                and self.config.camera_matrix is not None
-                and self.config.rotation_vector is not None
-                and self.config.translation_vector is not None
-            ):
-                try:
-                    camera_matrix_inv = np.linalg.inv(self.config.camera_matrix)
-                    rotation_vector = np.array(self.config.rotation_vector).reshape(
-                        3, 1
-                    )
-                    translation_vector = np.array(
-                        self.config.translation_vector
-                    ).reshape(3, 1)
-                    rotation_matrix, _ = cv2.Rodrigues(rotation_vector)
-                    rotation_matrix_inv = rotation_matrix.T
-                    camera_center = -(
-                        rotation_matrix_inv @ translation_vector
-                    ).flatten()
-
-                    pts_homog = np.hstack([cam_pts, np.ones((cam_pts.shape[0], 1))])
-                    rays_cam = camera_matrix_inv @ pts_homog.T
-                    rays_world = rotation_matrix_inv @ rays_cam
-
-                    camera_center_z = camera_center[2]
-                    rays_world_z = rays_world[2, :]
-                    s = (0.0 - camera_center_z) / (rays_world_z + 1e-9)
-                    p_world = camera_center.reshape(3, 1) + s * rays_world
-                    return self.config.projector_3d_model.project_world_to_projector(
-                        p_world.T
-                    )
-                except Exception as e:
-                    logging.warning(f"HandMaskLayer: 3D projection failed: {e}")
+        # Use ProjectionService if available
+        if self.projection_service:
+            # Assume hand is slightly above the table (e.g., 20mm)
+            # This helps the mask better align with the physical hand.
+            return self.projection_service.project_camera_to_projector(
+                cam_pts, height_mm=20.0
+            )
 
         # Fallback to standard surface homography (Z=0)
         cam_pts_reshaped = cam_pts.reshape(-1, 1, 2).astype(np.float32)

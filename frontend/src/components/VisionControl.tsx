@@ -2,7 +2,11 @@ import { type FC } from 'react';
 import { useSystemState } from '../hooks/useSystemState';
 import { injectAction, updateSystemConfig } from '../services/api';
 
-export const VisionControl: FC = () => {
+interface VisionControlProps {
+  showOnlyToggles?: boolean;
+}
+
+export const VisionControl: FC<VisionControlProps> = ({ showOnlyToggles = false }) => {
   const { config } = useSystemState();
 
   const handleToggleHandMasking = () => {
@@ -67,6 +71,107 @@ export const VisionControl: FC = () => {
     'South West',
     'South East',
   ];
+
+  if (showOnlyToggles) {
+    return (
+      <div className="space-y-6 text-black">
+        <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl border border-gray-100">
+          <div>
+            <h4 className="font-bold text-gray-800">Hand Masking</h4>
+            <p className="text-sm text-gray-500">Prevents map content from being projected onto hands.</p>
+          </div>
+          <button
+            onClick={handleToggleHandMasking}
+            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors shadow-sm ${
+              config?.enable_hand_masking ? 'bg-blue-600' : 'bg-gray-200'
+            }`}
+          >
+            <span
+              className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                config?.enable_hand_masking ? 'translate-x-6' : 'translate-x-1'
+              }`}
+            />
+          </button>
+        </div>
+
+        <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl border border-gray-100">
+          <div>
+            <h4 className="font-bold text-gray-800">ArUco Masking</h4>
+            <p className="text-sm text-gray-500">Stabilizes token tracking by masking physical markers.</p>
+          </div>
+          <button
+            onClick={handleToggleArucoMasking}
+            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors shadow-sm ${
+              config?.enable_aruco_masking ? 'bg-blue-600' : 'bg-gray-200'
+            }`}
+          >
+            <span
+              className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                config?.enable_aruco_masking ? 'translate-x-6' : 'translate-x-1'
+              }`}
+            />
+          </button>
+        </div>
+
+        <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl border border-gray-100">
+          <div>
+            <h4 className="font-bold text-gray-800">Fog of War</h4>
+            <p className="text-sm text-gray-500">Hides unexplored areas from the players.</p>
+          </div>
+          <button
+            onClick={handleToggleFow}
+            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors shadow-sm ${
+              !config?.fow_disabled ? 'bg-blue-600' : 'bg-gray-200'
+            }`}
+          >
+            <span
+              className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                !config?.fow_disabled ? 'translate-x-6' : 'translate-x-1'
+              }`}
+            />
+          </button>
+        </div>
+
+        <div className="p-6 bg-gray-50 rounded-xl border border-gray-100 space-y-4">
+          <div className="flex justify-between items-center">
+            <h4 className="font-bold text-gray-800">Parallax Factor</h4>
+            <span className="text-sm text-blue-600 font-mono font-bold bg-blue-50 px-2 py-0.5 rounded">
+              {config?.parallax_factor?.toFixed(2) || '0.00'}
+            </span>
+          </div>
+          <input
+            type="range"
+            min="-2.0"
+            max="1.0"
+            step="0.05"
+            value={config?.parallax_factor || 0}
+            onChange={(e) => handleParallaxChange(e.target.value)}
+            className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
+          />
+          <div className="flex justify-between text-[10px] text-gray-400 uppercase font-bold tracking-wider">
+            <span>Inward</span>
+            <span>Camera Plane</span>
+            <span>Outward</span>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
+          <button
+            onClick={handleResetFow}
+            className="p-3 bg-white border border-gray-200 rounded-lg text-sm font-semibold hover:bg-orange-50 hover:border-orange-200 hover:text-orange-700 transition-all shadow-sm"
+          >
+            Reset Fog of War
+          </button>
+          <button
+            onClick={handleSyncVision}
+            className="p-3 bg-white border border-gray-200 rounded-lg text-sm font-semibold hover:bg-blue-50 hover:border-blue-200 hover:text-blue-700 transition-all shadow-sm"
+          >
+            Sync Vision
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4 text-black">

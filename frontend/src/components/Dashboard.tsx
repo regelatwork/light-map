@@ -5,6 +5,7 @@ import { ConfigurationSidebar } from './ConfigurationSidebar';
 import { MapLibrary } from './MapLibrary';
 import { CalibrationWizard } from './CalibrationWizard';
 import { TokenLibrary } from './TokenLibrary';
+import { SettingsModal } from './SettingsModal';
 import { injectAction, interactMenu } from '../services/api';
 
 type ActiveTab = 'schematic' | 'calibration' | 'library';
@@ -12,6 +13,7 @@ type ActiveTab = 'schematic' | 'calibration' | 'library';
 export const Dashboard = () => {
   const { isConnected, world, tokens, menu } = useSystemState();
   const [activeTab, setActiveTab] = useState<ActiveTab>('schematic');
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   const handleSummonMenu = async () => {
     try {
@@ -31,13 +33,27 @@ export const Dashboard = () => {
 
   return (
     <div className="flex h-screen bg-gray-100 overflow-hidden">
+      <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
+      
       <aside className="w-64 bg-white shadow-md flex flex-col z-10">
         <div className="flex items-center justify-between border-b p-4">
           <span className="font-bold text-black">Light Map Control</span>
-          <div
-            title={isConnected ? 'Connected' : 'Disconnected'}
-            className={`h-3 w-3 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`}
-          />
+          <div className="flex items-center gap-2">
+             <button 
+              onClick={() => setIsSettingsOpen(true)}
+              className="p-1 hover:bg-gray-100 rounded-lg transition-colors text-gray-500 hover:text-blue-600"
+              title="System Settings"
+            >
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+            </button>
+            <div
+              title={isConnected ? 'Connected' : 'Disconnected'}
+              className={`h-3 w-3 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`}
+            />
+          </div>
         </div>
 
         <div className="p-4 border-b">

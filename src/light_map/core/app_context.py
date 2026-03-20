@@ -16,7 +16,7 @@ if TYPE_CHECKING:
     from light_map.renderer import Renderer
     from light_map.common_types import AppConfig
     from light_map.vision.aruco_detector import ArucoTokenDetector
-    from light_map.vision.projection import CameraProjectionModel
+    from light_map.vision.projection import CameraProjectionModel, ProjectionService
 
 
 @dataclass
@@ -32,6 +32,7 @@ class AppContext:
     events: TemporalEventManager
     aruco_detector: Optional[ArucoTokenDetector] = None
     camera_projection_model: Optional[CameraProjectionModel] = None
+    projection_service: Optional[ProjectionService] = None
     visibility_engine: Optional[Any] = None  # Avoid circular import
     show_tokens: bool = True
     debug_mode: bool = False

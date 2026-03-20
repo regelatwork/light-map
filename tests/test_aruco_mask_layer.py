@@ -166,8 +166,15 @@ def test_aruco_mask_layer_parallax_rendering(mock_state, mock_config):
         mock_config.rotation_vector,
         mock_config.translation_vector,
     )
+    # Also need Projector3DModel and ProjectionService for it to work
+    from light_map.vision.projection import Projector3DModel, ProjectionService
+    mock_config.projector_3d_model = Projector3DModel(
+        homography_matrix=np.eye(3), # Identity for simplicity in this test
+        use_3d=False # If False, it uses homography but ProjectionService still passes height to Camera model
+    )
+    projection_service = ProjectionService(mock_config.camera_projection_model, mock_config.projector_3d_model)
 
-    layer = ArucoMaskLayer(mock_state, mock_config)
+    layer = ArucoMaskLayer(mock_state, mock_config, projection_service=projection_service)
 
     # Height 0mm
     patches_0 = layer._generate_patches(0.0)

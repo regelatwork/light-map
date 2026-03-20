@@ -43,8 +43,12 @@ class LayerStackManager:
         self.scene_layer = SceneLayer(
             state, None, config.width, config.height, is_static=False
         )
-        self.hand_mask_layer = HandMaskLayer(state, config)
-        self.aruco_mask_layer = ArucoMaskLayer(state, config)
+        self.hand_mask_layer = HandMaskLayer(
+            state, config, projection_service=context.projection_service
+        )
+        self.aruco_mask_layer = ArucoMaskLayer(
+            state, config, projection_service=context.projection_service
+        )
         self.menu_layer = MenuLayer(state)
         self.token_layer = TokenLayer(state, context)
         self.notification_layer = NotificationLayer(state, context)

@@ -42,7 +42,11 @@ from light_map.scenes.calibration_scenes import (
 from light_map.vision.tracking_coordinator import TrackingCoordinator
 from light_map.vision.input_processor import InputProcessor
 from light_map.vision.aruco_detector import ArucoTokenDetector
-from light_map.vision.projection import Projector3DModel, CameraProjectionModel
+from light_map.vision.projection import (
+    Projector3DModel,
+    CameraProjectionModel,
+    ProjectionService,
+)
 
 from light_map.core.world_state import WorldState
 
@@ -380,6 +384,7 @@ class InteractiveApp:
 
         # Initialize Camera Projection Model
         camera_projection_model = None
+        projection_service = None
         if (
             self.config.camera_matrix is not None
             and self.config.rotation_vector is not None
@@ -393,6 +398,11 @@ class InteractiveApp:
             )
             self.config.camera_projection_model = camera_projection_model
 
+            if self.config.projector_3d_model is not None:
+                projection_service = ProjectionService(
+                    camera_projection_model, self.config.projector_3d_model
+                )
+
         return AppContext(
             app_config=self.config,
             renderer=self.renderer,
@@ -402,6 +412,7 @@ class InteractiveApp:
             visibility_engine=self.visibility_engine,
             aruco_detector=aruco_detector,
             camera_projection_model=camera_projection_model,
+            projection_service=projection_service,
             debug_mode=debug_mode,
             show_tokens=show_tokens,
             raw_tokens=self.state.raw_tokens,

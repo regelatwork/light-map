@@ -2,7 +2,6 @@ import numpy as np
 from typing import List, Optional
 from .common_types import ImagePatch
 from .constants import (
-    VISIBILITY_SHROUD_ALPHA,
     ALPHA_OPAQUE,
 )
 from .visibility_base_layer import VisibilityBaseLayer

@@ -2,7 +2,7 @@ import cv2
 import numpy as np
 import math
 import svgelements
-from typing import List, Tuple, Optional
+from typing import List, Tuple
 from .common_types import Layer, ImagePatch
 from .core.world_state import WorldState
 from .constants import (
@@ -38,11 +38,15 @@ class VisibilityBaseLayer(Layer):
         self.height = height  # Screen height
 
     def _render_mask_to_patches(
-        self, mask: np.ndarray, shroud_alpha: int = VISIBILITY_SHROUD_ALPHA, background_alpha: int = 0
+        self,
+        mask: np.ndarray,
+        shroud_alpha: int = VISIBILITY_SHROUD_ALPHA,
+        background_alpha: int = 0,
     ) -> List[ImagePatch]:
         """Core logic to transform a vision mask to screen space patches."""
         if mask.shape[0] != self.mask_height or mask.shape[1] != self.mask_width:
             import logging
+
             logging.error(
                 f"{self.__class__.__name__}: Shape mismatch. Mask is {mask.shape}, Layer expects ({self.mask_height}, {self.mask_width})"
             )

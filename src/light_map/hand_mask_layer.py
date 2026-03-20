@@ -1,4 +1,4 @@
-from typing import List, Optional, Callable
+from typing import List, Optional
 import cv2
 import numpy as np
 from .common_types import Layer, LayerMode, ImagePatch, AppConfig

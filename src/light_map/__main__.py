@@ -263,13 +263,17 @@ def run_app(args):
 
     # 3. Setup Projector Window (using tkinter to hide cursor)
     window_name = "projection"
-    app_win = ProjectorWindow(window_name, native_screen_width, native_screen_height)
 
     # 5. Main Loop
     startup_action_executed = False
 
     try:
-        with Camera() as cam:
+        with (
+            Camera() as cam,
+            ProjectorWindow(
+                window_name, native_screen_width, native_screen_height
+            ) as app_win,
+        ):
             # --- Resolution Mismatch Check ---
             current_camera_width, current_camera_height = cam.width, cam.height
             calibrated_width, calibrated_height = app.config.projector_matrix_resolution
@@ -372,7 +376,7 @@ def run_app(args):
                 active_consumers += 1
 
             # Start Process Manager
-            manager = VisionProcessManager(
+            with VisionProcessManager(
                 width=current_camera_width,
                 height=current_camera_height,
                 num_consumers=active_consumers,
@@ -387,215 +391,216 @@ def run_app(args):
                 remote_port=args.remote_port,
                 remote_origins=args.remote_origins,
                 state_mirror=state_mirror,
-            )
-            manager.start()
+            ) as manager:
+                # Use the WorldState instance from InteractiveApp
+                state = app.state
+                producer = FrameProducer(
+                    shm_name=manager.shm_name,
+                    width=current_camera_width,
+                    height=current_camera_height,
+                    num_consumers=active_consumers,
+                )
+                producer.lock = manager.lock
 
-            # Use the WorldState instance from InteractiveApp
-            state = app.state
-            producer = FrameProducer(
-                shm_name=manager.shm_name,
-                width=current_camera_width,
-                height=current_camera_height,
-                num_consumers=active_consumers,
-            )
-            producer.lock = manager.lock
+                input_manager = InputManager(
+                    flicker_timeout=1.5, time_provider=app.time_provider
+                )
+                with MainLoopController(
+                    state,
+                    manager,
+                    input_manager,
+                    producer,
+                    aruco_mapper=app.aruco_mapper,
+                    state_mirror=state_mirror,
+                    events=app.events,
+                    time_provider=app.time_provider,
+                ) as ml:
+                    main_loop = ml
 
-            input_manager = InputManager(
-                flicker_timeout=1.5, time_provider=app.time_provider
-            )
-            main_loop = MainLoopController(
-                state,
-                manager,
-                input_manager,
-                producer,
-                aruco_mapper=app.aruco_mapper,
-                state_mirror=state_mirror,
-                events=app.events,
-                time_provider=app.time_provider,
-            )
-
-            stop_event = threading.Event()
-            cam_thread = threading.Thread(
-                target=camera_capture_loop, args=(cam, manager.operator, stop_event)
-            )
-            cam_thread.start()
-
-            last_map_config_version = -1
-            last_debug_mode = None
-            last_map_path = None
-            last_fow_disabled = None
-            last_parallax_factor = None
-            last_gm_position = None
-            last_hand_masking = None
-            last_aruco_masking = None
-            last_world_ts = -1
-            last_tokens_ts = -1
-            last_menu_ts = -1
-
-            def render_cb(state, actions):
-                nonlocal \
-                    startup_action_executed, \
-                    last_map_config_version, \
-                    last_debug_mode, \
-                    last_map_path, \
-                    last_fow_disabled, \
-                    last_parallax_factor, \
-                    last_gm_position, \
-                    last_hand_masking, \
-                    last_aruco_masking, \
-                    last_world_ts, \
-                    last_tokens_ts, \
-                    last_menu_ts
-
-                # A. Handle Startup Actions (Execute once)
-                if args.action and not startup_action_executed:
-                    logger.info("Executing Startup Action: %s", args.action)
-                    startup_action_executed = True
-
-                    if args.action == MenuActions.SCAN_SESSION:
-                        if app.map_system.is_map_loaded():
-                            logger.info("Map Loaded. Starting Scan Sequence.")
-                            app.current_scene.on_exit()
-                            app.current_scene = app.scenes[SceneId.SCANNING]
-                            app.current_scene.on_enter()
-                        else:
-                            logger.error("Error: Cannot start scan. No map loaded.")
-
-                    elif args.action == MenuActions.SCAN_ALGORITHM:
-                        current = app.map_config.get_detection_algorithm()
-                        new_algo = (
-                            TokenDetectionAlgorithm.STRUCTURED_LIGHT
-                            if current == TokenDetectionAlgorithm.FLASH
-                            else TokenDetectionAlgorithm.FLASH
-                        )
-                        logger.info(
-                            "Toggling Scan Algorithm: %s -> %s", current, new_algo
-                        )
-                        app.map_config.set_detection_algorithm(new_algo)
-                        if app.current_scene == app.scenes[SceneId.MENU]:
-                            app.current_scene.on_enter()
-
-                # B. Process and Render
-                main_loop.debug_mode = app.debug_mode
-                output_image, scene_actions = app.process_state(state, actions)
-
-                if output_image is not None:
-                    # Update Debug View if requested
-                    should_hide_overlays = getattr(
-                        app.current_scene, "should_hide_overlays", False
+                    stop_event = threading.Event()
+                    cam_thread = threading.Thread(
+                        target=camera_capture_loop,
+                        args=(cam, manager.operator, stop_event),
                     )
-                    if app.debug_mode and not should_hide_overlays:
-                        cv2.putText(
-                            output_image,
-                            f"FPS: {app.fps:.1f}",
-                            (10, native_screen_height - 60),
-                            cv2.FONT_HERSHEY_SIMPLEX,
-                            1,
-                            (0, 255, 255),
-                            2,
-                        )
+                    cam_thread.start()
 
-                    # C. Update Hardware Output
-                    app_win.update_image(output_image)
+                    last_map_config_version = -1
+                    last_debug_mode = None
+                    last_map_path = None
+                    last_fow_disabled = None
+                    last_parallax_factor = None
+                    last_gm_position = None
+                    last_hand_masking = None
+                    last_aruco_masking = None
+                    last_world_ts = -1
+                    last_tokens_ts = -1
+                    last_menu_ts = -1
 
-                # D. Update State Mirror for Remote Driver (AFTER process_state)
-                if state_mirror is not None:
-                    # 1. Update Frequent State (World, Tokens, Menu) if they changed
-                    # WorldState tracks granular timestamps for all components
-                    current_world_ts = max(
-                        state.scene_timestamp,
-                        state.viewport_timestamp,
-                        state.hands_timestamp,
-                        state.fow_timestamp,
-                        state.visibility_timestamp,
-                        state.map_timestamp,
-                        state.menu_timestamp,
-                        state.tokens_timestamp,
-                        state.notifications_timestamp,
-                    )
+                    def render_cb(state, actions):
+                        nonlocal \
+                            startup_action_executed, \
+                            last_map_config_version, \
+                            last_debug_mode, \
+                            last_map_path, \
+                            last_fow_disabled, \
+                            last_parallax_factor, \
+                            last_gm_position, \
+                            last_hand_masking, \
+                            last_aruco_masking, \
+                            last_world_ts, \
+                            last_tokens_ts, \
+                            last_menu_ts
 
-                    if current_world_ts != last_world_ts:
-                        state_mirror["world"] = state.to_dict()
-                        last_world_ts = current_world_ts
+                        # A. Handle Startup Actions (Execute once)
+                        if args.action and not startup_action_executed:
+                            logger.info("Executing Startup Action: %s", args.action)
+                            startup_action_executed = True
 
-                    if state.tokens_timestamp != last_tokens_ts:
-                        state_mirror["tokens"] = [t.to_dict() for t in state.tokens]
-                        last_tokens_ts = state.tokens_timestamp
+                            if args.action == MenuActions.SCAN_SESSION:
+                                if app.map_system.is_map_loaded():
+                                    logger.info("Map Loaded. Starting Scan Sequence.")
+                                    app.current_scene.on_exit()
+                                    app.current_scene = app.scenes[SceneId.SCANNING]
+                                    app.current_scene.on_enter()
+                                else:
+                                    logger.error(
+                                        "Error: Cannot start scan. No map loaded."
+                                    )
 
-                    if state.menu_timestamp != last_menu_ts:
-                        if state.menu_state:
-                            state_mirror["menu"] = {
-                                "title": state.menu_state.current_menu_title,
-                                "depth": len(
-                                    getattr(state.menu_state, "node_stack_titles", [])
-                                ),
-                                "items": [
-                                    item.title for item in state.menu_state.active_items
-                                ],
-                            }
-                        else:
-                            state_mirror["menu"] = None
-                        last_menu_ts = state.menu_timestamp
+                            elif args.action == MenuActions.SCAN_ALGORITHM:
+                                current = app.map_config.get_detection_algorithm()
+                                new_algo = (
+                                    TokenDetectionAlgorithm.STRUCTURED_LIGHT
+                                    if current == TokenDetectionAlgorithm.FLASH
+                                    else TokenDetectionAlgorithm.FLASH
+                                )
+                                logger.info(
+                                    "Toggling Scan Algorithm: %s -> %s",
+                                    current,
+                                    new_algo,
+                                )
+                                app.map_config.set_detection_algorithm(new_algo)
+                                if app.current_scene == app.scenes[SceneId.MENU]:
+                                    app.current_scene.on_enter()
 
-                    # 2. Update Configuration (Only if changed)
-                    current_map_config_version = getattr(app.map_config, "version", 0)
-                    fow_disabled = (
-                        app.fow_manager.is_disabled if app.fow_manager else True
-                    )
+                        # B. Process and Render
+                        main_loop.debug_mode = app.debug_mode
+                        output_image, scene_actions = app.process_state(state, actions)
 
-                    if (
-                        current_map_config_version != last_map_config_version
-                        or app.debug_mode != last_debug_mode
-                        or app.current_map_path != last_map_path
-                        or fow_disabled != last_fow_disabled
-                        or app.config.parallax_factor != last_parallax_factor
-                        or str(app.config.gm_position) != last_gm_position
-                        or app.config.enable_hand_masking != last_hand_masking
-                        or app.config.enable_aruco_masking != last_aruco_masking
-                    ):
-                        state_mirror["config"] = {
-                            "cam_res": (current_camera_width, current_camera_height),
-                            "proj_res": (native_screen_width, native_screen_height),
-                            "remote_hands": args.remote_hands,
-                            "remote_tokens": args.remote_tokens,
-                            "remote_port": args.remote_port,
-                            "enable_hand_masking": app.config.enable_hand_masking,
-                            "enable_aruco_masking": app.config.enable_aruco_masking,
-                            "parallax_factor": app.config.parallax_factor,
-                            "gm_position": str(app.config.gm_position),
-                            "debug_mode": app.debug_mode,
-                            "fow_disabled": fow_disabled,
-                            "current_map_path": app.current_map_path,
-                            "map_width": app.map_system.svg_loader.width
-                            if app.map_system.svg_loader
-                            else 0.0,
-                            "map_height": app.map_system.svg_loader.height
-                            if app.map_system.svg_loader
-                            else 0.0,
-                            "token_profiles": {
-                                k: {"size": v.size, "height_mm": v.height_mm}
-                                for k, v in app.map_config.data.global_settings.token_profiles.items()
-                            },
-                            "aruco_defaults": {
-                                str(k): {
-                                    "name": v.name,
-                                    "type": v.type,
-                                    "profile": v.profile,
-                                    "size": v.size,
-                                    "height_mm": v.height_mm,
-                                    "color": v.color,
-                                }
-                                for k, v in app.map_config.data.global_settings.aruco_defaults.items()
-                            },
-                        }
+                        if output_image is not None:
+                            # Update Debug View if requested
+                            should_hide_overlays = getattr(
+                                app.current_scene, "should_hide_overlays", False
+                            )
+                            if app.debug_mode and not should_hide_overlays:
+                                cv2.putText(
+                                    output_image,
+                                    f"FPS: {app.fps:.1f}",
+                                    (10, native_screen_height - 60),
+                                    cv2.FONT_HERSHEY_SIMPLEX,
+                                    1,
+                                    (0, 255, 255),
+                                    2,
+                                )
 
-                        # 3. Update Map List (if map config changed)
-                        if current_map_config_version != last_map_config_version:
-                            state_mirror["maps"] = {
-                                path: {
-                                    "name": os.path.basename(path),
-                                    "aruco_overrides": {
-                                        str(aid): {
+                            # C. Update Hardware Output
+                            app_win.update_image(output_image)
+
+                        # D. Update State Mirror for Remote Driver (AFTER process_state)
+                        if state_mirror is not None:
+                            # 1. Update Frequent State (World, Tokens, Menu) if they changed
+                            # WorldState tracks granular timestamps for all components
+                            current_world_ts = max(
+                                state.scene_timestamp,
+                                state.viewport_timestamp,
+                                state.hands_timestamp,
+                                state.fow_timestamp,
+                                state.visibility_timestamp,
+                                state.map_timestamp,
+                                state.menu_timestamp,
+                                state.tokens_timestamp,
+                                state.notifications_timestamp,
+                            )
+
+                            if current_world_ts != last_world_ts:
+                                state_mirror["world"] = state.to_dict()
+                                last_world_ts = current_world_ts
+
+                            if state.tokens_timestamp != last_tokens_ts:
+                                state_mirror["tokens"] = [
+                                    t.to_dict() for t in state.tokens
+                                ]
+                                last_tokens_ts = state.tokens_timestamp
+
+                            if state.menu_timestamp != last_menu_ts:
+                                if state.menu_state:
+                                    state_mirror["menu"] = {
+                                        "title": state.menu_state.current_menu_title,
+                                        "depth": len(
+                                            getattr(
+                                                state.menu_state,
+                                                "node_stack_titles",
+                                                [],
+                                            )
+                                        ),
+                                        "items": [
+                                            item.title
+                                            for item in state.menu_state.active_items
+                                        ],
+                                    }
+                                else:
+                                    state_mirror["menu"] = None
+                                last_menu_ts = state.menu_timestamp
+
+                            # 2. Update Configuration (Only if changed)
+                            current_map_config_version = getattr(
+                                app.map_config, "version", 0
+                            )
+                            fow_disabled = (
+                                app.fow_manager.is_disabled if app.fow_manager else True
+                            )
+
+                            if (
+                                current_map_config_version != last_map_config_version
+                                or app.debug_mode != last_debug_mode
+                                or app.current_map_path != last_map_path
+                                or fow_disabled != last_fow_disabled
+                                or app.config.parallax_factor != last_parallax_factor
+                                or str(app.config.gm_position) != last_gm_position
+                                or app.config.enable_hand_masking != last_hand_masking
+                                or app.config.enable_aruco_masking != last_aruco_masking
+                            ):
+                                state_mirror["config"] = {
+                                    "cam_res": (
+                                        current_camera_width,
+                                        current_camera_height,
+                                    ),
+                                    "proj_res": (
+                                        native_screen_width,
+                                        native_screen_height,
+                                    ),
+                                    "remote_hands": args.remote_hands,
+                                    "remote_tokens": args.remote_tokens,
+                                    "remote_port": args.remote_port,
+                                    "enable_hand_masking": app.config.enable_hand_masking,
+                                    "enable_aruco_masking": app.config.enable_aruco_masking,
+                                    "parallax_factor": app.config.parallax_factor,
+                                    "gm_position": str(app.config.gm_position),
+                                    "debug_mode": app.debug_mode,
+                                    "fow_disabled": fow_disabled,
+                                    "current_map_path": app.current_map_path,
+                                    "map_width": app.map_system.svg_loader.width
+                                    if app.map_system.svg_loader
+                                    else 0.0,
+                                    "map_height": app.map_system.svg_loader.height
+                                    if app.map_system.svg_loader
+                                    else 0.0,
+                                    "token_profiles": {
+                                        k: {"size": v.size, "height_mm": v.height_mm}
+                                        for k, v in app.map_config.data.global_settings.token_profiles.items()
+                                    },
+                                    "aruco_defaults": {
+                                        str(k): {
                                             "name": v.name,
                                             "type": v.type,
                                             "profile": v.profile,
@@ -603,75 +608,102 @@ def run_app(args):
                                             "height_mm": v.height_mm,
                                             "color": v.color,
                                         }
-                                        for aid, v in entry.aruco_overrides.items()
+                                        for k, v in app.map_config.data.global_settings.aruco_defaults.items()
                                     },
                                 }
-                                for path, entry in app.map_config.data.maps.items()
-                            }
-                            last_map_config_version = current_map_config_version
 
-                        last_debug_mode = app.debug_mode
-                        last_map_path = app.current_map_path
-                        last_fow_disabled = fow_disabled
-                        last_parallax_factor = app.config.parallax_factor
-                        last_gm_position = str(app.config.gm_position)
-                        last_hand_masking = app.config.enable_hand_masking
-                        last_aruco_masking = app.config.enable_aruco_masking
+                                # 3. Update Map List (if map config changed)
+                                if (
+                                    current_map_config_version
+                                    != last_map_config_version
+                                ):
+                                    state_mirror["maps"] = {
+                                        path: {
+                                            "name": os.path.basename(path),
+                                            "aruco_overrides": {
+                                                str(aid): {
+                                                    "name": v.name,
+                                                    "type": v.type,
+                                                    "profile": v.profile,
+                                                    "size": v.size,
+                                                    "height_mm": v.height_mm,
+                                                    "color": v.color,
+                                                }
+                                                for aid, v in entry.aruco_overrides.items()
+                                            },
+                                        }
+                                        for path, entry in app.map_config.data.maps.items()
+                                    }
+                                    last_map_config_version = current_map_config_version
 
-                # E. Process Actions
-                should_break = False
-                for action in scene_actions + actions:
-                    if hasattr(action, "value"):  # Check if enum
-                        try:
-                            action_str = action.value
-                        except Exception:
-                            action_str = str(action)
-                    else:
-                        action_str = action
+                                last_debug_mode = app.debug_mode
+                                last_map_path = app.current_map_path
+                                last_fow_disabled = fow_disabled
+                                last_parallax_factor = app.config.parallax_factor
+                                last_gm_position = str(app.config.gm_position)
+                                last_hand_masking = app.config.enable_hand_masking
+                                last_aruco_masking = app.config.enable_aruco_masking
 
-                    if action_str == MenuActions.EXIT or action_str == Action.QUIT:
-                        logger.info("Exiting...")
-                        should_break = True
-                    elif action_str == MenuActions.CALIBRATE:
-                        logger.info("Starting Calibration...")
-                        should_break = True
-                    elif (
-                        action_str == MenuActions.TOGGLE_DEBUG
-                        or action_str == Action.TOGGLE_DEBUG
-                    ):
-                        app.set_debug_mode(not app.debug_mode)
+                        # E. Process Actions
+                        should_break = False
+                        for action in scene_actions + actions:
+                            if hasattr(action, "value"):  # Check if enum
+                                try:
+                                    action_str = action.value
+                                except Exception:
+                                    action_str = str(action)
+                            else:
+                                action_str = action
 
-                if should_break:
-                    logger.info(f"Stopping main loop due to action: {action_str}")
-                    main_loop.stop()
+                            if (
+                                action_str == MenuActions.EXIT
+                                or action_str == Action.QUIT
+                            ):
+                                logger.info("Exiting...")
+                                should_break = True
+                            elif action_str == MenuActions.CALIBRATE:
+                                logger.info("Starting Calibration...")
+                                should_break = True
+                            elif (
+                                action_str == MenuActions.TOGGLE_DEBUG
+                                or action_str == Action.TOGGLE_DEBUG
+                            ):
+                                app.set_debug_mode(not app.debug_mode)
 
-                if app_win.is_closed():
-                    logger.info("Stopping main loop because window is closed.")
-                    main_loop.stop()
+                        if should_break:
+                            logger.info(
+                                f"Stopping main loop due to action: {action_str}"
+                            )
+                            main_loop.stop()
 
-                return True
+                        if app_win.is_closed():
+                            logger.info("Stopping main loop because window is closed.")
+                            main_loop.stop()
 
-            try:
-                main_loop.run(render_cb)
-            except Exception as e:
-                logger.critical(
-                    "An unhandled error occurred in the main loop: %s", e, exc_info=True
-                )
-            finally:
-                # 1. Stop Camera Producer Thread FIRST
-                stop_event.set()
-                cam_thread.join(timeout=2.0)
+                        return True
 
-                # 2. Save Session
-                if app.map_system.is_map_loaded():
-                    app.save_session()
+                    try:
+                        main_loop.run(render_cb)
+                    except Exception as e:
+                        logger.critical(
+                            "An unhandled error occurred in the main loop: %s",
+                            e,
+                            exc_info=True,
+                        )
+                    finally:
+                        # 1. Stop Camera Producer Thread
+                        stop_event.set()
+                        cam_thread.join(timeout=2.0)
 
-                # 3. Stop Main Loop and Vision Processes
-                main_loop.stop()
+                        # 2. Save Session
+                        if app.map_system.is_map_loaded():
+                            app.save_session()
 
     except Exception as e:
         logger.critical(
-            "An unhandled error occurred during camera setup: %s", e, exc_info=True
+            "An unhandled error occurred during application lifecycle: %s",
+            e,
+            exc_info=True,
         )
     finally:
         cv2.destroyAllWindows()

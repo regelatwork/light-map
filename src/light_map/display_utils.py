@@ -85,6 +85,12 @@ class ProjectorWindow:
 
         return self.closed
 
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.close()
+
 
 def draw_text_with_background(
     img: np.ndarray,

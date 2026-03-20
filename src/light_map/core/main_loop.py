@@ -220,3 +220,9 @@ class MainLoopController:
             self.producer.close()
             self.producer = None
         self.manager.stop()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.stop()

@@ -4,7 +4,7 @@ import { ConfigurationSidebar } from './ConfigurationSidebar';
 import * as useSystemStateHook from '../hooks/useSystemState';
 import * as useSelectionHook from './SelectionContext';
 import * as useGridEditHook from './GridEditContext';
-import { SelectionType, GmPosition } from '../types/system';
+import { SelectionType, GmPosition, INITIAL_STATE } from '../types/system';
 import { updateToken } from '../services/api';
 
 // Mock the services/api to avoid actual network requests
@@ -18,6 +18,38 @@ vi.mock('../services/api', () => ({
 
 vi.mock('../hooks/useSystemState', () => ({
   useSystemState: vi.fn(),
+  INITIAL_STATE: {
+    world: { scene: 'MENU', fps: 0 },
+    tokens: [],
+    menu: null,
+    config: {
+      cam_res: [0, 0],
+      proj_res: [0, 0],
+      enable_hand_masking: false,
+      enable_aruco_masking: true,
+      parallax_factor: -1.0,
+      gm_position: 'None',
+      debug_mode: false,
+      fow_disabled: false,
+    },
+    maps: {},
+    timestamp: 0,
+    isConnected: false,
+    error: null,
+    grid_spacing_svg: 0,
+    grid_origin_svg_x: 0,
+    grid_origin_svg_y: 0,
+    map_timestamp: 0,
+    menu_timestamp: 0,
+    tokens_timestamp: 0,
+    raw_aruco_timestamp: 0,
+    hands_timestamp: 0,
+    scene_timestamp: 0,
+    notifications_timestamp: 0,
+    viewport_timestamp: 0,
+    visibility_timestamp: 0,
+    fow_timestamp: 0,
+  },
 }));
 
 vi.mock('./SelectionContext', () => ({
@@ -288,11 +320,11 @@ describe('ConfigurationSidebar', () => {
     const { unmount } = render(<ConfigurationSidebar />);
 
     // Find the Quick-Edit input
-    const quickEditInput = screen.getByPlaceholderText('Enter or select ID...');
+    const quickEditInput = screen.getByPlaceholderText('ID (e.g. 12)');
     fireEvent.change(quickEditInput, { target: { value: '42' } });
 
     // Verify setSelection was called
-    expect(setSelection).toHaveBeenCalledWith({ type: SelectionType.TOKEN, id: 42 });
+    expect(setSelection).toHaveBeenCalledWith({ type: SelectionType.TOKEN, id: '42' });
 
     // Mock update to show the token is now "selected"
     vi.mocked(useSelectionHook.useSelection).mockReturnValue({
@@ -312,5 +344,52 @@ describe('ConfigurationSidebar', () => {
     fireEvent.change(nameInput, { target: { value: 'The Answer' } });
     fireEvent.blur(nameInput);
     expect(updateToken).toHaveBeenCalledWith(42, expect.objectContaining({ name: 'The Answer' }));
+  });
+
+  it('shows door properties even if a token was previously selected (regression test)', () => {
+    const mockToken = { id: 1, name: 'Token 1', world_x: 0, world_y: 0 };
+    const mockDoor = {
+      id: 'door-1',
+      type: 'door' as any,
+      is_open: false,
+      points: [],
+    };
+
+    const systemState = {
+      ...useSystemStateHook.INITIAL_STATE,
+      tokens: [mockToken],
+      world: { scene: 'VIEWING', fps: 60, blockers: [mockDoor] },
+      config: {
+        ...useSystemStateHook.INITIAL_STATE.config,
+        gm_position: GmPosition.NONE,
+      },
+    };
+
+    vi.mocked(useSystemStateHook.useSystemState).mockReturnValue(systemState);
+
+    const setSelection = vi.fn();
+
+    // 1. Initial selection is TOKEN 1
+    vi.mocked(useSelectionHook.useSelection).mockReturnValue({
+      selection: { type: SelectionType.TOKEN, id: 1 },
+      setSelection,
+    });
+
+    const { rerender } = render(<ConfigurationSidebar />);
+
+    // Check that token properties are shown
+    expect(screen.getByText('Token 1 (#1)')).toBeInTheDocument();
+
+    // 2. Selection changes to DOOR
+    vi.mocked(useSelectionHook.useSelection).mockReturnValue({
+      selection: { type: SelectionType.DOOR, id: 'door-1' },
+      setSelection,
+    });
+
+    rerender(<ConfigurationSidebar />);
+
+    // Verify door properties are shown and token properties are gone
+    expect(screen.getByText('Door Selected')).toBeInTheDocument();
+    expect(screen.queryByText('Token 1 (#1)')).not.toBeInTheDocument();
   });
 });

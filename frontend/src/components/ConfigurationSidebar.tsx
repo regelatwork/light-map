@@ -23,13 +23,16 @@ export const ConfigurationSidebar: React.FC = () => {
   useEffect(() => {
     if (activeTokenId !== null) {
       setManualArUcoId(activeTokenId.toString());
+    } else {
+      setManualArUcoId('');
     }
   }, [activeTokenId]);
 
   const displayId = activeTokenId !== null ? activeTokenId : parseInt(manualArUcoId);
-  const activeToken = !isNaN(Number(displayId))
-    ? tokens?.find((t) => t.id === Number(displayId)) || { id: Number(displayId) }
-    : null;
+  const activeToken =
+    selection.type === SelectionType.TOKEN && !isNaN(Number(displayId))
+      ? tokens?.find((t) => t.id === Number(displayId)) || { id: Number(displayId) }
+      : null;
 
   return (
     <aside className="w-80 bg-white shadow-md flex flex-col border-l border-gray-200 z-10 text-black">

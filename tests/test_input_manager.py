@@ -1,6 +1,7 @@
 import pytest
 from light_map.input_manager import InputManager
 from light_map.common_types import GestureType
+from light_map.core.temporal_event_manager import TemporalEventManager
 
 
 class MockTimeProvider:
@@ -17,8 +18,13 @@ def time_provider():
 
 
 @pytest.fixture
-def input_manager(time_provider):
-    return InputManager(flicker_timeout=0.5, time_provider=time_provider)
+def events(time_provider):
+    return TemporalEventManager(time_provider=time_provider)
+
+
+@pytest.fixture
+def input_manager(time_provider, events):
+    return InputManager(flicker_timeout=0.5, time_provider=time_provider, events=events)
 
 
 def test_initial_state(input_manager):
@@ -54,7 +60,7 @@ def test_flicker_recovery(input_manager, time_provider):
     assert input_manager.get_gesture() == GestureType.VICTORY
 
 
-def test_flicker_timeout(input_manager, time_provider):
+def test_flicker_timeout(input_manager, time_provider, events):
     # 1. Establish presence
     time_provider.time = 1.0
     input_manager.update(100, 200, GestureType.VICTORY, is_present=True)
@@ -62,6 +68,15 @@ def test_flicker_timeout(input_manager, time_provider):
     # 2. Lose presence for long time (0.6s later > 0.5s timeout)
     time_provider.time = 1.6
     input_manager.update(0, 0, GestureType.NONE, is_present=False)
+
+    # Still present until events are checked
+    assert input_manager.is_hand_present()
+
+    # Advance time PAST timeout (1.0 + 0.5 = 1.5)
+    time_provider.time = 2.2
+
+    # Process events
+    events.check()
 
     # Should be gone
     assert not input_manager.is_hand_present()

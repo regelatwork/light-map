@@ -8,6 +8,9 @@ from light_map.common_types import AppConfig, SceneId
 from light_map.core.scene import SceneTransition
 
 
+from light_map.core.temporal_event_manager import TemporalEventManager
+
+
 @pytest.fixture
 def mock_app_context():
     """Creates a mock AppContext for testing."""
@@ -16,6 +19,20 @@ def mock_app_context():
     mock_context.app_config = app_config
     mock_context.projector_matrix = np.eye(3)
     mock_context.last_camera_frame = np.zeros((100, 100, 3), dtype=np.uint8)
+
+    # Use a mutable object to hold time
+    class TimeState:
+        val = 0.0
+
+    time_state = TimeState()
+
+    def mock_monotonic():
+        return time_state.val
+
+    mock_context.time_provider = mock_monotonic
+    mock_context.events = TemporalEventManager(time_provider=mock_monotonic)
+    mock_context.time_state = time_state
+
     # Configure nested mocks
     mock_context.map_config_manager = MagicMock()
     mock_context.notifications = MagicMock()
@@ -26,13 +43,9 @@ def mock_app_context():
 def test_flash_calibration_scene_state_machine(mock_app_context):
     """Verify the state machine transitions and logic of the FlashCalibrationScene."""
     scene = FlashCalibrationScene(mock_app_context)
-    mock_time = 0.0
+    time_state = mock_app_context.time_state
 
-    def mock_monotonic():
-        nonlocal mock_time
-        return mock_time
-
-    with patch("time.monotonic", side_effect=mock_monotonic):
+    with patch("time.monotonic", side_effect=mock_app_context.time_provider):
         with patch.object(scene.token_tracker, "detect_tokens") as mock_detect_tokens:
             # Simulate detection results for each level
             # For simplicity, let's say it finds 5 tokens for intensity 105, else 0
@@ -49,15 +62,15 @@ def test_flash_calibration_scene_state_machine(mock_app_context):
             assert scene._stage == FlashCalibStage.START
 
             # START -> TESTING
-            mock_time += 0.1
-            scene.update([], [], mock_time)
+            time_state.val += 0.1
+            scene.update([], [], time_state.val)
             assert scene._stage == FlashCalibStage.TESTING
 
             # Iterate through test levels
             for i, intensity in enumerate(scene._test_levels):
                 # Settle time
-                mock_time += 1.51
-                scene.update([], [], mock_time)
+                time_state.val += 1.51
+                mock_app_context.events.check()
                 assert scene._stage == FlashCalibStage.TESTING
                 assert scene._capture_frame is True
 
@@ -79,8 +92,8 @@ def test_flash_calibration_scene_state_machine(mock_app_context):
             assert scene._stage == FlashCalibStage.ANALYZING
 
             # ANALYZING -> SHOW_RESULT
-            mock_time += 0.1
-            scene.update([], [], mock_time)
+            time_state.val += 0.1
+            scene.update([], [], time_state.val)
             assert scene._stage == FlashCalibStage.SHOW_RESULT
             mock_app_context.map_config_manager.set_flash_intensity.assert_called_once_with(
                 105
@@ -90,9 +103,11 @@ def test_flash_calibration_scene_state_machine(mock_app_context):
             )
 
             # SHOW_RESULT -> DONE (after delay)
-            mock_time += 2.01
-            transition = scene.update([], [], mock_time)
+            time_state.val += 2.01
+            mock_app_context.events.check()
             assert scene._stage == FlashCalibStage.DONE
+
+            transition = scene.update([], [], time_state.val)
             assert isinstance(transition, SceneTransition)
             assert transition.target_scene == SceneId.MENU
 
@@ -101,23 +116,19 @@ def test_flash_calibration_scene_state_machine(mock_app_context):
 def test_render_flash_levels(mock_full_like, mock_app_context):
     """Verify that the scene renders the correct flash intensity during testing."""
     scene = FlashCalibrationScene(mock_app_context)
-    mock_time = 0.0
+    time_state = mock_app_context.time_state
 
-    def mock_monotonic():
-        nonlocal mock_time
-        return mock_time
-
-    with patch("time.monotonic", side_effect=mock_monotonic):
+    with patch("time.monotonic", side_effect=mock_app_context.time_provider):
         with patch.object(
             scene.token_tracker, "detect_tokens"
         ):  # Don't care about detection here
             scene.on_enter()
-            scene.update([], [], mock_time)
+            scene.update([], [], time_state.val)
 
             for i in range(len(scene._test_levels) - 1):
-                # Advance time and update to trigger capture_frame
-                mock_time += 1.51
-                scene.update([], [], mock_time)
+                # Advance time and check events to trigger capture_frame
+                time_state.val += 1.51
+                mock_app_context.events.check()
 
                 frame = np.zeros((100, 100, 3), dtype=np.uint8)
                 scene.render(frame)
@@ -131,8 +142,8 @@ def test_render_flash_levels(mock_full_like, mock_app_context):
                 mock_full_like.reset_mock()
 
             # Handle the last test level separately
-            mock_time += 1.51
-            scene.update([], [], mock_time)
+            time_state.val += 1.51
+            mock_app_context.events.check()
 
             frame = np.zeros((100, 100, 3), dtype=np.uint8)
             scene.render(frame)
@@ -147,6 +158,9 @@ def test_debug_mode_propagation(mock_app_context):
     """Verify that debug mode is propagated to TokenTracker."""
     mock_app_context.debug_mode = True
     scene = FlashCalibrationScene(mock_app_context)
+
+    # Use its own events mock since we are not using the fixture's complex one here if we don't want to
+    scene.context.events = MagicMock()
 
     scene.on_enter()
     assert scene.token_tracker.debug_mode is True

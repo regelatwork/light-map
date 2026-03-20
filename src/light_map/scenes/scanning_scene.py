@@ -14,6 +14,7 @@ from light_map.common_types import (
     SessionData,
     ViewportState,
     TokenDetectionAlgorithm,
+    TimerKey,
 )
 from light_map.core.scene import Scene, SceneTransition
 from light_map.session_manager import SessionManager
@@ -69,7 +70,6 @@ class ScanningScene(Scene):
         super().__init__(context)
         self.token_tracker = TokenTracker()
         self._stage = ScanStage.START
-        self._stage_start_time = 0.0
         self._last_scan_result_count = 0
 
         # Data for Structured Light
@@ -81,18 +81,22 @@ class ScanningScene(Scene):
     def on_enter(self, payload: dict | None = None) -> None:
         """Reset the state machine upon entering the scene."""
         self._stage = ScanStage.START
-        self._stage_start_time = time.monotonic()
         self._last_scan_result_count = 0
         self._dark_frame = None
         self._pattern_frame = None
         self._pattern_image = None
         self._cached_pattern_points = []
+        # Clear any existing scanning timers
+        self.context.events.cancel(TimerKey.SCANNING_STAGE)
+
+    def on_exit(self) -> None:
+        """Cleanup when leaving the scene."""
+        self.context.events.cancel(TimerKey.SCANNING_STAGE)
 
     def update(
         self, inputs: List[HandInput], actions: List[Action], current_time: float
     ) -> Optional[SceneTransition]:
         """Runs the state machine for the scanning sequence."""
-        elapsed_time = current_time - self._stage_start_time
         algorithm = self.context.map_config_manager.get_detection_algorithm()
 
         if self._stage == ScanStage.START:
@@ -103,69 +107,9 @@ class ScanningScene(Scene):
             else:
                 self._change_stage(ScanStage.FLASH, current_time)
 
-        # --- Flash Sequence ---
-        elif self._stage == ScanStage.FLASH:
-            if elapsed_time > 1.5:  # 1.5s for camera to adjust
-                self._change_stage(ScanStage.CAPTURE_FLASH, current_time)
-
-        elif self._stage == ScanStage.CAPTURE_FLASH:
-            # Capture happens in render/process transition.
-            # For consistency with structured light, we grab frame here?
-            # Actually, simpler to just hold state and let render/process grab it.
-            # But existing code grabbed in PROCESS. Let's keep it simple.
-            self._change_stage(ScanStage.PROCESS, current_time)
-
-        # --- Structured Light Sequence ---
-        elif self._stage == ScanStage.PREPARE_DARK:
-            # Just a state to ensure we start rendering black
-            self._change_stage(ScanStage.WAIT_DARK, current_time)
-
-        elif self._stage == ScanStage.WAIT_DARK:
-            if elapsed_time > 1.5:  # Increased for camera stability (auto-exposure)
-                self._change_stage(ScanStage.CAPTURE_DARK, current_time)
-
-        elif self._stage == ScanStage.CAPTURE_DARK:
-            if self.context.last_camera_frame is not None:
-                self._dark_frame = self.context.last_camera_frame.copy()
-            self._change_stage(ScanStage.PREPARE_PATTERN, current_time)
-
-        elif self._stage == ScanStage.PREPARE_PATTERN:
-            # Generate pattern if not already
-            if self._pattern_image is None:
-                ppi = self.context.map_config_manager.get_ppi()
-                width, height = (
-                    self.context.app_config.width,
-                    self.context.app_config.height,
-                )
-
-                # The pattern generation is now deterministic with its own seed
-                self._pattern_image, self._cached_pattern_points = (
-                    self.token_tracker.get_scan_pattern(width, height, ppi)
-                )
-
-            self._change_stage(ScanStage.WAIT_PATTERN, current_time)
-
-        elif self._stage == ScanStage.WAIT_PATTERN:
-            if elapsed_time > 1.5:  # Increased wait time for stability
-                self._change_stage(ScanStage.CAPTURE_PATTERN, current_time)
-
-        elif self._stage == ScanStage.CAPTURE_PATTERN:
-            if self.context.last_camera_frame is not None:
-                self._pattern_frame = self.context.last_camera_frame.copy()
-            self._change_stage(ScanStage.PROCESS, current_time)
-
-        # --- Common Processing ---
-        elif self._stage == ScanStage.PROCESS:
-            # Actual processing is triggered in render loop to ensure we aren't blocking update?
-            # Actually existing code did it in render. Let's keep that pattern or move it here.
-            # Moving to update might require it to be fast or async.
-            # Use render call to trigger sync processing for now.
-            pass
-
-        elif self._stage == ScanStage.SHOW_RESULT:
-            if elapsed_time > 2.0:  # Show result for 2 seconds
-                self._change_stage(ScanStage.DONE, current_time)
-                return SceneTransition(SceneId.MAP)
+        # Transition logic for stages that have completed their processing or wait time
+        if self._stage == ScanStage.DONE:
+            return SceneTransition(SceneId.MAP)
 
         return None
 
@@ -310,9 +254,76 @@ class ScanningScene(Scene):
         else:
             logging.info("No map loaded, session not saved to disk (memory only).")
 
+    def _on_stage_timer_expired(self):
+        """Callback for when a stage timer finishes."""
+        current_time = self.context.time_provider()
+
+        if self._stage == ScanStage.FLASH:
+            self._change_stage(ScanStage.CAPTURE_FLASH, current_time)
+
+        elif self._stage == ScanStage.WAIT_DARK:
+            self._change_stage(ScanStage.CAPTURE_DARK, current_time)
+
+        elif self._stage == ScanStage.WAIT_PATTERN:
+            self._change_stage(ScanStage.CAPTURE_PATTERN, current_time)
+
+        elif self._stage == ScanStage.SHOW_RESULT:
+            self._change_stage(ScanStage.DONE, current_time)
+
     def _change_stage(self, new_stage: ScanStage, current_time: float):
+        """Transitions to a new stage and schedules next steps if necessary."""
         self._stage = new_stage
-        self._stage_start_time = current_time
+
+        # A. Trigger immediate processing for some stages
+        if self._stage == ScanStage.CAPTURE_FLASH:
+            # Flash capture: we could grab frame here or in PROCESS.
+            # For simplicity and consistency, transition to process.
+            self._change_stage(ScanStage.PROCESS, current_time)
+
+        elif self._stage == ScanStage.PREPARE_DARK:
+            self._change_stage(ScanStage.WAIT_DARK, current_time)
+
+        elif self._stage == ScanStage.CAPTURE_DARK:
+            if self.context.last_camera_frame is not None:
+                self._dark_frame = self.context.last_camera_frame.copy()
+            self._change_stage(ScanStage.PREPARE_PATTERN, current_time)
+
+        elif self._stage == ScanStage.PREPARE_PATTERN:
+            # Generate pattern if not already
+            if self._pattern_image is None:
+                ppi = self.context.map_config_manager.get_ppi()
+                width, height = (
+                    self.context.app_config.width,
+                    self.context.app_config.height,
+                )
+
+                # The pattern generation is now deterministic with its own seed
+                self._pattern_image, self._cached_pattern_points = (
+                    self.token_tracker.get_scan_pattern(width, height, ppi)
+                )
+
+            self._change_stage(ScanStage.WAIT_PATTERN, current_time)
+
+        elif self._stage == ScanStage.CAPTURE_PATTERN:
+            if self.context.last_camera_frame is not None:
+                self._pattern_frame = self.context.last_camera_frame.copy()
+            self._change_stage(ScanStage.PROCESS, current_time)
+
+        # B. Schedule future transitions for 'WAIT' or 'SHOW' stages
+        delay = 0.0
+        if self._stage == ScanStage.FLASH:
+            delay = 1.5
+        elif self._stage == ScanStage.WAIT_DARK:
+            delay = 1.5
+        elif self._stage == ScanStage.WAIT_PATTERN:
+            delay = 1.5
+        elif self._stage == ScanStage.SHOW_RESULT:
+            delay = 2.0
+
+        if delay > 0:
+            self.context.events.schedule(
+                delay, self._on_stage_timer_expired, key=TimerKey.SCANNING_STAGE
+            )
 
     @property
     def blocking(self) -> bool:

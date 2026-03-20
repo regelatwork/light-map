@@ -16,7 +16,7 @@ from light_map.core.map_interaction import MapInteractionController
 from light_map.gestures import GestureType
 from light_map.token_tracker import TokenTracker
 from light_map.calibration_logic import calculate_ppi_from_frame, calibrate_extrinsics
-from light_map.common_types import SceneId, Action, AppConfig
+from light_map.common_types import SceneId, Action, AppConfig, TimerKey
 from light_map.calibration import (
     process_chessboard_images,
     save_camera_calibration,
@@ -45,7 +45,6 @@ class FlashCalibrationScene(Scene):
         super().__init__(context)
         self.token_tracker = TokenTracker()
         self._stage = FlashCalibStage.START
-        self._stage_start_time = 0.0
         self._test_levels = [255, 225, 195, 165, 135, 105, 75, 45]
         self._current_level_idx = 0
         self._results: Dict[int, int] = {}
@@ -54,33 +53,27 @@ class FlashCalibrationScene(Scene):
 
     def on_enter(self, payload: dict | None = None) -> None:
         self._stage = FlashCalibStage.START
-        self._stage_start_time = time.monotonic()
         self._current_level_idx = 0
         self._results = {}
         self.token_tracker.debug_mode = self.context.debug_mode
         self.increment_version()
+        self.context.events.cancel(TimerKey.CALIBRATION_STAGE)
+
+    def on_exit(self) -> None:
+        self.context.events.cancel(TimerKey.CALIBRATION_STAGE)
 
     def update(
         self, inputs: List[HandInput], actions: List[Action], current_time: float
     ) -> Optional[SceneTransition]:
-        elapsed = current_time - self._stage_start_time
-
         if self._stage == FlashCalibStage.START:
             self._change_stage(FlashCalibStage.TESTING, current_time)
-
-        elif self._stage == FlashCalibStage.TESTING:
-            # Settle time for the camera after intensity change
-            if elapsed > 1.5:
-                self._capture_frame = True  # Signal render() to process a frame
 
         elif self._stage == FlashCalibStage.ANALYZING:
             self._analyze_results()
             self._change_stage(FlashCalibStage.SHOW_RESULT, current_time)
 
-        elif self._stage == FlashCalibStage.SHOW_RESULT:
-            if elapsed > 2.0:
-                self._change_stage(FlashCalibStage.DONE, current_time)
-                return SceneTransition(SceneId.MENU)
+        elif self._stage == FlashCalibStage.DONE:
+            return SceneTransition(SceneId.MENU)
 
         return None
 
@@ -118,8 +111,8 @@ class FlashCalibrationScene(Scene):
                 if self._current_level_idx >= len(self._test_levels):
                     self._change_stage(FlashCalibStage.ANALYZING, time.monotonic())
                 else:
-                    # Reset timer for the next level's settle time
-                    self._stage_start_time = time.monotonic()
+                    # Next level's settle time is handled by _change_stage
+                    self._change_stage(FlashCalibStage.TESTING, time.monotonic())
 
             # Display current flash level
             if self._current_level_idx < len(self._test_levels):
@@ -154,9 +147,33 @@ class FlashCalibrationScene(Scene):
         self.context.notifications.add_notification(msg)
         logging.info(msg)
 
+    def _on_calibration_timer_expired(self):
+        """Callback for when a calibration stage timer finishes."""
+        current_time = self.context.time_provider()
+
+        if self._stage == FlashCalibStage.TESTING:
+            self._capture_frame = True  # Signal render() to process a frame
+
+        elif self._stage == FlashCalibStage.SHOW_RESULT:
+            self._change_stage(FlashCalibStage.DONE, current_time)
+
     def _change_stage(self, new_stage: FlashCalibStage, current_time: float):
+        """Transitions to a new stage and schedules next steps if necessary."""
         self._stage = new_stage
-        self._stage_start_time = current_time
+
+        # Schedule future transitions
+        delay = 0.0
+        if self._stage == FlashCalibStage.TESTING:
+            delay = 1.5
+        elif self._stage == FlashCalibStage.SHOW_RESULT:
+            delay = 2.0
+
+        if delay > 0:
+            self.context.events.schedule(
+                delay,
+                self._on_calibration_timer_expired,
+                key=TimerKey.CALIBRATION_STAGE,
+            )
 
 
 class IntrinsicsCalibrationScene(Scene):
@@ -278,7 +295,6 @@ class ProjectorCalibrationScene(Scene):
         self._stage = "DISPLAY_PATTERN"  # DISPLAY_PATTERN | SETTLE | CAPTURE | PROCESSING | DONE | ERROR
         self._pattern_image: Optional[np.ndarray] = None
         self._pattern_params: Optional[Dict] = None
-        self._start_time = 0.0
         self.is_dynamic = True
 
     def on_enter(self, payload: Any = None) -> None:
@@ -292,27 +308,19 @@ class ProjectorCalibrationScene(Scene):
         self._pattern_image, self._pattern_params = generate_calibration_pattern(
             w, h, pattern_rows=13, pattern_cols=18, border_size=30
         )
-        self._start_time = time.monotonic()
         self.context.notifications.add_notification("Projecting calibration pattern...")
+        self._change_stage("DISPLAY_PATTERN", self.context.time_provider())
+
+    def on_exit(self) -> None:
+        self.context.events.cancel(TimerKey.CALIBRATION_STAGE)
 
     def update(
         self, inputs: List[HandInput], actions: List[Action], current_time: float
     ) -> Optional[SceneTransition]:
-        elapsed = current_time - self._start_time
-
-        if self._stage == "DISPLAY_PATTERN":
-            if elapsed > 1.0:  # Ensure it's being projected
-                self._stage = "SETTLE"
-                self._start_time = current_time
-
-        elif self._stage == "SETTLE":
-            if elapsed > 2.0:  # Camera settle time
-                self._stage = "CAPTURE"
-
-        elif self._stage == "CAPTURE":
+        if self._stage == "CAPTURE":
             frame = self.context.last_camera_frame
             if frame is not None:
-                self._stage = "PROCESSING"
+                self._change_stage("PROCESSING", current_time)
                 from light_map.projector import compute_projector_homography
 
                 try:
@@ -364,6 +372,34 @@ class ProjectorCalibrationScene(Scene):
             return SceneTransition(SceneId.MENU)
 
         return None
+
+    def _on_calibration_timer_expired(self):
+        """Callback for when a calibration stage timer finishes."""
+        current_time = self.context.time_provider()
+
+        if self._stage == "DISPLAY_PATTERN":
+            self._change_stage("SETTLE", current_time)
+
+        elif self._stage == "SETTLE":
+            self._change_stage("CAPTURE", current_time)
+
+    def _change_stage(self, new_stage: str, current_time: float):
+        """Transitions to a new stage and schedules next steps if necessary."""
+        self._stage = new_stage
+
+        # Schedule future transitions
+        delay = 0.0
+        if self._stage == "DISPLAY_PATTERN":
+            delay = 1.0
+        elif self._stage == "SETTLE":
+            delay = 2.0
+
+        if delay > 0:
+            self.context.events.schedule(
+                delay,
+                self._on_calibration_timer_expired,
+                key=TimerKey.CALIBRATION_STAGE,
+            )
 
     @property
     def blocking(self) -> bool:
@@ -428,9 +464,9 @@ class ExtrinsicsCalibrationScene(Scene):
         self._reprojection_error = 0.0
         self._object_points = None
         self._image_points = None
-        self._retry_gesture_start_time = 0.0
         self._current_time = 0.0
         self._known_targets = {}
+        self.context.events.cancel(TimerKey.CALIBRATION_STAGE)
 
         # Load ground points (Z=0) from projector calibration
         try:
@@ -478,6 +514,15 @@ class ExtrinsicsCalibrationScene(Scene):
         self._target_info = [{} for _ in range(len(self._target_zones))]
         self._animation_start_times = {}
         self.context.notifications.add_notification("Place tokens on target zones.")
+
+    def on_exit(self) -> None:
+        self.context.events.cancel(TimerKey.CALIBRATION_STAGE)
+
+    def _on_retry_triggered(self):
+        """Callback for when the retry gesture hold is completed."""
+        self.context.notifications.add_notification("Calibration discarded.")
+        self._stage = "PLACEMENT"
+        self.increment_version()
 
     def update(
         self, inputs: List[HandInput], actions: List[Action], current_time: float
@@ -647,16 +692,12 @@ class ExtrinsicsCalibrationScene(Scene):
 
             # Retry
             if inputs and inputs[0].gesture == GestureType.CLOSED_FIST:
-                if self._retry_gesture_start_time == 0.0:
-                    self._retry_gesture_start_time = current_time
-                elif current_time - self._retry_gesture_start_time > 2.0:
-                    self.context.notifications.add_notification(
-                        "Calibration discarded."
+                if not self.context.events.has_event(TimerKey.CALIBRATION_STAGE):
+                    self.context.events.schedule(
+                        2.0, self._on_retry_triggered, key=TimerKey.CALIBRATION_STAGE
                     )
-                    self._stage = "PLACEMENT"
-                    self._retry_gesture_start_time = 0.0
             else:
-                self._retry_gesture_start_time = 0.0
+                self.context.events.cancel(TimerKey.CALIBRATION_STAGE)
 
         return None
 
@@ -895,6 +936,10 @@ class PpiCalibrationScene(Scene):
     def on_enter(self, payload: Any = None) -> None:
         self._stage = "DETECTING"
         self._candidate_ppi = 0.0
+        self.context.events.cancel(TimerKey.CALIBRATION_STAGE)
+
+    def on_exit(self) -> None:
+        self.context.events.cancel(TimerKey.CALIBRATION_STAGE)
 
     def update(
         self, inputs: List[HandInput], actions: List[Action], current_time: float
@@ -1074,16 +1119,17 @@ class MapGridCalibrationScene(Scene):
     def __init__(self, context: AppContext):
         super().__init__(context)
         self.interaction_controller = MapInteractionController()
-        self.summon_gesture_start_time = 0.0
         self.is_interacting = False
         self.calib_map_grid_size_inches = 1.0
         self.grid_overlay: Optional[GridOverlay] = None
         self.is_dynamic = True
+        self._save_triggered = False
 
     def on_enter(self, payload: dict | None = None) -> None:
         self.is_interacting = False
-        self.summon_gesture_start_time = 0.0
+        self._save_triggered = False
         self.increment_version()
+        self.context.events.cancel(TimerKey.CALIBRATION_STAGE)
 
         map_system = self.context.map_system
         map_config = self.context.map_config_manager
@@ -1132,22 +1178,29 @@ class MapGridCalibrationScene(Scene):
             logging.info("Initialized default grid (centered)")
 
     def on_exit(self) -> None:
-        pass
+        self.context.events.cancel(TimerKey.CALIBRATION_STAGE)
+
+    def _on_save_triggered(self):
+        """Callback for when the save gesture hold is completed."""
+        self._save_calibration()
+        self._save_triggered = True
 
     def update(
         self, inputs: List[HandInput], actions: List[Action], current_time: float
     ) -> Optional[SceneTransition]:
+        if self._save_triggered:
+            return SceneTransition(SceneId.MENU)
+
         primary_gesture = inputs[0].gesture if inputs else GestureType.NONE
 
         # Confirm gesture
         if primary_gesture == GestureType.VICTORY:
-            if self.summon_gesture_start_time == 0:
-                self.summon_gesture_start_time = current_time
-            elif current_time - self.summon_gesture_start_time > 1.0:  # 1s hold
-                self._save_calibration()
-                return SceneTransition(SceneId.MENU)
+            if not self.context.events.has_event(TimerKey.CALIBRATION_STAGE):
+                self.context.events.schedule(
+                    1.0, self._on_save_triggered, key=TimerKey.CALIBRATION_STAGE
+                )
         else:
-            self.summon_gesture_start_time = 0.0
+            self.context.events.cancel(TimerKey.CALIBRATION_STAGE)
 
         # Process grid interactions
         if self.grid_overlay:
@@ -1327,8 +1380,9 @@ class Projector3DCalibrationScene(Scene):
         self.correspondences = []
         self.current_box_pos_idx = 0
         self.max_box_positions = 5
-        self._last_gesture_time = 0.0
         self._cooldown = 2.0
+        self._can_gesture = True
+        self._transition_to_menu = False
 
         from light_map.projector_3d_layer import (
             Projector3DPatternLayer,
@@ -1347,8 +1401,20 @@ class Projector3DCalibrationScene(Scene):
         self.stage = Projector3DCalibStage.START
         self.correspondences = []
         self.current_box_pos_idx = 0
+        self._can_gesture = True
+        self._transition_to_menu = False
         self._update_layer_markers()
         self.increment_version()
+        self.context.events.cancel(TimerKey.CALIBRATION_STAGE)
+
+    def on_exit(self) -> None:
+        self.context.events.cancel(TimerKey.CALIBRATION_STAGE)
+
+    def _on_cooldown_expired(self):
+        self._can_gesture = True
+
+    def _on_done_delay_expired(self):
+        self._transition_to_menu = True
 
     @property
     def blocking(self) -> bool:
@@ -1365,6 +1431,9 @@ class Projector3DCalibrationScene(Scene):
     def update(
         self, inputs: List[HandInput], actions: List[Action], current_time: float
     ) -> Optional[SceneTransition]:
+        if self._transition_to_menu:
+            return SceneTransition(SceneId.MENU)
+
         old_stage = self.stage
 
         # Continuously update detected IDs for feedback
@@ -1395,11 +1464,13 @@ class Projector3DCalibrationScene(Scene):
             )
 
             for inp in inputs:
-                if (
-                    inp.gesture == expected_gesture
-                    and (current_time - self._last_gesture_time) > self._cooldown
-                ):
-                    self._last_gesture_time = current_time
+                if inp.gesture == expected_gesture and self._can_gesture:
+                    self._can_gesture = False
+                    self.context.events.schedule(
+                        self._cooldown,
+                        self._on_cooldown_expired,
+                        key=TimerKey.CALIBRATION_STAGE,
+                    )
                     self.stage = Projector3DCalibStage.CAPTURING
                     return None
 
@@ -1416,11 +1487,9 @@ class Projector3DCalibrationScene(Scene):
         elif self.stage == Projector3DCalibStage.CALIBRATING:
             self._run_calibration()
             self.stage = Projector3DCalibStage.DONE
-
-        elif self.stage == Projector3DCalibStage.DONE:
-            # Transition back to menu after a short delay
-            if current_time - self._last_gesture_time > 3.0:
-                return SceneTransition(SceneId.MENU)
+            self.context.events.schedule(
+                3.0, self._on_done_delay_expired, key=TimerKey.CALIBRATION_STAGE
+            )
 
         if self.stage != old_stage:
             logging.info("Projector3DCalibrationScene: Stage changed to %s", self.stage)

@@ -75,7 +75,9 @@ class InteractiveApp:
 
         # Core Systems
         self.map_config = MapConfigManager(storage=config.storage_manager)
-        self.notifications = NotificationManager()
+        self.notifications = NotificationManager(
+            time_provider=time_provider, events=self.events
+        )
 
         # Initialize Projector 3D Model
         self.config.projector_3d_model = Projector3DModel.load_from_storage(

@@ -1,6 +1,11 @@
+from __future__ import annotations
 import time
 from dataclasses import dataclass, field
-from typing import List, Callable
+from typing import List, Callable, TYPE_CHECKING, Optional
+from light_map.common_types import TimerKey
+
+if TYPE_CHECKING:
+    from light_map.core.temporal_event_manager import TemporalEventManager
 
 
 @dataclass
@@ -19,10 +24,15 @@ class Notification:
 class NotificationManager:
     """Manages creation, display, and expiry of notifications."""
 
-    def __init__(self, time_provider: Callable[[], float] = time.monotonic):
+    def __init__(
+        self,
+        time_provider: Callable[[], float] = time.monotonic,
+        events: Optional[TemporalEventManager] = None,
+    ):
         self.notifications: List[Notification] = []
         self.timestamp: int = 0
         self.time_provider = time_provider
+        self.events = events
 
     def add_notification(self, message: str, duration: float = 5.0):
         """
@@ -33,8 +43,13 @@ class NotificationManager:
             if n.message == message:
                 n.refresh(self.time_provider)
                 n.duration = duration
-                # We don't necessarily need to bump the global timestamp if content is identical,
-                # but it ensures the layer keeps rendering if it needs to.
+                # Reschedule expiry if events manager is available
+                if self.events:
+                    self.events.schedule(
+                        duration,
+                        lambda msg=message: self._remove_notification(msg),
+                        key=(TimerKey.NOTIFICATION_EXPIRY, message),
+                    )
                 return
 
         self.notifications.append(
@@ -42,8 +57,26 @@ class NotificationManager:
         )
         self.timestamp += 1
 
+        # Schedule expiry if events manager is available
+        if self.events:
+            self.events.schedule(
+                duration,
+                lambda msg=message: self._remove_notification(msg),
+                key=(TimerKey.NOTIFICATION_EXPIRY, message),
+            )
+
+    def _remove_notification(self, message: str):
+        """Removes a specific notification by its message."""
+        original_count = len(self.notifications)
+        self.notifications = [n for n in self.notifications if n.message != message]
+        if len(self.notifications) != original_count:
+            self.timestamp += 1
+
     def _prune_expired(self):
-        """Removes notifications that have exceeded their duration."""
+        """Removes notifications that have exceeded their duration (fallback if no events manager)."""
+        if self.events:
+            return
+
         current_time = self.time_provider()
         original_count = len(self.notifications)
         self.notifications = [

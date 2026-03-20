@@ -403,7 +403,9 @@ def run_app(args):
                 producer.lock = manager.lock
 
                 input_manager = InputManager(
-                    flicker_timeout=1.5, time_provider=app.time_provider
+                    flicker_timeout=1.5,
+                    time_provider=app.time_provider,
+                    events=app.events,
                 )
                 with MainLoopController(
                     state,

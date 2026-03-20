@@ -186,6 +186,10 @@ class TimerKey(StrEnum):
     SUMMON_MENU_STEP_1 = "summon_menu_step_1"
     SUMMON_MENU_STEP_2 = "summon_menu_step_2"
     DWELL = "dwell"
+    SCANNING_STAGE = "scanning_stage"
+    CALIBRATION_STAGE = "calibration_stage"
+    NOTIFICATION_EXPIRY = "notification_expiry"
+    GESTURE_TIMEOUT = "gesture_timeout"
 
 
 @dataclass

@@ -1,6 +1,10 @@
+from __future__ import annotations
 import time
-from typing import List, Set, Optional
-from light_map.common_types import GestureType, Action
+from typing import List, Set, Optional, TYPE_CHECKING
+from light_map.common_types import GestureType, Action, TimerKey
+
+if TYPE_CHECKING:
+    from light_map.core.temporal_event_manager import TemporalEventManager
 
 
 class InputManager:
@@ -8,10 +12,15 @@ class InputManager:
     Unifies hardware (keyboard) and vision (gesture) inputs into semantic Actions.
     """
 
-    def __init__(self, flicker_timeout: float = 0.5, time_provider=time.monotonic):
+    def __init__(
+        self,
+        flicker_timeout: float = 0.5,
+        time_provider=time.monotonic,
+        events: Optional[TemporalEventManager] = None,
+    ):
         self.flicker_timeout = flicker_timeout
         self.time_provider = time_provider
-        self.last_present_time: float = 0.0
+        self.events = events
         self.is_present: bool = False
 
         self._x: int = 0
@@ -21,33 +30,53 @@ class InputManager:
 
     def update(self, x: int, y: int, gesture: GestureType, is_present: bool):
         """Updates the internal state from vision detection."""
-        now = self.time_provider()
+        was_present = self.is_hand_present()
 
         if is_present:
-            self.last_present_time = now
             self.is_present = True
             self._x = x
             self._y = y
             self._gesture = gesture
+            # Cancel any pending timeout
+            if self.events:
+                self.events.cancel(TimerKey.GESTURE_TIMEOUT)
         else:
             # Check for flicker recovery
-            if now - self.last_present_time < self.flicker_timeout:
-                self.is_present = True
-            else:
-                if self.is_present:
-                    import logging
-
-                    logging.debug(
-                        f"InputManager: Gesture CLEARED due to timeout (now={now:.2f}, last={self.last_present_time:.2f}, timeout={self.flicker_timeout})"
+            if self.events:
+                if not self.events.has_event(TimerKey.GESTURE_TIMEOUT):
+                    self.events.schedule(
+                        self.flicker_timeout,
+                        self._clear_gesture,
+                        key=TimerKey.GESTURE_TIMEOUT,
                     )
-                self.is_present = False
-                self._gesture = GestureType.NONE
+            else:
+                # Fallback if no events manager provided (immediate clear)
+                self._clear_gesture()
 
-        # Map gesture to action
-        if self.is_present:
+        # Map gesture to action ONLY IF newly present or gesture changed
+        if self.is_hand_present() and (not was_present or gesture != self._gesture):
+            # Update internal gesture before mapping if it changed during flicker recovery
+            if not is_present and was_present:
+                # We are in flicker recovery, maintain old gesture for action mapping
+                # unless it already changed.
+                pass
+            else:
+                self._gesture = gesture
+
             gesture_action = self._map_gesture_to_action(self._gesture)
             if gesture_action:
                 self._pending_actions.add(gesture_action)
+
+    def _clear_gesture(self):
+        """Callback to clear gesture state when timeout expires."""
+        if self.is_present:
+            import logging
+
+            logging.debug("InputManager: Gesture CLEARED due to timeout")
+        self.is_present = False
+        self._gesture = GestureType.NONE
+        # Note: self.events.check() already removed this event from self._keys
+        # so has_event(GESTURE_TIMEOUT) will return False now.
 
     def update_keyboard(self, key_code: int):
         """Processes a raw keyboard code from cv2.waitKey()."""
@@ -91,4 +120,8 @@ class InputManager:
         return self._gesture
 
     def is_hand_present(self) -> bool:
-        return self.is_present
+        if self.is_present:
+            return True
+        if self.events and self.events.has_event(TimerKey.GESTURE_TIMEOUT):
+            return True
+        return False

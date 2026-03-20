@@ -41,6 +41,12 @@ class TemporalEventManager:
         if key in self._keys:
             del self._keys[key]
 
+    def get_remaining_time(self, key: Hashable) -> float:
+        """Returns the time remaining for an event with the given key."""
+        if key not in self._keys:
+            return 0.0
+        return max(0.0, self._keys[key] - self.time_provider())
+
     def check(self) -> List[Any]:
         """
         Checks for expired events and executes them.

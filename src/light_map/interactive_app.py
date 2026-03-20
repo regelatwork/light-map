@@ -10,6 +10,7 @@ from light_map.common_types import (
     AppConfig,
     Layer,
     SceneId,
+    TimerKey,
 )
 from light_map.renderer import Renderer
 from light_map.map_system import MapSystem
@@ -604,12 +605,32 @@ class InteractiveApp:
         if dwell_tracker:
             state.dwell_state = {
                 "accumulated_time": dwell_tracker.accumulated_time,
+                "dwell_time_threshold": dwell_tracker.dwell_time_threshold,
                 "is_triggered": dwell_tracker.is_triggered,
                 "last_point": dwell_tracker.last_point,
                 "target_id": dwell_tracker.target_id,  # Use internal tracker's target_id
             }
         else:
             state.dwell_state = {}
+
+        # Update summon progress
+        summon_p = 0.0
+        import light_map.menu_config as config_vars
+
+        if self.events.has_event(TimerKey.SUMMON_MENU_STEP_1):
+            rem = self.events.get_remaining_time(TimerKey.SUMMON_MENU_STEP_1)
+            summon_p = max(0.0, 1.0 - (rem / config_vars.SUMMON_STEP_1_TIME))
+        elif self.events.has_event(TimerKey.SUMMON_MENU_STEP_2):
+            rem = self.events.get_remaining_time(TimerKey.SUMMON_MENU_STEP_2)
+            summon_p = max(0.0, 1.0 - (rem / config_vars.SUMMON_STEP_2_TIME))
+        elif self.events.has_event(TimerKey.SUMMON_MENU):
+            # In MapScene, SUMMON_MENU is the actual timer for summoning
+            # In ViewingScene, it's just a marker for step 2 window (ignore progress for marker)
+            if self.current_scene_name == "MapScene":
+                rem = self.events.get_remaining_time(TimerKey.SUMMON_MENU)
+                summon_p = max(0.0, 1.0 - (rem / config_vars.SUMMON_TIME))
+
+        state.summon_progress = summon_p
 
         # --- VISIBILITY AND LAYER STACK ---
         current_stack = self.get_layer_stack()

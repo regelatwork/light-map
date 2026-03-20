@@ -44,8 +44,8 @@ class BaseMapScene(Scene):
         ppi = getattr(self.context.app_config, "projector_ppi", 96.0)
         self.dwell_tracker = DwellTracker(
             radius_pixels=ppi * 0.5,
-            dwell_time_threshold=2.0,
             events=self.context.events,
+            dwell_time_threshold=2.0,
         )
 
     def _handle_dwell_trigger(self, cursor_pos: Tuple[int, int]):
@@ -223,7 +223,11 @@ class BaseMapScene(Scene):
         current_time: float,
     ) -> bool:
         """Centralized logic for dwell triggering and inspection linger."""
-        if primary_gesture == GestureType.OPEN_PALM and cursor_pos is not None:
+        # Support both OPEN_PALM and POINTING for dwell (e.g. door selection)
+        if (
+            primary_gesture in (GestureType.OPEN_PALM, GestureType.POINTING)
+            and cursor_pos is not None
+        ):
             target_id = self._find_target_at_point(cursor_pos)
             # Check if dwell triggered (handles both polling and event-based triggers)
             if self.dwell_tracker.update(cursor_pos, dt, target_id=target_id):

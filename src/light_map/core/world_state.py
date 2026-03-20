@@ -45,6 +45,7 @@ class WorldState:
         self.selection: SelectionState = SelectionState()
         self.blockers: List[Dict[str, Any]] = []
         self.dwell_state: Dict[str, Any] = {}
+        self.summon_progress: float = 0.0
 
         # Grid Metadata
         self.grid_spacing_svg: float = 0.0

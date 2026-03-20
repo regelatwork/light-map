@@ -107,6 +107,7 @@ class Scene(ABC):
             app.menu_layer,
             app.notification_layer,
             app.debug_layer,
+            app.selection_progress_layer,
             app.cursor_layer,
         ]
 

@@ -13,8 +13,8 @@ class DwellTracker:
     def __init__(
         self,
         radius_pixels: float,
+        events: TemporalEventManager,
         dwell_time_threshold: float = 2.0,
-        events: Optional[TemporalEventManager] = None,
         on_trigger: Optional[Callable[[], None]] = None,
     ):
         self.radius_pixels = radius_pixels
@@ -23,11 +23,26 @@ class DwellTracker:
         self.on_trigger = on_trigger
 
         self.last_point: Optional[Tuple[float, float]] = None
-        self.accumulated_time = 0.0
         self.is_triggered = False
         self._just_triggered = False
         self._event_key = (TimerKey.DWELL, id(self))
         self.target_id: Optional[str] = None
+
+    @property
+    def accumulated_time(self) -> float:
+        """Returns the time spent dwelling in seconds."""
+        if self.is_triggered:
+            return self.dwell_time_threshold
+        if not self.events.has_event(self._event_key):
+            return 0.0
+        remaining = self.events.get_remaining_time(self._event_key)
+        return max(0.0, self.dwell_time_threshold - remaining)
+
+    @accumulated_time.setter
+    def accumulated_time(self, value: float):
+        # Kept for compatibility with InteractiveApp during transition,
+        # but does nothing now as we use TemporalEventManager
+        pass
 
     def update(
         self,
@@ -50,13 +65,11 @@ class DwellTracker:
         if self.last_point is None or target_id != self.target_id:
             self.last_point = point
             self.target_id = target_id
-            self.accumulated_time = 0.0
             self.is_triggered = False
             self._just_triggered = False
-            if self.events:
-                self.events.schedule(
-                    self.dwell_time_threshold, self._trigger, key=self._event_key
-                )
+            self.events.schedule(
+                self.dwell_time_threshold, self._trigger, key=self._event_key
+            )
             return False
 
         # Calculate distance
@@ -65,41 +78,28 @@ class DwellTracker:
         )
 
         if dist <= self.radius_pixels:
-            if not self.events:
-                self.accumulated_time += dt
-                if (
-                    self.accumulated_time >= self.dwell_time_threshold
-                    and not self.is_triggered
-                ):
-                    self.is_triggered = True
-                    return True
-            else:
-                if not self.is_triggered and not self.events.has_event(self._event_key):
-                    self.events.schedule(
-                        self.dwell_time_threshold, self._trigger, key=self._event_key
-                    )
-        else:
-            # Reset if moved outside radius
-            self.last_point = point
-            self.accumulated_time = 0.0
-            self.is_triggered = False
-            self._just_triggered = False
-            if self.events:
-                self.events.cancel(self._event_key)
+            if not self.is_triggered and not self.events.has_event(self._event_key):
                 self.events.schedule(
                     self.dwell_time_threshold, self._trigger, key=self._event_key
                 )
+        else:
+            # Reset if moved outside radius
+            self.last_point = point
+            self.is_triggered = False
+            self._just_triggered = False
+            self.events.cancel(self._event_key)
+            self.events.schedule(
+                self.dwell_time_threshold, self._trigger, key=self._event_key
+            )
 
         return False
 
     def reset(self):
         """Resets the tracker state."""
         self.last_point = None
-        self.accumulated_time = 0.0
         self.is_triggered = False
         self._just_triggered = False
-        if self.events:
-            self.events.cancel(self._event_key)
+        self.events.cancel(self._event_key)
 
     def _trigger(self):
         if not self.is_triggered:

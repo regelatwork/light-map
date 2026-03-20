@@ -11,6 +11,7 @@ from light_map.overlay_layer import TokenLayer, NotificationLayer, DebugLayer
 from light_map.fow_layer import FogOfWarLayer
 from light_map.visibility_layer import VisibilityLayer, ExclusiveVisionLayer
 from light_map.cursor_layer import CursorLayer
+from light_map.selection_progress_layer import SelectionProgressLayer
 
 if TYPE_CHECKING:
     from light_map.core.app_context import AppContext
@@ -48,6 +49,7 @@ class LayerStackManager:
         self.token_layer = TokenLayer(state, context)
         self.notification_layer = NotificationLayer(state, context)
         self.debug_layer = DebugLayer(state, context)
+        self.selection_progress_layer = SelectionProgressLayer(state, context)
         self.cursor_layer = CursorLayer(state, context)
 
         # Visibility and FoW Layers (initialized as placeholders until map loads)
@@ -96,6 +98,7 @@ class LayerStackManager:
             self.menu_layer,
             self.notification_layer,
             self.debug_layer,
+            self.selection_progress_layer,
             self.cursor_layer,
         ]
 
@@ -211,6 +214,7 @@ class LayerStackManager:
             self.token_layer,
             self.notification_layer,
             self.debug_layer,
+            self.selection_progress_layer,
             self.cursor_layer,
         ]
         if self.fow_layer:

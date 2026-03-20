@@ -11,19 +11,27 @@ from light_map.vision.input_processor import DummyResults, InputProcessor
 
 def test_dwell_tracker_basic():
     # 10 pixel radius, 2 second threshold
-    tracker = DwellTracker(radius_pixels=10, dwell_time_threshold=2.0)
+    events = TemporalEventManager()
+    t = 0.0
+    events.time_provider = lambda: t
+    tracker = DwellTracker(radius_pixels=10, dwell_time_threshold=2.0, events=events)
 
     # First update
     assert tracker.update((100, 100), 0.5) is False
-    assert tracker.accumulated_time == 0.0
+    assert tracker.accumulated_time == pytest.approx(0.0, abs=1e-5)
 
     # Stable update
+    # We need to simulate time passing for TemporalEventManager
+    t = 1.0
     assert tracker.update((102, 102), 1.0) is False
-    assert tracker.accumulated_time == 1.0
+    # rem = 2.0 - (1.0 - 0.0) = 1.0
+    assert tracker.accumulated_time == pytest.approx(1.0, abs=1e-5)
 
     # Reached threshold
+    t = 2.1
+    events.check()  # Trigger the dwell
     assert tracker.update((101, 99), 1.1) is True
-    assert tracker.accumulated_time == 2.1
+    assert tracker.accumulated_time == pytest.approx(2.0, abs=1e-5)
     assert tracker.is_triggered is True
 
     # Subsequent stable updates shouldn't re-trigger

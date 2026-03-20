@@ -28,6 +28,10 @@ export const ConfigurationSidebar: React.FC = () => {
     }
   }, [activeTokenId]);
 
+  useEffect(() => {
+    console.debug('Selection changed:', selection);
+  }, [selection]);
+
   const displayId = activeTokenId !== null ? activeTokenId : parseInt(manualArUcoId);
   const activeToken =
     selection.type === SelectionType.TOKEN && !isNaN(Number(displayId))
@@ -88,11 +92,7 @@ export const ConfigurationSidebar: React.FC = () => {
             </div>
           </div>
 
-          {activeToken ? (
-            <div className="animate-in fade-in duration-300">
-              <TokenPropertiesEditor token={activeToken} />
-            </div>
-          ) : selectedDoor ? (
+          {selectedDoor ? (
             <div className="p-4 bg-orange-50 rounded-lg border border-orange-100 animate-in fade-in duration-300">
               <div className="flex items-center gap-2 mb-3">
                 <div className="p-2 bg-orange-100 rounded-lg text-orange-700">
@@ -124,6 +124,10 @@ export const ConfigurationSidebar: React.FC = () => {
                   Deselect
                 </button>
               </div>
+            </div>
+          ) : activeToken ? (
+            <div className="animate-in fade-in duration-300">
+              <TokenPropertiesEditor token={activeToken} />
             </div>
           ) : (
             <div className="py-12 flex flex-col items-center justify-center text-center px-4">

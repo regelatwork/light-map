@@ -198,7 +198,7 @@ def handle_reset_fow(
     if app.fow_manager and app.current_map_path:
         app.fow_manager.reset()
         app.map_config.save_fow_masks(app.current_map_path, app.fow_manager)
-        app.state.increment_fow_timestamp()
+        app.state.fow_version += 1
         app.notifications.add_notification("Fog of War Reset")
     return None
 
@@ -208,7 +208,7 @@ def handle_toggle_fow(
 ) -> Optional["SceneTransition"]:
     if app.fow_manager:
         app.fow_manager.is_disabled = not app.fow_manager.is_disabled
-        app.state.increment_fow_timestamp()
+        app.state.fow_version += 1
         state_str = "OFF" if app.fow_manager.is_disabled else "ON"
         app.notifications.add_notification(f"GM: Fog of War {state_str}")
     return None

@@ -171,7 +171,7 @@ class LayerStackManager:
                 # Ensure Map is full brightness during inspection
                 if self.map_layer.opacity != 1.0:
                     self.map_layer.opacity = 1.0
-                    self.context.state.increment_map_timestamp()
+                    self.context.state.map_version += 1
 
                 # Transformation: Insert ExclusiveVisionLayer above Visibility/FoW
                 new_stack = []

@@ -70,7 +70,39 @@ class WorldState:
 
 ---
 
-## 5. Temporal Event Manager: The Sole Time Authority
+## 5. Batching & Transactional Updates
+To ensure that complex operations (like a simultaneous move and zoom) trigger only a single re-render cycle, `WorldState` supports transactional updates.
+
+### Transaction Pattern
+```python
+with world_state.transaction() as tx:
+    tx.update(world_state.viewport, new_viewport)
+    tx.update(world_state.menu_state, new_menu_state)
+# All updates share the same timestamp and notify listeners once at the end.
+```
+The transaction captures a single `time.monotonic_ns()` at the start and applies it to all modified atoms, preventing intermediate "partial" states from being rendered.
+
+---
+
+## 6. IPC & DetectionResult Integration
+Detection results from worker processes (ArUco, Hands, Gestures) must be bridged into the atomic state of the `MainProcess`.
+
+1.  **Direct Mapping**: Each detection stream (e.g., `ArucoDetectionResult`) maps to a specific `VersionedAtom` (e.g., `state.tokens`).
+2.  **Temporal Alignment**: When a `DetectionResult` includes a hardware capture timestamp, that timestamp is used as the atom's version. This ensures that temporal math remains consistent even if IPC delivery is slightly delayed.
+3.  **Batch Application**: When multiple detections (e.g., hand landmarks and a gesture) arrive in a single IPC bundle, they are applied via a `transaction()` to ensure the renderer sees a consistent snapshot of the physical world.
+
+---
+
+## 7. Performance Optimization for Collections
+For large collections like `tokens` or `landmarks`, standard deep equality checks can be expensive.
+
+*   **Identity Tracking**: Use stable IDs for elements. The `equality_fn` should first check if the set of IDs has changed, then perform shallow comparisons on existing items.
+*   **Dirty Flags**: For high-frequency data (like hand landmarks), use a distance threshold in the `equality_fn` to avoid updating the version for sub-pixel sensor jitter.
+*   **Vectorized Comparison**: Where possible, use NumPy-based comparisons for coordinate arrays to keep the main loop latency low.
+
+---
+
+## 8. Temporal Event Manager: The Sole Time Authority
 The `TemporalEventManager` is upgraded from a callback scheduler to the exclusive owner of temporal state.
 
 ### Responsibilities
@@ -85,7 +117,7 @@ The `TemporalEventManager` is upgraded from a callback scheduler to the exclusiv
 
 ---
 
-## 6. Elimination of "Logical" Updates
+## 9. Elimination of "Logical" Updates
 "Logical" updates are currently used when internal class variables change. In the new design, these variables must be moved into an atom.
 
 | Current "Logical" Need | Atomic Solution |
@@ -97,7 +129,7 @@ The `TemporalEventManager` is upgraded from a callback scheduler to the exclusiv
 
 ---
 
-## 7. Rendering Pipeline
+## 10. Rendering Pipeline
 The `Renderer` becomes significantly simpler:
 1.  **Version Gathering**: For each layer, gather the `timestamp` of every atom it depends on.
 2.  **Comparison**: `max(dependent_timestamps)`.
@@ -110,7 +142,17 @@ This ensures that the **Door Layer** only re-renders if:
 
 ---
 
-## 8. Benefits
+## 11. Incremental Migration Strategy
+To transition from the monolithic `WorldState` without a "Big Bang" refactor, we follow a staged approach:
+
+1.  **Phase 1: Simple Atoms**: Migrate isolated states like `viewport`, `menu_state`, and `fow_config`. These have minimal dependencies.
+2.  **Phase 2: Hybrid WorldState**: `WorldState` will temporarily host both legacy raw attributes and new `VersionedAtom` members.
+3.  **Phase 3: Collection Migration**: Move complex collections (`tokens`, `blockers`) to atoms once the optimized `equality_fn` patterns are verified.
+4.  **Phase 4: Full Deprecation**: Remove legacy `increment_X_timestamp` methods and manual timestamp management once all layers depend exclusively on atoms.
+
+---
+
+## 12. Benefits
 *   **Zero Masking**: All versioning uses the same nanosecond scale.
 *   **No Forgotten Updates**: Updating data *is* updating the version.
 *   **Testing & Playback**: By capturing the sequence of atom updates, we can perfectly recreate any bug or user session.

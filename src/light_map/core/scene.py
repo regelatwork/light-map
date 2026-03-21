@@ -72,7 +72,7 @@ class Scene(ABC):
 
     def increment_version(self):
         """Triggers a re-render by incrementing the central scene version."""
-        self.context.state.increment_scene_timestamp()
+        self.context.state.scene_version += 1
 
     @property
     def is_dynamic(self) -> bool:

@@ -3,6 +3,8 @@ import time
 import logging
 from typing import Callable, Any, List, Tuple, Dict, Optional, Hashable
 
+from .world_state import WorldState
+
 
 class TemporalEventManager:
     """
@@ -11,12 +13,25 @@ class TemporalEventManager:
     Supports cancellation using unique event keys.
     """
 
-    def __init__(self, time_provider: Callable[[], float] = time.monotonic):
+    def __init__(
+        self,
+        time_provider: Callable[[], float] = time.monotonic,
+        state: Optional[WorldState] = None,
+    ):
         self.time_provider = time_provider
+        self.state = state
         # Priority queue: (target_time, callback, key)
         self._events: List[Tuple[float, Callable[[], Any], Optional[Hashable]]] = []
         # Index for cancellation: key -> target_time (to detect stale heap entries)
         self._keys: Dict[Hashable, float] = {}
+
+    def advance(self, dt: float):
+        """
+        Increments the system time by dt.
+        """
+        if self.state:
+            new_time = self.state.system_time + dt
+            self.state._system_time_atom.update(new_time)
 
     def schedule(
         self, delay: float, callback: Callable[[], Any], key: Optional[Hashable] = None

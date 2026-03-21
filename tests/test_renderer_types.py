@@ -40,6 +40,6 @@ def test_layer_caching():
     assert layer.generate_count == 1
 
     # Change state
-    state.increment_map_timestamp()
+    state.map_version += 1
     patches = layer.render()[0]
     assert layer.generate_count == 2

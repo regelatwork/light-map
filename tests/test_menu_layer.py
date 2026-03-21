@@ -68,7 +68,7 @@ def test_menu_layer_caching():
     assert p1 is p2
 
     # Change timestamp
-    ws.increment_menu_timestamp()
+    ws.menu_version += 1
     p3 = layer.render()[0]
     assert p3 is not p1  # New list
     assert len(p3) == 1

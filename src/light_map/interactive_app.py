@@ -549,7 +549,7 @@ class InteractiveApp:
             self.current_scene = self.scenes[target_id]
             self.last_scene_version = -1  # Reset version tracking for new scene
             self.current_scene.on_enter(transition.payload)
-            self.state.increment_scene_timestamp()
+            self.state.scene_version += 1
         else:
             logging.error("Scene '%s' not found.", target_id)
 
@@ -672,7 +672,7 @@ class InteractiveApp:
             ):
                 self.layer_manager.map_layer.opacity = new_opacity
                 self.layer_manager.map_layer.quality = new_quality
-                self.state.increment_map_timestamp()
+                self.state.map_version += 1
 
             # 2. Update SceneLayer bridge
             self.layer_manager.scene_layer.scene = self.current_scene
@@ -681,7 +681,7 @@ class InteractiveApp:
                 self.current_scene.is_dynamic
                 or self.current_scene.version != self.last_scene_version
             ):
-                state.increment_scene_timestamp()
+                state.scene_version += 1
                 self.last_scene_version = self.current_scene.version
 
             # 3. Perform Composite Render
@@ -734,7 +734,7 @@ class InteractiveApp:
                 self.state.update_visibility_mask(combined_pc_mask)
 
                 # 5. Invalidate Layer Caches
-                self.state.increment_fow_timestamp()
+                self.state.fow_version += 1
 
     def _rebuild_visibility_stack(self, entry: Any):
         """Re-initializes visibility engine and layers based on map configuration."""
@@ -793,7 +793,7 @@ class InteractiveApp:
             }
             for b in self.visibility_engine.blockers
         ]
-        self.state.increment_visibility_timestamp()
+        self.state.visibility_version += 1
 
     def _handle_payloads(
         self, payload: Any, state: Optional["WorldState"] = None
@@ -816,7 +816,7 @@ class InteractiveApp:
         filename = os.path.abspath(filename)
         self.current_map_path = filename
         self.map_system.svg_loader = SVGLoader(filename)
-        self.state.increment_map_timestamp()
+        self.state.map_version += 1
 
         entry = self.map_config.data.maps.get(filename)
         if entry is None:

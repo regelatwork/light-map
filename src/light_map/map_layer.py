@@ -2,6 +2,7 @@ from typing import List, Any, Dict, Optional
 import cv2
 import numpy as np
 from .common_types import Layer, LayerMode, ImagePatch
+from .core.versioned_atom import VersionedAtom
 from .core.world_state import WorldState
 from .map_system import MapSystem
 
@@ -20,14 +21,30 @@ class MapLayer(Layer):
         self.width = width
         self.height = height
 
-        # State
-        self.opacity: float = 1.0
-        self.quality: float = 1.0
+        # State (using atoms for versioning)
+        self._opacity_atom = VersionedAtom(1.0, "opacity")
+        self._quality_atom = VersionedAtom(1.0, "quality")
 
         # Cache Tracking
         self._last_render_params: Dict[str, Any] = {}
         self._last_opacity: float = 1.0
         self._cached_map_bgra: Optional[np.ndarray] = None
+
+    @property
+    def opacity(self) -> float:
+        return self._opacity_atom.value
+
+    @opacity.setter
+    def opacity(self, value: float):
+        self._opacity_atom.update(value)
+
+    @property
+    def quality(self) -> float:
+        return self._quality_atom.value
+
+    @quality.setter
+    def quality(self, value: float):
+        self._quality_atom.update(value)
 
     def get_current_version(self) -> int:
         if self.state is None:
@@ -37,10 +54,12 @@ class MapLayer(Layer):
         if not self.map_system.is_map_loaded():
             return 0
 
-        # Max of relevant timestamps
+        # Max of relevant timestamps from world state and internal state
         return max(
             self.state.map_timestamp,
             self.state.viewport_timestamp,
+            self._opacity_atom.timestamp,
+            self._quality_atom.timestamp,
         )
 
     def _generate_patches(self, current_time: float) -> List[ImagePatch]:

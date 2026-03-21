@@ -121,7 +121,7 @@ def test_door_layer_version_logic(state, engine):
     assert rv2 == v1
 
     # Update visibility version - use strictly monotonic helper from state
-    state.increment_visibility_timestamp()
+    state.visibility_version += 1
     v2 = layer.get_current_version()
     assert v2 > v1
     patches, rv3 = layer.render(0.0)

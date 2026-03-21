@@ -222,16 +222,99 @@ def calibrate_extrinsics(
     rotation_vector_guess = np.array([np.pi, 0, 0], dtype=np.float32).reshape(3, 1)
     translation_vector_guess = np.array([0, 0, 1000], dtype=np.float32).reshape(3, 1)
 
-    ret, rotation_vector, translation_vector = cv2.solvePnP(
-        object_points,
-        image_points,
-        camera_matrix,
-        distortion_coefficients,
-        rvec=rotation_vector_guess,
-        tvec=translation_vector_guess,
-        useExtrinsicGuess=True,
-        flags=cv2.SOLVEPNP_SQPNP,
-    )
+    # If we have both ground points and token markers, we check for 180-degree ambiguity
+    # which often happens with symmetric chessboard patterns and rotated cameras.
+    if (
+        ground_points_camera is not None
+        and ground_points_projector is not None
+        and aruco_ids is not None
+        and len(aruco_ids) >= 2
+    ):
+        # Try both original and flipped ground points
+        best_ret = None
+        best_err = float("inf")
+
+        for flipped in [False, True]:
+            current_obj_pts = []
+            current_img_pts = []
+
+            # Ground points (flip if requested)
+            for i in range(len(ground_points_camera)):
+                idx = len(ground_points_camera) - 1 - i if flipped else i
+                px, py = ground_points_projector[i]  # Fixed projector coords
+                wx = px / ppi_mm
+                wy = py / ppi_mm
+                current_obj_pts.append([wx, wy, 0.0])
+                current_img_pts.append(ground_points_camera[idx])  # Flipped camera obs
+
+            # Token points (always standard)
+            if aruco_ids is not None:
+                ids = aruco_ids.flatten()
+                for i, aruco_id in enumerate(ids):
+                    if aruco_id not in token_heights:
+                        continue
+                    h = token_heights[aruco_id]
+                    c_cam = np.mean(aruco_corners[i][0], axis=0)
+                    if known_targets and aruco_id in known_targets:
+                        px, py = known_targets[aruco_id]
+                    else:
+                        pts_cam = np.array([c_cam], dtype=np.float32).reshape(-1, 1, 2)
+                        pts_proj = cv2.perspectiveTransform(
+                            pts_cam, projector_matrix
+                        ).reshape(-1, 2)
+                        px, py = pts_proj[0]
+                    current_obj_pts.append([px / ppi_mm, py / ppi_mm, h])
+                    current_img_pts.append(c_cam)
+
+            obj_arr = np.array(current_obj_pts, dtype=np.float32)
+            img_arr = np.array(current_img_pts, dtype=np.float32)
+
+            ret, rvec, tvec = cv2.solvePnP(
+                obj_arr,
+                img_arr,
+                camera_matrix,
+                distortion_coefficients,
+                rvec=rotation_vector_guess.copy(),
+                tvec=translation_vector_guess.copy(),
+                useExtrinsicGuess=True,
+                flags=cv2.SOLVEPNP_SQPNP,
+            )
+
+            if ret:
+                # Calculate error
+                proj, _ = cv2.projectPoints(
+                    obj_arr, rvec, tvec, camera_matrix, distortion_coefficients
+                )
+                err = np.sqrt(
+                    np.mean(np.linalg.norm(img_arr - proj.reshape(-1, 2), axis=1) ** 2)
+                )
+                if err < best_err:
+                    best_err = err
+                    best_ret = (rvec, tvec, obj_arr, img_arr)
+                    if flipped:
+                        logging.info(
+                            f"Extrinsics: Detected 180-degree ground point flip! Error: {err:.2f}"
+                        )
+
+        if best_ret:
+            rotation_vector, translation_vector, object_points, image_points = best_ret
+            ret = True
+        else:
+            ret = False
+    else:
+        # Standard single-pass solve
+        object_points = np.array(object_points_list, dtype=np.float32)
+        image_points = np.array(image_points_list, dtype=np.float32)
+        ret, rotation_vector, translation_vector = cv2.solvePnP(
+            object_points,
+            image_points,
+            camera_matrix,
+            distortion_coefficients,
+            rvec=rotation_vector_guess,
+            tvec=translation_vector_guess,
+            useExtrinsicGuess=True,
+            flags=cv2.SOLVEPNP_SQPNP,
+        )
 
     if ret:
         # Physical plausibility check: tz MUST be positive for the table to be in front of the camera

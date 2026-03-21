@@ -272,7 +272,7 @@ class AppConfig:
     calibration_box_height_mm: float = 78.0
     calibration_box_width_mm: float = 188.0
     calibration_box_length_mm: float = 295.0
-    use_projector_3d_model: bool = False
+    use_projector_3d_model: bool = True
     aruco_defaults: Dict[int, Any] = field(default_factory=dict)
     token_profiles: Dict[str, Any] = field(default_factory=dict)
     pointer_extension_inches: float = DEFAULT_POINTER_EXTENSION_INCHES

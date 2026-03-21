@@ -93,7 +93,7 @@ class GlobalMapConfig:
     calibration_box_height_mm: float = 78.0
     calibration_box_width_mm: float = 188.0
     calibration_box_length_mm: float = 295.0
-    use_projector_3d_model: bool = False
+    use_projector_3d_model: bool = True
     gm_position: GmPosition = GmPosition.NONE
     naming_style: NamingStyle = NamingStyle.SCI_FI
     inspection_linger_duration: float = 10.0

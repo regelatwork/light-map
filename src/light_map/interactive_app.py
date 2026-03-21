@@ -419,6 +419,7 @@ class InteractiveApp:
             state=self.state,
             analytics=AnalyticsManager(self.config.storage_manager),
             events=self.events,
+            time_provider=self.time_provider,
             save_session=self.save_session,
         )
 

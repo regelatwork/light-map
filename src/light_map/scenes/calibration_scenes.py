@@ -558,14 +558,21 @@ class ExtrinsicsCalibrationScene(Scene):
                     ).reshape(-1, 2)
                     px, py = pts_proj[0]
 
-                    # Find nearest target zone
-                    best_dist = 150.0  # Threshold in projector pixels
+                    # 1. Match by ID (preferred if suggested IDs are used)
                     best_idx = -1
-                    for idx, (tx, ty, _) in enumerate(self._target_zones):
-                        dist = math.sqrt((px - tx) ** 2 + (py - ty) ** 2)
-                        if dist < best_dist:
-                            best_dist = dist
+                    for idx, (_, _, sid) in enumerate(self._target_zones):
+                        if aid == sid:
                             best_idx = idx
+                            break
+
+                    # 2. Match by proximity if ID matching failed
+                    if best_idx == -1:
+                        best_dist = 150.0  # Threshold in projector pixels
+                        for idx, (tx, ty, _) in enumerate(self._target_zones):
+                            dist = math.sqrt((px - tx) ** 2 + (py - ty) ** 2)
+                            if dist < best_dist:
+                                best_dist = dist
+                                best_idx = idx
 
                     if best_idx != -1:
                         info = {"aid": aid}

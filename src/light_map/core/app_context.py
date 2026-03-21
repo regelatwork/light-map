@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Optional, Dict, Any, List, Callable
+import time
 
 import numpy as np
 
@@ -30,6 +31,7 @@ class AppContext:
     notifications: NotificationManager
     analytics: AnalyticsManager
     events: TemporalEventManager
+    time_provider: Callable[[], float] = time.monotonic
     aruco_detector: Optional[ArucoTokenDetector] = None
     camera_projection_model: Optional[CameraProjectionModel] = None
     projection_service: Optional[ProjectionService] = None

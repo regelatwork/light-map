@@ -92,12 +92,14 @@ def run_projector_calibrate(args):
                     logger.error("Cannot run PPI calibration without projector matrix!")
                     continue
 
+                frame = camera.read()
+                if frame is None:
+                    logger.error("Failed to capture frame for PPI calibration.")
+                    continue
+
                 new_ppi = calculate_ppi_from_frame(
-                    camera,
+                    frame,
                     projector_matrix,
-                    projector_width,
-                    projector_height,
-                    current_ppi=ppi,
                 )
                 if new_ppi:
                     ppi = new_ppi
@@ -132,19 +134,27 @@ def run_projector_calibrate(args):
                     logger.error("Ground points missing! Run 'projector' step first.")
                     continue
 
+                frame = camera.read()
+                if frame is None:
+                    logger.error("Failed to capture frame for extrinsics calibration.")
+                    continue
+
+                # Prepare token heights (empty dict for base calibration)
+                token_heights = {}
+
                 ext_result = calibrate_extrinsics(
-                    camera,
+                    frame,
+                    projector_matrix,
                     camera_matrix,
                     distortion_coefficients,
-                    projector_matrix,
-                    ground_points_camera,
-                    ground_points_projector,
-                    projector_width,
-                    projector_height,
+                    token_heights,
+                    ppi,
+                    ground_points_camera=ground_points_camera,
+                    ground_points_projector=ground_points_projector,
                 )
 
                 if ext_result is not None:
-                    rotation_vector, translation_vector = ext_result
+                    rotation_vector, translation_vector, _, _ = ext_result
                     extrinsics_file = storage.get_data_path("camera_extrinsics.npz")
                     np.savez(
                         extrinsics_file,

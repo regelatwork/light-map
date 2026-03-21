@@ -4,10 +4,10 @@ import { useSelection } from './SelectionContext';
 import { SelectionType } from '../types/system';
 
 export const TokenLayer: React.FC = () => {
-  const { tokens, isConnected } = useSystemState();
+  const { tokens, isConnected, world } = useSystemState();
   const { selection, setSelection } = useSelection();
 
-  if (!isConnected) {
+  if (!isConnected || world.effective_show_tokens === false) {
     return null;
   }
 

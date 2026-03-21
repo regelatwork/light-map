@@ -580,12 +580,6 @@ class InteractiveApp:
                 self.fps = 1.0 / dt
         self.last_fps_time = current_time
 
-        # Update WorldState with latest metrics
-        state.fps = self.fps
-        self.current_scene_name = self.current_scene.__class__.__name__
-        state.current_scene_name = self.current_scene_name
-        state.effective_show_tokens = self.effective_show_tokens
-
         # Trigger pruning and update timestamp
         self.app_context.notifications.get_active_notifications()
         state.notifications_timestamp = self.app_context.notifications.timestamp
@@ -700,6 +694,12 @@ class InteractiveApp:
                 total_ms = (time.perf_counter_ns() - t_start) / 1_000_000.0
                 if total_ms > 50.0:
                     logging.debug(f"RENDER TOTAL: {total_ms:.1f}ms (Layered)")
+
+        # Final State Updates (AFTER scene and action processing)
+        state.fps = self.fps
+        self.current_scene_name = self.current_scene.__class__.__name__
+        state.current_scene_name = self.current_scene_name
+        state.effective_show_tokens = self.effective_show_tokens
 
         return final_frame, []
 

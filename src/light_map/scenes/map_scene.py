@@ -276,6 +276,8 @@ class ViewingScene(BaseMapScene):
 
         if Action.TOGGLE_TOKEN_VISIBILITY in actions:
             self.context.show_tokens = not self.context.show_tokens
+            state_str = "ON" if self.context.show_tokens else "OFF"
+            self.context.notifications.add_notification(f"GM: Tokens {state_str}")
 
         if Action.CLEAR_INSPECTION in actions:
             self.context.inspected_token_id = None
@@ -390,6 +392,8 @@ class MapScene(BaseMapScene):
 
         if Action.TOGGLE_TOKEN_VISIBILITY in actions:
             self.context.show_tokens = not self.context.show_tokens
+            state_str = "ON" if self.context.show_tokens else "OFF"
+            self.context.notifications.add_notification(f"GM: Tokens {state_str}")
 
         if Action.CLEAR_INSPECTION in actions:
             self.context.inspected_token_id = None

@@ -1,4 +1,5 @@
 import time
+from contextlib import contextmanager
 import numpy as np
 from typing import List, Optional, Callable, Any, Dict
 from light_map.common_types import (
@@ -11,6 +12,15 @@ from light_map.common_types import (
 from light_map.menu_system import MenuState
 from light_map.core.scene import HandInput
 from light_map.core.token_merge_manager import TokenMergeManager
+from .versioned_atom import VersionedAtom
+
+
+class Transaction:
+    def __init__(self, timestamp: int):
+        self.timestamp = timestamp
+
+    def update(self, atom: VersionedAtom, new_value: Any):
+        atom.update(new_value, force_timestamp=self.timestamp)
 
 
 class WorldState:
@@ -79,6 +89,11 @@ class WorldState:
             new_v = self._last_issued_version + 1
         self._last_issued_version = new_v
         return new_v
+
+    @contextmanager
+    def transaction(self):
+        ts = time.monotonic_ns()
+        yield Transaction(ts)
 
     def update_from_frame(self, shm_view: np.ndarray, timestamp: int):
         """

@@ -67,6 +67,7 @@ class WorldState:
         self.viewport_timestamp: int = self._get_next_version()
         self.visibility_timestamp: int = self._get_next_version()
         self.fow_timestamp: int = self._get_next_version()
+        self.calibration_timestamp: int = self._get_next_version()
 
         # Hand Expiration tracking
         self.last_hand_timestamp: float = 0.0
@@ -137,6 +138,18 @@ class WorldState:
     def increment_notifications_timestamp(self):
         """Manually trigger a notification cache invalidation."""
         self.notifications_timestamp = self._get_next_version()
+
+    def increment_viewport_timestamp(self):
+        """Manually trigger a viewport cache invalidation."""
+        self.viewport_timestamp = self._get_next_version()
+
+    def increment_visibility_timestamp(self):
+        """Manually trigger a visibility/blocker cache invalidation."""
+        self.visibility_timestamp = self._get_next_version()
+
+    def increment_calibration_timestamp(self):
+        """Manually trigger a calibration pattern cache invalidation."""
+        self.calibration_timestamp = self._get_next_version()
 
     def increment_fow_timestamp(self):
         """Manually trigger a Fog of War cache invalidation."""

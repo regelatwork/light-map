@@ -34,9 +34,7 @@ class DoorLayer(Layer):
     def get_current_version(self) -> int:
         if self.state is None:
             return 0
-        return max(
-            self.visibility_engine.geometry_version, self.state.viewport_timestamp
-        )
+        return max(self.state.visibility_timestamp, self.state.viewport_timestamp)
 
     def _generate_patches(self, current_time: float) -> List[ImagePatch]:
         # Create transparent base

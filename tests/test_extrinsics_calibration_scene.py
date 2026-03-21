@@ -198,7 +198,9 @@ def test_extrinsics_scene_validation_flow(mock_save, mock_calibrate, mock_contex
     )
 
     # Trigger it manually for the test
-    transition = scene.update(inputs, [], 7.0)  # Should return MENU transition after callback
+    transition = scene.update(
+        inputs, [], 7.0
+    )  # Should return MENU transition after callback
     # Wait, the callback actually sets stage to DONE. Let's trigger it.
     scene._on_accept_triggered()
     assert scene._stage == "DONE"

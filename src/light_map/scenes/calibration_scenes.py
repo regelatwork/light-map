@@ -716,13 +716,17 @@ class ExtrinsicsCalibrationScene(Scene):
                 if gesture == GestureType.VICTORY:
                     if not self.context.events.has_event(TimerKey.CALIBRATION_STAGE):
                         self.context.events.schedule(
-                            1.0, self._on_accept_triggered, key=TimerKey.CALIBRATION_STAGE
+                            1.0,
+                            self._on_accept_triggered,
+                            key=TimerKey.CALIBRATION_STAGE,
                         )
                 # Retry (Hold Fist)
                 elif gesture == GestureType.CLOSED_FIST:
                     if not self.context.events.has_event(TimerKey.CALIBRATION_STAGE):
                         self.context.events.schedule(
-                            2.0, self._on_retry_triggered, key=TimerKey.CALIBRATION_STAGE
+                            2.0,
+                            self._on_retry_triggered,
+                            key=TimerKey.CALIBRATION_STAGE,
                         )
                 else:
                     self.context.events.cancel(TimerKey.CALIBRATION_STAGE)

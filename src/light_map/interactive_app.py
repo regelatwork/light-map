@@ -672,7 +672,7 @@ class InteractiveApp:
             ):
                 self.layer_manager.map_layer.opacity = new_opacity
                 self.layer_manager.map_layer.quality = new_quality
-                self.layer_manager.map_layer._version += 1
+                self.state.increment_map_timestamp()
 
             # 2. Update SceneLayer bridge
             self.layer_manager.scene_layer.scene = self.current_scene
@@ -793,7 +793,7 @@ class InteractiveApp:
             }
             for b in self.visibility_engine.blockers
         ]
-        self.state.visibility_timestamp += 1
+        self.state.increment_visibility_timestamp()
 
     def _handle_payloads(
         self, payload: Any, state: Optional["WorldState"] = None

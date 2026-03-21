@@ -30,14 +30,14 @@ class Projector3DPatternLayer(Layer):
         self.box_markers = box_markers or []
         self.table_markers = table_markers or []
         self.box_outline = box_outline
-        self._version = 0
         self._aruco_dict = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_4X4_50)
 
     def get_current_version(self) -> int:
-        return self._version
+        return self.state.calibration_timestamp if self.state else 0
 
     def increment_version(self):
-        self._version += 1
+        if self.state:
+            self.state.increment_calibration_timestamp()
 
     def _generate_patches(self, current_time: float) -> List[ImagePatch]:
         if self.width <= 0 or self.height <= 0:

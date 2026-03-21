@@ -28,7 +28,6 @@ class MapLayer(Layer):
         self._last_render_params: Dict[str, Any] = {}
         self._last_opacity: float = 1.0
         self._cached_map_bgra: Optional[np.ndarray] = None
-        self._version: int = 0
 
     def get_current_version(self) -> int:
         if self.state is None:
@@ -42,7 +41,6 @@ class MapLayer(Layer):
         return max(
             self.state.map_timestamp,
             self.state.viewport_timestamp,
-            self._version,  # Manual increment on opacity/quality change
         )
 
     def _generate_patches(self, current_time: float) -> List[ImagePatch]:

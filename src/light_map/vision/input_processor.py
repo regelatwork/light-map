@@ -64,7 +64,11 @@ class InputProcessor:
     ) -> np.ndarray:
         """Helper to project camera pixels to projector space."""
         # 1. 3D Model Projection
-        if self.config.projector_3d_model and self.config.projector_3d_model.use_3d:
+        if (
+            self.config.projector_3d_model
+            and self.config.projector_3d_model.use_3d
+            and self.config.projector_3d_model.is_calibrated_3d
+        ):
             # Reconstruct world points at Z=0
             projection_model = self.config.camera_projection_model
             if projection_model is not None:

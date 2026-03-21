@@ -104,6 +104,11 @@ class Projector3DModel:
         self.homography_matrix = homography_matrix
         self.use_3d = use_3d
 
+    @property
+    def is_calibrated_3d(self) -> bool:
+        """Returns True if full 3D calibration data is present."""
+        return self.intrinsic_matrix is not None and self.rotation_vector is not None
+
     def project_world_to_projector(self, world_points: np.ndarray) -> np.ndarray:
         """
         Maps (N, 3) World points to (N, 2) Projector pixels.
@@ -125,6 +130,8 @@ class Projector3DModel:
             return projector_pixels.reshape(-1, 2)
         elif self.homography_matrix is not None:
             # Fallback to 2D Homography (ignoring Z height)
+            # NOTE: This assumes homography_matrix is a World-to-Projector mapping.
+            # If it's a Camera-to-Projector mapping (common in this project), this will be incorrect.
             points_2d = world_points[:, :2].astype(np.float32).reshape(-1, 1, 2)
             projected_pixels = cv2.perspectiveTransform(
                 points_2d, self.homography_matrix

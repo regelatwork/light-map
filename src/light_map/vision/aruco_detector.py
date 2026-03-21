@@ -244,7 +244,11 @@ class ArucoTokenDetector:
                 f"ArucoDetector: Marker {marker_id} at cam {u:.1f},{v:.1f} -> world {world_x_mm:.1f},{world_y_mm:.1f} (h={height_mm})"
             )
 
-            if projector_3d_model and projector_3d_model.use_3d:
+            if (
+                projector_3d_model
+                and projector_3d_model.use_3d
+                and projector_3d_model.is_calibrated_3d
+            ):
                 world_points_3d = np.array(
                     [[world_x_mm, world_y_mm, height_mm]], dtype=np.float32
                 )

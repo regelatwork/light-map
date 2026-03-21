@@ -524,6 +524,28 @@ class ExtrinsicsCalibrationScene(Scene):
         self._stage = "PLACEMENT"
         self.increment_version()
 
+    def _on_start_capture_triggered(self):
+        """Callback for when the capture gesture hold is completed."""
+        self._stage = "CAPTURE"
+        self.increment_version()
+
+    def _on_accept_triggered(self):
+        """Callback for when the accept gesture hold is completed."""
+        if self._rotation_vector is not None and self._translation_vector is not None:
+            storage = self.context.app_config.storage_manager
+            output_file = (
+                storage.get_data_path("camera_extrinsics.npz")
+                if storage
+                else "camera_extrinsics.npz"
+            )
+            save_camera_extrinsics(
+                self._rotation_vector,
+                self._translation_vector,
+                output_file=output_file,
+            )
+            self.context.notifications.add_notification("Extrinsics saved.")
+        self._stage = "DONE"  # Mark as finished for update loop
+
     def update(
         self, inputs: List[HandInput], actions: List[Action], current_time: float
     ) -> Optional[SceneTransition]:
@@ -605,15 +627,26 @@ class ExtrinsicsCalibrationScene(Scene):
             # Validation: At least 3 targets are "VALID"
             valid_count = self._target_status.count("VALID")
 
-            # Use Fist to trigger capture if enough tokens
-            if (
-                valid_count >= 3
-                and inputs
-                and inputs[0].gesture == GestureType.CLOSED_FIST
-            ):
-                self._stage = "CAPTURE"
+            # Use Fist or Victory (hold) to trigger capture if enough tokens
+            if valid_count >= 3 and inputs:
+                gesture = inputs[0].gesture
+                if gesture == GestureType.CLOSED_FIST:
+                    self._stage = "CAPTURE"
+                elif gesture == GestureType.VICTORY:
+                    if not self.context.events.has_event(TimerKey.CALIBRATION_STAGE):
+                        self.context.events.schedule(
+                            1.0,
+                            self._on_start_capture_triggered,
+                            key=TimerKey.CALIBRATION_STAGE,
+                        )
+                else:
+                    self.context.events.cancel(TimerKey.CALIBRATION_STAGE)
+            else:
+                self.context.events.cancel(TimerKey.CALIBRATION_STAGE)
 
         elif self._stage == "CAPTURE":
+            # Clear any pending timers from PLACEMENT
+            self.context.events.cancel(TimerKey.CALIBRATION_STAGE)
             # Run solvePnP
             if self.context.app_config.camera_matrix is None:
                 self.context.notifications.add_notification(
@@ -677,34 +710,27 @@ class ExtrinsicsCalibrationScene(Scene):
                 self._stage = "PLACEMENT"
 
         elif self._stage == "VALIDATION":
-            # Accept
-            if inputs and inputs[0].gesture == GestureType.VICTORY:
-                if (
-                    self._rotation_vector is not None
-                    and self._translation_vector is not None
-                ):
-                    storage = self.context.app_config.storage_manager
-                    output_file = (
-                        storage.get_data_path("camera_extrinsics.npz")
-                        if storage
-                        else "camera_extrinsics.npz"
-                    )
-                    save_camera_extrinsics(
-                        self._rotation_vector,
-                        self._translation_vector,
-                        output_file=output_file,
-                    )
-                    self.context.notifications.add_notification("Extrinsics saved.")
-                return SceneTransition(SceneId.MENU)
-
-            # Retry
-            if inputs and inputs[0].gesture == GestureType.CLOSED_FIST:
-                if not self.context.events.has_event(TimerKey.CALIBRATION_STAGE):
-                    self.context.events.schedule(
-                        2.0, self._on_retry_triggered, key=TimerKey.CALIBRATION_STAGE
-                    )
+            if inputs:
+                gesture = inputs[0].gesture
+                # Accept (Hold Victory)
+                if gesture == GestureType.VICTORY:
+                    if not self.context.events.has_event(TimerKey.CALIBRATION_STAGE):
+                        self.context.events.schedule(
+                            1.0, self._on_accept_triggered, key=TimerKey.CALIBRATION_STAGE
+                        )
+                # Retry (Hold Fist)
+                elif gesture == GestureType.CLOSED_FIST:
+                    if not self.context.events.has_event(TimerKey.CALIBRATION_STAGE):
+                        self.context.events.schedule(
+                            2.0, self._on_retry_triggered, key=TimerKey.CALIBRATION_STAGE
+                        )
+                else:
+                    self.context.events.cancel(TimerKey.CALIBRATION_STAGE)
             else:
                 self.context.events.cancel(TimerKey.CALIBRATION_STAGE)
+
+        elif self._stage == "DONE":
+            return SceneTransition(SceneId.MENU)
 
         return None
 
@@ -919,11 +945,11 @@ class ExtrinsicsCalibrationScene(Scene):
                     )
 
         # Instructions (always on top)
-        instr = (
-            "Fist to calibrate (Need 3+ tokens)" if self._stage == "PLACEMENT" else ""
-        )
-        if self._stage == "VALIDATION":
-            instr = "VICTORY to Accept, FIST (hold 2s) to Retry"
+        instr = ""
+        if self._stage == "PLACEMENT":
+            instr = "Victory (hold) or Fist to calibrate (Need 3+ tokens)"
+        elif self._stage == "VALIDATION":
+            instr = "Victory (hold) to Accept, Fist (hold 2s) to Retry"
         draw_text_with_background(
             canvas, instr, (50, h - 50), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 0, 0), 2
         )
@@ -1697,6 +1723,11 @@ class Projector3DCalibrationScene(Scene):
             logging.error(
                 "Projector3DCalibrationScene: Camera calibration missing in AppContext!"
             )
+            self.context.notifications.add_notification(
+                "Error: Camera extrinsics missing. Run Step 4 first."
+            )
+            # We don't have an ERROR stage in this scene, but we can go back to PLACE_BOX
+            # or just return. Returning to PLACE_BOX is safer.
             return
 
         rotation_matrix_camera, _ = cv2.Rodrigues(rotation_vector_camera)

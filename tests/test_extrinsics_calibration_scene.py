@@ -191,7 +191,18 @@ def test_extrinsics_scene_validation_flow(mock_save, mock_calibrate, mock_contex
     assert scene._stage == "VALIDATION"
 
     inputs = [HandInput(GestureType.VICTORY, (0, 0), (0.0, 0.0), None)]
-    transition = scene.update(inputs, [], 6.0)
+    scene.update(inputs, [], 6.0)
+    assert scene._stage == "VALIDATION"
+    mock_context.events.schedule.assert_called_with(
+        1.0, scene._on_accept_triggered, key=TimerKey.CALIBRATION_STAGE
+    )
+
+    # Trigger it manually for the test
+    transition = scene.update(inputs, [], 7.0)  # Should return MENU transition after callback
+    # Wait, the callback actually sets stage to DONE. Let's trigger it.
+    scene._on_accept_triggered()
+    assert scene._stage == "DONE"
+    transition = scene.update(inputs, [], 8.0)
 
     assert transition is not None
     assert transition.target_scene == SceneId.MENU

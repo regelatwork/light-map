@@ -27,7 +27,7 @@ def test_selection_progress_layer_render_with_progress():
         "dwell_time_threshold": 2.0,
     }
     ws.summon_progress = 0.5
-    ws.hands_timestamp = 2
+    ws.hands_version = 2
 
     patches = layer.render()[0]
     assert len(patches) == 1
@@ -50,7 +50,7 @@ def test_selection_progress_layer_no_progress():
     ws.inputs = [hand]
     ws.dwell_state = {}
     ws.summon_progress = 0.0
-    ws.hands_timestamp = 2
+    ws.hands_version = 2
 
     patches = layer.render()[0]
     assert len(patches) == 0

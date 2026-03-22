@@ -8,6 +8,7 @@ from light_map.common_types import (
     ResultType,
     ViewportState,
     SelectionState,
+    GridMetadata,
 )
 from light_map.menu_system import MenuState
 from light_map.core.scene import HandInput
@@ -19,8 +20,9 @@ class Transaction:
     def __init__(self, timestamp: int):
         self.timestamp = timestamp
 
-    def update(self, atom: VersionedAtom, new_value: Any):
-        atom.update(new_value, force_timestamp=self.timestamp)
+    def update(self, atom: VersionedAtom, new_value: Any, force: bool = False):
+        if force or atom.would_change(new_value):
+            atom.update(new_value, force_timestamp=self.timestamp)
 
 
 class WorldState:
@@ -43,34 +45,39 @@ class WorldState:
         self._raw_tokens_atom = VersionedAtom([], "raw_tokens")
         self._blockers_atom = VersionedAtom([], "blockers")
         self._token_merge_manager = TokenMergeManager()
-        
-        self._raw_aruco_atom = VersionedAtom({"corners": [], "ids": []}, "raw_aruco", equality_fn=self._raw_aruco_equal)
+
+        self._raw_aruco_atom = VersionedAtom(
+            {"corners": [], "ids": []}, "raw_aruco", equality_fn=self._raw_aruco_equal
+        )
         self._inputs_atom = VersionedAtom([], "inputs", equality_fn=self._inputs_equal)
-        self._landmarks_atom = VersionedAtom([], "landmarks", equality_fn=self._landmarks_equal)
+        self._landmarks_atom = VersionedAtom(
+            [], "landmarks", equality_fn=self._landmarks_equal
+        )
         self._handedness_atom = VersionedAtom([], "handedness")
         self._gesture_atom = VersionedAtom(None, "gesture")
-        
+
         self._viewport_atom = VersionedAtom(ViewportState(), "viewport")
         self._menu_state_atom = VersionedAtom(None, "menu_state")
         self._system_time_atom = VersionedAtom(0.0, "system_time")
-        
+
         self._scene_atom = VersionedAtom("", "scene")
         self._fow_atom = VersionedAtom(0, "fow")
         self._calibration_atom = VersionedAtom(0, "calibration")
-        self._notifications_atom = VersionedAtom(0, "notifications")
+        self._notifications_atom = VersionedAtom([], "notifications")
         self._map_atom = VersionedAtom(0, "map")
-        self._visibility_mask_atom = VersionedAtom(None, "visibility_mask", equality_fn=np.array_equal)
+        self._visibility_mask_atom = VersionedAtom(
+            None, "visibility_mask", equality_fn=np.array_equal
+        )
+        self._visibility_aggregate_version_atom = VersionedAtom(
+            0, "visibility_aggregate"
+        )
         self._show_tokens_atom = VersionedAtom(True, "show_tokens")
+        self._dwell_state_atom = VersionedAtom({}, "dwell_state")
+        self._summon_progress_atom = VersionedAtom(0.0, "summon_progress")
+        self._selection_atom = VersionedAtom(SelectionState(), "selection")
+        self._grid_metadata_atom = VersionedAtom(GridMetadata(), "grid_metadata")
 
         self.fps: float = 0.0
-        self.selection: SelectionState = SelectionState()
-        self.dwell_state: Dict[str, Any] = {}
-        self.summon_progress: float = 0.0
-
-        # Grid Metadata
-        self.grid_spacing_svg: float = 0.0
-        self.grid_origin_svg_x: float = 0.0
-        self.grid_origin_svg_y: float = 0.0
 
         # Remote Action Queuing
         self.pending_actions: List[Dict[str, Any]] = []
@@ -177,6 +184,66 @@ class WorldState:
         self._scene_atom.update(value)
 
     @property
+    def scene_version(self) -> int:
+        return self._scene_atom.timestamp
+
+    @scene_version.setter
+    def scene_version(self, value: Any):
+        # Allow forcing a version update for dynamic scenes
+        self._scene_atom.update(
+            self._scene_atom.value, force_timestamp=time.monotonic_ns()
+        )
+
+    @property
+    def map_version(self) -> int:
+        return self._map_atom.timestamp
+
+    @map_version.setter
+    def map_version(self, value: Any):
+        # Signal that map stack (opacity/quality/file) needs re-render
+        self._map_atom.update(self._map_atom.value, force_timestamp=time.monotonic_ns())
+
+    @property
+    def fow_version(self) -> int:
+        return self._fow_atom.timestamp
+
+    @fow_version.setter
+    def fow_version(self, value: Any):
+        self._fow_atom.update(self._fow_atom.value, force_timestamp=time.monotonic_ns())
+
+    @property
+    def visibility_version(self) -> int:
+        return self._visibility_aggregate_version_atom.timestamp
+
+    @visibility_version.setter
+    def visibility_version(self, value: Any):
+        # We update the aggregate atom to signal a change in visibility state
+        self._visibility_aggregate_version_atom.update(
+            self._visibility_aggregate_version_atom.value,
+            force_timestamp=time.monotonic_ns(),
+        )
+
+    @property
+    def tokens_version(self) -> int:
+        return max(self._tokens_atom.timestamp, self._raw_tokens_atom.timestamp)
+
+    @tokens_version.setter
+    def tokens_version(self, value: Any):
+        self._tokens_atom.update(
+            self._tokens_atom.value, force_timestamp=time.monotonic_ns()
+        )
+
+    @property
+    def notifications_version(self) -> int:
+        return self._notifications_atom.timestamp
+
+    @notifications_version.setter
+    def notifications_version(self, value: Any):
+        self._notifications_atom.update(
+            self._notifications_atom.value, force_timestamp=time.monotonic_ns()
+        )
+
+    @property
     def visibility_mask(self) -> Optional[np.ndarray]:
         return self._visibility_mask_atom.value
 
@@ -192,158 +259,123 @@ class WorldState:
     def effective_show_tokens(self, value: bool):
         self._show_tokens_atom.update(value)
 
-    # Timestamps (Signal manual updates via setter)
+    @property
+    def dwell_state(self) -> Dict[str, Any]:
+        return self._dwell_state_atom.value
+
+    @dwell_state.setter
+    def dwell_state(self, value: Dict[str, Any]):
+        self._dwell_state_atom.update(value)
 
     @property
-    def map_timestamp(self) -> int:
-        return self._map_atom.timestamp
+    def summon_progress(self) -> float:
+        return self._summon_progress_atom.value
 
-    @map_timestamp.setter
-    def map_timestamp(self, value: Any):
-        # We use value increment or assignment as a signal to force-update timestamp
-        current = self._map_atom.value
-        if isinstance(current, int) and isinstance(value, int):
-             self._map_atom.update(value, force_timestamp=time.monotonic_ns())
-        else:
-             self._map_atom.update(value, force_timestamp=time.monotonic_ns())
+    @summon_progress.setter
+    def summon_progress(self, value: float):
+        self._summon_progress_atom.update(value)
 
     @property
-    def fow_timestamp(self) -> int:
-        return self._fow_atom.timestamp
+    def selection(self) -> SelectionState:
+        return self._selection_atom.value
 
-    @fow_timestamp.setter
-    def fow_timestamp(self, value: Any):
-        self._fow_atom.update(value, force_timestamp=time.monotonic_ns())
-
-    @property
-    def calibration_timestamp(self) -> int:
-        return self._calibration_atom.timestamp
-
-    @calibration_timestamp.setter
-    def calibration_timestamp(self, value: Any):
-        self._calibration_atom.update(value, force_timestamp=time.monotonic_ns())
+    @selection.setter
+    def selection(self, value: SelectionState):
+        self._selection_atom.update(value)
 
     @property
-    def notifications_timestamp(self) -> int:
-        return self._notifications_atom.timestamp
+    def grid_metadata(self) -> GridMetadata:
+        return self._grid_metadata_atom.value
 
-    @notifications_timestamp.setter
-    def notifications_timestamp(self, value: Any):
-        self._notifications_atom.update(value, force_timestamp=time.monotonic_ns())
-
-    @property
-    def scene_timestamp(self) -> int:
-        return self._scene_atom.timestamp
-
-    @scene_timestamp.setter
-    def scene_timestamp(self, value: Any):
-        self._scene_atom.update(value, force_timestamp=time.monotonic_ns())
+    @grid_metadata.setter
+    def grid_metadata(self, value: GridMetadata):
+        self._grid_metadata_atom.update(value)
 
     @property
-    def menu_timestamp(self) -> int:
-        return self._menu_state_atom.timestamp
+    def grid_spacing_svg(self) -> float:
+        return self._grid_metadata_atom.value.spacing_svg
 
-    @menu_timestamp.setter
-    def menu_timestamp(self, value: Any):
-        self._menu_state_atom.update(self._menu_state_atom.value, force_timestamp=time.monotonic_ns())
-
-    @property
-    def viewport_timestamp(self) -> int:
-        return self._viewport_atom.timestamp
-
-    @viewport_timestamp.setter
-    def viewport_timestamp(self, value: Any):
-        self._viewport_atom.update(self._viewport_atom.value, force_timestamp=time.monotonic_ns())
-
-    @property
-    def visibility_timestamp(self) -> int:
-        return max(
-            self._blockers_atom.timestamp,
-            self._visibility_mask_atom.timestamp,
+    @grid_spacing_svg.setter
+    def grid_spacing_svg(self, value: float):
+        current = self._grid_metadata_atom.value
+        self._grid_metadata_atom.update(
+            GridMetadata(
+                spacing_svg=value,
+                origin_svg_x=current.origin_svg_x,
+                origin_svg_y=current.origin_svg_y,
+            )
         )
 
-    @visibility_timestamp.setter
-    def visibility_timestamp(self, value: Any):
-        self._visibility_mask_atom.update(self._visibility_mask_atom.value, force_timestamp=time.monotonic_ns())
+    @property
+    def grid_origin_svg_x(self) -> float:
+        return self._grid_metadata_atom.value.origin_svg_x
+
+    @grid_origin_svg_x.setter
+    def grid_origin_svg_x(self, value: float):
+        current = self._grid_metadata_atom.value
+        self._grid_metadata_atom.update(
+            GridMetadata(
+                spacing_svg=current.spacing_svg,
+                origin_svg_x=value,
+                origin_svg_y=current.origin_svg_y,
+            )
+        )
 
     @property
-    def map_version(self) -> int:
-        return self.map_timestamp
+    def grid_origin_svg_y(self) -> float:
+        return self._grid_metadata_atom.value.origin_svg_y
 
-    @map_version.setter
-    def map_version(self, value: int):
-        self.map_timestamp = value
+    @grid_origin_svg_y.setter
+    def grid_origin_svg_y(self, value: float):
+        current = self._grid_metadata_atom.value
+        self._grid_metadata_atom.update(
+            GridMetadata(
+                spacing_svg=current.spacing_svg,
+                origin_svg_x=current.origin_svg_x,
+                origin_svg_y=value,
+            )
+        )
 
-    @property
-    def fow_version(self) -> int:
-        return self.fow_timestamp
-
-    @fow_version.setter
-    def fow_version(self, value: int):
-        self.fow_timestamp = value
-
-    @property
-    def calibration_version(self) -> int:
-        return self.calibration_timestamp
-
-    @calibration_version.setter
-    def calibration_version(self, value: int):
-        self.calibration_timestamp = value
-
-    @property
-    def notifications_version(self) -> int:
-        return self.notifications_timestamp
-
-    @notifications_version.setter
-    def notifications_version(self, value: int):
-        self.notifications_timestamp = value
-
-    @property
-    def scene_version(self) -> int:
-        return self.scene_timestamp
-
-    @scene_version.setter
-    def scene_version(self, value: int):
-        self.scene_timestamp = value
+    # Versions (Signal manual updates via atom.update)
 
     @property
     def menu_version(self) -> int:
-        return self.menu_timestamp
-
-    @menu_version.setter
-    def menu_version(self, value: int):
-        self.menu_timestamp = value
+        return self._menu_state_atom.timestamp
 
     @property
     def viewport_version(self) -> int:
-        return self.viewport_timestamp
-
-    @viewport_version.setter
-    def viewport_version(self, value: int):
-        self.viewport_timestamp = value
+        return self._viewport_atom.timestamp
 
     @property
-    def visibility_version(self) -> int:
-        return self.visibility_timestamp
-
-    @visibility_version.setter
-    def visibility_version(self, value: int):
-        self.visibility_timestamp = value
+    def calibration_version(self) -> int:
+        return self._calibration_atom.timestamp
 
     @property
-    def tokens_timestamp(self) -> int:
-        return max(self._tokens_atom.timestamp, self._raw_tokens_atom.timestamp)
-
-    @property
-    def system_time_timestamp(self) -> int:
+    def system_time_version(self) -> int:
         return self._system_time_atom.timestamp
 
     @property
-    def raw_aruco_timestamp(self) -> int:
+    def dwell_state_version(self) -> int:
+        return self._dwell_state_atom.timestamp
+
+    @property
+    def summon_progress_version(self) -> int:
+        return self._summon_progress_atom.timestamp
+
+    @property
+    def selection_version(self) -> int:
+        return self._selection_atom.timestamp
+
+    @property
+    def grid_metadata_version(self) -> int:
+        return self._grid_metadata_atom.timestamp
+
+    @property
+    def raw_aruco_version(self) -> int:
         return self._raw_aruco_atom.timestamp
 
     @property
-    def hands_timestamp(self) -> int:
+    def hands_version(self) -> int:
         return max(
             self._inputs_atom.timestamp,
             self._landmarks_atom.timestamp,
@@ -393,7 +425,7 @@ class WorldState:
         self.fps = fps
 
     def update_inputs(self, inputs: List[HandInput], current_time: float = 0.0):
-        """Updates the standardized hand inputs and increments hands_timestamp if changed."""
+        """Updates the standardized hand inputs and increments hands_version if changed."""
         if inputs:
             self.last_hand_timestamp = current_time
 
@@ -407,45 +439,54 @@ class WorldState:
         if current_time is None:
             current_time = time.monotonic()
 
-        if result.type == ResultType.ARUCO:
-            if "tokens" in result.data:
-                # Delegate merging to the manager
-                if self._token_merge_manager.update_source(result):
-                    self.tokens = self._token_merge_manager.get_merged_tokens()
-                    self.raw_tokens = self._token_merge_manager.get_merged_raw_tokens()
-            else:
-                # Raw ArUco from workers (corners, ids)
-                new_ids = result.data.get("ids", [])
-                new_corners = result.data.get("corners", [])
-                self.raw_aruco = {"ids": new_ids, "corners": new_corners}
+        with self.transaction() as tx:
+            if result.type == ResultType.ARUCO:
+                if "tokens" in result.data:
+                    # Delegate merging to the manager
+                    if self._token_merge_manager.update_source(result):
+                        tx.update(
+                            self._tokens_atom,
+                            self._token_merge_manager.get_merged_tokens(),
+                        )
+                        tx.update(
+                            self._raw_tokens_atom,
+                            self._token_merge_manager.get_merged_raw_tokens(),
+                        )
+                else:
+                    # Raw ArUco from workers (corners, ids)
+                    new_ids = result.data.get("ids", [])
+                    new_corners = result.data.get("corners", [])
+                    tx.update(
+                        self._raw_aruco_atom, {"ids": new_ids, "corners": new_corners}
+                    )
 
-        elif result.type == ResultType.HANDS:
-            if (
-                isinstance(result.data, list)
-                and len(result.data) > 0
-                and hasattr(result.data[0], "gesture")
-            ):
-                # Standardized HandInput objects (likely from Remote Driver)
-                # BUG-FIX: Even if inputs didn't change, we MUST increment hands_timestamp
-                # because scenes need to process time-based events (dwell, linger)
-                # every frame that hands are present.
-                self._inputs_atom.update(result.data, force_timestamp=time.monotonic_ns())
-                self.last_hand_timestamp = current_time
-            else:
-                # Raw landmarks from MediaPipe worker
-                new_landmarks = result.data.get("landmarks", [])
-                new_handedness = result.data.get("handedness", [])
+            elif result.type == ResultType.HANDS:
+                if (
+                    isinstance(result.data, list)
+                    and len(result.data) > 0
+                    and hasattr(result.data[0], "gesture")
+                ):
+                    # Standardized HandInput objects (likely from Remote Driver)
+                    # BUG-FIX: Even if inputs didn't change, we MUST increment hands_version
+                    # because scenes need to process time-based events (dwell, linger)
+                    # every frame that hands are present.
+                    tx.update(self._inputs_atom, result.data, force=True)
+                    self.last_hand_timestamp = current_time
+                else:
+                    # Raw landmarks from MediaPipe worker
+                    new_landmarks = result.data.get("landmarks", [])
+                    new_handedness = result.data.get("handedness", [])
 
-                # Update landmarks and handedness; they update their own timestamps if changed
-                self.hands = new_landmarks
-                self.handedness = new_handedness
-                self.last_hand_timestamp = current_time
+                    # Update landmarks and handedness; they update their own timestamps if changed
+                    tx.update(self._landmarks_atom, new_landmarks)
+                    tx.update(self._handedness_atom, new_handedness)
+                    self.last_hand_timestamp = current_time
 
-        elif result.type == ResultType.GESTURE:
-            self.gesture = result.data.get("gesture")
+            elif result.type == ResultType.GESTURE:
+                tx.update(self._gesture_atom, result.data.get("gesture"))
 
-        elif result.type == ResultType.ACTION:
-            self.pending_actions.append(result.data)
+            elif result.type == ResultType.ACTION:
+                self.pending_actions.append(result.data)
 
     # Equality Helpers for Atoms
 
@@ -538,21 +579,26 @@ class WorldState:
             },
             "blockers": self.blockers,
             "dwell_state": self.dwell_state,
+            "summon_progress": self.summon_progress,
             "grid_spacing_svg": self.grid_spacing_svg,
             "grid_origin_svg_x": self.grid_origin_svg_x,
             "grid_origin_svg_y": self.grid_origin_svg_y,
-            "map_timestamp": self.map_timestamp,
-            "menu_timestamp": self.menu_timestamp,
-            "tokens_timestamp": self.tokens_timestamp,
-            "raw_aruco_timestamp": self.raw_aruco_timestamp,
-            "hands_timestamp": self.hands_timestamp,
-            "scene_timestamp": self.scene_timestamp,
-            "notifications_timestamp": self.notifications_timestamp,
-            "viewport_timestamp": self.viewport_timestamp,
-            "visibility_timestamp": self.visibility_timestamp,
-            "fow_timestamp": self.fow_timestamp,
+            "map_version": self.map_version,
+            "menu_version": self.menu_version,
+            "tokens_version": self.tokens_version,
+            "raw_aruco_version": self.raw_aruco_version,
+            "hands_version": self.hands_version,
+            "scene_version": self.scene_version,
+            "notifications_version": self.notifications_version,
+            "viewport_version": self.viewport_version,
+            "visibility_version": self.visibility_version,
+            "fow_version": self.fow_version,
+            "dwell_state_version": self.dwell_state_version,
+            "summon_progress_version": self.summon_progress_version,
+            "selection_version": self.selection_version,
+            "grid_metadata_version": self.grid_metadata_version,
             "system_time": self.system_time,
-            "system_time_timestamp": self.system_time_timestamp,
+            "system_time_version": self.system_time_version,
             "effective_show_tokens": self.effective_show_tokens,
         }
 

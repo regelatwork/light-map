@@ -23,8 +23,12 @@ class SelectionProgressLayer(Layer):
     def get_current_version(self) -> int:
         if self.state is None:
             return 0
-        # Sync with hands/inputs as it follows the cursor
-        return self.state.hands_timestamp
+        # Sync with hands (movement), dwell state (progress), and summoning progress
+        return max(
+            self.state.hands_version,
+            self.state.dwell_state_version,
+            self.state.summon_progress_version,
+        )
 
     def _generate_patches(self, current_time: float) -> List[ImagePatch]:
         if self.state is None or not self.state.inputs:

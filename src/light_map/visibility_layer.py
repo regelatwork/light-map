@@ -16,7 +16,11 @@ class VisibilityLayer(VisibilityBaseLayer):
     def get_current_version(self) -> int:
         if self.state is None:
             return 0
-        return max(self.state.visibility_timestamp, self.state.viewport_timestamp)
+        return max(
+            self.state.visibility_version,
+            self.state.viewport_version,
+            self.state.grid_metadata_version,
+        )
 
     def _generate_patches(self, current_time: float) -> List[ImagePatch]:
         if self.state is None or self.state.visibility_mask is None:
@@ -40,8 +44,13 @@ class ExclusiveVisionLayer(VisibilityBaseLayer):
         self._is_dynamic = mask is not None
 
     def get_current_version(self) -> int:
-        # Driven by is_dynamic when mask is set, otherwise static empty
-        return 0
+        if self.state is None:
+            return 0
+        # Driven by is_dynamic when mask is set, but we also depend on viewport/grid metadata for the transform
+        return max(
+            self.state.viewport_version,
+            self.state.grid_metadata_version,
+        )
 
     def _generate_patches(self, current_time: float) -> List[ImagePatch]:
         if self.mask_override is None:

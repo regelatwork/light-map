@@ -114,7 +114,7 @@ def test_tokens_persist_via_aruco_mapper_path():
 
     # 2. Set raw_aruco to something so the mapper is called
     state.raw_aruco = {"ids": [1], "corners": [None]}
-    state.raw_aruco_timestamp = 1  # Ensure it differs from _last_raw_aruco_ts
+    state.raw_aruco_version = 1  # Ensure it differs from _last_raw_aruco_ts
 
     controller.tick()
 
@@ -145,11 +145,11 @@ def test_token_layer_stale_when_occluded():
     # 1. Non-occluded token
     token1 = Token(id=1, world_x=100, world_y=100, is_occluded=False)
     state.tokens = [token1]
-    state.tokens_timestamp = 1
+    state.tokens_version = 1
 
     # First check: version should be based on timestamp
     v1 = layer.get_current_version()
-    assert v1 >= state.tokens_timestamp
+    assert v1 >= state.tokens_version
 
     patches, rv1 = layer.render()
     assert rv1 == v1
@@ -192,7 +192,7 @@ def test_token_layer_pulse_version():
 
     token1 = Token(id=1, world_x=100, world_y=100, is_occluded=False)
     state.tokens = [token1]
-    state.tokens_timestamp = 1
+    state.tokens_version = 1
 
     patches, v1 = layer.render()
 

@@ -33,11 +33,11 @@ class Projector3DPatternLayer(Layer):
         self._aruco_dict = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_4X4_50)
 
     def get_current_version(self) -> int:
-        return self.state.calibration_timestamp if self.state else 0
+        return self.state.calibration_version if self.state else 0
 
     def increment_version(self):
         if self.state:
-            self.state.calibration_version += 1
+            self.state.calibration_version = True  # Trigger setter to update timestamp
 
     def _generate_patches(self, current_time: float) -> List[ImagePatch]:
         if self.width <= 0 or self.height <= 0:
@@ -159,7 +159,7 @@ class Projector3DFeedbackLayer(Layer):
 
     def get_current_version(self) -> int:
         # Dynamic layers don't rely on versions for caching in Renderer
-        return self.state.scene_timestamp if self.state else 0
+        return self.state.scene_version if self.state else 0
 
     def _generate_patches(self, current_time: float) -> List[ImagePatch]:
         if self.width <= 0 or self.height <= 0:

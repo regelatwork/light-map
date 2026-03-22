@@ -80,7 +80,7 @@ class MainLoopController:
             self._drain_queues(current_mono)
 
         # 3. Map Raw ArUco if available AND changed
-        if self.state.raw_aruco_timestamp != self._last_raw_aruco_ts:
+        if self.state.raw_aruco_version != self._last_raw_aruco_ts:
             if self.aruco_mapper:
                 mapped_result = self.aruco_mapper(self.state.raw_aruco)
                 if isinstance(mapped_result, dict):
@@ -98,7 +98,7 @@ class MainLoopController:
                     self.state.apply(res, current_time=current_mono)
 
                 # Track that we've processed this raw ArUco state
-                self._last_raw_aruco_ts = self.state.raw_aruco_timestamp
+                self._last_raw_aruco_ts = self.state.raw_aruco_version
 
         # 4. Process Temporal Events
         event_actions = self.events.check()

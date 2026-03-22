@@ -85,8 +85,8 @@ def test_door_state_restoration_syncs_to_state(mock_config, monkeypatch, tmp_pat
         state_door = next(b for b in app.state.blockers if b["id"] == "door1")
         assert state_door["is_open"] is True
 
-        # 5. Verify visibility_timestamp was incremented
-        assert app.state.visibility_timestamp > 0
+        # 5. Verify visibility_version was incremented
+        assert app.state.visibility_version > 0
 
 
 def test_toggle_door_syncs_to_state(mock_config, monkeypatch, tmp_path):
@@ -120,11 +120,11 @@ def test_toggle_door_syncs_to_state(mock_config, monkeypatch, tmp_path):
 
     # Ensure door is closed initially
     assert app.state.blockers[0]["is_open"] is False
-    initial_timestamp = app.state.visibility_timestamp
+    initial_timestamp = app.state.visibility_version
 
     # Inject TOGGLE_DOOR action
     app._handle_payloads({"action": "TOGGLE_DOOR", "payload": "door1"}, app.state)
 
     # Verify door is now open in state
     assert app.state.blockers[0]["is_open"] is True
-    assert app.state.visibility_timestamp > initial_timestamp
+    assert app.state.visibility_version > initial_timestamp

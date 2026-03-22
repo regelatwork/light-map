@@ -199,6 +199,13 @@ class SelectionState:
     metadata: Dict[str, Any] = field(default_factory=dict)
 
 
+@dataclass
+class GridMetadata:
+    spacing_svg: float = 0.0
+    origin_svg_x: float = 0.0
+    origin_svg_y: float = 0.0
+
+
 class ResultType(StrEnum):
     ARUCO = "ARUCO"
     HANDS = "HANDS"

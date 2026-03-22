@@ -21,7 +21,7 @@ class TestProjector3DCalibrationScene(unittest.TestCase):
         self.mock_context.analytics = MagicMock()
         self.mock_context.raw_aruco = {"ids": [], "corners": []}
         self.mock_context.state = MagicMock()
-        self.mock_context.state.scene_timestamp = 1
+        self.mock_context.state.scene_version = 1
 
     def test_initialization(self):
         scene = Projector3DCalibrationScene(self.mock_context)

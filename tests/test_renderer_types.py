@@ -10,8 +10,8 @@ class MockLayer(Layer):
         self.generate_count = 0
 
     def get_current_version(self) -> int:
-        # For testing, version is map_timestamp
-        return self.state.map_timestamp
+        # For testing, version is map_version
+        return self.state.map_version
 
     def _generate_patches(self, current_time: float) -> List[ImagePatch]:
         self.generate_count += 1

@@ -75,10 +75,10 @@ def test_token_movement_propagation():
         data={"tokens": result_1["tokens"], "raw_tokens": result_1["raw_tokens"]},
     )
     world_state.apply(world_res_1)
-    assert world_state.tokens_timestamp > 0
+    assert world_state.tokens_version > 0
     assert world_state.tokens[0].grid_x == 1
 
-    timestamp_after_frame_1 = world_state.tokens_timestamp
+    timestamp_after_frame_1 = world_state.tokens_version
 
     # Frame 2: Token moves to (220, 220) -> Snapped to (250, 250), Grid (2, 2)
     token_2 = Token(id=1, world_x=220.0, world_y=220.0)
@@ -108,7 +108,7 @@ def test_token_movement_propagation():
     world_state.apply(world_res_2)
 
     # VERIFY: Version should change! (timestamp incremented)
-    assert world_state.tokens_timestamp > timestamp_after_frame_1
+    assert world_state.tokens_version > timestamp_after_frame_1
     assert world_state.tokens[0].grid_x == 2
 
     # Frame 3: Token moves slightly within cell (2, 2)    # 220 -> 230. Snapped is still (250, 250).

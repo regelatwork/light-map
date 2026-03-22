@@ -68,7 +68,7 @@ class Scene(ABC):
         Returns the current scene version from WorldState.
         Scenes do not store their own versions; they trigger updates in the central state.
         """
-        return self.context.state.scene_timestamp
+        return self.context.state.scene_version
 
     def increment_version(self):
         """Triggers a re-render by incrementing the central scene version."""

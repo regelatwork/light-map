@@ -30,7 +30,7 @@ def mock_app_context():
 
 def test_notification_layer_render(mock_app_context):
     ws = WorldState()
-    ws.notifications_timestamp = 1
+    ws.notifications_version = 1
 
     layer = NotificationLayer(ws, mock_app_context)
 
@@ -62,7 +62,7 @@ def test_token_layer_render(mock_app_context):
 
     ws = WorldState()
     ws.tokens = [Token(id=1, world_x=10, world_y=10)]
-    ws.tokens_timestamp = 1
+    ws.tokens_version = 1
 
     layer = TokenLayer(ws, mock_app_context, time_provider=lambda: 0.0)
 
@@ -73,7 +73,7 @@ def test_token_layer_render(mock_app_context):
 
 def test_debug_layer_render(mock_app_context):
     ws = WorldState()
-    ws.hands_timestamp = 1
+    ws.hands_version = 1
     mock_app_context.debug_mode = True
 
     layer = DebugLayer(ws, mock_app_context)
@@ -88,7 +88,7 @@ def test_token_layer_caching(mock_app_context):
 
     ws = WorldState()
     ws.tokens = [Token(id=1, world_x=10, world_y=10)]
-    ws.tokens_timestamp = 1
+    ws.tokens_version = 1
 
     layer = TokenLayer(ws, mock_app_context, time_provider=lambda: 0.0)
 
@@ -103,7 +103,7 @@ def test_token_layer_caching(mock_app_context):
         assert v1 == v2
 
         # Change timestamp to trigger version increment
-        ws.tokens_timestamp += 1
+        ws.tokens_version += 1
 
         p3_data = [MagicMock(name="p3")]
         mock_draw.return_value = p3_data

@@ -4,6 +4,7 @@ import logging
 from typing import Callable, Any, List, Tuple, Dict, Optional, Hashable
 
 from .world_state import WorldState
+from .versioned_atom import VersionedAtom
 
 
 class TemporalEventManager:
@@ -48,6 +49,25 @@ class TemporalEventManager:
             f"TemporalEventManager: Scheduled event (key={key}, delay={delay:.3f}s, target={target_time:.3f})"
         )
         heapq.heappush(self._events, (target_time, callback, key))
+
+    def schedule_mutation(
+        self,
+        atom: VersionedAtom,
+        new_value: Any,
+        delay: float,
+        key: Optional[Hashable] = None,
+    ):
+        """
+        Schedules an update to a VersionedAtom in the future.
+        If new_value is a callable, it is called with the current value of the atom
+        at the time of execution to determine the new value.
+        """
+
+        def perform_mutation():
+            val = new_value(atom.value) if callable(new_value) else new_value
+            atom.update(val)
+
+        self.schedule(delay, perform_mutation, key=key)
 
     def has_event(self, key: Hashable) -> bool:
         """Checks if an event with the given key is currently scheduled."""

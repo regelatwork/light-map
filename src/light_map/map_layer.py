@@ -56,8 +56,8 @@ class MapLayer(Layer):
 
         # Max of relevant timestamps from world state and internal state
         return max(
-            self.state.map_timestamp,
-            self.state.viewport_timestamp,
+            self.state.map_version,
+            self.state.viewport_version,
             self._opacity_atom.timestamp,
             self._quality_atom.timestamp,
         )

@@ -6,6 +6,7 @@ from light_map.common_types import TimerKey
 
 if TYPE_CHECKING:
     from light_map.core.temporal_event_manager import TemporalEventManager
+    from .versioned_atom import VersionedAtom
 
 
 @dataclass
@@ -22,70 +23,79 @@ class Notification:
 
 
 class NotificationManager:
-    """Manages creation, display, and expiry of notifications."""
+    """Manages creation, display, and expiry of notifications using atomic state."""
 
     def __init__(
         self,
         time_provider: Callable[[], float] = time.monotonic,
         events: Optional[TemporalEventManager] = None,
+        atom: Optional[VersionedAtom] = None,
     ):
-        self.notifications: List[Notification] = []
-        self.timestamp: int = 0
         self.time_provider = time_provider
         self.events = events
+        self.atom = atom
+
+    @property
+    def timestamp(self) -> int:
+        """Returns the timestamp of the notifications atom."""
+        return self.atom.timestamp if self.atom else 0
 
     def add_notification(self, message: str, duration: float = 5.0):
         """
         Adds a new notification or refreshes an existing one with the same message.
         """
-        # Search for existing message to refresh its duration
-        for n in self.notifications:
+        if not self.atom:
+            return
+
+        # Use current notifications list from atom
+        notifications = self.atom.value[:]
+        existing = None
+        for n in notifications:
             if n.message == message:
-                n.refresh(self.time_provider)
-                n.duration = duration
-                # Reschedule expiry if events manager is available
-                if self.events:
-                    self.events.schedule(
-                        duration,
-                        lambda msg=message: self._remove_notification(msg),
-                        key=(TimerKey.NOTIFICATION_EXPIRY, message),
-                    )
-                return
+                existing = n
+                break
 
-        self.notifications.append(
-            Notification(message, timestamp=self.time_provider(), duration=duration)
-        )
-        self.timestamp += 1
+        if existing:
+            existing.refresh(self.time_provider)
+            existing.duration = duration
+            # Re-update atom to trigger re-render if timestamp changed
+            self.atom.update(notifications)
+        else:
+            notifications.append(
+                Notification(message, timestamp=self.time_provider(), duration=duration)
+            )
+            self.atom.update(notifications)
 
-        # Schedule expiry if events manager is available
+        # Schedule expiry using declarative mutation
         if self.events:
-            self.events.schedule(
+            self.events.schedule_mutation(
+                self.atom,
+                lambda current, msg=message: [n for n in current if n.message != msg],
                 duration,
-                lambda msg=message: self._remove_notification(msg),
                 key=(TimerKey.NOTIFICATION_EXPIRY, message),
             )
 
     def _remove_notification(self, message: str):
-        """Removes a specific notification by its message."""
-        original_count = len(self.notifications)
-        self.notifications = [n for n in self.notifications if n.message != message]
-        if len(self.notifications) != original_count:
-            self.timestamp += 1
+        """Removes a specific notification by its message (Callback-based, deprecated)."""
+        if not self.atom:
+            return
+        original = self.atom.value
+        new_list = [n for n in original if n.message != message]
+        if len(new_list) != len(original):
+            self.atom.update(new_list)
 
     def _prune_expired(self):
-        """Removes notifications that have exceeded their duration (fallback if no events manager)."""
-        if self.events:
+        """Removes notifications that have exceeded their duration (No-op if events manager is present)."""
+        if self.events or not self.atom:
             return
 
         current_time = self.time_provider()
-        original_count = len(self.notifications)
-        self.notifications = [
-            n for n in self.notifications if current_time - n.timestamp < n.duration
-        ]
-        if len(self.notifications) != original_count:
-            self.timestamp += 1
+        original = self.atom.value
+        new_list = [n for n in original if current_time - n.timestamp < n.duration]
+        if len(new_list) != len(original):
+            self.atom.update(new_list)
 
     def get_active_notifications(self) -> List[str]:
         """Returns a list of messages for currently active notifications."""
         self._prune_expired()
-        return [n.message for n in self.notifications]
+        return [n.message for n in self.atom.value] if self.atom else []

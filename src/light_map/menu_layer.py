@@ -10,7 +10,7 @@ class MenuLayer(Layer):
     """
     Renders menu items from MenuState.
     Returns a list of small patches, one per menu item.
-    Uses menu_timestamp for caching.
+    Uses menu_version for caching.
     """
 
     def __init__(self, state: WorldState):
@@ -21,7 +21,7 @@ class MenuLayer(Layer):
     def get_current_version(self) -> int:
         if self.state is None:
             return 0
-        return self.state.menu_timestamp
+        return self.state.menu_version
 
     def _generate_patches(self, current_time: float) -> List[ImagePatch]:
         if self.state is None:

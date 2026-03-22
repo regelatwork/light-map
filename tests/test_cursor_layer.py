@@ -30,7 +30,7 @@ def test_cursor_layer_render_with_cursor():
     hand.gesture = GestureType.POINTING
     hand.cursor_pos = (500, 500)
     ws.inputs = [hand]
-    ws.hands_timestamp = 1
+    ws.hands_version = 1
 
     patches = layer.render()[0]
     assert len(patches) == 1
@@ -53,7 +53,7 @@ def test_cursor_layer_render_without_cursor():
     hand.gesture = GestureType.NONE
     hand.cursor_pos = None
     ws.inputs = [hand]
-    ws.hands_timestamp = 1
+    ws.hands_version = 1
 
     patches = layer.render()[0]
     assert len(patches) == 0

@@ -31,8 +31,15 @@ class ArucoMaskLayer(Layer):
 
         # Include enable_aruco_masking change in version
         enabled_bit = 1 if self.config.enable_aruco_masking else 0
-        # Use raw_aruco_timestamp to ensure masks persist even if logical tokens change
-        return (self.state.raw_aruco_timestamp << 1) | enabled_bit
+
+        # Use raw_aruco_version to ensure masks persist even if logical tokens change.
+        # Include grid metadata and viewport for 3D projection stability.
+        v = max(
+            self.state.raw_aruco_version,
+            self.state.grid_metadata_version,
+            self.state.viewport_version,
+        )
+        return (v << 1) | enabled_bit
 
     def _transform_pts(self, camera_pixels: Any, height_mm: float = 0.0) -> np.ndarray:
         """

@@ -111,3 +111,25 @@ def test_event_manager_produces_actions():
     time.sleep(0.1)
     results = manager.check()
     assert results == [[Action.SELECT, Action.BACK]]
+
+
+def test_schedule_mutation():
+    from light_map.core.versioned_atom import VersionedAtom
+
+    manager = TemporalEventManager()
+    atom = VersionedAtom(10, "test_atom")
+    initial_ts = atom.timestamp
+
+    # Schedule a mutation to 20 after 0.1s
+    manager.schedule_mutation(atom, 20, 0.1)
+
+    # Check immediately
+    manager.check()
+    assert atom.value == 10
+    assert atom.timestamp == initial_ts
+
+    # Wait and check
+    time.sleep(0.15)
+    manager.check()
+    assert atom.value == 20
+    assert atom.timestamp > initial_ts

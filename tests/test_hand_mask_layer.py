@@ -23,7 +23,7 @@ def test_hand_mask_layer_render_enabled(mock_config):
     ws = WorldState()
     # Mock some hands
     ws.hands = [[{"x": 0.5, "y": 0.5}, {"x": 0.6, "y": 0.6}]]  # dummy landmarks
-    ws.hands_timestamp = 1
+    ws.hands_version = 1
 
     # We need to mock the transform_pts logic
     ws.background = np.zeros((100, 100, 3), dtype=np.uint8)  # dummy frame for shape
@@ -52,7 +52,7 @@ def test_hand_mask_layer_disabled(mock_config):
     mock_config.enable_hand_masking = False
     ws = WorldState()
     ws.hands = [[{"x": 0.5, "y": 0.5}]]
-    ws.hands_timestamp = 1
+    ws.hands_version = 1
 
     layer = HandMaskLayer(ws, mock_config)
     patches = layer.render(current_time=0.0)[0]
@@ -62,7 +62,7 @@ def test_hand_mask_layer_disabled(mock_config):
 def test_hand_mask_layer_caching(mock_config):
     ws = WorldState()
     ws.hands = [[{"x": 0.5, "y": 0.5}]]
-    ws.hands_timestamp = 1
+    ws.hands_version = 1
     ws.background = np.zeros((100, 100, 3), dtype=np.uint8)
 
     layer = HandMaskLayer(ws, mock_config)
@@ -81,7 +81,7 @@ def test_hand_mask_layer_caching(mock_config):
         from light_map.common_types import GestureType
 
         new_input = [HandInput(GestureType.POINTING, (100, 100), (0.0, 0.0), None)]
-        ws.update_inputs(new_input)  # increments hands_timestamp
+        ws.update_inputs(new_input)  # increments hands_version
         p3 = layer.render(current_time=0.1)
         assert p3 is not p1
         assert mock_hulls.call_count == 2
@@ -105,7 +105,7 @@ def test_hand_mask_expansion_with_ppi():
     # Mock a single hand with 3 points forming a triangle
     # Points are in normalized camera coordinates (0 to 1)
     ws.hands = [[{"x": 0.5, "y": 0.5}, {"x": 0.55, "y": 0.5}, {"x": 0.5, "y": 0.55}]]
-    ws.hands_timestamp = 1
+    ws.hands_version = 1
 
     layer = HandMaskLayer(ws, config)
 
@@ -155,12 +155,12 @@ def test_hand_mask_persistence():
 
     # Add hand at t=0
     ws.hands = [[{"x": 0.5, "y": 0.5}]]
-    ws.hands_timestamp = 1
+    ws.hands_version = 1
     assert len(layer._generate_patches(current_time=0.0)) == 1
 
     # Remove hand immediately at t=0
     ws.hands = []
-    ws.hands_timestamp = 2
+    ws.hands_version = 2
     # Should still be present because persistence_seconds=1.0 (default)
     assert len(layer._generate_patches(current_time=0.5)) == 1
 

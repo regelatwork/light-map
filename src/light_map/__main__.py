@@ -513,28 +513,28 @@ def run_app(args):
                             # 1. Update Frequent State (World, Tokens, Menu) if they changed
                             # WorldState tracks granular timestamps for all components
                             current_world_ts = max(
-                                state.scene_timestamp,
-                                state.viewport_timestamp,
-                                state.hands_timestamp,
-                                state.fow_timestamp,
-                                state.visibility_timestamp,
-                                state.map_timestamp,
-                                state.menu_timestamp,
-                                state.tokens_timestamp,
-                                state.notifications_timestamp,
+                                state.scene_version,
+                                state.viewport_version,
+                                state.hands_version,
+                                state.fow_version,
+                                state.visibility_version,
+                                state.map_version,
+                                state.menu_version,
+                                state.tokens_version,
+                                state.notifications_version,
                             )
 
                             if current_world_ts != last_world_ts:
                                 state_mirror["world"] = state.to_dict()
                                 last_world_ts = current_world_ts
 
-                            if state.tokens_timestamp != last_tokens_ts:
+                            if state.tokens_version != last_tokens_ts:
                                 state_mirror["tokens"] = [
                                     t.to_dict() for t in state.tokens
                                 ]
-                                last_tokens_ts = state.tokens_timestamp
+                                last_tokens_ts = state.tokens_version
 
-                            if state.menu_timestamp != last_menu_ts:
+                            if state.menu_version != last_menu_ts:
                                 if state.menu_state:
                                     state_mirror["menu"] = {
                                         "title": state.menu_state.current_menu_title,
@@ -552,7 +552,7 @@ def run_app(args):
                                     }
                                 else:
                                     state_mirror["menu"] = None
-                                last_menu_ts = state.menu_timestamp
+                                last_menu_ts = state.menu_version
 
                             # 2. Update Configuration (Only if changed)
                             current_map_config_version = getattr(

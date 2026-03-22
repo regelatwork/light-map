@@ -44,7 +44,7 @@ class InputCoordinator:
                 current_time - state.last_hand_timestamp > self.flicker_timeout
             ):
                 state.inputs = []
-                state.hands_timestamp += 1
+                state.hands_version += 1
 
         # Sync common vision results to AppContext
         self.app.app_context.last_camera_frame = state.background

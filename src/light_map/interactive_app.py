@@ -11,6 +11,7 @@ from light_map.common_types import (
     Layer,
     SceneId,
     TimerKey,
+    GridMetadata,
 )
 from light_map.renderer import Renderer
 from light_map.map_system import MapSystem
@@ -76,6 +77,7 @@ class InteractiveApp:
 
         # State management
         self.state = WorldState()
+        self.events.state = self.state
 
         # Core Systems
         self.map_config = MapConfigManager(storage=config.storage_manager)
@@ -477,7 +479,8 @@ class InteractiveApp:
     def set_debug_mode(self, enabled: bool):
         if self.app_context.debug_mode != enabled:
             self.app_context.debug_mode = enabled
-            self.state.notifications_timestamp += 1
+            # Signal overlay re-render
+            self.state.notifications_version = True
         # Always ensure it is set correctly
         self.app_context.debug_mode = enabled
 
@@ -549,7 +552,7 @@ class InteractiveApp:
             self.current_scene = self.scenes[target_id]
             self.last_scene_version = -1  # Reset version tracking for new scene
             self.current_scene.on_enter(transition.payload)
-            self.state.scene_version += 1
+            self.state._scene_atom.update(self.current_scene.__class__.__name__)
         else:
             logging.error("Scene '%s' not found.", target_id)
 
@@ -574,15 +577,19 @@ class InteractiveApp:
         current_time = self.time_provider()
 
         # Update FPS
+        dt = 0.0
         if self.last_fps_time != 0:
             dt = current_time - self.last_fps_time
             if dt > 0:
                 self.fps = 1.0 / dt
         self.last_fps_time = current_time
 
+        # Update temporal authority
+        self.events.advance(dt)
+
         # Trigger pruning and update timestamp
         self.app_context.notifications.get_active_notifications()
-        state.notifications_timestamp = self.app_context.notifications.timestamp
+        state.notifications_version = True
 
         state.update_viewport(self.map_system.state.to_viewport())
 
@@ -732,6 +739,7 @@ class InteractiveApp:
 
                 # 4. Update VisibilityLayer (the highlight)
                 self.state.update_visibility_mask(combined_pc_mask)
+                self.state.visibility_version += 1
 
                 # 5. Invalidate Layer Caches
                 self.state.fow_version += 1
@@ -748,9 +756,11 @@ class InteractiveApp:
         self.app_context.visibility_engine = self.visibility_engine
 
         # Sync to WorldState
-        self.state.grid_spacing_svg = spacing
-        self.state.grid_origin_svg_x = entry.grid_origin_svg_x
-        self.state.grid_origin_svg_y = entry.grid_origin_svg_y
+        self.state.grid_metadata = GridMetadata(
+            spacing_svg=spacing,
+            origin_svg_x=entry.grid_origin_svg_x,
+            origin_svg_y=entry.grid_origin_svg_y,
+        )
 
         # Re-initialize blockers with new visibility engine parameters
         blockers = self.map_system.svg_loader.get_visibility_blockers()
@@ -850,6 +860,7 @@ class InteractiveApp:
         # Restore Visibility Highlight in state if loaded from persistence
         if np.any(self.fow_manager.visible_mask):
             self.state.update_visibility_mask(self.fow_manager.visible_mask)
+            self.state.visibility_version += 1
 
         if load_session:
             session_dir = None
@@ -861,7 +872,7 @@ class InteractiveApp:
             if session:
                 self.map_system.ghost_tokens = session.tokens
                 self.state.tokens = session.tokens
-                self.state.tokens_timestamp += 1
+                self.state.tokens_version += 1
 
                 from light_map.visibility_types import VisibilityType
 

@@ -47,7 +47,12 @@ class TokenLayer(Layer):
 
         # Combined version: include show_tokens in version to catch toggles.
         # We use a bit-shift or large offset to ensure it's different.
-        v = (self.state.tokens_timestamp << 1) | (1 if show_tokens else 0)
+        v = max(
+            self.state.tokens_version,
+            self.state.grid_metadata_version,
+            self.state.viewport_version,
+        )
+        v = (v << 1) | (1 if show_tokens else 0)
         return max(v, time_version if show_tokens else 0)
 
     def _generate_patches(self, current_time: float) -> List[ImagePatch]:
@@ -78,7 +83,7 @@ class NotificationLayer(Layer):
     def get_current_version(self) -> int:
         if self.state is None:
             return 0
-        return self.state.notifications_timestamp
+        return self.state.notifications_version
 
     def _generate_patches(self, current_time: float) -> List[ImagePatch]:
         if self.state is None:
@@ -103,7 +108,7 @@ class DebugLayer(Layer):
 
         self._is_dynamic = self.context.debug_mode
         # Catch debug toggle in version
-        return (self.state.hands_timestamp << 1) | (1 if self.context.debug_mode else 0)
+        return (self.state.hands_version << 1) | (1 if self.context.debug_mode else 0)
 
     def _generate_patches(self, current_time: float) -> List[ImagePatch]:
         if self.state is None or not self.context.debug_mode:

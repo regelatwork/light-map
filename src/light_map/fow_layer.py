@@ -40,9 +40,10 @@ class FogOfWarLayer(Layer):
         if self.state is None:
             return 0
         return max(
-            self.state.fow_timestamp,
-            self.state.viewport_timestamp,
-            self.state.visibility_timestamp,
+            self.state.fow_version,
+            self.state.viewport_version,
+            self.state.visibility_version,
+            self.state.grid_metadata_version,
         )
 
     def _generate_patches(self, current_time: float) -> List[ImagePatch]:

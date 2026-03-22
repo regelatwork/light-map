@@ -26,7 +26,7 @@ class LegacySceneLayer(Layer):
     def get_current_version(self) -> int:
         if self.state is None:
             return 0
-        return self.state.scene_timestamp
+        return self.state.scene_version
 
     def _generate_patches(self, current_time: float) -> List[ImagePatch]:
         if not self.scene:

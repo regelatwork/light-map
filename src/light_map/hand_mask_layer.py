@@ -32,9 +32,12 @@ class HandMaskLayer(Layer):
         self._is_dynamic = bool(self.hand_masker.last_hulls)
 
         # Include enable_hand_masking change in version
-        return (self.state.hands_timestamp << 1) | (
-            1 if self.config.enable_hand_masking else 0
+        v = max(
+            self.state.hands_version,
+            self.state.grid_metadata_version,
+            self.state.viewport_version,
         )
+        return (v << 1) | (1 if self.config.enable_hand_masking else 0)
 
     def _transform_pts(self, pts: np.ndarray) -> np.ndarray:
         """Helper to transform normalized camera points to projector space."""

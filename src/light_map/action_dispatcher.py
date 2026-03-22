@@ -5,6 +5,7 @@ import logging
 if TYPE_CHECKING:
     from .interactive_app import InteractiveApp
     from .core.scene import SceneTransition, WorldState
+from .common_types import GridMetadata, SelectionState
 
 
 ActionHandler = Callable[
@@ -142,9 +143,11 @@ def handle_update_grid(
 
             app.map_config.save()
 
-            app.state.grid_origin_svg_x = entry.grid_origin_svg_x
-            app.state.grid_origin_svg_y = entry.grid_origin_svg_y
-            app.state.grid_spacing_svg = entry.grid_spacing_svg
+            app.state.grid_metadata = GridMetadata(
+                spacing_svg=entry.grid_spacing_svg,
+                origin_svg_x=entry.grid_origin_svg_x,
+                origin_svg_y=entry.grid_origin_svg_y,
+            )
 
             app._rebuild_visibility_stack(entry)
             app.notifications.add_notification("Grid Configuration Updated")
@@ -358,8 +361,7 @@ def handle_toggle_door(
 
     door_id = payload.get("door_id") or payload.get("payload")
     if door_id:
-        app.state.selection.type = SelectionType.DOOR
-        app.state.selection.id = door_id
+        app.state.selection = SelectionState(type=SelectionType.DOOR, id=door_id)
 
     if app.state.selection.type == SelectionType.DOOR and app.state.selection.id:
         door_id = app.state.selection.id

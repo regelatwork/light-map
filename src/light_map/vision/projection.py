@@ -53,17 +53,21 @@ class CameraProjectionModel:
         camera_rays = np.vstack([x_normalized, y_normalized, np.ones(N)])  # 3 x N
         world_rays = self.rotation_matrix_inv @ camera_rays  # 3 x N
 
-        # 3. Intersect rays with plane Z = height_mm
-        # P = C + s * v_world
-        # P.z = C.z + s * v_world.z = height_mm  => s = (height_mm - C.z) / v_world.z
+        # 3. Intersect rays with plane Z = 0 to get ground points P0
+        # P0 = C + s0 * world_rays
+        # P0.z = 0  => s0 = -C.z / world_rays.z
         camera_center_z = self.camera_center[2]
         world_rays_z = world_rays[2, :]
+        s0 = -camera_center_z / (world_rays_z + 1e-9)
+        p0 = self.camera_center.reshape(3, 1) + s0 * world_rays
 
-        # Avoid division by zero for rays parallel to the plane
-        ray_distance = (height_mm - camera_center_z) / (world_rays_z + 1e-9)
-        world_points_3d = (
-            self.camera_center.reshape(3, 1) + ray_distance * world_rays
-        )  # 3 x N
+        # 4. Use similar triangles to find point P at height_mm
+        # P = p0 + (height_mm / C.z) * (C - p0)
+        # This formulation is more robust when camera position has small errors
+        # as it treats the floor as the primary reference.
+        world_points_3d = p0 + (height_mm / (camera_center_z + 1e-9)) * (
+            self.camera_center.reshape(3, 1) - p0
+        )
 
         return world_points_3d[:2, :].T.astype(np.float32)
 

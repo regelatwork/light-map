@@ -62,7 +62,10 @@ def test_aruco_mask_layer_version(mock_state, mock_config):
     assert v3 == (mock_state.raw_aruco_version << 1) | 0
 
     # Raw ArUco updated
-    mock_state.raw_aruco = {"corners": [], "ids": []}  # Triggers raw_aruco_version change
+    mock_state.raw_aruco = {
+        "corners": [],
+        "ids": [],
+    }  # Triggers raw_aruco_version change
     v4 = layer.get_current_version()
     assert v4 == (mock_state.raw_aruco_version << 1) | 0
 
@@ -169,10 +172,17 @@ def test_aruco_mask_layer_parallax_rendering(mock_state, mock_config):
     # Also need Projector3DModel and ProjectionService for it to work
     from light_map.vision.projection import Projector3DModel, ProjectionService
 
+    # Use a mock 3D projector model that just returns world points
     mock_config.projector_3d_model = Projector3DModel(
-        homography_matrix=np.eye(3),  # Identity for simplicity in this test
-        use_3d=False,  # If False, it uses homography but ProjectionService still passes height to Camera model
+        intrinsic_matrix=np.eye(3),
+        distortion_coefficients=np.zeros(5),
+        rotation_vector=np.zeros(3),
+        translation_vector=np.zeros(3),
+        use_3d=True,
     )
+    # Patch the projection method to just return X, Y from world points for simplicity
+    mock_config.projector_3d_model.project_world_to_projector = lambda w: w[:, :2]
+
     projection_service = ProjectionService(
         mock_config.camera_projection_model, mock_config.projector_3d_model
     )

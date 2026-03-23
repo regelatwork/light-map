@@ -6,16 +6,16 @@ from light_map.calibration_logic import calibrate_projector_3d
 
 
 class TestProjector3DModel(unittest.TestCase):
-    def test_fallback_to_homography(self):
-        # Create a dummy homography (identity)
+    def test_fallback_to_world_coords(self):
+        # Create a dummy homography (identity) - should be IGNORED by project_world_to_projector
         homography_matrix = np.eye(3, dtype=np.float32)
         model = Projector3DModel(homography_matrix=homography_matrix, use_3d=False)
 
         # Test points (X, Y, Z)
         world_points_3d = np.array([[10, 20, 0], [100, 200, 50]], dtype=np.float32)
 
-        # In fallback mode, it should only use X, Y and the homography
-        # Since H is identity, results should match X, Y
+        # In fallback mode, project_world_to_projector should return X, Y directly
+        # (It leaves actual homography application to ProjectionService which handles camera pixels)
         projector_pixels = model.project_world_to_projector(world_points_3d)
 
         self.assertEqual(projector_pixels.shape, (2, 2))
@@ -169,37 +169,17 @@ class TestProjector3DModel(unittest.TestCase):
         )  # Within 10px focal length
 
     def test_projection_consistency(self):
-        """Verifies that 3D model at Z=0 matches a Homography built from the same data."""
+        """Verifies that 3D model returns world X,Y when use_3d=False."""
         intrinsic_matrix = np.array(
             [[1000, 0, 640], [0, 1000, 360], [0, 0, 1]], dtype=np.float32
         )
         rotation_vector = np.array([np.pi, 0.1, 0.1], dtype=np.float32)  # Slight tilt
         translation_vector = np.array([50, -50, 1500], dtype=np.float32)
 
-        # 1. Create a set of points at Z=0
-        world_points_3d = []
-        for x in range(-500, 501, 250):
-            for y in range(-400, 401, 200):
-                world_points_3d.append([float(x), float(y), 0.0])
-        world_points_3d = np.array(world_points_3d, dtype=np.float32)
-
-        # 2. Project them using 3D model
-        projector_pixels_3d, _ = cv2.projectPoints(
-            world_points_3d, rotation_vector, translation_vector, intrinsic_matrix, None
-        )
-        projector_pixels_3d = projector_pixels_3d.reshape(-1, 2)
-
-        # 3. Build a Homography from World(X,Y) to Projector(u,v)
-        homography_matrix, _ = cv2.findHomography(
-            world_points_3d[:, :2], projector_pixels_3d
-        )
-
-        # 4. Create Projector3DModel with both
         model = Projector3DModel(
             intrinsic_matrix=intrinsic_matrix,
             rotation_vector=rotation_vector,
             translation_vector=translation_vector,
-            homography_matrix=homography_matrix,
             use_3d=True,
         )
 
@@ -209,12 +189,15 @@ class TestProjector3DModel(unittest.TestCase):
         # Result using 3D path
         result_3d = model.project_world_to_projector(test_point)
 
-        # Result using Homography path
+        # Result using Fallback path (should be X, Y of test point)
         model.use_3d = False
-        result_2d = model.project_world_to_projector(test_point)
+        result_fallback = model.project_world_to_projector(test_point)
 
-        # They should be very close for Z=0
-        np.testing.assert_array_almost_equal(result_3d, result_2d, decimal=1)
+        np.testing.assert_array_almost_equal(
+            result_fallback, [[123.0, 456.0]], decimal=1
+        )
+        # Note: result_3d will NOT match result_fallback unless calibration is perfect identity/scale
+        self.assertFalse(np.array_equal(result_3d, result_fallback))
 
 
 if __name__ == "__main__":

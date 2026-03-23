@@ -116,7 +116,9 @@ class Projector3DModel:
     def project_world_to_projector(self, world_points: np.ndarray) -> np.ndarray:
         """
         Maps (N, 3) World points to (N, 2) Projector pixels.
-        If use_projector_3d_model is False, falls back to 2D Homography (assuming Z=0).
+        If use_3d and 3D calibration is present, it uses full projective transformation.
+        Otherwise, returns world points (X, Y) as pixels, which is usually incorrect
+        unless world units are pixels and origin matches.
         """
         if (
             self.use_3d
@@ -132,18 +134,12 @@ class Projector3DModel:
                 self.distortion_coefficients,
             )
             return projector_pixels.reshape(-1, 2)
-        elif self.homography_matrix is not None:
-            # Fallback to 2D Homography (ignoring Z height)
-            # NOTE: This assumes homography_matrix is a World-to-Projector mapping.
-            # If it's a Camera-to-Projector mapping (common in this project), this will be incorrect.
-            points_2d = world_points[:, :2].astype(np.float32).reshape(-1, 1, 2)
-            projected_pixels = cv2.perspectiveTransform(
-                points_2d, self.homography_matrix
-            )
-            return projected_pixels.reshape(-1, 2)
         else:
-            logging.warning(
-                "Projector3DModel: No calibration available for projection."
+            # We NO LONGER fall back to homography here because the homography
+            # in this model is typically Camera-to-Projector, NOT World-to-Projector.
+            # ProjectionService handles the fallback by applying homography to camera pixels.
+            logging.debug(
+                "Projector3DModel: No 3D calibration for world-to-projector mapping."
             )
             return world_points[:, :2].astype(np.float32)
 
@@ -224,15 +220,30 @@ class ProjectionService:
         if camera_pixels.size == 0:
             return np.zeros((0, 2), dtype=np.float32)
 
-        # 1. Camera Pixels -> World (X, Y) at Z = height_mm
+        # 1. Use 3D Projective Model if available and enabled
+        if self.projector_model.is_calibrated_3d and self.projector_model.use_3d:
+            # Camera Pixels -> World (X, Y) at Z = height_mm
+            world_points_2d = self.camera_model.reconstruct_world_points(
+                camera_pixels, height_mm=height_mm
+            )
+            # World (X, Y, Z) -> Projector Pixels
+            N = world_points_2d.shape[0]
+            world_points_3d = np.hstack(
+                [world_points_2d, np.full((N, 1), height_mm)]
+            )  # (N, 3)
+            return self.projector_model.project_world_to_projector(world_points_3d)
+
+        # 2. Fallback to 2D Homography (assuming Z=0)
+        # We apply this to camera pixels because the homography is Camera-to-Projector.
+        if self.projector_model.homography_matrix is not None:
+            camera_pixels_reshaped = camera_pixels.reshape(-1, 1, 2).astype(np.float32)
+            proj_pts = cv2.perspectiveTransform(
+                camera_pixels_reshaped, self.projector_model.homography_matrix
+            )
+            return proj_pts.reshape(-1, 2)
+
+        # 3. Last Fallback: Map reconstructed world points to pixels using default assumptions
         world_points_2d = self.camera_model.reconstruct_world_points(
             camera_pixels, height_mm=height_mm
         )
-
-        # 2. World (X, Y, Z) -> Projector Pixels
-        N = world_points_2d.shape[0]
-        world_points_3d = np.hstack(
-            [world_points_2d, np.full((N, 1), height_mm)]
-        )  # (N, 3)
-
-        return self.projector_model.project_world_to_projector(world_points_3d)
+        return world_points_2d.astype(np.float32)

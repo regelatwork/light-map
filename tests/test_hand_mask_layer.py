@@ -22,7 +22,9 @@ def mock_config():
 def test_hand_mask_layer_render_enabled(mock_config):
     ws = WorldState()
     # Mock some hands
-    ws.hands = [[{"x": 0.5, "y": 0.5}, {"x": 0.6, "y": 0.6}]]  # dummy landmarks (triggers hands_version)
+    ws.hands = [
+        [{"x": 0.5, "y": 0.5}, {"x": 0.6, "y": 0.6}]
+    ]  # dummy landmarks (triggers hands_version)
 
     # We need to mock the transform_pts logic
     ws.background = np.zeros((100, 100, 3), dtype=np.uint8)  # dummy frame for shape
@@ -101,7 +103,9 @@ def test_hand_mask_expansion_with_ppi():
 
     # Mock a single hand with 3 points forming a triangle
     # Points are in normalized camera coordinates (0 to 1)
-    ws.hands = [[{"x": 0.5, "y": 0.5}, {"x": 0.55, "y": 0.5}, {"x": 0.5, "y": 0.55}]]  # Triggers hands_version
+    ws.hands = [
+        [{"x": 0.5, "y": 0.5}, {"x": 0.55, "y": 0.5}, {"x": 0.5, "y": 0.55}]
+    ]  # Triggers hands_version
 
     layer = HandMaskLayer(ws, config)
 

@@ -104,7 +104,6 @@ def test_token_count_display_no_tokens(app):
     state.background = frame
     state.last_frame_timestamp = 1
 
-
     # OverlayRenderer.draw_ghost_tokens is where token drawing happens now
     with patch(
         "light_map.overlay_layer.OverlayRenderer.draw_ghost_tokens"

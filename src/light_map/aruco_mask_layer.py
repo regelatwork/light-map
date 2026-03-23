@@ -75,6 +75,7 @@ class ArucoMaskLayer(Layer):
         raw_aruco = self.state.raw_aruco
         corners_list = raw_aruco.get("corners", [])
         ids = raw_aruco.get("ids", [])
+
         if not corners_list:
             return []
 
@@ -82,16 +83,11 @@ class ArucoMaskLayer(Layer):
         padding = self.config.aruco_mask_padding
         color = DEFAULT_ARUCO_MASK_COLOR
 
-        # Calibration resolution for clamping
-        calib_w, calib_h = self.config.projector_matrix_resolution
-        limit_w = calib_w if calib_w > 0 else self.config.width
-        limit_h = calib_h if calib_h > 0 else self.config.height
+        # Projector resolution for clamping
+        limit_w = self.config.width
+        limit_h = self.config.height
 
-        logging.debug(
-            f"ArucoMaskLayer: Generating patches for {len(corners_list)} markers. Range: {limit_w}x{limit_h}"
-        )
-
-        default_height = 5.0
+        default_height = 5.0  # Default height in mm if no profile found
 
         for i, corners in enumerate(corners_list):
             marker_id = ids[i] if i < len(ids) else -1

@@ -5,6 +5,7 @@ from light_map.interactive_app import InteractiveApp
 import numpy as np
 from unittest.mock import MagicMock, patch
 
+
 def test_interactive_app_advances_system_time():
     config = AppConfig(width=800, height=600, projector_matrix=np.eye(3))
     config.storage_manager = MagicMock()

@@ -103,6 +103,8 @@ class Scene(ABC):
         Useful for scenes that want a clean UI-only view (e.g., Menu, Setup).
         """
         return [
+            app.aruco_mask_layer,
+            app.hand_mask_layer,
             app.token_layer,  # Hidden if show_tokens is False, but should be below menu regardless
             app.menu_layer,
             app.notification_layer,

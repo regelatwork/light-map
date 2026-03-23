@@ -72,8 +72,18 @@ def test_token_layer_render(mock_app_context):
 
 
 def test_debug_layer_render(mock_app_context):
+    from light_map.core.scene import HandInput
+    from light_map.common_types import GestureType
     ws = WorldState()
-    ws.hands_version = 1
+    # Trigger hands_version change by setting an input
+    ws.inputs = [
+        HandInput(
+            gesture=GestureType.POINTING,
+            proj_pos=(100, 100),
+            unit_direction=(1, 0),
+            raw_landmarks=None,
+        )
+    ]
     mock_app_context.debug_mode = True
 
     layer = DebugLayer(ws, mock_app_context)

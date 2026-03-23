@@ -45,15 +45,15 @@ class TokenLayer(Layer):
         # Use time-based version for 500ms pulse if not dynamic
         time_version = int(now * 2)  # Increments every 0.5s
 
-        # Combined version: include show_tokens in version to catch toggles.
-        # We use a bit-shift or large offset to ensure it's different.
         v = max(
             self.state.tokens_version,
             self.state.grid_metadata_version,
             self.state.viewport_version,
         )
+        # Combined version: include show_tokens in version to catch toggles.
+        # Add time-based version to force periodic re-renders (pulses).
         v = (v << 1) | (1 if show_tokens else 0)
-        return max(v, time_version if show_tokens else 0)
+        return v + (time_version if show_tokens else 0)
 
     def _generate_patches(self, current_time: float) -> List[ImagePatch]:
         if self.state is None:

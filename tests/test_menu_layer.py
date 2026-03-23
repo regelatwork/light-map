@@ -67,8 +67,15 @@ def test_menu_layer_caching():
     # Should be the same list object due to caching
     assert p1 is p2
 
-    # Change timestamp
-    ws.menu_version += 1
+    # Change state to trigger version change
+    ws.update_menu_state(
+        get_default_menu_state(
+            active_items=[MenuItem(title="Item 1")],
+            item_rects=[(0, 0, 100, 50)],
+            is_visible=True,
+            hovered=1,  # Change something
+        )
+    )
     p3 = layer.render()[0]
     assert p3 is not p1  # New list
     assert len(p3) == 1

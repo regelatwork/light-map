@@ -100,8 +100,10 @@ def test_token_count_display_no_tokens(app):
     MockResults()  # No hands
 
     state = WorldState()
+    state.effective_show_tokens = True
     state.background = frame
     state.last_frame_timestamp = 1
+
 
     # OverlayRenderer.draw_ghost_tokens is where token drawing happens now
     with patch(
@@ -124,6 +126,7 @@ def test_token_count_display_with_tokens(app):
     app.current_scene.render = MagicMock(return_value=frame)
 
     state = WorldState()
+    state.effective_show_tokens = True
     state.background = frame
     state.last_frame_timestamp = 1
     state.tokens = app.map_system.ghost_tokens
@@ -149,6 +152,7 @@ def test_token_count_hidden_when_toggled_off(app):
     app.current_scene.render = MagicMock(return_value=frame)
 
     state = WorldState()
+    state.effective_show_tokens = False
     state.background = frame
     state.last_frame_timestamp = 1
     state.tokens = app.map_system.ghost_tokens
@@ -175,6 +179,7 @@ def test_token_count_hidden_in_menu(app):
     app.current_scene.render.return_value = frame
 
     state = WorldState()
+    state.effective_show_tokens = True
     state.background = frame
     state.last_frame_timestamp = 1
     state.tokens = app.map_system.ghost_tokens

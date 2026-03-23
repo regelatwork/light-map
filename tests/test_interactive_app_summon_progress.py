@@ -90,6 +90,7 @@ def test_interactive_app_summon_progress_map_scene(mock_config, monkeypatch):
 
     app.current_scene = MagicMock()
     app.current_scene.__class__.__name__ = "MapScene"
+    app.current_scene_name = "MapScene"
     app.current_scene.render.return_value = (np.zeros((100, 100, 3), dtype=np.uint8), 1)
     app.current_scene.update.return_value = None
     app.current_scene.get_active_layers.return_value = []

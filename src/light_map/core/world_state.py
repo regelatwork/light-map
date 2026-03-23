@@ -213,7 +213,10 @@ class WorldState:
 
     @property
     def visibility_version(self) -> int:
-        return self._visibility_aggregate_version_atom.timestamp
+        return max(
+            self._visibility_aggregate_version_atom.timestamp,
+            self._visibility_mask_atom.timestamp,
+        )
 
     @visibility_version.setter
     def visibility_version(self, value: Any):

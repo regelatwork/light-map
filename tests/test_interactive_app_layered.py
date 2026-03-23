@@ -74,6 +74,10 @@ def test_interactive_app_process_state_skips_render_when_not_stale(
 
     app = InteractiveApp(mock_config)
     ws = app.state
+    ws.effective_show_tokens = False
+
+    # Ensure map system is in sync with state viewport initially
+    ws.viewport = app.map_system.state.to_viewport()
 
     # 1. Initial render (everything is stale/initial)
     app.current_scene = MagicMock()
@@ -82,6 +86,11 @@ def test_interactive_app_process_state_skips_render_when_not_stale(
     app.current_scene.update.return_value = None
     app.current_scene.get_active_layers.return_value = app.layer_stack
     app.current_scene.render.return_value = (np.zeros((100, 100, 3), dtype=np.uint8), 1)
+
+    # Sync state name to avoid update between calls
+    ws.current_scene_name = app.current_scene.__class__.__name__
+    # Sync show_tokens to avoid update from context
+    app.app_context.show_tokens = False
 
     frame1, _ = app.process_state(ws, [])
     assert frame1 is not None

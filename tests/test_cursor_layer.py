@@ -29,8 +29,7 @@ def test_cursor_layer_render_with_cursor():
     hand = MagicMock(spec=HandInput)
     hand.gesture = GestureType.POINTING
     hand.cursor_pos = (500, 500)
-    ws.inputs = [hand]
-    ws.hands_version = 1
+    ws.inputs = [hand]  # Triggers hands_version change
 
     patches = layer.render()[0]
     assert len(patches) == 1
@@ -52,8 +51,7 @@ def test_cursor_layer_render_without_cursor():
     hand = MagicMock(spec=HandInput)
     hand.gesture = GestureType.NONE
     hand.cursor_pos = None
-    ws.inputs = [hand]
-    ws.hands_version = 1
+    ws.inputs = [hand]  # Triggers hands_version change
 
     patches = layer.render()[0]
     assert len(patches) == 0

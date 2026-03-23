@@ -1,5 +1,6 @@
 from unittest.mock import MagicMock
 import time
+import numpy as np
 from light_map.core.main_loop import MainLoopController
 from light_map.core.world_state import WorldState
 from light_map.common_types import DetectionResult, ResultType, Token
@@ -113,8 +114,7 @@ def test_tokens_persist_via_aruco_mapper_path():
     assert len(state.tokens) == 1
 
     # 2. Set raw_aruco to something so the mapper is called
-    state.raw_aruco = {"ids": [1], "corners": [None]}
-    state.raw_aruco_version = 1  # Ensure it differs from _last_raw_aruco_ts
+    state.raw_aruco = {"ids": [1], "corners": [np.zeros((4, 2), dtype=np.float32)]}
 
     controller.tick()
 
@@ -144,8 +144,7 @@ def test_token_layer_stale_when_occluded():
 
     # 1. Non-occluded token
     token1 = Token(id=1, world_x=100, world_y=100, is_occluded=False)
-    state.tokens = [token1]
-    state.tokens_version = 1
+    state.tokens = [token1]  # Triggers tokens_version
 
     # First check: version should be based on timestamp
     v1 = layer.get_current_version()
@@ -191,8 +190,7 @@ def test_token_layer_pulse_version():
     layer = TokenLayer(state, ctx, time_provider=mock_time)
 
     token1 = Token(id=1, world_x=100, world_y=100, is_occluded=False)
-    state.tokens = [token1]
-    state.tokens_version = 1
+    state.tokens = [token1]  # Triggers tokens_version
 
     patches, v1 = layer.render()
 

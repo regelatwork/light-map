@@ -152,6 +152,8 @@ def test_intrinsics_calibration_isolated_layers(intrinsics_calib_scene):
     mock_app.debug_layer = "debug"
     mock_app.selection_progress_layer = "selection_progress"
     mock_app.cursor_layer = "cursor"
+    mock_app.aruco_mask_layer = "aruco_mask"
+    mock_app.hand_mask_layer = "hand_mask"
 
     layers = intrinsics_calib_scene.get_active_layers(mock_app)
 
@@ -162,4 +164,6 @@ def test_intrinsics_calibration_isolated_layers(intrinsics_calib_scene):
     assert "debug" in layers
     assert "selection_progress" in layers
     assert "cursor" in layers
-    assert len(layers) == 7
+    assert "aruco_mask" in layers
+    assert "hand_mask" in layers
+    assert len(layers) == 9

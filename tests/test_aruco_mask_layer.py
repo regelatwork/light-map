@@ -57,14 +57,14 @@ def test_aruco_mask_layer_version(mock_state, mock_config):
     assert v2 == (mock_state.raw_aruco_version << 1) | 0
 
     # Tokens updated (Should NOT affect raw_aruco_version)
-    mock_state.tokens_version = 2
+    mock_state.tokens = []  # Triggers tokens_version change
     v3 = layer.get_current_version()
     assert v3 == (mock_state.raw_aruco_version << 1) | 0
 
     # Raw ArUco updated
-    mock_state.raw_aruco_version = 3
+    mock_state.raw_aruco = {"corners": [], "ids": []}  # Triggers raw_aruco_version change
     v4 = layer.get_current_version()
-    assert v4 == (3 << 1) | 0
+    assert v4 == (mock_state.raw_aruco_version << 1) | 0
 
 
 def test_aruco_mask_layer_rendering(mock_state, mock_config):

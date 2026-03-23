@@ -82,7 +82,9 @@ class InteractiveApp:
         # Core Systems
         self.map_config = MapConfigManager(storage=config.storage_manager)
         self.notifications = NotificationManager(
-            time_provider=time_provider, events=self.events
+            time_provider=time_provider,
+            events=self.events,
+            atom=self.state._notifications_atom,
         )
 
         # Initialize Projector 3D Model
@@ -477,10 +479,6 @@ class InteractiveApp:
         self.app_context.debug_mode = enabled
 
     def set_debug_mode(self, enabled: bool):
-        if self.app_context.debug_mode != enabled:
-            self.app_context.debug_mode = enabled
-            # Signal overlay re-render
-            self.state.notifications_version = True
         # Always ensure it is set correctly
         self.app_context.debug_mode = enabled
 
@@ -587,9 +585,8 @@ class InteractiveApp:
         # Update temporal authority
         self.events.advance(dt)
 
-        # Trigger pruning and update timestamp
+        # Trigger pruning
         self.app_context.notifications.get_active_notifications()
-        state.notifications_version = True
 
         state.update_viewport(self.map_system.state.to_viewport())
 

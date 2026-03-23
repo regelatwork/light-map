@@ -2,15 +2,23 @@ from light_map.common_types import AppConfig
 from light_map.interactive_app import InteractiveApp
 
 
+import numpy as np
+from unittest.mock import MagicMock, patch
+
 def test_interactive_app_advances_system_time():
-    config = AppConfig(width=800, height=600)
+    config = AppConfig(width=800, height=600, projector_matrix=np.eye(3))
+    config.storage_manager = MagicMock()
     # Use a dummy time provider to control time
     current_time = [100.0]
 
     def dummy_time():
         return current_time[0]
 
-    app = InteractiveApp(config, time_provider=dummy_time)
+    with patch(
+        "light_map.interactive_app.InteractiveApp._load_camera_calibration",
+        return_value=(np.eye(3), np.zeros(5), np.zeros(3), np.zeros(3)),
+    ):
+        app = InteractiveApp(config, time_provider=dummy_time)
 
     # First call to initialize last_fps_time
     app.process_state()

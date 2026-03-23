@@ -20,14 +20,13 @@ def test_selection_progress_layer_render_with_progress():
 
     hand = MagicMock(spec=HandInput)
     hand.cursor_pos = (500, 500)
-    ws.inputs = [hand]
+    ws.inputs = [hand]  # Triggers hands_version change
     ws.dwell_state = {
         "target_id": "token1",
         "accumulated_time": 1.0,
         "dwell_time_threshold": 2.0,
     }
     ws.summon_progress = 0.5
-    ws.hands_version = 2
 
     patches = layer.render()[0]
     assert len(patches) == 1
@@ -47,10 +46,9 @@ def test_selection_progress_layer_no_progress():
 
     hand = MagicMock(spec=HandInput)
     hand.cursor_pos = (500, 500)
-    ws.inputs = [hand]
+    ws.inputs = [hand]  # Triggers hands_version change
     ws.dwell_state = {}
     ws.summon_progress = 0.0
-    ws.hands_version = 2
 
     patches = layer.render()[0]
     assert len(patches) == 0

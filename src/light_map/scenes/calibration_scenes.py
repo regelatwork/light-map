@@ -88,8 +88,19 @@ class FlashCalibrationScene(Scene):
         return False
 
     def get_active_layers(self, app: InteractiveApp) -> List[Layer]:
-        """Calibration scenes only need standard scene + UI layers."""
-        return self.get_scene_with_ui_stack(app)
+        """
+        Calibration scenes need standard UI but NOT vision masks,
+        as masks interfere with pattern detection and feedback.
+        """
+        return [
+            app.scene_layer,
+            app.token_layer,
+            app.menu_layer,
+            app.notification_layer,
+            app.debug_layer,
+            app.selection_progress_layer,
+            app.cursor_layer,
+        ]
 
     def render(self, frame: np.ndarray) -> np.ndarray:
         if self._stage == FlashCalibStage.TESTING:
@@ -258,8 +269,19 @@ class IntrinsicsCalibrationScene(Scene):
         return False
 
     def get_active_layers(self, app: InteractiveApp) -> List[Layer]:
-        """Calibration scenes only need standard scene + UI layers."""
-        return self.get_scene_with_ui_stack(app)
+        """
+        Calibration scenes need standard UI but NOT vision masks,
+        as masks interfere with pattern detection and feedback.
+        """
+        return [
+            app.scene_layer,
+            app.token_layer,
+            app.menu_layer,
+            app.notification_layer,
+            app.debug_layer,
+            app.selection_progress_layer,
+            app.cursor_layer,
+        ]
 
     def render(self, frame: np.ndarray) -> np.ndarray:
         # Overlay instructions or status based on stage
@@ -749,8 +771,19 @@ class ExtrinsicsCalibrationScene(Scene):
         return False
 
     def get_active_layers(self, app: InteractiveApp) -> List[Layer]:
-        """Calibration scenes only need standard scene + UI layers."""
-        return self.get_scene_with_ui_stack(app)
+        """
+        Calibration scenes need standard UI but NOT vision masks,
+        as masks interfere with pattern detection and feedback.
+        """
+        return [
+            app.scene_layer,
+            app.token_layer,
+            app.menu_layer,
+            app.notification_layer,
+            app.debug_layer,
+            app.selection_progress_layer,
+            app.cursor_layer,
+        ]
 
     def render(self, frame: np.ndarray) -> np.ndarray:
         h, w = frame.shape[:2]
@@ -1020,8 +1053,19 @@ class PpiCalibrationScene(Scene):
         return False
 
     def get_active_layers(self, app: InteractiveApp) -> List[Layer]:
-        """Calibration scenes only need standard scene + UI layers."""
-        return self.get_scene_with_ui_stack(app)
+        """
+        Calibration scenes need standard UI but NOT vision masks,
+        as masks interfere with pattern detection and feedback.
+        """
+        return [
+            app.scene_layer,
+            app.token_layer,
+            app.menu_layer,
+            app.notification_layer,
+            app.debug_layer,
+            app.selection_progress_layer,
+            app.cursor_layer,
+        ]
 
     def render(self, frame: np.ndarray) -> np.ndarray:
         h, w = frame.shape[:2]
@@ -1339,8 +1383,19 @@ class MapGridCalibrationScene(Scene):
         return False
 
     def get_active_layers(self, app: InteractiveApp) -> List[Layer]:
-        """Map grid calibration needs map + scene + UI layers."""
-        return [app.map_layer] + self.get_scene_with_ui_stack(app)
+        """
+        Map grid calibration needs map + standard UI but NOT vision masks.
+        """
+        return [
+            app.map_layer,
+            app.scene_layer,
+            app.token_layer,
+            app.menu_layer,
+            app.notification_layer,
+            app.debug_layer,
+            app.selection_progress_layer,
+            app.cursor_layer,
+        ]
 
     def render(self, frame: np.ndarray) -> np.ndarray:
         # The main app loop renders the map background.

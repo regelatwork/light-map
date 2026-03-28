@@ -164,6 +164,6 @@ def test_intrinsics_calibration_isolated_layers(intrinsics_calib_scene):
     assert "debug" in layers
     assert "selection_progress" in layers
     assert "cursor" in layers
-    assert "aruco_mask" in layers
-    assert "hand_mask" in layers
-    assert len(layers) == 9
+    assert "aruco_mask" not in layers
+    assert "hand_mask" not in layers
+    assert len(layers) == 7

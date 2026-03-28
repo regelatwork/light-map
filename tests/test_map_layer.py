@@ -57,7 +57,8 @@ def test_map_layer_caching(mock_map_system):
     # 3. Change params - should trigger re-render
     # We must ensure get_current_version() also increases if we want Layer to re-call _generate_patches
     # MapLayer.get_current_version checks map_version, viewport_version and self._version
-    ws.map_version += 1
+    from light_map.common_types import MapRenderState
+    ws.map_render_state = MapRenderState(opacity=1.0, quality=100, filepath="test.svg")
 
     mock_map_system.get_render_params.return_value = {"x": 10, "y": 0, "zoom": 1.0}
     p3, v3 = layer.render()

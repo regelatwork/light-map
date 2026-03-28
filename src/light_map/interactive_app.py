@@ -676,16 +676,17 @@ class InteractiveApp:
             ):
                 self.layer_manager.map_layer.opacity = new_opacity
                 self.layer_manager.map_layer.quality = new_quality
-                self.state.map_version += 1
+                self.state.map_render_state = MapRenderState(
+                    opacity=new_opacity,
+                    quality=new_quality,
+                    filepath=self.current_map_path,
+                )
 
             # 2. Update SceneLayer bridge
             self.layer_manager.scene_layer.scene = self.current_scene
             # Only increment scene timestamp if scene version has changed
-            if (
-                self.current_scene.is_dynamic
-                or self.current_scene.version != self.last_scene_version
-            ):
-                state.scene_version += 1
+            if self.current_scene.version != self.last_scene_version:
+                state.increment_scene_state()
                 self.last_scene_version = self.current_scene.version
 
             # 3. Perform Composite Render
@@ -735,11 +736,10 @@ class InteractiveApp:
                 self.map_config.save_fow_masks(self.current_map_path, self.fow_manager)
 
                 # 4. Update VisibilityLayer (the highlight)
-                self.state.update_visibility_mask(combined_pc_mask)
-                self.state.visibility_version += 1
+                self.state.visibility_mask = combined_pc_mask.copy()
 
                 # 5. Invalidate Layer Caches
-                self.state.fow_version += 1
+                self.state.fow_mask = self.fow_manager.mask.copy()
 
     def _rebuild_visibility_stack(self, entry: Any):
         """Re-initializes visibility engine and layers based on map configuration."""
@@ -800,7 +800,10 @@ class InteractiveApp:
             }
             for b in self.visibility_engine.blockers
         ]
-        self.state.visibility_version += 1
+        self.state.blockers = blockers
+        # Ensure visibility mask is updated to trigger re-render if blockers changed
+        if self.state.visibility_mask is not None:
+            self.state.visibility_mask = self.state.visibility_mask.copy()
 
     def _handle_payloads(
         self, payload: Any, state: Optional["WorldState"] = None
@@ -823,7 +826,11 @@ class InteractiveApp:
         filename = os.path.abspath(filename)
         self.current_map_path = filename
         self.map_system.svg_loader = SVGLoader(filename)
-        self.state.map_version += 1
+        self.state.map_render_state = MapRenderState(
+            opacity=self.layer_manager.map_layer.opacity,
+            quality=self.layer_manager.map_layer.quality,
+            filepath=filename,
+        )
 
         entry = self.map_config.data.maps.get(filename)
         if entry is None:
@@ -856,8 +863,8 @@ class InteractiveApp:
 
         # Restore Visibility Highlight in state if loaded from persistence
         if np.any(self.fow_manager.visible_mask):
-            self.state.update_visibility_mask(self.fow_manager.visible_mask)
-            self.state.visibility_version += 1
+            self.state.visibility_mask = self.fow_manager.visible_mask.copy()
+            self.state.fow_mask = self.fow_manager.mask.copy()
 
         if load_session:
             session_dir = None
@@ -868,8 +875,7 @@ class InteractiveApp:
             session = SessionManager.load_for_map(filename, session_dir=session_dir)
             if session:
                 self.map_system.ghost_tokens = session.tokens
-                self.state.tokens = session.tokens
-                self.state.tokens_version += 1
+                self.state.tokens = list(session.tokens)
 
                 from light_map.visibility_types import VisibilityType
 

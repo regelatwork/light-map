@@ -25,9 +25,6 @@ class VisibilityEngine:
         # Mask Cache: (token_id, grid_x, grid_y, size) -> np.ndarray
         self.mask_cache: Dict[Tuple[int, int, int, int], np.ndarray] = {}
 
-        # Track version of geometry to invalidate cache if doors open/close
-        self.geometry_version = 0
-
         self.blocker_mask: Optional[np.ndarray] = None
         self.svg_to_mask_scale = 16.0 / grid_spacing_svg
 
@@ -56,7 +53,6 @@ class VisibilityEngine:
         """
         self.blockers = blockers
         self.mask_cache = {}
-        self.geometry_version += 1
 
         if mask_width > 0 and mask_height > 0:
             self.blocker_mask = np.zeros((mask_height, mask_width), dtype=np.uint8)

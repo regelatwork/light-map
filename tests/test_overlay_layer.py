@@ -30,7 +30,7 @@ def mock_app_context():
 
 def test_notification_layer_render(mock_app_context):
     ws = WorldState()
-    ws.notifications_version = 1
+    ws.notifications = ["Test"]
 
     layer = NotificationLayer(ws, mock_app_context)
 
@@ -62,7 +62,6 @@ def test_token_layer_render(mock_app_context):
 
     ws = WorldState()
     ws.tokens = [Token(id=1, world_x=10, world_y=10)]
-    ws.tokens_version = 1
 
     layer = TokenLayer(ws, mock_app_context, time_provider=lambda: 0.0)
 
@@ -94,30 +93,29 @@ def test_debug_layer_render(mock_app_context):
         assert mock_draw.called
 
 
-def test_token_layer_caching(mock_app_context):
-    from light_map.common_types import Token
-
-    ws = WorldState()
-    ws.tokens = [Token(id=1, world_x=10, world_y=10)]
-    ws.tokens_version = 1
-
-    layer = TokenLayer(ws, mock_app_context, time_provider=lambda: 0.0)
-
-    with patch.object(layer.overlay_renderer, "draw_ghost_tokens") as mock_draw:
-        # Return a DIFFERENT list with DIFFERENT contents to ensure 'is not' works
-        p1_data = [MagicMock(name="p1")]
-        mock_draw.return_value = p1_data
-
-        p1, v1 = layer.render()
-        p2, v2 = layer.render()
-        assert p1 is p2
-        assert v1 == v2
-
-        # Change timestamp to trigger version increment
-        ws.tokens_version += 1
-
-        p3_data = [MagicMock(name="p3")]
-        mock_draw.return_value = p3_data
+    def test_token_layer_caching(mock_app_context):
+        from light_map.common_types import Token
+    
+        ws = WorldState()
+        ws.tokens = [Token(id=1, world_x=10, world_y=10)]
+    
+        layer = TokenLayer(ws, mock_app_context, time_provider=lambda: 0.0)
+    
+        with patch.object(layer.overlay_renderer, "draw_ghost_tokens") as mock_draw:
+            # Return a DIFFERENT list with DIFFERENT contents to ensure 'is not' works
+            p1_data = [MagicMock(name="p1")]
+            mock_draw.return_value = p1_data
+    
+            p1, v1 = layer.render()
+            p2, v2 = layer.render()
+            assert p1 is p2
+            assert v1 == v2
+    
+            # Change tokens to trigger version increment
+            ws.tokens = [Token(id=1, world_x=11, world_y=11)]
+    
+            p3_data = [MagicMock(name="p3")]
+            mock_draw.return_value = p3_data
 
         p3, v3 = layer.render()
         assert v3 > v1

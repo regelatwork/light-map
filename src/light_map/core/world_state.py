@@ -9,6 +9,7 @@ from light_map.common_types import (
     ViewportState,
     SelectionState,
     GridMetadata,
+    MapRenderState,
 )
 from light_map.menu_system import MenuState
 from light_map.core.scene import HandInput
@@ -29,6 +30,12 @@ class WorldState:
     """
     Central Data Repository (The "Source of Truth") for the MainProcess.
     Manages background frames, vision results, and granular versioning for caching.
+
+    Versioning Invariant:
+    All version properties (e.g., scene_version, tokens_version) are READ-ONLY from external
+    classes. Versioning is an internal invariant managed by VersionedAtom. External entities
+    must NEVER manipulate these versions directly or use invalidation methods. A version update
+    must ONLY occur as a natural side-effect of a meaningful data change in the underlying atom.
     """
 
     def __init__(
@@ -61,15 +68,15 @@ class WorldState:
         self._system_time_atom = VersionedAtom(0.0, "system_time")
 
         self._scene_atom = VersionedAtom("", "scene")
-        self._fow_atom = VersionedAtom(0, "fow")
+        self._scene_state_atom = VersionedAtom(0, "scene_state")
+        self._fow_mask_atom = VersionedAtom(
+            None, "fow_mask", equality_fn=np.array_equal
+        )
         self._calibration_atom = VersionedAtom(0, "calibration")
         self._notifications_atom = VersionedAtom([], "notifications")
-        self._map_atom = VersionedAtom(0, "map")
+        self._map_render_state_atom = VersionedAtom(MapRenderState(), "map_render_state")
         self._visibility_mask_atom = VersionedAtom(
             None, "visibility_mask", equality_fn=np.array_equal
-        )
-        self._visibility_aggregate_version_atom = VersionedAtom(
-            0, "visibility_aggregate"
         )
         self._show_tokens_atom = VersionedAtom(True, "show_tokens")
         self._dwell_state_atom = VersionedAtom({}, "dwell_state")
@@ -184,67 +191,48 @@ class WorldState:
         self._scene_atom.update(value)
 
     @property
-    def scene_version(self) -> int:
-        return self._scene_atom.timestamp
+    def map_render_state(self) -> MapRenderState:
+        return self._map_render_state_atom.value
 
-    @scene_version.setter
-    def scene_version(self, value: Any):
-        # Allow forcing a version update for dynamic scenes
-        self._scene_atom.update(
-            self._scene_atom.value, force_timestamp=time.monotonic_ns()
-        )
+    @map_render_state.setter
+    def map_render_state(self, value: MapRenderState):
+        self._map_render_state_atom.update(value)
+
+    @property
+    def fow_mask(self) -> Optional[np.ndarray]:
+        return self._fow_mask_atom.value
+
+    @fow_mask.setter
+    def fow_mask(self, value: Optional[np.ndarray]):
+        self._fow_mask_atom.update(value)
+
+    @property
+    def scene_version(self) -> int:
+        return max(self._scene_atom.timestamp, self._scene_state_atom.timestamp)
+
+    def increment_scene_state(self):
+        """Signals that the current scene has changed its internal state."""
+        self._scene_state_atom.update(self._scene_state_atom.value + 1)
 
     @property
     def map_version(self) -> int:
-        return self._map_atom.timestamp
-
-    @map_version.setter
-    def map_version(self, value: Any):
-        # Signal that map stack (opacity/quality/file) needs re-render
-        self._map_atom.update(self._map_atom.value, force_timestamp=time.monotonic_ns())
+        return self._map_render_state_atom.timestamp
 
     @property
     def fow_version(self) -> int:
-        return self._fow_atom.timestamp
-
-    @fow_version.setter
-    def fow_version(self, value: Any):
-        self._fow_atom.update(self._fow_atom.value, force_timestamp=time.monotonic_ns())
+        return self._fow_mask_atom.timestamp
 
     @property
     def visibility_version(self) -> int:
-        return max(
-            self._visibility_aggregate_version_atom.timestamp,
-            self._visibility_mask_atom.timestamp,
-        )
-
-    @visibility_version.setter
-    def visibility_version(self, value: Any):
-        # We update the aggregate atom to signal a change in visibility state
-        self._visibility_aggregate_version_atom.update(
-            self._visibility_aggregate_version_atom.value,
-            force_timestamp=time.monotonic_ns(),
-        )
+        return self._visibility_mask_atom.timestamp
 
     @property
     def tokens_version(self) -> int:
         return max(self._tokens_atom.timestamp, self._raw_tokens_atom.timestamp)
 
-    @tokens_version.setter
-    def tokens_version(self, value: Any):
-        self._tokens_atom.update(
-            self._tokens_atom.value, force_timestamp=time.monotonic_ns()
-        )
-
     @property
     def notifications_version(self) -> int:
         return self._notifications_atom.timestamp
-
-    @notifications_version.setter
-    def notifications_version(self, value: Any):
-        self._notifications_atom.update(
-            self._notifications_atom.value, force_timestamp=time.monotonic_ns()
-        )
 
     @property
     def visibility_mask(self) -> Optional[np.ndarray]:

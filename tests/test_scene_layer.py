@@ -75,6 +75,6 @@ def test_scene_layer_caching(mock_scene):
     assert mock_scene.render.call_count == 1
 
     # 3. Change timestamp
-    ws.scene_version += 1
+    ws.increment_scene_state()
     layer.render()[0]
     assert mock_scene.render.call_count == 2

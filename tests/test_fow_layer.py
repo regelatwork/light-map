@@ -31,7 +31,7 @@ def test_fow_render_two_states():
     explored = np.zeros((10, 10), dtype=np.uint8)
     explored[0, 0] = 255
     manager.reveal_area(explored)
-    ws.fow_version += 1
+    ws.fow_mask = manager.explored_mask.copy()
 
     patches = layer.render()[0]
     alpha = patches[0].data[:, :, 3]
@@ -52,7 +52,7 @@ def test_fow_rendering_with_non_zero_origin():
     explored = np.zeros((10, 10), dtype=np.uint8)
     explored[5, 5] = 255
     manager.reveal_area(explored)
-    ws.fow_version += 1
+    ws.fow_mask = manager.explored_mask.copy()
 
     # Viewport at zoom=1.0, no offset
     from light_map.common_types import ViewportState
@@ -79,7 +79,7 @@ def test_fow_gm_override():
     manager = FogOfWarManager(10, 10)
     layer = FogOfWarLayer(ws, manager, 10.0, (0.0, 0.0), 10, 10)
     manager.is_disabled = True
-    ws.fow_version += 1
+    ws.fow_mask = manager.explored_mask.copy()
 
     patches = layer.render()[0]
     # No patches should be returned when disabled

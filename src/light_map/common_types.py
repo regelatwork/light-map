@@ -192,6 +192,14 @@ class TimerKey(StrEnum):
     GESTURE_TIMEOUT = "gesture_timeout"
 
 
+@dataclass(frozen=True)
+class MapRenderState:
+    """Encapsulates the rendering configuration for the map layer."""
+    opacity: float = 1.0
+    quality: int = 100
+    filepath: str = ""
+
+
 @dataclass
 class SelectionState:
     type: SelectionType = SelectionType.NONE

@@ -154,9 +154,9 @@ export const SchematicCanvas: FC<SchematicCanvasProps> = ({ children }) => {
             <FowLayer />
             <DoorLayer />
             <TokenLayer />
+            <GridLayer />
           </g>
 
-          <GridLayer />
           <HandMaskLayer />
           <CursorLayer />
 

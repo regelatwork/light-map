@@ -1,13 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { useSystemState } from '../hooks/useSystemState';
 import { useSelection } from './SelectionContext';
+import { useGridEdit } from './GridEditContext';
 import { SelectionType } from '../types/system';
 import { TokenPropertiesEditor } from './TokenPropertiesEditor';
-import { injectAction } from '../services/api';
+import { injectAction, saveGridConfig } from '../services/api';
 
 export const ConfigurationSidebar: React.FC = () => {
-  const { tokens, world } = useSystemState();
+  const { tokens, world, grid_origin_svg_x, grid_origin_svg_y } = useSystemState();
   const { selection, setSelection } = useSelection();
+  const { isGridEditMode, setIsGridEditMode } = useGridEdit();
 
   // If a token is selected on map, use its ID. Otherwise use manual entry.
   const activeTokenId = selection.type === SelectionType.TOKEN ? selection.id : null;
@@ -18,6 +20,23 @@ export const ConfigurationSidebar: React.FC = () => {
       : null;
 
   const [manualArUcoId, setManualArUcoId] = useState<string>('');
+
+  // Local state for grid inputs in sidebar
+  const [localGridX, setLocalGridX] = useState<number | null>(null);
+  const [localGridY, setLocalGridY] = useState<number | null>(null);
+
+  const gridX = localGridX !== null ? localGridX : grid_origin_svg_x || 0;
+  const gridY = localGridY !== null ? localGridY : grid_origin_svg_y || 0;
+
+  const handleGridSave = async () => {
+    try {
+      await saveGridConfig(gridX, gridY);
+      setLocalGridX(null);
+      setLocalGridY(null);
+    } catch (e) {
+      console.error(e);
+    }
+  };
 
   // Synchronize manual ID field with selection
   useEffect(() => {
@@ -45,6 +64,59 @@ export const ConfigurationSidebar: React.FC = () => {
       </div>
 
       <div className="flex-1 overflow-y-auto p-4 space-y-6">
+        {/* System Controls */}
+        <section className="bg-blue-50 -mx-4 px-4 py-4 border-b border-blue-100 mb-2">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h4 className="text-xs font-bold text-blue-800 uppercase tracking-wider">Visual Grid Editor</h4>
+              <p className="text-[10px] text-blue-600 font-medium">Toggle handles on map</p>
+            </div>
+            <button
+              onClick={() => setIsGridEditMode(!isGridEditMode)}
+              aria-label="Visual Grid Editor"
+              className={`relative inline-flex h-5 w-10 items-center rounded-full transition-colors focus:outline-none shadow-sm ${
+                isGridEditMode ? 'bg-blue-600' : 'bg-gray-300'
+              }`}
+            >
+              <span
+                className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${
+                  isGridEditMode ? 'translate-x-5.5' : 'translate-x-1'
+                }`}
+              />
+            </button>
+          </div>
+
+          {isGridEditMode && (
+            <div className="grid grid-cols-2 gap-3 animate-in fade-in slide-in-from-top-2 duration-200">
+              <div className="space-y-1">
+                <label htmlFor="grid-origin-x" className="block text-[10px] font-bold text-blue-700 uppercase">Origin X</label>
+                <input
+                  id="grid-origin-x"
+                  type="number"
+                  value={Math.round(gridX)}
+                  onChange={(e) => setLocalGridX(Number(e.target.value))}
+                  onBlur={handleGridSave}
+                  className="w-full px-2 py-1 text-xs border rounded bg-white font-mono"
+                />
+              </div>
+              <div className="space-y-1">
+                <label htmlFor="grid-origin-y" className="block text-[10px] font-bold text-blue-700 uppercase">Origin Y</label>
+                <input
+                  id="grid-origin-y"
+                  type="number"
+                  value={Math.round(gridY)}
+                  onChange={(e) => setLocalGridY(Number(e.target.value))}
+                  onBlur={handleGridSave}
+                  className="w-full px-2 py-1 text-xs border rounded bg-white font-mono"
+                />
+              </div>
+              <div className="col-span-2 text-[10px] text-blue-600 bg-blue-100 bg-opacity-30 p-2 rounded flex gap-2">
+                <p>Use <span className="font-bold text-green-700">Green Handle</span> to move origin, <span className="font-bold text-blue-700">Blue Handles</span> for scale.</p>
+              </div>
+            </div>
+          )}
+        </section>
+
         {/* Entity Properties */}
         <section>
           <div className="mb-4">

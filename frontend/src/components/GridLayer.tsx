@@ -13,6 +13,7 @@ export const GridLayer: React.FC = () => {
     useSystemState();
   const { screenToWorld } = useCanvas();
   const { isGridEditMode } = useGridEdit();
+  const groupRef = React.useRef<SVGGElement>(null);
 
   useEffect(() => {
     if (world.scene && world.scene !== 'LOADING' && isGridEditMode) {
@@ -70,7 +71,7 @@ export const GridLayer: React.FC = () => {
     (e: MouseEvent) => {
       if (interactionMode === 'IDLE') return;
 
-      const worldPos = screenToWorld(e.clientX, e.clientY);
+      const worldPos = screenToWorld(e.clientX, e.clientY, groupRef.current || undefined);
       if (!worldPos) return;
 
       if (interactionMode === 'MOVING_ORIGIN') {
@@ -166,7 +167,7 @@ export const GridLayer: React.FC = () => {
   }
 
   return (
-    <g>
+    <g ref={groupRef}>
       {lines}
 
       {/* Handles only visible in edit mode */}

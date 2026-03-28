@@ -392,4 +392,53 @@ describe('ConfigurationSidebar', () => {
     expect(screen.getByText('Door Selected')).toBeInTheDocument();
     expect(screen.queryByText('Token 1 (#1)')).not.toBeInTheDocument();
   });
+
+  it('allows toggling Visual Grid Editor and shows origin inputs when enabled', () => {
+    const setIsGridEditMode = vi.fn();
+    vi.mocked(useGridEditHook.useGridEdit).mockReturnValue({
+      isGridEditMode: false,
+      setIsGridEditMode,
+    });
+
+    vi.mocked(useSystemStateHook.useSystemState).mockReturnValue({
+      ...useSystemStateHook.INITIAL_STATE,
+      grid_origin_svg_x: 100,
+      grid_origin_svg_y: 200,
+      isConnected: true,
+      config: {
+        ...useSystemStateHook.INITIAL_STATE.config,
+        gm_position: GmPosition.NONE,
+      },
+    });
+
+    vi.mocked(useSelectionHook.useSelection).mockReturnValue({
+      selection: { type: SelectionType.NONE, id: null },
+      setSelection: vi.fn(),
+    });
+
+    const { rerender } = render(<ConfigurationSidebar />);
+
+    // Check for the toggle
+    const toggleButton = screen.getByRole('button', { name: /Visual Grid Editor/i });
+    expect(toggleButton).toBeInTheDocument();
+
+    // Origin inputs should not be visible
+    expect(screen.queryByLabelText(/Origin X/i)).not.toBeInTheDocument();
+
+    // Click the toggle
+    fireEvent.click(toggleButton);
+    expect(setIsGridEditMode).toHaveBeenCalledWith(true);
+
+    // Now mock it as enabled
+    vi.mocked(useGridEditHook.useGridEdit).mockReturnValue({
+      isGridEditMode: true,
+      setIsGridEditMode,
+    });
+
+    rerender(<ConfigurationSidebar />);
+
+    // Origin inputs should now be visible with correct values
+    expect(screen.getByLabelText(/Origin X/i)).toHaveValue(100);
+    expect(screen.getByLabelText(/Origin Y/i)).toHaveValue(200);
+  });
 });

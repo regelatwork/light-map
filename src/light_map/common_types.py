@@ -49,7 +49,7 @@ class Layer(ABC):
 
     def __init__(
         self,
-        state: Optional[WorldState] = None,
+        state: Optional["WorldState"] = None,
         is_static: bool = False,
         layer_mode: LayerMode = LayerMode.NORMAL,
     ):
@@ -58,7 +58,6 @@ class Layer(ABC):
         self.layer_mode = layer_mode
         self._cached_patches: Optional[List[ImagePatch]] = None
         self._last_rendered_version: int = -1  # Consumer-side version tracking
-        self._is_dynamic: bool = False
 
     @abstractmethod
     def get_current_version(self) -> int:
@@ -76,8 +75,7 @@ class Layer(ABC):
         current_version = self.get_current_version()
 
         if (
-            self._is_dynamic
-            or current_version != self._last_rendered_version
+            current_version != self._last_rendered_version
             or self._cached_patches is None
         ):
             self._cached_patches = self._generate_patches(current_time)
@@ -89,6 +87,89 @@ class Layer(ABC):
     def _generate_patches(self, current_time: float) -> List[ImagePatch]:
         """Actual rendering logic implemented by subclasses."""
         pass
+
+
+class CompositeLayer(Layer):
+    """
+    Groups multiple internal layers and flattens their output into a single cached patch.
+    This optimizes rendering by treating a sub-stack of layers as one unit.
+    """
+
+    def __init__(self, layers: List[Layer], is_static: bool = True):
+        super().__init__(state=None, is_static=is_static, layer_mode=LayerMode.NORMAL)
+        self.layers = layers
+
+    def get_current_version(self) -> int:
+        """The version is a combination (sum) of all internal layers' versions."""
+        total_version = 0
+        for layer in self.layers:
+            total_version += layer.get_current_version()
+        return total_version
+
+    def _generate_patches(self, current_time: float) -> List[ImagePatch]:
+        if not self.layers:
+            return []
+
+        all_layer_patches = []
+        for layer in self.layers:
+            patches, _ = layer.render(current_time)
+            if patches:
+                all_layer_patches.extend(patches)
+
+        if not all_layer_patches:
+            return []
+
+        # Find the bounding box of all patches to optimize buffer size
+        min_x = min(p.x for p in all_layer_patches)
+        min_y = min(p.y for p in all_layer_patches)
+        max_x = max(p.x + p.width for p in all_layer_patches)
+        max_y = max(p.y + p.height for p in all_layer_patches)
+
+        w = max_x - min_x
+        h = max_y - min_y
+
+        if w <= 0 or h <= 0:
+            return []
+
+        buffer = np.zeros((h, w, 4), dtype=np.uint8)
+
+        # Composite patches onto the local buffer
+        for p in all_layer_patches:
+            px1, py1 = max(0, p.x - min_x), max(0, p.y - min_y)
+            px2, py2 = min(w, p.x - min_x + p.width), min(h, p.y - min_y + p.height)
+
+            if px1 >= px2 or py1 >= py2:
+                continue
+
+            src_x1, src_y1 = px1 - (p.x - min_x), py1 - (p.y - min_y)
+            src_x2, src_y2 = src_x1 + (px2 - px1), src_y1 + (py2 - py1)
+
+            patch_slice = p.data[src_y1:src_y2, src_x1:src_x2]
+
+            if p.data.shape[2] == 4:
+                # Alpha composite
+                alpha_channel = patch_slice[:, :, 3]
+                if not np.any(alpha_channel):
+                    continue
+
+                alpha = alpha_channel[:, :, np.newaxis].astype(np.uint16)
+                roi = buffer[py1:py2, px1:px2].astype(np.uint16)
+                src_bgr = patch_slice[:, :, :3].astype(np.uint16)
+
+                blended_bgr = (src_bgr * alpha + roi[:, :, :3] * (255 - alpha)) // 255
+                
+                # Composite alpha (simplified)
+                dst_alpha = roi[:, :, 3]
+                blended_alpha = alpha_channel.astype(np.uint16) + dst_alpha * (255 - alpha_channel.astype(np.uint16)) // 255
+
+                buffer[py1:py2, px1:px2, :3] = blended_bgr.astype(np.uint8)
+                buffer[py1:py2, px1:px2, 3] = blended_alpha.astype(np.uint8)
+            else:
+                # Opaque block
+                buffer[py1:py2, px1:px2, :3] = patch_slice[:, :, :3]
+                buffer[py1:py2, px1:px2, 3] = 255
+
+        return [ImagePatch(x=min_x, y=min_y, width=w, height=h, data=buffer)]
 
 
 class GestureType(StrEnum):

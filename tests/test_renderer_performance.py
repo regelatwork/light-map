@@ -11,7 +11,6 @@ def test_renderer_correctness():
     # Create a background: half white, half black
     background = np.zeros((100, 100, 3), dtype=np.uint8)
     background[:, :50] = 255
-    renderer.background_cache[:] = background
     renderer.output_buffer[:] = background
 
     # Create a patch: Red with 50% alpha (128)

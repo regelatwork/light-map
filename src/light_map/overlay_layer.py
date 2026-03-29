@@ -34,16 +34,12 @@ class TokenLayer(Layer):
         # Otherwise, we pulse every 500ms for static ghost tokens to show they are "live".
         any_occluded = any(t.is_occluded for t in self.state.tokens)
 
-        self._is_dynamic = False
-        if show_tokens and self.state.tokens:
-            if any_occluded:
-                self._is_dynamic = True
-            elif now - self._last_pulse_render_time > 0.5:
-                # Triggers a pulse render by returning a time-based version.
-                pass
-
         # Use time-based version for 500ms pulse if not dynamic
-        time_version = int(now * 2)  # Increments every 0.5s
+        pulse_version = int(now * 2)  # Increments every 0.5s
+        
+        if show_tokens and self.state.tokens and any_occluded:
+             # Need every-frame updates for smooth occluded token persistence
+             pulse_version = self.state.system_time_version
 
         v = max(
             self.state.tokens_version,
@@ -51,9 +47,12 @@ class TokenLayer(Layer):
             self.state.viewport_version,
         )
         # Combined version: include show_tokens in version to catch toggles.
-        # Add time-based version to force periodic re-renders (pulses).
         v = (v << 1) | (1 if show_tokens else 0)
-        return v + (time_version if show_tokens else 0)
+        
+        # Combine with pulse_version in a monotonic way.
+        # Use a large enough multiplier for v to ensure pulse_version doesn't overflow into its bits.
+        # Nanosecond timestamps are ~10^15, so 10^18 is safe.
+        return v * 10**18 + pulse_version
 
     def _generate_patches(self, current_time: float) -> List[ImagePatch]:
         if self.state is None:
@@ -90,10 +89,10 @@ class NotificationLayer(Layer):
             return []
         return self.overlay_renderer.draw_notifications()
 
-
 class DebugLayer(Layer):
     """
-    Renders debug information (FPS, scene name, hand inputs).
+    Renders diagnostic information like FPS, resolution, and hand skeletons.
+    Only visible when app.debug_mode is True.
     """
 
     def __init__(self, state: WorldState, context: AppContext):
@@ -106,9 +105,11 @@ class DebugLayer(Layer):
         if self.state is None:
             return 0
 
-        self._is_dynamic = self.context.debug_mode
         # Catch debug toggle in version
-        return (self.state.hands_version << 1) | (1 if self.context.debug_mode else 0)
+        version = (self.state.hands_version << 1) | (1 if self.context.debug_mode else 0)
+        # Also depend on FPS updates
+        version = max(version, self.state.fps_version)
+        return version
 
     def _generate_patches(self, current_time: float) -> List[ImagePatch]:
         if self.state is None or not self.context.debug_mode:

@@ -12,6 +12,7 @@ from light_map.common_types import (
     SceneId,
     TimerKey,
     GridMetadata,
+    MapRenderState,
 )
 from light_map.renderer import Renderer
 from light_map.map_system import MapSystem
@@ -165,7 +166,7 @@ class InteractiveApp:
         self.current_scene: Scene = self.scenes[SceneId.MENU]
         self.current_scene_name = self.current_scene.__class__.__name__
         self.state.current_scene_name = self.current_scene_name
-        self.state.fps = 0.0
+        self.state.update_performance_metrics(0.0)
         self.current_scene.on_enter()
 
     def get_layer_stack(self) -> List[Layer]:
@@ -701,7 +702,7 @@ class InteractiveApp:
                     logging.debug(f"RENDER TOTAL: {total_ms:.1f}ms (Layered)")
 
         # Final State Updates (AFTER scene and action processing)
-        state.fps = self.fps
+        state.update_performance_metrics(self.fps)
         self.current_scene_name = self.current_scene.__class__.__name__
         state.current_scene_name = self.current_scene_name
         state.effective_show_tokens = self.effective_show_tokens
@@ -739,7 +740,7 @@ class InteractiveApp:
                 self.state.visibility_mask = combined_pc_mask.copy()
 
                 # 5. Invalidate Layer Caches
-                self.state.fow_mask = self.fow_manager.mask.copy()
+                self.state.fow_mask = self.fow_manager.explored_mask.copy()
 
     def _rebuild_visibility_stack(self, entry: Any):
         """Re-initializes visibility engine and layers based on map configuration."""
@@ -800,7 +801,6 @@ class InteractiveApp:
             }
             for b in self.visibility_engine.blockers
         ]
-        self.state.blockers = blockers
         # Ensure visibility mask is updated to trigger re-render if blockers changed
         if self.state.visibility_mask is not None:
             self.state.visibility_mask = self.state.visibility_mask.copy()

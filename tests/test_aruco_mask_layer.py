@@ -33,7 +33,6 @@ def mock_config():
 @pytest.fixture
 def mock_state():
     state = WorldState()
-    state.tokens_version = 1
     # Mock some ArUco corners in camera space
     # Marker 1: Top-left square
     corners1 = np.array(

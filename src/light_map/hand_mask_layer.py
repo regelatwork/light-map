@@ -28,15 +28,17 @@ class HandMaskLayer(Layer):
         if self.state is None:
             return 0
 
-        # If we have active hulls, we are dynamic (rendering every frame for persistence)
-        self._is_dynamic = bool(self.hand_masker.last_hulls)
-
         # Include enable_hand_masking change in version
         v = max(
             self.state.hands_version,
             self.state.grid_metadata_version,
             self.state.viewport_version,
         )
+        
+        # If we have active hulls, we are rendering every frame for persistence fading
+        if self.hand_masker.last_hulls:
+            v = max(v, self.state.system_time_version)
+
         return (v << 1) | (1 if self.config.enable_hand_masking else 0)
 
     def _transform_pts(self, pts: np.ndarray) -> np.ndarray:

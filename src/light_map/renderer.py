@@ -28,12 +28,8 @@ class Renderer:
         # Main output buffer (BGR)
         self.output_buffer = np.zeros((self.height, self.width, 3), dtype=np.uint8)
 
-        # Cache for static layers (BGR)
-        self.background_cache = np.zeros((self.height, self.width, 3), dtype=np.uint8)
-
         # Version tracking: Dict[Layer, int]
         self.last_layer_versions = {}
-        self._last_background_aggregate_version = -1
         self._last_layer_stack: List[Layer] = []
 
     @property
@@ -73,61 +69,28 @@ class Renderer:
         stack_changed = layers != self._last_layer_stack
         if stack_changed:
             self._last_layer_stack = list(layers)
-            self._last_background_aggregate_version = -1  # Force recomposite
 
         should_composite_frame = stack_changed
 
-        # Calculate aggregate version of static layers and check for any changes
-        current_background_version = 0
+        # Check for any version changes
         for layer in layers:
             layer_version = layer.get_current_version()
-
-            # If any layer (static or dynamic) has a new version, we must composite a new frame
-            if getattr(
-                layer, "_is_dynamic", False
-            ) or layer_version != self.last_layer_versions.get(layer, -1):
+            if layer_version != self.last_layer_versions.get(layer, -1):
                 should_composite_frame = True
-
-            if layer.is_static:
-                current_background_version += layer_version
 
         if not should_composite_frame:
             return None
 
-        # 2. Update Background Cache if static layers changed
-        if current_background_version != self._last_background_aggregate_version:
-            self.background_cache.fill(0)
-            for i, layer in enumerate(layers):
-                if layer.is_static:
-                    layer_name = layer.__class__.__name__
-                    with track_wait(f"layer_render_{layer_name}", instrument):
-                        layer_patches, layer_version = layer.render(current_time)
-                        self.last_layer_versions[layer] = layer_version
-
-                    with track_wait(f"layer_composite_{layer_name}", instrument):
-                        for patch in layer_patches:
-                            self._composite_patch(
-                                self.background_cache, patch, layer.layer_mode
-                            )
-            self._last_background_aggregate_version = current_background_version
-
-        # 3. Copy Background Cache to Output Buffer
-        np.copyto(self.output_buffer, self.background_cache)
-
-        # 4. Composite Dynamic Layers
+        # 2. Composite All Layers
+        self.output_buffer.fill(0)
         for i, layer in enumerate(layers):
-            if not layer.is_static:
-                layer_name = layer.__class__.__name__
-                with track_wait(f"layer_render_{layer_name}", instrument):
-                    layer_patches, layer_version = layer.render(current_time)
-                    self.last_layer_versions[layer] = layer_version
+            layer_name = layer.__class__.__name__
+            with track_wait(f"layer_render_{layer_name}", instrument):
+                layer_patches, layer_version = layer.render(current_time)
+                self.last_layer_versions[layer] = layer_version
 
+            with track_wait(f"layer_composite_{layer_name}", instrument):
                 if layer_patches:
-                    logging.debug(
-                        f"Renderer: Compositing {len(layer_patches)} patches from dynamic layer {layer_name}"
-                    )
-
-                with track_wait(f"layer_composite_{layer_name}", instrument):
                     for patch in layer_patches:
                         self._composite_patch(
                             self.output_buffer, patch, layer.layer_mode

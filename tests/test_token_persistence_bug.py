@@ -161,9 +161,9 @@ def test_token_layer_stale_when_occluded():
     # 2. Occluded token
     token1.is_occluded = True
 
-    # Occlusion makes it dynamic
+    # Occlusion triggers every-frame updates (high version)
     v3 = layer.get_current_version()
-    assert layer._is_dynamic is True
+    assert v3 > v1
 
     # Render should still return version
     patches, rv3 = layer.render()

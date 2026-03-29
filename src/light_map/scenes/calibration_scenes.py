@@ -49,7 +49,7 @@ class FlashCalibrationScene(Scene):
         self._current_level_idx = 0
         self._results: Dict[int, int] = {}
         self._capture_frame = False
-        self.is_dynamic = True
+
 
     def on_enter(self, payload: dict | None = None) -> None:
         self._stage = FlashCalibStage.START
@@ -195,7 +195,7 @@ class IntrinsicsCalibrationScene(Scene):
         self._captured_images: list[np.ndarray] = []
         self._stage = "CAPTURE"  # CAPTURE | PROCESSING | DONE | ERROR
         self._required_images = 15
-        self.is_dynamic = True
+
 
     def on_enter(self, payload: Any = None) -> None:
         self._captured_images = []
@@ -317,7 +317,7 @@ class ProjectorCalibrationScene(Scene):
         self._stage = "DISPLAY_PATTERN"  # DISPLAY_PATTERN | SETTLE | CAPTURE | PROCESSING | DONE | ERROR
         self._pattern_image: Optional[np.ndarray] = None
         self._pattern_params: Optional[Dict] = None
-        self.is_dynamic = True
+
 
     def on_enter(self, payload: Any = None) -> None:
         from light_map.projector import generate_calibration_pattern
@@ -477,7 +477,7 @@ class ExtrinsicsCalibrationScene(Scene):
         self._current_time: float = 0.0
         self._cached_canvas: Optional[np.ndarray] = None
         self._last_render_params: Dict[str, Any] = {}
-        self.is_dynamic = True
+
 
     def on_enter(self, payload: Any = None) -> None:
         self._stage = "PLACEMENT"
@@ -1001,7 +1001,7 @@ class PpiCalibrationScene(Scene):
         super().__init__(context)
         self._stage = "DETECTING"  # DETECTING | CONFIRMING
         self._candidate_ppi = 0.0
-        self.is_dynamic = True
+
 
     def on_enter(self, payload: Any = None) -> None:
         self._stage = "DETECTING"
@@ -1203,7 +1203,7 @@ class MapGridCalibrationScene(Scene):
         self.is_interacting = False
         self.calib_map_grid_size_inches = 1.0
         self.grid_overlay: Optional[GridOverlay] = None
-        self.is_dynamic = True
+
         self._save_triggered = False
 
     def on_enter(self, payload: dict | None = None) -> None:
@@ -1467,7 +1467,7 @@ class Projector3DCalibrationScene(Scene):
 
     def __init__(self, context: AppContext):
         super().__init__(context)
-        self.is_dynamic = True
+
         self.stage = Projector3DCalibStage.START
         self.correspondences = []
         self.current_box_pos_idx = 0

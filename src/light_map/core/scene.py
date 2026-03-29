@@ -60,7 +60,6 @@ class Scene(ABC):
 
     def __init__(self, context: AppContext):
         self.context = context
-        self._is_dynamic = False
 
     @property
     def version(self) -> int:
@@ -73,15 +72,6 @@ class Scene(ABC):
     def increment_version(self):
         """Triggers a re-render by incrementing the central scene version."""
         self.context.state.increment_scene_state()
-
-    @property
-    def is_dynamic(self) -> bool:
-        """True if the scene should re-render every frame."""
-        return self._is_dynamic
-
-    @is_dynamic.setter
-    def is_dynamic(self, value: bool):
-        self._is_dynamic = value
 
     @property
     def blocking(self) -> bool:

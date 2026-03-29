@@ -83,8 +83,7 @@ class WorldState:
         self._summon_progress_atom = VersionedAtom(0.0, "summon_progress")
         self._selection_atom = VersionedAtom(SelectionState(), "selection")
         self._grid_metadata_atom = VersionedAtom(GridMetadata(), "grid_metadata")
-
-        self.fps: float = 0.0
+        self._fps_atom = VersionedAtom(0.0, "fps")
 
         # Remote Action Queuing
         self.pending_actions: List[Dict[str, Any]] = []
@@ -224,7 +223,7 @@ class WorldState:
 
     @property
     def visibility_version(self) -> int:
-        return self._visibility_mask_atom.timestamp
+        return max(self._visibility_mask_atom.timestamp, self._blockers_atom.timestamp)
 
     @property
     def tokens_version(self) -> int:
@@ -411,9 +410,17 @@ class WorldState:
         """Updates the menu state and increments its version if changed."""
         self.menu_state = new_menu_state
 
+    @property
+    def fps(self) -> float:
+        return self._fps_atom.value
+
+    @property
+    def fps_version(self) -> int:
+        return self._fps_atom.timestamp
+
     def update_performance_metrics(self, fps: float):
-        """Updates the FPS metric. Does not trigger version increment as it's for transient display."""
-        self.fps = fps
+        """Updates the FPS metric and triggers a version update."""
+        self._fps_atom.update(fps)
 
     def update_inputs(self, inputs: List[HandInput], current_time: float = 0.0):
         """Updates the standardized hand inputs and increments hands_version if changed."""

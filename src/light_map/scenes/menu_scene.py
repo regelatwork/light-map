@@ -280,11 +280,6 @@ class MenuScene(Scene):
         """Exposes the current menu state for the MenuLayer."""
         return self.menu_system.get_current_state()
 
-    @property
-    def is_dynamic(self) -> bool:
-        """Menu is dynamic while it is summoning or priming (animating)."""
-        state = self.menu_system.get_current_state()
-        return state.summon_progress > 0 or state.prime_progress > 0
 
     @property
     def blocking(self) -> bool:

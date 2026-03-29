@@ -49,8 +49,8 @@ test.describe('Dashboard E2E', () => {
     await expect(page.getByRole('button', { name: 'Calibration Wizards' })).toBeVisible();
 
     // Check configuration sidebar
-    await expect(page.getByText('Configuration')).toBeVisible();
-    await expect(page.getByText('Grid Origin X')).toBeVisible();
+    await expect(page.getByText('Entity Properties')).toBeVisible();
+    await expect(page.getByText('Visual Grid Editor')).toBeVisible();
   });
 
   test('loads a map when clicked', async ({ page }) => {

@@ -120,7 +120,6 @@ def test_draw_ghost_tokens_unknown(app):
         # Trigger a render via OverlayLayer
         ws = WorldState()
         ws.tokens = app.map_system.ghost_tokens
-        ws.tokens_version = 1
         app.token_layer.state = ws
         app.token_layer.render()[0]
 
@@ -149,7 +148,6 @@ def test_draw_ghost_tokens_duplicate(app):
 
     ws = WorldState()
     ws.tokens = app.map_system.ghost_tokens
-    ws.tokens_version = 1
 
     with (
         patch("cv2.circle") as mock_circle,
@@ -185,7 +183,6 @@ def test_token_name_position(app):
 
     ws = WorldState()
     ws.tokens = app.map_system.ghost_tokens
-    ws.tokens_version = 1
 
     with patch("cv2.putText") as mock_putText:
         app.token_layer.state = ws

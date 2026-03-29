@@ -155,11 +155,11 @@ class Projector3DFeedbackLayer(Layer):
         self.instructions = instructions
         self.instruction_pos = instruction_pos
         self.detected_ids: Set[int] = set()
-        self._is_dynamic = True
 
     def get_current_version(self) -> int:
-        # Dynamic layers don't rely on versions for caching in Renderer
-        return self.state.scene_version if self.state else 0
+        if self.state is None:
+            return 0
+        return max(self.state.scene_version, self.state.system_time_version)
 
     def _generate_patches(self, current_time: float) -> List[ImagePatch]:
         if self.width <= 0 or self.height <= 0:

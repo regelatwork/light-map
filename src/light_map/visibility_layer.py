@@ -38,20 +38,24 @@ class ExclusiveVisionLayer(VisibilityBaseLayer):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.mask_override: Optional[np.ndarray] = None
-
     def set_mask(self, mask: Optional[np.ndarray]):
         self.mask_override = mask
-        self._is_dynamic = mask is not None
 
     def get_current_version(self) -> int:
         if self.state is None:
             return 0
-        # Driven by is_dynamic when mask is set, but we also depend on viewport/grid metadata for the transform
-        return max(
-            self.state.viewport_version,
-            self.state.grid_metadata_version,
-        )
 
+        # If mask is overridden, we just render whenever the underlying mask is updated.
+        # But wait, mask is passed manually here. We need to increment version if mask changes.
+        # But the mask_override is set by someone else. We'll use system_time_version for now
+        # if there's a mask override to ensure it renders, or we could add an internal version.
+        if self.mask_override is not None:
+            return self.state.system_time_version
+        return max(
+            self.state.visibility_version,
+            self.state.grid_metadata_version,
+            self.state.viewport_version,
+        )
     def _generate_patches(self, current_time: float) -> List[ImagePatch]:
         if self.mask_override is None:
             return []

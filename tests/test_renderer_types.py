@@ -40,6 +40,7 @@ def test_layer_caching():
     assert layer.generate_count == 1
 
     # Change state
-    state.map_version += 1
+    from light_map.common_types import MapRenderState
+    state.map_render_state = MapRenderState(opacity=0.5)
     patches = layer.render()[0]
     assert layer.generate_count == 2

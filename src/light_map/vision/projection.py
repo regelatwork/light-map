@@ -61,11 +61,11 @@ class CameraProjectionModel:
         s0 = -camera_center_z / (world_rays_z + 1e-9)
         p0 = self.camera_center.reshape(3, 1) + s0 * world_rays
 
-        # 4. Use similar triangles to find point P at height_mm
-        # P = p0 + (height_mm / C.z) * (C - p0)
-        # This formulation is more robust when camera position has small errors
-        # as it treats the floor as the primary reference.
-        world_points_3d = p0 + (height_mm / (camera_center_z + 1e-9)) * (
+        # 4. Use similar triangles to find point P at physical height_mm
+        # P = p0 + (height_mm / |C.z|) * (C - p0)
+        # This moves the point from the ground towards the camera.
+        # This formulation is robust to Z-axis orientation.
+        world_points_3d = p0 + (height_mm / (np.abs(camera_center_z) + 1e-9)) * (
             self.camera_center.reshape(3, 1) - p0
         )
 
@@ -228,14 +228,16 @@ class ProjectionService:
 
         # 1. Use 3D Projective Model if available and enabled
         if self.projector_model.is_calibrated_3d and self.projector_model.use_3d:
-            # Camera Pixels -> World (X, Y) at Z = height_mm
+            # Camera Pixels -> World (X, Y) at physical height_mm
             world_points_2d = self.camera_model.reconstruct_world_points(
                 camera_pixels, height_mm=height_mm
             )
             # World (X, Y, Z) -> Projector Pixels
+            # We must use the correct Z coordinate (which might be negative)
             N = world_points_2d.shape[0]
+            target_z = height_mm * np.sign(self.camera_model.camera_center[2])
             world_points_3d = np.hstack(
-                [world_points_2d, np.full((N, 1), height_mm)]
+                [world_points_2d, np.full((N, 1), target_z)]
             )  # (N, 3)
             return self.projector_model.project_world_to_projector(world_points_3d)
 

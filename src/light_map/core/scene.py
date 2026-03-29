@@ -69,10 +69,6 @@ class Scene(ABC):
         """
         return self.context.state.scene_version
 
-    def increment_version(self):
-        """Triggers a re-render by incrementing the central scene version."""
-        self.context.state.increment_scene_state()
-
     @property
     def blocking(self) -> bool:
         """True if the scene should block layers below it (opaque background)."""

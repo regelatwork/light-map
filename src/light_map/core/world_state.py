@@ -10,6 +10,7 @@ from light_map.common_types import (
     SelectionState,
     GridMetadata,
     MapRenderState,
+    CalibrationState,
 )
 from light_map.menu_system import MenuState
 from light_map.core.scene import HandInput
@@ -72,7 +73,7 @@ class WorldState:
         self._fow_mask_atom = VersionedAtom(
             None, "fow_mask", equality_fn=np.array_equal
         )
-        self._calibration_atom = VersionedAtom(0, "calibration")
+        self._calibration_atom = VersionedAtom(CalibrationState(), "calibration")
         self._notifications_atom = VersionedAtom([], "notifications")
         self._map_render_state_atom = VersionedAtom(
             MapRenderState(), "map_render_state"
@@ -192,6 +193,14 @@ class WorldState:
         self._scene_atom.update(value)
 
     @property
+    def scene_data(self) -> Any:
+        return self._scene_state_atom.value
+
+    @scene_data.setter
+    def scene_data(self, value: Any):
+        self._scene_state_atom.update(value)
+
+    @property
     def map_render_state(self) -> MapRenderState:
         return self._map_render_state_atom.value
 
@@ -209,14 +218,15 @@ class WorldState:
 
     @property
     def scene_version(self) -> int:
-        return max(self._scene_atom.timestamp, self._scene_state_atom.timestamp)
-
-    def increment_scene_state(self):
-        """Signals that the current scene has changed its internal state."""
-        self._scene_state_atom.update(self._scene_state_atom.value + 1)
+        return max(
+            self._scene_atom.timestamp,
+            self._scene_state_atom.timestamp,
+            self._calibration_atom.timestamp,
+        )
 
     @property
     def map_version(self) -> int:
+
         return self._map_render_state_atom.timestamp
 
     @property

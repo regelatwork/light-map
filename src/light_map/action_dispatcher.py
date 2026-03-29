@@ -574,7 +574,6 @@ def handle_menu_interact(
             menu_sys = getattr(app.current_scene, "menu_system", None)
             if menu_sys:
                 menu_sys.trigger_index(index)
-                app.current_scene.increment_version()
             else:
                 logging.error(
                     "ActionDispatcher: Current scene is MenuScene but has no menu_system"

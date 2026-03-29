@@ -41,6 +41,21 @@ class ImagePatch:
     data: np.ndarray  # BGRA
 
 
+@dataclass
+class CalibrationState:
+    """Stores transient state for calibration scenes to avoid manual version bumps."""
+
+    stage: str = ""
+    target_status: List[str] = field(default_factory=list)
+    target_info: List[Dict[str, Any]] = field(default_factory=list)
+    reprojection_error: float = 0.0
+    animation_start_times: Dict[int, float] = field(default_factory=dict)
+    last_camera_frame_ts: int = 0
+    captured_count: int = 0
+    total_required: int = 0
+    candidate_ppi: float = 0.0
+
+
 class Layer(ABC):
     """
     Abstract Base Class for all visual layers.

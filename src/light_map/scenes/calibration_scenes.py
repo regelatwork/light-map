@@ -55,11 +55,16 @@ class FlashCalibrationScene(Scene):
         self._current_level_idx = 0
         self._results = {}
         self.token_tracker.debug_mode = self.context.debug_mode
-        self.increment_version()
+        self._sync_calibration_state()
         self.context.events.cancel(TimerKey.CALIBRATION_STAGE)
 
     def on_exit(self) -> None:
         self.context.events.cancel(TimerKey.CALIBRATION_STAGE)
+
+    def _sync_calibration_state(self):
+        from light_map.common_types import CalibrationState
+
+        self.context.state.calibration = CalibrationState(stage=str(self._stage))
 
     def update(
         self, inputs: List[HandInput], actions: List[Action], current_time: float
@@ -170,6 +175,7 @@ class FlashCalibrationScene(Scene):
     def _change_stage(self, new_stage: FlashCalibStage, current_time: float):
         """Transitions to a new stage and schedules next steps if necessary."""
         self._stage = new_stage
+        self._sync_calibration_state()
 
         # Schedule future transitions
         delay = 0.0
@@ -198,9 +204,18 @@ class IntrinsicsCalibrationScene(Scene):
     def on_enter(self, payload: Any = None) -> None:
         self._captured_images = []
         self._stage = "CAPTURE"
-        self.increment_version()
+        self._sync_calibration_state()
         self.context.notifications.add_notification(
             f"Capture {self._required_images} chessboard images."
+        )
+
+    def _sync_calibration_state(self):
+        from light_map.common_types import CalibrationState
+
+        self.context.state.calibration = CalibrationState(
+            stage=self._stage,
+            captured_count=len(self._captured_images),
+            total_required=self._required_images,
         )
 
     def update(
@@ -212,11 +227,13 @@ class IntrinsicsCalibrationScene(Scene):
                 frame = self.context.last_camera_frame
                 if frame is not None:
                     self._captured_images.append(frame)
+                    self._sync_calibration_state()
                     self.context.notifications.add_notification(
                         f"Captured image {len(self._captured_images)}/{self._required_images}"
                     )
                     if len(self._captured_images) >= self._required_images:
                         self._stage = "PROCESSING"
+                        self._sync_calibration_state()
                         self.context.notifications.add_notification(
                             "Processing chessboard images..."
                         )
@@ -320,7 +337,7 @@ class ProjectorCalibrationScene(Scene):
         from light_map.projector import generate_calibration_pattern
 
         self._stage = "DISPLAY_PATTERN"
-        self.increment_version()
+        self._sync_calibration_state()
 
         # Generate pattern
         w, h = self.context.app_config.width, self.context.app_config.height
@@ -402,9 +419,15 @@ class ProjectorCalibrationScene(Scene):
         elif self._stage == "SETTLE":
             self._change_stage("CAPTURE", current_time)
 
+    def _sync_calibration_state(self):
+        from light_map.common_types import CalibrationState
+
+        self.context.state.calibration = CalibrationState(stage=self._stage)
+
     def _change_stage(self, new_stage: str, current_time: float):
         """Transitions to a new stage and schedules next steps if necessary."""
         self._stage = new_stage
+        self._sync_calibration_state()
 
         # Schedule future transitions
         delay = 0.0
@@ -477,7 +500,6 @@ class ExtrinsicsCalibrationScene(Scene):
 
     def on_enter(self, payload: Any = None) -> None:
         self._stage = "PLACEMENT"
-        self.increment_version()
         self._ppi = self.context.map_config_manager.get_ppi()
         self._reprojection_error = 0.0
         self._object_points = None
@@ -488,8 +510,14 @@ class ExtrinsicsCalibrationScene(Scene):
 
         # Load ground points (Z=0) from projector calibration
         try:
-            if os.path.exists("projector_calibration.npz"):
-                data = np.load("projector_calibration.npz")
+            storage = self.context.app_config.storage_manager
+            calib_path = (
+                storage.get_data_path("projector_calibration.npz")
+                if storage
+                else "projector_calibration.npz"
+            )
+            if os.path.exists(calib_path):
+                data = np.load(calib_path)
                 self._ground_points_camera = data["camera_points"]
                 self._ground_points_projector = data["projector_points"]
                 logging.info(
@@ -532,20 +560,33 @@ class ExtrinsicsCalibrationScene(Scene):
         self._target_info = [{} for _ in range(len(self._target_zones))]
         self._animation_start_times = {}
         self.context.notifications.add_notification("Place tokens on target zones.")
+        self._sync_calibration_state()
 
     def on_exit(self) -> None:
         self.context.events.cancel(TimerKey.CALIBRATION_STAGE)
+
+    def _sync_calibration_state(self):
+        """Updates the central WorldState with transient calibration data."""
+        from light_map.common_types import CalibrationState
+
+        self.context.state.calibration = CalibrationState(
+            stage=self._stage,
+            target_status=self._target_status.copy(),
+            target_info=self._target_info.copy(),
+            reprojection_error=self._reprojection_error,
+            animation_start_times=self._animation_start_times.copy(),
+        )
 
     def _on_retry_triggered(self):
         """Callback for when the retry gesture hold is completed."""
         self.context.notifications.add_notification("Calibration discarded.")
         self._stage = "PLACEMENT"
-        self.increment_version()
+        self._sync_calibration_state()
 
     def _on_start_capture_triggered(self):
         """Callback for when the capture gesture hold is completed."""
         self._stage = "CAPTURE"
-        self.increment_version()
+        self._sync_calibration_state()
 
     def _on_accept_triggered(self):
         """Callback for when the accept gesture hold is completed."""
@@ -563,11 +604,13 @@ class ExtrinsicsCalibrationScene(Scene):
             )
             self.context.notifications.add_notification("Extrinsics saved.")
         self._stage = "DONE"  # Mark as finished for update loop
+        self._sync_calibration_state()
 
     def update(
         self, inputs: List[HandInput], actions: List[Action], current_time: float
     ) -> Optional[SceneTransition]:
         self._current_time = current_time
+
         if self._stage == "PLACEMENT":
             # Continuous detection using context-provided results
             raw = self.context.raw_aruco
@@ -607,7 +650,7 @@ class ExtrinsicsCalibrationScene(Scene):
 
                     # 2. Match by proximity if ID matching failed
                     if best_idx == -1:
-                        best_dist = 150.0  # Threshold in projector pixels
+                        best_dist = 250.0  # Increased threshold in projector pixels for initial calibration
                         for idx, (tx, ty, _) in enumerate(self._target_zones):
                             dist = math.sqrt((px - tx) ** 2 + (py - ty) ** 2)
                             if dist < best_dist:
@@ -616,22 +659,30 @@ class ExtrinsicsCalibrationScene(Scene):
 
                     if best_idx != -1:
                         info = {"aid": aid}
-                        if aid in self._token_heights:
-                            self._target_status[best_idx] = "VALID"
-                            info["height"] = self._token_heights[aid]
-                            info["size"] = self._token_sizes.get(aid, 1)
-                            info["name"] = self._token_names.get(aid, f"Token {aid}")
-                            # Trigger animation if it's the first time it becomes valid
-                            if best_idx not in self._animation_start_times:
-                                self._animation_start_times[best_idx] = current_time
-                            # Capture coordinates for solvePnP
-                            tx, ty, _ = self._target_zones[best_idx]
-                            self._detected_ids[aid] = (c_cam[0], c_cam[1])
-                            self._known_targets[aid] = (float(tx), float(ty))
-                        else:
-                            self._target_status[best_idx] = "UNKNOWN"
-                            if best_idx in self._animation_start_times:
-                                del self._animation_start_times[best_idx]
+                        # If ID is unknown, resolve it on the fly
+                        if aid not in self._token_heights:
+                            resolved = (
+                                self.context.map_config_manager.resolve_token_profile(
+                                    aid
+                                )
+                            )
+                            self._token_heights[aid] = resolved.height_mm
+                            self._token_names[aid] = resolved.name
+                            self._token_sizes[aid] = resolved.size
+
+                        self._target_status[best_idx] = "VALID"
+                        info["height"] = self._token_heights[aid]
+                        info["size"] = self._token_sizes.get(aid, 1)
+                        info["name"] = self._token_names.get(aid, f"Token {aid}")
+
+                        # Trigger animation if it's the first time it becomes valid
+                        if best_idx not in self._animation_start_times:
+                            self._animation_start_times[best_idx] = current_time
+
+                        # Capture coordinates for solvePnP
+                        tx, ty, _ = self._target_zones[best_idx]
+                        self._detected_ids[aid] = (c_cam[0], c_cam[1])
+                        self._known_targets[aid] = (float(tx), float(ty))
                         self._target_info[best_idx] = info
 
                 # Clean up animation timers for IDLE targets
@@ -754,6 +805,7 @@ class ExtrinsicsCalibrationScene(Scene):
         elif self._stage == "DONE":
             return SceneTransition(SceneId.MENU)
 
+        self._sync_calibration_state()
         return None
 
     @property
@@ -1001,14 +1053,28 @@ class PpiCalibrationScene(Scene):
     def on_enter(self, payload: Any = None) -> None:
         self._stage = "DETECTING"
         self._candidate_ppi = 0.0
+        self._sync_calibration_state()
         self.context.events.cancel(TimerKey.CALIBRATION_STAGE)
 
     def on_exit(self) -> None:
         self.context.events.cancel(TimerKey.CALIBRATION_STAGE)
 
+    def _sync_calibration_state(self):
+        from light_map.common_types import CalibrationState
+
+        self.context.state.calibration = CalibrationState(
+            stage=self._stage, candidate_ppi=self._candidate_ppi
+        )
+
     def update(
         self, inputs: List[HandInput], actions: List[Action], current_time: float
     ) -> Optional[SceneTransition]:
+        # Always sync calibration state in DETECTING stage to show real-time feedback
+        if self._stage == "DETECTING":
+            # Note: candidate_ppi might be updated inside render() logic if it uses frame,
+            # but here we ensure the atom is bumped to trigger the render.
+            self._sync_calibration_state()
+
         if self._stage == "CONFIRMING" and inputs:
             gesture = inputs[0].gesture
             if gesture == GestureType.VICTORY:
@@ -1204,7 +1270,7 @@ class MapGridCalibrationScene(Scene):
     def on_enter(self, payload: dict | None = None) -> None:
         self.is_interacting = False
         self._save_triggered = False
-        self.increment_version()
+        self._sync_calibration_state()
         self.context.events.cancel(TimerKey.CALIBRATION_STAGE)
 
         map_system = self.context.map_system
@@ -1256,10 +1322,16 @@ class MapGridCalibrationScene(Scene):
     def on_exit(self) -> None:
         self.context.events.cancel(TimerKey.CALIBRATION_STAGE)
 
+    def _sync_calibration_state(self):
+        from light_map.common_types import CalibrationState
+
+        self.context.state.calibration = CalibrationState(stage="INTERACTING")
+
     def _on_save_triggered(self):
         """Callback for when the save gesture hold is completed."""
         self._save_calibration()
         self._save_triggered = True
+        self._sync_calibration_state()
 
     def update(
         self, inputs: List[HandInput], actions: List[Action], current_time: float
@@ -1280,9 +1352,14 @@ class MapGridCalibrationScene(Scene):
 
         # Process grid interactions
         if self.grid_overlay:
-            self.is_interacting = self.interaction_controller.process_gestures(
+            interaction_occurred = self.interaction_controller.process_gestures(
                 inputs, self.grid_overlay
             )
+            if interaction_occurred:
+                self.is_interacting = True
+                self._sync_calibration_state()
+            else:
+                self.is_interacting = False
 
         return None
 
@@ -1491,7 +1568,6 @@ class Projector3DCalibrationScene(Scene):
         self._can_gesture = True
         self._transition_to_menu = False
         self._update_layer_markers()
-        self.increment_version()
         self.context.events.cancel(TimerKey.CALIBRATION_STAGE)
 
     def on_exit(self) -> None:
@@ -1734,7 +1810,10 @@ class Projector3DCalibrationScene(Scene):
         self.pattern_layer.box_markers = box_markers
         self.pattern_layer.table_markers = table_markers
         self.pattern_layer.box_outline = box_rect
-        self.pattern_layer.increment_version()
+
+        from light_map.common_types import CalibrationState
+
+        self.context.state.calibration = CalibrationState(stage="PATTERN_UPDATE")
 
         self.feedback_layer.box_markers = box_markers
         self.feedback_layer.table_markers = table_markers

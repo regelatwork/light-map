@@ -84,7 +84,6 @@ class MenuScene(Scene):
             door_is_open=door_is_open,
         )
         self.menu_system.set_root_menu(new_root)
-        self.increment_version()
 
     def update(
         self, inputs: List[HandInput], actions: List[Action], current_time: float
@@ -106,12 +105,6 @@ class MenuScene(Scene):
             self.input_manager.get_y(),
             self.input_manager.get_gesture(),
         )
-
-        if (
-            self._menu_state.hovered_item_index != new_state.hovered_item_index
-            or self._menu_state.node_stack_titles != new_state.node_stack_titles
-        ):
-            self.increment_version()
 
         self._menu_state = new_state
 

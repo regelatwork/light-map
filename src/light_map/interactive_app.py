@@ -689,9 +689,8 @@ class InteractiveApp:
 
             # 2. Update SceneLayer bridge
             self.layer_manager.scene_layer.scene = self.current_scene
-            # Only increment scene timestamp if scene version has changed
+            # Synchronize last seen scene version
             if self.current_scene.version != self.last_scene_version:
-                state.increment_scene_state()
                 self.last_scene_version = self.current_scene.version
 
             # 3. Perform Composite Render

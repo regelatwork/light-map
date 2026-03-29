@@ -1,6 +1,4 @@
-import pytest
 import numpy as np
-from unittest.mock import MagicMock
 from light_map.common_types import Layer, ImagePatch, CompositeLayer, LayerMode
 
 
@@ -59,21 +57,21 @@ def test_composite_layer_flattening():
     patches, version = comp.render()
     assert version == 3
     assert len(patches) == 1
-    
+
     merged = patches[0]
-    
+
     # Bounding box should be (0,0) to (15,15)
     assert merged.x == 0
     assert merged.y == 0
     assert merged.width == 15
     assert merged.height == 15
-    
+
     # Check a red pixel
     assert np.array_equal(merged.data[0, 0], [0, 0, 255, 255])
-    
+
     # Check a green pixel
     assert np.array_equal(merged.data[10, 10], [0, 255, 0, 255])
-    
+
     # Overlap pixel should be green (l2 is on top)
     # Wait, simple alpha composite with full opacity over full opacity
     # (src * alpha + dst * (255 - alpha)) // 255

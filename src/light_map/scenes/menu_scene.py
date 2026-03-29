@@ -280,7 +280,6 @@ class MenuScene(Scene):
         """Exposes the current menu state for the MenuLayer."""
         return self.menu_system.get_current_state()
 
-
     @property
     def blocking(self) -> bool:
         """Menu scene should have a black background (blocking lower layers)."""
@@ -292,8 +291,13 @@ class MenuScene(Scene):
         return False
 
     def get_active_layers(self, app: InteractiveApp) -> List[Layer]:
-        """Menu only needs standard UI overlay layers."""
-        return self.get_standard_ui_stack(app)
+        """Menu only needs the menu itself and standard UI overlay layers (no masks/tokens)."""
+        return [
+            app.menu_layer,
+            app.notification_layer,
+            app.debug_layer,
+            app.cursor_layer,
+        ]
 
     def render(self, frame: np.ndarray) -> np.ndarray:
         # Menu is now rendered by MenuLayer in the coordinator stack.

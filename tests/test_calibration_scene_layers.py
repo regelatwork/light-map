@@ -7,9 +7,8 @@ from light_map.scenes.calibration_scenes import (
     FlashCalibrationScene,
     MapGridCalibrationScene,
     ProjectorCalibrationScene,
-    Projector3DCalibrationScene,
 )
-from light_map.common_types import SceneId
+
 
 @pytest.fixture
 def mock_app():
@@ -26,6 +25,7 @@ def mock_app():
     app.map_layer = MagicMock(name="map_layer")
     return app
 
+
 @pytest.fixture
 def mock_context():
     context = MagicMock()
@@ -36,6 +36,7 @@ def mock_context():
     context.state = MagicMock()
     return context
 
+
 def test_extrinsics_calibration_scene_layers(mock_app, mock_context):
     scene = ExtrinsicsCalibrationScene(mock_context)
     layers = scene.get_active_layers(mock_app)
@@ -43,11 +44,13 @@ def test_extrinsics_calibration_scene_layers(mock_app, mock_context):
     assert mock_app.aruco_mask_layer not in layers
     assert mock_app.hand_mask_layer not in layers
 
+
 def test_ppi_calibration_scene_layers(mock_app, mock_context):
     scene = PpiCalibrationScene(mock_context)
     layers = scene.get_active_layers(mock_app)
     assert mock_app.aruco_mask_layer not in layers
     assert mock_app.hand_mask_layer not in layers
+
 
 def test_intrinsics_calibration_scene_layers(mock_app, mock_context):
     scene = IntrinsicsCalibrationScene(mock_context)
@@ -55,11 +58,13 @@ def test_intrinsics_calibration_scene_layers(mock_app, mock_context):
     assert mock_app.aruco_mask_layer not in layers
     assert mock_app.hand_mask_layer not in layers
 
+
 def test_flash_calibration_scene_layers(mock_app, mock_context):
     scene = FlashCalibrationScene(mock_context)
     layers = scene.get_active_layers(mock_app)
     assert mock_app.aruco_mask_layer not in layers
     assert mock_app.hand_mask_layer not in layers
+
 
 def test_map_grid_calibration_scene_layers(mock_app, mock_context):
     scene = MapGridCalibrationScene(mock_context)
@@ -67,6 +72,7 @@ def test_map_grid_calibration_scene_layers(mock_app, mock_context):
     assert mock_app.aruco_mask_layer not in layers
     assert mock_app.hand_mask_layer not in layers
     assert mock_app.map_layer in layers
+
 
 def test_projector_calibration_scene_layers(mock_app, mock_context):
     # This one already excludes it

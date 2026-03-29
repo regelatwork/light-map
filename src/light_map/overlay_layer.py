@@ -36,10 +36,10 @@ class TokenLayer(Layer):
 
         # Use time-based version for 500ms pulse if not dynamic
         pulse_version = int(now * 2)  # Increments every 0.5s
-        
+
         if show_tokens and self.state.tokens and any_occluded:
-             # Need every-frame updates for smooth occluded token persistence
-             pulse_version = self.state.system_time_version
+            # Need every-frame updates for smooth occluded token persistence
+            pulse_version = self.state.system_time_version
 
         v = max(
             self.state.tokens_version,
@@ -48,7 +48,7 @@ class TokenLayer(Layer):
         )
         # Combined version: include show_tokens in version to catch toggles.
         v = (v << 1) | (1 if show_tokens else 0)
-        
+
         # Combine with pulse_version in a monotonic way.
         # Use a large enough multiplier for v to ensure pulse_version doesn't overflow into its bits.
         # Nanosecond timestamps are ~10^15, so 10^18 is safe.
@@ -89,6 +89,7 @@ class NotificationLayer(Layer):
             return []
         return self.overlay_renderer.draw_notifications()
 
+
 class DebugLayer(Layer):
     """
     Renders diagnostic information like FPS, resolution, and hand skeletons.
@@ -106,7 +107,9 @@ class DebugLayer(Layer):
             return 0
 
         # Catch debug toggle in version
-        version = (self.state.hands_version << 1) | (1 if self.context.debug_mode else 0)
+        version = (self.state.hands_version << 1) | (
+            1 if self.context.debug_mode else 0
+        )
         # Also depend on FPS updates
         version = max(version, self.state.fps_version)
         return version

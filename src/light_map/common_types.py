@@ -157,10 +157,13 @@ class CompositeLayer(Layer):
                 src_bgr = patch_slice[:, :, :3].astype(np.uint16)
 
                 blended_bgr = (src_bgr * alpha + roi[:, :, :3] * (255 - alpha)) // 255
-                
+
                 # Composite alpha (simplified)
                 dst_alpha = roi[:, :, 3]
-                blended_alpha = alpha_channel.astype(np.uint16) + dst_alpha * (255 - alpha_channel.astype(np.uint16)) // 255
+                blended_alpha = (
+                    alpha_channel.astype(np.uint16)
+                    + dst_alpha * (255 - alpha_channel.astype(np.uint16)) // 255
+                )
 
                 buffer[py1:py2, px1:px2, :3] = blended_bgr.astype(np.uint8)
                 buffer[py1:py2, px1:px2, 3] = blended_alpha.astype(np.uint8)
@@ -276,6 +279,7 @@ class TimerKey(StrEnum):
 @dataclass(frozen=True)
 class MapRenderState:
     """Encapsulates the rendering configuration for the map layer."""
+
     opacity: float = 1.0
     quality: int = 100
     filepath: str = ""

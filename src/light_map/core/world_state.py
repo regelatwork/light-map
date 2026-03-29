@@ -74,7 +74,9 @@ class WorldState:
         )
         self._calibration_atom = VersionedAtom(0, "calibration")
         self._notifications_atom = VersionedAtom([], "notifications")
-        self._map_render_state_atom = VersionedAtom(MapRenderState(), "map_render_state")
+        self._map_render_state_atom = VersionedAtom(
+            MapRenderState(), "map_render_state"
+        )
         self._visibility_mask_atom = VersionedAtom(
             None, "visibility_mask", equality_fn=np.array_equal
         )

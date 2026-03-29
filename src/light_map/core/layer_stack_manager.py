@@ -1,6 +1,7 @@
 from __future__ import annotations
 from typing import List, TYPE_CHECKING, Any
 
+from light_map.common_types import MapRenderState
 from light_map.map_layer import MapLayer
 from light_map.door_layer import DoorLayer
 from light_map.menu_layer import MenuLayer

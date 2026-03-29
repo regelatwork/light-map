@@ -34,7 +34,7 @@ class HandMaskLayer(Layer):
             self.state.grid_metadata_version,
             self.state.viewport_version,
         )
-        
+
         # If we have active hulls, we are rendering every frame for persistence fading
         if self.hand_masker.last_hulls:
             v = max(v, self.state.system_time_version)

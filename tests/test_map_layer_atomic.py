@@ -20,6 +20,7 @@ def test_map_layer_uses_atomic_timestamps():
     # Update map should increment version
     v2 = layer.get_current_version()
     from light_map.common_types import MapRenderState
+
     state.map_render_state = MapRenderState(opacity=0.5)
     assert layer.get_current_version() > v2
 

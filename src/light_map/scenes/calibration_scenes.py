@@ -50,7 +50,6 @@ class FlashCalibrationScene(Scene):
         self._results: Dict[int, int] = {}
         self._capture_frame = False
 
-
     def on_enter(self, payload: dict | None = None) -> None:
         self._stage = FlashCalibStage.START
         self._current_level_idx = 0
@@ -196,7 +195,6 @@ class IntrinsicsCalibrationScene(Scene):
         self._stage = "CAPTURE"  # CAPTURE | PROCESSING | DONE | ERROR
         self._required_images = 15
 
-
     def on_enter(self, payload: Any = None) -> None:
         self._captured_images = []
         self._stage = "CAPTURE"
@@ -317,7 +315,6 @@ class ProjectorCalibrationScene(Scene):
         self._stage = "DISPLAY_PATTERN"  # DISPLAY_PATTERN | SETTLE | CAPTURE | PROCESSING | DONE | ERROR
         self._pattern_image: Optional[np.ndarray] = None
         self._pattern_params: Optional[Dict] = None
-
 
     def on_enter(self, payload: Any = None) -> None:
         from light_map.projector import generate_calibration_pattern
@@ -477,7 +474,6 @@ class ExtrinsicsCalibrationScene(Scene):
         self._current_time: float = 0.0
         self._cached_canvas: Optional[np.ndarray] = None
         self._last_render_params: Dict[str, Any] = {}
-
 
     def on_enter(self, payload: Any = None) -> None:
         self._stage = "PLACEMENT"
@@ -1001,7 +997,6 @@ class PpiCalibrationScene(Scene):
         super().__init__(context)
         self._stage = "DETECTING"  # DETECTING | CONFIRMING
         self._candidate_ppi = 0.0
-
 
     def on_enter(self, payload: Any = None) -> None:
         self._stage = "DETECTING"

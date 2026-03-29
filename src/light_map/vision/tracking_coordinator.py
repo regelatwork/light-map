@@ -11,6 +11,7 @@ if TYPE_CHECKING:
     from light_map.map_system import MapSystem
     from light_map.map_config import MapConfigManager
     from light_map.common_types import AppConfig
+    from light_map.vision.projection import ProjectionService
 
 
 class TrackingCoordinator:
@@ -27,6 +28,7 @@ class TrackingCoordinator:
         map_system: MapSystem,
         map_config: MapConfigManager,
         projector_config: AppConfig,
+        projection_service: Optional["ProjectionService"] = None,
     ) -> dict:
         """
         Maps raw ArUco detections (corners, ids) to filtered and snapped Token objects.
@@ -73,6 +75,7 @@ class TrackingCoordinator:
             ppi=map_config.get_ppi(),
             distortion_model=projector_config.distortion_model,
             projector_3d_model=projector_config.projector_3d_model,
+            projection_service=projection_service,
         )
 
         # 2. Get Grid Parameters
@@ -153,6 +156,7 @@ class TrackingCoordinator:
         rotation_vector: Optional[np.ndarray] = None,
         translation_vector: Optional[np.ndarray] = None,
         debug_mode: bool = False,
+        projection_service: Optional["ProjectionService"] = None,
     ):
         """Performs background ArUco tracking and updates the map system tokens."""
         if map_config.get_detection_algorithm() != TokenDetectionAlgorithm.ARUCO:
@@ -187,9 +191,10 @@ class TrackingCoordinator:
             ppi=map_config.get_ppi(),
             algorithm=TokenDetectionAlgorithm.ARUCO,
             token_configs=token_configs,
-            default_height_mm=5.0,  # Default for ArUco tokens
+            default_height_mm=50.0,  # Default for ArUco tokens
             distortion_model=config.distortion_model,
             projector_3d_model=config.projector_3d_model,
+            projection_service=projection_service,
         )
 
         if raw_detections:

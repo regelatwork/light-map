@@ -8,7 +8,7 @@ from light_map.vision.aruco_detector import ArucoTokenDetector
 
 if TYPE_CHECKING:
     from light_map.projector import ProjectorDistortionModel
-    from light_map.vision.projection import Projector3DModel
+    from light_map.vision.projection import Projector3DModel, ProjectionService
 
 
 class TokenTracker:
@@ -80,6 +80,7 @@ class TokenTracker:
         default_height_mm: float = 0.0,
         distortion_model: Optional["ProjectorDistortionModel"] = None,
         projector_3d_model: Optional["Projector3DModel"] = None,
+        projection_service: Optional["ProjectionService"] = None,
     ) -> List[Token]:
         # Handle case where only one frame is passed (default to frame_pattern for SL or frame_white for Flash)
         if frame_pattern is None and frame_white is not None:
@@ -100,6 +101,7 @@ class TokenTracker:
                 distortion_model=distortion_model,
                 projector_matrix=projector_matrix,
                 projector_3d_model=projector_3d_model,
+                projection_service=projection_service,
             )
 
         if (

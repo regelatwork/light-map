@@ -87,7 +87,7 @@ class ArucoMaskLayer(Layer):
         limit_w = self.config.width
         limit_h = self.config.height
 
-        default_height = 5.0  # Default height in mm if no profile found
+        default_height = 50.0  # Default height in mm if no profile found
 
         for i, corners in enumerate(corners_list):
             marker_id = ids[i] if i < len(ids) else -1
@@ -98,8 +98,14 @@ class ArucoMaskLayer(Layer):
             if marker_id != -1 and marker_id in getattr(
                 self.config, "aruco_defaults", {}
             ):
-                profile_name = self.config.aruco_defaults[marker_id].profile
-                if profile_name in getattr(self.config, "token_profiles", {}):
+                defn = self.config.aruco_defaults[marker_id]
+                # Priority: 1. Specific height_mm, 2. Profile height_mm, 3. Default
+                specific_height = getattr(defn, "height_mm", None)
+                profile_name = getattr(defn, "profile", None)
+
+                if specific_height is not None:
+                    height_mm = specific_height
+                elif profile_name in getattr(self.config, "token_profiles", {}):
                     height_mm = self.config.token_profiles[profile_name].height_mm
 
             # corners is (4, 2) in camera pixel coordinates

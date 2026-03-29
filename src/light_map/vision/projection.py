@@ -2,7 +2,7 @@ import numpy as np
 import cv2
 import logging
 import os
-from typing import Optional
+from typing import Optional, Any
 
 
 class CameraProjectionModel:
@@ -205,10 +205,16 @@ class ProjectionService:
     """
 
     def __init__(
-        self, camera_model: CameraProjectionModel, projector_model: Projector3DModel
+        self,
+        camera_model: CameraProjectionModel,
+        projector_model: Projector3DModel,
+        ppi: float = 0.0,
+        distortion_model: Optional[Any] = None,
     ):
         self.camera_model = camera_model
         self.projector_model = projector_model
+        self.ppi = ppi
+        self.distortion_model = distortion_model
 
     def project_camera_to_projector(
         self, camera_pixels: np.ndarray, height_mm: float = 0.0
@@ -233,17 +239,48 @@ class ProjectionService:
             )  # (N, 3)
             return self.projector_model.project_world_to_projector(world_points_3d)
 
-        # 2. Fallback to 2D Homography (assuming Z=0)
-        # We apply this to camera pixels because the homography is Camera-to-Projector.
-        if self.projector_model.homography_matrix is not None:
-            camera_pixels_reshaped = camera_pixels.reshape(-1, 1, 2).astype(np.float32)
-            proj_pts = cv2.perspectiveTransform(
-                camera_pixels_reshaped, self.projector_model.homography_matrix
-            )
-            return proj_pts.reshape(-1, 2)
-
-        # 3. Last Fallback: Map reconstructed world points to pixels using default assumptions
+        # 2. Fallback to 2D Homography or PPI-based projection
+        # We MUST reconstruct world points first to account for height (parallax)
         world_points_2d = self.camera_model.reconstruct_world_points(
             camera_pixels, height_mm=height_mm
         )
+
+        # A. Use Homography if available (maps Camera at Z=0 to Projector)
+        # To use the homography correctly for H > 0, we project the world point
+        # BACK to the camera at Z=0.
+        if self.projector_model.homography_matrix is not None:
+            # Find where the camera WOULD see the ground point (X, Y, 0)
+            ground_camera_pixels = self.camera_model.project_world_to_camera(
+                np.hstack([world_points_2d, np.zeros((world_points_2d.shape[0], 1))])
+            )
+            camera_pixels_reshaped = ground_camera_pixels.reshape(-1, 1, 2).astype(
+                np.float32
+            )
+            # Apply homography and optional 2D distortion correction
+            if self.distortion_model:
+                proj_pts = self.distortion_model.apply_correction(
+                    camera_pixels_reshaped
+                )
+            else:
+                proj_pts = cv2.perspectiveTransform(
+                    camera_pixels_reshaped, self.projector_model.homography_matrix
+                )
+            return proj_pts.reshape(-1, 2)
+
+        # B. PPI-based fallback (Assumes orthographic projector alignment)
+        if self.ppi > 0:
+            ppi_mm = self.ppi / 25.4
+            px = world_points_2d[:, 0] * ppi_mm
+            py = world_points_2d[:, 1] * ppi_mm
+            pts = np.vstack([px, py]).T
+            if self.distortion_model:
+                # Distortion model expects (N, 1, 2) but we can use correct_theoretical_point loop
+                res = []
+                for p in pts:
+                    rx, ry = self.distortion_model.correct_theoretical_point(p[0], p[1])
+                    res.append([rx, ry])
+                return np.array(res, dtype=np.float32)
+            return pts.astype(np.float32)
+
+        # 3. Last Fallback: Just return reconstructed world points
         return world_points_2d.astype(np.float32)

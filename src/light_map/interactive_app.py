@@ -405,7 +405,10 @@ class InteractiveApp:
 
             if self.config.projector_3d_model is not None:
                 projection_service = ProjectionService(
-                    camera_projection_model, self.config.projector_3d_model
+                    camera_projection_model,
+                    self.config.projector_3d_model,
+                    ppi=self.config.projector_ppi,
+                    distortion_model=self.config.distortion_model,
                 )
 
         return AppContext(
@@ -440,6 +443,7 @@ class InteractiveApp:
                 self.map_system,
                 self.map_config,
                 self.config,
+                projection_service=self.app_context.projection_service,
             )
             if res.get("tokens"):
                 logging.debug(f"aruco_mapper: Mapped {len(res['tokens'])} tokens.")

@@ -322,7 +322,7 @@ export const TokenPropertiesEditor: React.FC<TokenPropertiesEditorProps> = ({
                   value={tokenSize}
                   onChange={(e) => setLocalSize(Number(e.target.value))}
                   onBlur={() => {
-                    handleTokenUpdate({ size: tokenSize });
+                    handleTokenUpdate({ size: tokenSize, profile: undefined });
                     setLocalSize(null);
                   }}
                   disabled={isProfileSelected}
@@ -347,7 +347,7 @@ export const TokenPropertiesEditor: React.FC<TokenPropertiesEditorProps> = ({
                   value={tokenHeightMm}
                   onChange={(e) => setLocalHeightMm(Number(e.target.value))}
                   onBlur={() => {
-                    handleTokenUpdate({ height_mm: tokenHeightMm });
+                    handleTokenUpdate({ height_mm: tokenHeightMm, profile: undefined });
                     setLocalHeightMm(null);
                   }}
                   disabled={isProfileSelected}

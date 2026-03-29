@@ -157,6 +157,7 @@ def test_aruco_mask_layer_parallax_rendering(mock_state, mock_config):
     @dataclass
     class Default:
         profile: str
+        height_mm: float = None
 
     mock_config.token_profiles = {"standard": Profile(height_mm=0.0)}
     mock_config.aruco_defaults = {42: Default(profile="standard")}

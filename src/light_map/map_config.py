@@ -32,7 +32,7 @@ STATE_FILE = _DEFAULT_STORAGE.get_config_path("map_state.json")
 @dataclass
 class SizeProfile:
     size: int = 1
-    height_mm: float = 10.0
+    height_mm: float = 50.0
 
 
 @dataclass
@@ -597,14 +597,14 @@ class MapConfigManager:
                 name=name,
                 type="NPC",
                 size=1,
-                height_mm=10.0,
+                height_mm=50.0,
                 is_known=False,
             )
 
         # 4. Resolve dimensions
         # Start with defaults
         size = 1
-        height_mm = 10.0
+        height_mm = 50.0
 
         # If profile is specified, apply it first
         if definition.profile:
@@ -640,7 +640,15 @@ class MapConfigManager:
         height_mm: Optional[float] = None,
         color: Optional[str] = None,
     ):
-        """Helper to set a global definition."""
+        """Helper to set a global definition. Enforces profile vs custom dimension exclusivity."""
+        if profile:
+            # Profile takes precedence: clear custom dimensions
+            size = None
+            height_mm = None
+        elif size is not None or height_mm is not None:
+            # Custom dimensions provided: clear profile
+            profile = None
+
         self.data.global_settings.aruco_defaults[aruco_id] = ArucoDefinition(
             name=name,
             type=type,
@@ -668,10 +676,18 @@ class MapConfigManager:
         height_mm: Optional[float] = None,
         color: Optional[str] = None,
     ):
-        """Helper to set a map override."""
+        """Helper to set a map override. Enforces profile vs custom dimension exclusivity."""
         map_name = os.path.abspath(map_name)
         if map_name not in self.data.maps:
             self.data.maps[map_name] = MapEntry()
+
+        if profile:
+            # Profile takes precedence: clear custom dimensions
+            size = None
+            height_mm = None
+        elif size is not None or height_mm is not None:
+            # Custom dimensions provided: clear profile
+            profile = None
 
         self.data.maps[map_name].aruco_overrides[aruco_id] = ArucoDefinition(
             name=name,

@@ -181,7 +181,7 @@ def test_interactive_app_update_token_action(mock_config, monkeypatch):
     app.current_scene.get_active_layers.return_value = app.layer_stack
     app.current_scene.render.side_effect = lambda f: (f, 1)
 
-    # 2. Inject UPDATE_TOKEN action
+    # 2. Inject UPDATE_TOKEN action (Profile Only)
     token_id = 999
     update_data = {
         "action": "UPDATE_TOKEN",
@@ -190,19 +190,30 @@ def test_interactive_app_update_token_action(mock_config, monkeypatch):
         "color": "#00ff00",
         "type": "PC",
         "profile": "hero_profile",
-        "size": 3,
-        "height_mm": 50.0,
     }
     ws.pending_actions.append(update_data)
 
     app.process_state(ws, [])
 
-    # Verify MapConfig was updated
+    # Verify Profile was updated and custom dims cleared
     aruco_def = app.map_config.data.global_settings.aruco_defaults.get(token_id)
     assert aruco_def is not None
-    assert aruco_def.name == "Super Hero"
-    assert aruco_def.color == "#00ff00"
-    assert aruco_def.type == "PC"
     assert aruco_def.profile == "hero_profile"
+    assert aruco_def.size is None
+
+    # 3. Inject UPDATE_TOKEN action (Custom Dims Only)
+    update_data_custom = {
+        "action": "UPDATE_TOKEN",
+        "id": token_id,
+        "size": 3,
+        "height_mm": 50.0,
+    }
+    ws.pending_actions.append(update_data_custom)
+    app.process_state(ws, [])
+
+    # Verify custom dims were updated and profile cleared
+    aruco_def = app.map_config.data.global_settings.aruco_defaults.get(token_id)
+    assert aruco_def.profile is None
     assert aruco_def.size == 3
+    assert aruco_def.height_mm == 50.0
     assert aruco_def.height_mm == 50.0

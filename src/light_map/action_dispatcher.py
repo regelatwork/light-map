@@ -445,21 +445,32 @@ def handle_update_token(
             if new_type is not None
             else (existing_def.type if existing_def else "NPC")
         )
-        final_profile = (
-            new_profile
-            if new_profile is not None
-            else (existing_def.profile if existing_def else None)
-        )
-        final_size = (
-            new_size
-            if new_size is not None
-            else (existing_def.size if existing_def else None)
-        )
-        final_height_mm = (
-            new_height_mm
-            if new_height_mm is not None
-            else (existing_def.height_mm if existing_def else None)
-        )
+        # Determination of final profile and dimensions must respect the exclusivity invariant
+        final_profile = new_profile
+        final_size = new_size
+        final_height_mm = new_height_mm
+
+        if final_profile is not None:
+            # If profile is explicitly provided (even if ''), it clears individual overrides
+            if final_profile == "":
+                final_profile = None
+            else:
+                final_size = None
+                final_height_mm = None
+        elif final_size is not None or final_height_mm is not None:
+            # If custom dimensions are explicitly provided, clear profile
+            final_profile = None
+        else:
+            # Nothing was provided in this update, fallback to existing
+            if existing_def:
+                final_profile = existing_def.profile
+                final_size = existing_def.size
+                final_height_mm = existing_def.height_mm
+            else:
+                final_profile = None
+                final_size = None
+                final_height_mm = None
+
         final_color = (
             new_color
             if new_color is not None

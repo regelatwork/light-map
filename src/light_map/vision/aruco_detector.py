@@ -9,7 +9,7 @@ from light_map.vision.projection import CameraProjectionModel
 
 if TYPE_CHECKING:
     from light_map.projector import ProjectorDistortionModel
-    from light_map.vision.projection import Projector3DModel
+    from light_map.vision.projection import Projector3DModel, ProjectionService
 
 
 class ArucoTokenDetector:
@@ -204,11 +204,12 @@ class ArucoTokenDetector:
         default_height_mm: float = 50.0,
         distortion_model: Optional["ProjectorDistortionModel"] = None,
         projector_3d_model: Optional["Projector3DModel"] = None,
+        projection_service: Optional["ProjectionService"] = None,
     ) -> List[Token]:
         """
         Maps raw ArUco detections (corners, ids) to Token objects in world coordinates.
         """
-        if self.projection_model is None:
+        if self.projection_model is None and projection_service is None:
             logging.debug("ArucoDetector: map_to_tokens missing projection model.")
             return []
 
@@ -233,53 +234,50 @@ class ArucoTokenDetector:
                 height_mm = config.get("height_mm", default_height_mm)
                 token_type = config.get("type", "NPC")
 
-            # Vectorized model handles single points efficiently
-            pixel_points = np.array([[u, v]], dtype=np.float32)
-            world_points = self.projection_model.reconstruct_world_points(
-                pixel_points, height_mm
-            )
-            world_x_mm, world_y_mm = world_points[0]
-
-            logging.debug(
-                f"ArucoDetector: Marker {marker_id} at cam {u:.1f},{v:.1f} -> world {world_x_mm:.1f},{world_y_mm:.1f} (h={height_mm})"
-            )
-
-            if (
-                projector_3d_model
-                and projector_3d_model.use_3d
-                and projector_3d_model.is_calibrated_3d
-            ):
-                world_points_3d = np.array(
-                    [[world_x_mm, world_y_mm, height_mm]], dtype=np.float32
-                )
-                projector_pixels = projector_3d_model.project_world_to_projector(
-                    world_points_3d
+            if projection_service:
+                # Use unified ProjectionService for all transformations
+                px_py = projection_service.project_camera_to_projector(
+                    np.array([[u, v]], dtype=np.float32), height_mm=height_mm
                 )[0]
-                px, py = projector_pixels[0], projector_pixels[1]
+                px, py = px_py
                 logging.debug(
-                    f"ArucoDetector: Marker {marker_id} 3D projection -> proj {px:.1f},{py:.1f}"
+                    f"ArucoDetector: Marker {marker_id} via ProjectionService -> proj {px:.1f},{py:.1f} (h={height_mm})"
                 )
             else:
-                # Map to projector pixels (Z=0 vertical projection)
-                px = world_x_mm * ppi_mm
-                py = world_y_mm * ppi_mm
+                # Fallback to local logic
+                # Vectorized model handles single points efficiently
+                pixel_points = np.array([[u, v]], dtype=np.float32)
+                world_points = self.projection_model.reconstruct_world_points(
+                    pixel_points, height_mm
+                )
+                world_x_mm, world_y_mm = world_points[0]
+
                 logging.debug(
-                    f"ArucoDetector: Marker {marker_id} 2D map -> proj {px:.1f},{py:.1f} (ppi_mm={ppi_mm:.2f})"
+                    f"ArucoDetector: Marker {marker_id} at cam {u:.1f},{v:.1f} -> world {world_x_mm:.1f},{world_y_mm:.1f} (h={height_mm})"
                 )
 
-                if distortion_model:
-                    orig_px, orig_py = px, py
-                    px, py = distortion_model.correct_theoretical_point(px, py)
-                    logging.debug(
-                        f"ArucoDetector: Marker {marker_id} distortion correction: {orig_px:.1f},{orig_py:.1f} -> {px:.1f},{py:.1f}"
+                if (
+                    projector_3d_model
+                    and projector_3d_model.use_3d
+                    and projector_3d_model.is_calibrated_3d
+                ):
+                    world_points_3d = np.array(
+                        [[world_x_mm, world_y_mm, height_mm]], dtype=np.float32
                     )
+                    projector_pixels = projector_3d_model.project_world_to_projector(
+                        world_points_3d
+                    )[0]
+                    px, py = projector_pixels[0], projector_pixels[1]
+                else:
+                    # Map to projector pixels (Z=0 vertical projection)
+                    px = world_x_mm * ppi_mm
+                    py = world_y_mm * ppi_mm
+
+                    if distortion_model:
+                        px, py = distortion_model.correct_theoretical_point(px, py)
 
             # Map to SVG units
             wx_svg, wy_svg = map_system.screen_to_world(px, py)
-            logging.debug(
-                f"ArucoDetector: Marker {marker_id} final screen {px:.1f},{py:.1f} -> SVG {wx_svg:.1f},{wy_svg:.1f}"
-            )
-
             tokens.append(
                 Token(
                     id=marker_id,
@@ -290,7 +288,7 @@ class ArucoTokenDetector:
                     marker_y=wy_svg,
                     marker_z=height_mm,
                     confidence=1.0,
-                    is_duplicate=False,  # detect_raw already resolved duplicates
+                    is_duplicate=False,
                     type=token_type,
                 )
             )
@@ -307,6 +305,7 @@ class ArucoTokenDetector:
         distortion_model: Optional["ProjectorDistortionModel"] = None,
         projector_matrix: Optional[np.ndarray] = None,
         projector_3d_model: Optional["Projector3DModel"] = None,
+        projection_service: Optional["ProjectionService"] = None,
     ) -> List[Token]:
         """
         Legacy/Combined method for single-threaded use.
@@ -324,6 +323,7 @@ class ArucoTokenDetector:
             default_height_mm=default_height_mm,
             distortion_model=distortion_model,
             projector_3d_model=projector_3d_model,
+            projection_service=projection_service,
         )
 
     def _get_fov_mask(

@@ -38,6 +38,7 @@ class ExclusiveVisionLayer(VisibilityBaseLayer):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.mask_override: Optional[np.ndarray] = None
+
     def set_mask(self, mask: Optional[np.ndarray]):
         self.mask_override = mask
 
@@ -56,6 +57,7 @@ class ExclusiveVisionLayer(VisibilityBaseLayer):
             self.state.grid_metadata_version,
             self.state.viewport_version,
         )
+
     def _generate_patches(self, current_time: float) -> List[ImagePatch]:
         if self.mask_override is None:
             return []

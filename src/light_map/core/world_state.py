@@ -284,6 +284,14 @@ class WorldState:
         self._grid_metadata_atom.update(value)
 
     @property
+    def calibration(self) -> Any:
+        return self._calibration_atom.value
+
+    @calibration.setter
+    def calibration(self, value: Any):
+        self._calibration_atom.update(value)
+
+    @property
     def grid_spacing_svg(self) -> float:
         return self._grid_metadata_atom.value.spacing_svg
 

@@ -37,7 +37,7 @@ class Projector3DPatternLayer(Layer):
 
     def increment_version(self):
         if self.state:
-            self.state.calibration_version = True  # Trigger setter to update timestamp
+            self.state.calibration = True  # Trigger setter to update timestamp
 
     def _generate_patches(self, current_time: float) -> List[ImagePatch]:
         if self.width <= 0 or self.height <= 0:

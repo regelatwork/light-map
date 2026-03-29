@@ -864,7 +864,7 @@ class InteractiveApp:
         # Restore Visibility Highlight in state if loaded from persistence
         if np.any(self.fow_manager.visible_mask):
             self.state.visibility_mask = self.fow_manager.visible_mask.copy()
-            self.state.fow_mask = self.fow_manager.mask.copy()
+            self.state.fow_mask = self.fow_manager.explored_mask.copy()
 
         if load_session:
             session_dir = None

@@ -165,7 +165,6 @@ export const deleteProfile = async (name: string) => {
 export const updateSystemConfig = async (update: {
   enable_hand_masking?: boolean;
   enable_aruco_masking?: boolean;
-  parallax_factor?: number;
   gm_position?: string;
 }) => {
   const host = import.meta.env.DEV ? 'http://localhost:8000' : window.location.origin;

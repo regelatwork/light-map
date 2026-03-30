@@ -93,7 +93,6 @@ class GridConfig(BaseModel):
 class SystemConfigUpdate(BaseModel):
     enable_hand_masking: Optional[bool] = None
     enable_aruco_masking: Optional[bool] = None
-    parallax_factor: Optional[float] = None
     gm_position: Optional[str] = None
 
 
@@ -583,8 +582,6 @@ def create_app(
             data["enable_hand_masking"] = config.enable_hand_masking
         if config.enable_aruco_masking is not None:
             data["enable_aruco_masking"] = config.enable_aruco_masking
-        if config.parallax_factor is not None:
-            data["parallax_factor"] = config.parallax_factor
         if config.gm_position is not None:
             data["gm_position"] = config.gm_position
 

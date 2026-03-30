@@ -383,7 +383,6 @@ class AppConfig:
     aruco_mask_padding: int = DEFAULT_ARUCO_MASK_PADDING
     gm_position: GmPosition = GmPosition.NONE
     projector_ppi: float = DEFAULT_PROJECTOR_PPI
-    parallax_factor: float = -1.0
     calibration_box_height_mm: float = 78.0
     calibration_box_width_mm: float = 188.0
     calibration_box_length_mm: float = 295.0
@@ -410,7 +409,6 @@ class AppConfig:
         )
         self.gm_position = getattr(gs, "gm_position", self.gm_position)
         self.projector_ppi = getattr(gs, "projector_ppi", self.projector_ppi)
-        self.parallax_factor = getattr(gs, "parallax_factor", self.parallax_factor)
         self.calibration_box_height_mm = getattr(
             gs, "calibration_box_height_mm", self.calibration_box_height_mm
         )

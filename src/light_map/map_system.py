@@ -220,3 +220,15 @@ class MapSystem:
             f"MapSystem: world {wx:.1f},{wy:.1f} -> screen {p.x:.1f},{p.y:.1f}"
         )
         return p.x, p.y
+
+    def world_mm_to_svg(self, wx_mm: float, wy_mm: float) -> Tuple[float, float]:
+        """
+        Converts physical world coordinates (mm) to map (SVG) coordinates.
+        This assumes the projector's PPI and that origin (0,0) in mm
+        maps to (0,0) in projector pixels.
+        """
+        ppi = getattr(self.config, "projector_ppi", 55.0)
+        ppi_mm = ppi / 25.4
+        sx = wx_mm * ppi_mm
+        sy = wy_mm * ppi_mm
+        return self.screen_to_world(sx, sy)

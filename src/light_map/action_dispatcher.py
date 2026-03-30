@@ -236,11 +236,6 @@ def handle_update_system_config(
         app.config.enable_aruco_masking = gs.enable_aruco_masking
         changed = True
 
-    if "parallax_factor" in payload:
-        gs.parallax_factor = payload["parallax_factor"]
-        app.config.parallax_factor = gs.parallax_factor
-        changed = True
-
     if "gm_position" in payload:
         try:
             new_pos = GmPosition(payload["gm_position"])

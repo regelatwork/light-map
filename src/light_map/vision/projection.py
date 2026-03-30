@@ -108,6 +108,11 @@ class Projector3DModel:
         self.homography_matrix = homography_matrix
         self.use_3d = use_3d
 
+        self.projector_center = None
+        if self.rotation_vector is not None and self.translation_vector is not None:
+            R, _ = cv2.Rodrigues(self.rotation_vector)
+            self.projector_center = -(R.T @ self.translation_vector.flatten())
+
     @property
     def is_calibrated_3d(self) -> bool:
         """Returns True if full 3D calibration data is present."""
@@ -217,14 +222,26 @@ class ProjectionService:
         self.distortion_model = distortion_model
 
     def project_camera_to_projector(
-        self, camera_pixels: np.ndarray, height_mm: float = 0.0
+        self,
+        camera_pixels: np.ndarray,
+        height_mm: float = 0.0,
+        target_z: Optional[float] = None,
     ) -> np.ndarray:
         """
-        Maps camera pixel coordinates to projector pixel coordinates,
-        accounting for physical height (parallax correction).
+        Maps camera pixel coordinates to projector pixel coordinates.
+
+        Args:
+            camera_pixels: (N, 2) array of camera pixel coordinates.
+            height_mm: The physical height of the object seen at camera_pixels.
+            target_z: The physical height where the projector should hit.
+                     If None, it defaults to height_mm (hits the object).
+                     If 0.0, it hits the ground directly under the object.
         """
         if camera_pixels.size == 0:
             return np.zeros((0, 2), dtype=np.float32)
+
+        if target_z is None:
+            target_z = height_mm
 
         # 1. Use 3D Projective Model if available and enabled
         if self.projector_model.is_calibrated_3d and self.projector_model.use_3d:
@@ -235,9 +252,9 @@ class ProjectionService:
             # World (X, Y, Z) -> Projector Pixels
             # We must use the correct Z coordinate (which might be negative)
             N = world_points_2d.shape[0]
-            target_z = height_mm * np.sign(self.camera_model.camera_center[2])
+            target_world_z = target_z * np.sign(self.camera_model.camera_center[2])
             world_points_3d = np.hstack(
-                [world_points_2d, np.full((N, 1), target_z)]
+                [world_points_2d, np.full((N, 1), target_world_z)]
             )  # (N, 3)
             return self.projector_model.project_world_to_projector(world_points_3d)
 
@@ -247,14 +264,31 @@ class ProjectionService:
             camera_pixels, height_mm=height_mm
         )
 
+        # Target point in world coords (physical height target_z)
+        target_world_z = target_z * np.sign(self.camera_model.camera_center[2])
+        target_points_3d = np.hstack(
+            [world_points_2d, np.full((world_points_2d.shape[0], 1), target_world_z)]
+        )
+
+        # Find the floor intersection (Z=0) from the projector's perspective
+        # so we can use the ground-calibrated homography.
+        proj_pos = self.projector_model.projector_center
+        if proj_pos is None:
+            # Fallback to co-located assumption (camera is the projector)
+            proj_pos = self.camera_model.camera_center
+
+        # C = |target_z / Proj_z| is the proportional distance to the floor
+        C = np.abs(target_z / (proj_pos[2] + 1e-9))
+
+        # Pm0 = (P_target - C * Proj) / (1 - C)
+        # This point Pm0 is on the floor (Z=0) and on the ray from Proj through P_target.
+        pm0 = (target_points_3d - C * proj_pos.reshape(1, 3)) / (1.0 - C + 1e-9)
+
         # A. Use Homography if available (maps Camera at Z=0 to Projector)
-        # To use the homography correctly for H > 0, we project the world point
-        # BACK to the camera at Z=0.
         if self.projector_model.homography_matrix is not None:
-            # Find where the camera WOULD see the ground point (X, Y, 0)
-            ground_camera_pixels = self.camera_model.project_world_to_camera(
-                np.hstack([world_points_2d, np.zeros((world_points_2d.shape[0], 1))])
-            )
+            # Find the camera pixel that sees the floor point pm0
+            ground_camera_pixels = self.camera_model.project_world_to_camera(pm0)
+
             camera_pixels_reshaped = ground_camera_pixels.reshape(-1, 1, 2).astype(
                 np.float32
             )
@@ -272,8 +306,8 @@ class ProjectionService:
         # B. PPI-based fallback (Assumes orthographic projector alignment)
         if self.ppi > 0:
             ppi_mm = self.ppi / 25.4
-            px = world_points_2d[:, 0] * ppi_mm
-            py = world_points_2d[:, 1] * ppi_mm
+            px = pm0[:, 0] * ppi_mm
+            py = pm0[:, 1] * ppi_mm
             pts = np.vstack([px, py]).T
             if self.distortion_model:
                 # Distortion model expects (N, 1, 2) but we can use correct_theoretical_point loop
@@ -284,5 +318,5 @@ class ProjectionService:
                 return np.array(res, dtype=np.float32)
             return pts.astype(np.float32)
 
-        # 3. Last Fallback: Just return reconstructed world points
+        # 3. Last Fallback: Just return world points (not floor intersection)
         return world_points_2d.astype(np.float32)

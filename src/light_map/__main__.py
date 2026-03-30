@@ -231,7 +231,6 @@ def run_app(args):
         hand_mask_padding=gs.hand_mask_padding,
         enable_aruco_masking=gs.enable_aruco_masking,
         aruco_mask_padding=gs.aruco_mask_padding,
-        parallax_factor=gs.parallax_factor,
         gm_position=gs.gm_position,
         projector_ppi=gs.projector_ppi,
         aruco_defaults=gs.aruco_defaults,
@@ -302,7 +301,6 @@ def run_app(args):
                 "remote_port": args.remote_port,
                 "enable_hand_masking": app.config.enable_hand_masking,
                 "enable_aruco_masking": app.config.enable_aruco_masking,
-                "parallax_factor": app.config.parallax_factor,
                 "gm_position": str(app.config.gm_position),
                 "debug_mode": app.debug_mode,
                 "fow_disabled": app.fow_manager.is_disabled
@@ -430,7 +428,6 @@ def run_app(args):
                     last_debug_mode = None
                     last_map_path = None
                     last_fow_disabled = None
-                    last_parallax_factor = None
                     last_gm_position = None
                     last_hand_masking = None
                     last_aruco_masking = None
@@ -445,7 +442,6 @@ def run_app(args):
                             last_debug_mode, \
                             last_map_path, \
                             last_fow_disabled, \
-                            last_parallax_factor, \
                             last_gm_position, \
                             last_hand_masking, \
                             last_aruco_masking, \
@@ -567,7 +563,6 @@ def run_app(args):
                                 or app.debug_mode != last_debug_mode
                                 or app.current_map_path != last_map_path
                                 or fow_disabled != last_fow_disabled
-                                or app.config.parallax_factor != last_parallax_factor
                                 or str(app.config.gm_position) != last_gm_position
                                 or app.config.enable_hand_masking != last_hand_masking
                                 or app.config.enable_aruco_masking != last_aruco_masking
@@ -586,7 +581,6 @@ def run_app(args):
                                     "remote_port": args.remote_port,
                                     "enable_hand_masking": app.config.enable_hand_masking,
                                     "enable_aruco_masking": app.config.enable_aruco_masking,
-                                    "parallax_factor": app.config.parallax_factor,
                                     "gm_position": str(app.config.gm_position),
                                     "debug_mode": app.debug_mode,
                                     "fow_disabled": fow_disabled,
@@ -641,7 +635,6 @@ def run_app(args):
                                 last_debug_mode = app.debug_mode
                                 last_map_path = app.current_map_path
                                 last_fow_disabled = fow_disabled
-                                last_parallax_factor = app.config.parallax_factor
                                 last_gm_position = str(app.config.gm_position)
                                 last_hand_masking = app.config.enable_hand_masking
                                 last_aruco_masking = app.config.enable_aruco_masking

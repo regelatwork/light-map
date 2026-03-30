@@ -15,7 +15,6 @@ vi.mock('../hooks/useSystemState', () => ({
       proj_res: [0, 0],
       enable_hand_masking: false,
       enable_aruco_masking: true,
-      parallax_factor: -1.0,
       gm_position: 'None',
       debug_mode: false,
       fow_disabled: false,

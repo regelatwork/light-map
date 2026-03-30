@@ -27,7 +27,6 @@ vi.mock('../hooks/useSystemState', () => ({
       proj_res: [0, 0],
       enable_hand_masking: false,
       enable_aruco_masking: true,
-      parallax_factor: -1.0,
       gm_position: 'None',
       debug_mode: false,
       fow_disabled: false,
@@ -91,7 +90,6 @@ describe('ConfigurationSidebar', () => {
         debug_mode: false,
         enable_hand_masking: false,
         enable_aruco_masking: true,
-        parallax_factor: -1.0,
         fow_disabled: false,
         token_profiles: {
           small: { size: 1, height_mm: 15 },
@@ -159,7 +157,6 @@ describe('ConfigurationSidebar', () => {
         debug_mode: false,
         enable_hand_masking: false,
         enable_aruco_masking: true,
-        parallax_factor: -1.0,
         fow_disabled: false,
         token_profiles: {
           small: { size: 1, height_mm: 15 },
@@ -226,7 +223,6 @@ describe('ConfigurationSidebar', () => {
         debug_mode: false,
         enable_hand_masking: false,
         enable_aruco_masking: true,
-        parallax_factor: -1.0,
         fow_disabled: false,
         token_profiles: {
           small: { size: 1, height_mm: 15 },
@@ -296,7 +292,6 @@ describe('ConfigurationSidebar', () => {
         debug_mode: false,
         enable_hand_masking: false,
         enable_aruco_masking: true,
-        parallax_factor: -1.0,
         fow_disabled: false,
         aruco_defaults: {
           42: { name: 'Deep Thought', type: 'NPC', color: '#0000ff' },

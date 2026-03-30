@@ -17,13 +17,6 @@ export const VisionControl: FC<VisionControlProps> = ({ showOnlyToggles = false 
     updateSystemConfig({ enable_aruco_masking: !config.enable_aruco_masking });
   };
 
-  const handleParallaxChange = (value: string) => {
-    const factor = parseFloat(value);
-    if (!isNaN(factor)) {
-      updateSystemConfig({ parallax_factor: factor });
-    }
-  };
-
   const handleToggleFow = () => {
     injectAction('TOGGLE_FOW');
   };
@@ -132,29 +125,6 @@ export const VisionControl: FC<VisionControlProps> = ({ showOnlyToggles = false 
           </button>
         </div>
 
-        <div className="p-6 bg-gray-50 rounded-xl border border-gray-100 space-y-4">
-          <div className="flex justify-between items-center">
-            <h4 className="font-bold text-gray-800">Parallax Factor</h4>
-            <span className="text-sm text-blue-600 font-mono font-bold bg-blue-50 px-2 py-0.5 rounded">
-              {config?.parallax_factor?.toFixed(2) || '0.00'}
-            </span>
-          </div>
-          <input
-            type="range"
-            min="-2.0"
-            max="1.0"
-            step="0.05"
-            value={config?.parallax_factor || 0}
-            onChange={(e) => handleParallaxChange(e.target.value)}
-            className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
-          />
-          <div className="flex justify-between text-[10px] text-gray-400 uppercase font-bold tracking-wider">
-            <span>Inward</span>
-            <span>Camera Plane</span>
-            <span>Outward</span>
-          </div>
-        </div>
-
         <div className="grid grid-cols-2 gap-4">
           <button
             onClick={handleResetFow}
@@ -201,29 +171,6 @@ export const VisionControl: FC<VisionControlProps> = ({ showOnlyToggles = false 
         >
           {config?.enable_aruco_masking ? 'ENABLED' : 'DISABLED'}
         </button>
-      </div>
-
-      <div className="space-y-1">
-        <div className="flex justify-between items-center">
-          <label className="block text-xs font-medium text-gray-700">Parallax Factor</label>
-          <span className="text-[10px] text-gray-500 font-mono">
-            {config?.parallax_factor?.toFixed(2) || '0.00'}
-          </span>
-        </div>
-        <input
-          type="range"
-          min="-2.0"
-          max="1.0"
-          step="0.05"
-          value={config?.parallax_factor || 0}
-          onChange={(e) => handleParallaxChange(e.target.value)}
-          className="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
-        />
-        <div className="flex justify-between text-[8px] text-gray-400 uppercase font-bold">
-          <span>Inward</span>
-          <span>Camera</span>
-          <span>Outward</span>
-        </div>
       </div>
 
       <div className="flex items-center justify-between">

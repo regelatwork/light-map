@@ -89,7 +89,6 @@ class GlobalMapConfig:
     hand_mask_padding: int = 30
     enable_aruco_masking: bool = True
     aruco_mask_padding: int = 10
-    parallax_factor: float = -1.0
     calibration_box_height_mm: float = 78.0
     calibration_box_width_mm: float = 188.0
     calibration_box_length_mm: float = 295.0
@@ -222,7 +221,6 @@ class MapConfigManager:
                 hand_mask_padding=global_data.get("hand_mask_padding", 30),
                 enable_aruco_masking=global_data.get("enable_aruco_masking", True),
                 aruco_mask_padding=global_data.get("aruco_mask_padding", 10),
-                parallax_factor=global_data.get("parallax_factor", -1.0),
                 calibration_box_height_mm=global_data.get(
                     "calibration_box_height_mm", 78.0
                 ),

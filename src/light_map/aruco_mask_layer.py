@@ -108,7 +108,8 @@ class ArucoMaskLayer(Layer):
                 elif profile_name in getattr(self.config, "token_profiles", {}):
                     height_mm = self.config.token_profiles[profile_name].height_mm
 
-            # corners is (4, 2) in camera pixel coordinates
+            # corners is (4, 2) in camera pixel coordinates.
+            # We target the actual height of the token for mask projection.
             projector_corners = self._transform_pts(corners, height_mm=height_mm)
             projector_corners = np.array(projector_corners, dtype=np.float32).reshape(
                 -1, 2

@@ -153,7 +153,6 @@ export interface SystemConfig {
   proj_res: [number, number];
   enable_hand_masking: boolean;
   enable_aruco_masking: boolean;
-  parallax_factor: number;
   gm_position: GmPosition;
   debug_mode: boolean;
   fow_disabled: boolean;
@@ -209,7 +208,6 @@ export const INITIAL_STATE: SystemState = {
     proj_res: [0, 0],
     enable_hand_masking: false,
     enable_aruco_masking: true,
-    parallax_factor: -1.0,
     gm_position: GmPosition.NONE,
     debug_mode: false,
     fow_disabled: false,

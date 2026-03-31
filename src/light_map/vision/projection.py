@@ -268,25 +268,30 @@ class ProjectionService:
             return self.projector_model.project_world_to_projector(world_points_3d)
 
         # 2. Use 2D Homography or PPI-based projection (with parallax correction)
-        # We MUST reconstruct world points first to account for height (parallax)
-        # We reconstruct at height_mm (where the object is).
-        target_points_3d = self.camera_model.reconstruct_world_points_3d(
+        # B = Point on the marker (at physical height_mm) reconstructed from camera
+        marker_pts_3d = self.camera_model.reconstruct_world_points_3d(
             camera_pixels, height_mm=height_mm
         )
 
-        # Find the floor intersection (Z=0) from the projector's perspective
-        # so we can use the ground-calibrated homography.
+        # We want the projector ray passing through marker_pts_3d to hit the marker.
+        # Since the homography is calibrated for the floor (Z=0), we find where
+        # that projector ray hits the floor.
         proj_pos = self.projector_model.projector_center
         if proj_pos is None:
-            # Fallback to co-located assumption (camera is the projector)
+            # Fallback to co-located assumption
             proj_pos = self.camera_model.camera_center
 
-        # C = |target_z / Proj_z| is the proportional distance to the floor
-        C = np.abs(target_z / (proj_pos[2] + 1e-9))
-
-        # Pm0 = (P_target - C * Proj) / (1 - C)
-        # This point Pm0 is on the floor (Z=0) and on the ray from Proj through P_target.
-        pm0 = (target_points_3d - C * proj_pos.reshape(1, 3)) / (1.0 - C + 1e-9)
+        # Projector ray from Pj through B hits the ground at P:
+        # P = Pj + s * (B - Pj)
+        # P.z = 0  => 0 = Pj.z + s * (B.z - Pj.z)
+        # s = -Pj.z / (B.z - Pj.z)
+        # Since B.z = height_mm and Pj is above the table (Pj.z > 0 or < 0 depending on system):
+        # We use the Z coordinates directly.
+        pj_z = proj_pos[2]
+        s = -pj_z / (height_mm - pj_z + 1e-9)
+        
+        # Ground points P (pm0)
+        pm0 = proj_pos.reshape(1, 3) + s * (marker_pts_3d - proj_pos.reshape(1, 3))
 
         # A. Use Homography if available (maps Camera at Z=0 to Projector)
         if self.projector_model.homography_matrix is not None:

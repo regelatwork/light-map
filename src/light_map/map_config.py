@@ -14,6 +14,10 @@ from light_map.common_types import (
     GmPosition,
     NamingStyle,
 )
+from light_map.constants import (
+    DEFAULT_TOKEN_HEIGHT_MM,
+    DEFAULT_ARUCO_MASK_PADDING,
+)
 from light_map.session_manager import SessionManager
 from light_map.core.storage import StorageManager
 from light_map.core.config_store import ConfigStore
@@ -32,7 +36,7 @@ STATE_FILE = _DEFAULT_STORAGE.get_config_path("map_state.json")
 @dataclass
 class SizeProfile:
     size: int = 1
-    height_mm: float = 50.0
+    height_mm: float = DEFAULT_TOKEN_HEIGHT_MM
 
 
 @dataclass
@@ -80,7 +84,7 @@ class GlobalMapConfig:
             "small": SizeProfile(1, 15.0),
             "medium": SizeProfile(1, 25.0),
             "large": SizeProfile(2, 40.0),
-            "huge": SizeProfile(3, 60.0),
+            "huge": SizeProfile(3, DEFAULT_TOKEN_HEIGHT_MM),
         }
     )
     aruco_defaults: Dict[int, ArucoDefinition] = field(default_factory=dict)
@@ -88,7 +92,7 @@ class GlobalMapConfig:
     enable_hand_masking: bool = False
     hand_mask_padding: int = 30
     enable_aruco_masking: bool = True
-    aruco_mask_padding: int = 10
+    aruco_mask_padding: int = DEFAULT_ARUCO_MASK_PADDING
     calibration_box_height_mm: float = 78.0
     calibration_box_width_mm: float = 188.0
     calibration_box_length_mm: float = 295.0
@@ -595,14 +599,14 @@ class MapConfigManager:
                 name=name,
                 type="NPC",
                 size=1,
-                height_mm=50.0,
+                height_mm=DEFAULT_TOKEN_HEIGHT_MM,
                 is_known=False,
             )
 
         # 4. Resolve dimensions
         # Start with defaults
         size = 1
-        height_mm = 50.0
+        height_mm = DEFAULT_TOKEN_HEIGHT_MM
 
         # If profile is specified, apply it first
         if definition.profile:

@@ -57,8 +57,9 @@ class HandMaskLayer(Layer):
         if self.projection_service:
             # Assume hand is slightly above the table (e.g., 20mm)
             # This helps the mask better align with the physical hand.
+            # We prefer homography for masking because it's usually better calibrated for the tabletop.
             return self.projection_service.project_camera_to_projector(
-                cam_pts, height_mm=20.0
+                cam_pts, height_mm=20.0, prefer_homography=True
             )
 
         # Fallback to standard surface homography (Z=0)

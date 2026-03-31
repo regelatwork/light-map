@@ -90,10 +90,11 @@ def test_aruco_mask_layer_rendering(mock_state, mock_config):
 
     # Check data
     assert patch.data.shape == (121, 121, 4)
-    # Center of patch should be grey (128, 128, 128)
+    # Center of patch should be the default mask color
     # Patch center in local coords is around (60, 60)
     center_pixel = patch.data[60, 60]
-    assert np.array_equal(center_pixel[:3], [128, 128, 128])
+    from light_map.constants import DEFAULT_ARUCO_MASK_COLOR
+    assert np.array_equal(center_pixel[:3], DEFAULT_ARUCO_MASK_COLOR[:3])
     assert center_pixel[3] == 255
 
 

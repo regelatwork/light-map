@@ -30,15 +30,15 @@ class CameraProjectionModel:
             self.rotation_matrix_inv @ self.translation_vector.flatten()
         )
 
-    def reconstruct_world_points(
+    def reconstruct_world_points_3d(
         self, pixel_points: np.ndarray, height_mm: float = 0.0
     ) -> np.ndarray:
         """
         Intersects rays from the camera through pixel_points with the plane Z = height_mm.
-        Returns (N, 2) array of [X, Y] world coordinates.
+        Returns (N, 3) array of [X, Y, Z] world coordinates.
         """
         if pixel_points.size == 0:
-            return np.zeros((0, 2), dtype=np.float32)
+            return np.zeros((0, 3), dtype=np.float32)
 
         # 1. Undistort points and convert to normalized camera coordinates
         pixels_reshaped = pixel_points.reshape(-1, 1, 2).astype(np.float32)
@@ -69,7 +69,18 @@ class CameraProjectionModel:
             self.camera_center.reshape(3, 1) - p0
         )
 
-        return world_points_3d[:2, :].T.astype(np.float32)
+        return world_points_3d.T.astype(np.float32)
+
+    def reconstruct_world_points(
+        self, pixel_points: np.ndarray, height_mm: float = 0.0
+    ) -> np.ndarray:
+        """
+        Reconstructs the (X, Y) world coordinates for objects seen at pixel_points,
+        assuming they are at physical height_mm.
+        Returns (N, 2) array of [X, Y] world coordinates.
+        """
+        res_3d = self.reconstruct_world_points_3d(pixel_points, height_mm=height_mm)
+        return res_3d[:, :2].astype(np.float32)
 
     def project_world_to_camera(self, world_points: np.ndarray) -> np.ndarray:
         """Standard projection of 3D world points to camera pixels."""
@@ -143,9 +154,6 @@ class Projector3DModel:
             # We NO LONGER fall back to homography here because the homography
             # in this model is typically Camera-to-Projector, NOT World-to-Projector.
             # ProjectionService handles the fallback by applying homography to camera pixels.
-            logging.debug(
-                "Projector3DModel: No 3D calibration for world-to-projector mapping."
-            )
             return world_points[:, :2].astype(np.float32)
 
     @staticmethod
@@ -226,6 +234,7 @@ class ProjectionService:
         camera_pixels: np.ndarray,
         height_mm: float = 0.0,
         target_z: Optional[float] = None,
+        prefer_homography: bool = True,
     ) -> np.ndarray:
         """
         Maps camera pixel coordinates to projector pixel coordinates.
@@ -236,6 +245,9 @@ class ProjectionService:
             target_z: The physical height where the projector should hit.
                      If None, it defaults to height_mm (hits the object).
                      If 0.0, it hits the ground directly under the object.
+            prefer_homography: If True, uses the 2D homography (with parallax correction)
+                               instead of the 3D projective model. This is often more
+                               accurate for the tabletop surface.
         """
         if camera_pixels.size == 0:
             return np.zeros((0, 2), dtype=np.float32)
@@ -243,31 +255,23 @@ class ProjectionService:
         if target_z is None:
             target_z = height_mm
 
-        # 1. Use 3D Projective Model if available and enabled
-        if self.projector_model.is_calibrated_3d and self.projector_model.use_3d:
-            # Camera Pixels -> World (X, Y) at physical height_mm
-            world_points_2d = self.camera_model.reconstruct_world_points(
-                camera_pixels, height_mm=height_mm
+        # 1. Use 3D Projective Model ONLY if preferred and available
+        if (
+            not prefer_homography
+            and self.projector_model.is_calibrated_3d
+            and self.projector_model.use_3d
+        ):
+            # Camera Pixels -> World (X, Y, Z) at physical target_z
+            world_points_3d = self.camera_model.reconstruct_world_points_3d(
+                camera_pixels, height_mm=target_z
             )
-            # World (X, Y, Z) -> Projector Pixels
-            # We must use the correct Z coordinate (which might be negative)
-            N = world_points_2d.shape[0]
-            target_world_z = target_z * np.sign(self.camera_model.camera_center[2])
-            world_points_3d = np.hstack(
-                [world_points_2d, np.full((N, 1), target_world_z)]
-            )  # (N, 3)
             return self.projector_model.project_world_to_projector(world_points_3d)
 
-        # 2. Fallback to 2D Homography or PPI-based projection
+        # 2. Use 2D Homography or PPI-based projection (with parallax correction)
         # We MUST reconstruct world points first to account for height (parallax)
-        world_points_2d = self.camera_model.reconstruct_world_points(
+        # We reconstruct at height_mm (where the object is).
+        target_points_3d = self.camera_model.reconstruct_world_points_3d(
             camera_pixels, height_mm=height_mm
-        )
-
-        # Target point in world coords (physical height target_z)
-        target_world_z = target_z * np.sign(self.camera_model.camera_center[2])
-        target_points_3d = np.hstack(
-            [world_points_2d, np.full((world_points_2d.shape[0], 1), target_world_z)]
         )
 
         # Find the floor intersection (Z=0) from the projector's perspective
@@ -286,7 +290,8 @@ class ProjectionService:
 
         # A. Use Homography if available (maps Camera at Z=0 to Projector)
         if self.projector_model.homography_matrix is not None:
-            # Find the camera pixel that sees the floor point pm0
+            # IMPORTANT: The homography matrix maps camera pixels (at Z=0) to projector pixels.
+            # So we find the camera pixel that *sees* the floor point pm0.
             ground_camera_pixels = self.camera_model.project_world_to_camera(pm0)
 
             camera_pixels_reshaped = ground_camera_pixels.reshape(-1, 1, 2).astype(
@@ -319,4 +324,4 @@ class ProjectionService:
             return pts.astype(np.float32)
 
         # 3. Last Fallback: Just return world points (not floor intersection)
-        return world_points_2d.astype(np.float32)
+        return target_points_3d[:, :2].astype(np.float32)

@@ -4,7 +4,7 @@ import cv2
 import numpy as np
 from .common_types import Layer, LayerMode, ImagePatch, AppConfig
 from .core.world_state import WorldState
-from .constants import DEFAULT_ARUCO_MASK_COLOR
+from .constants import DEFAULT_ARUCO_MASK_COLOR, DEFAULT_TOKEN_HEIGHT_MM
 from .vision.projection import ProjectionService
 
 
@@ -41,7 +41,12 @@ class ArucoMaskLayer(Layer):
         )
         return (v << 1) | enabled_bit
 
-    def _transform_pts(self, camera_pixels: Any, height_mm: float = 0.0) -> np.ndarray:
+    def _transform_pts(
+        self,
+        camera_pixels: Any,
+        height_mm: float = 0.0,
+        prefer_homography: bool = True,
+    ) -> np.ndarray:
         """
         Transforms camera pixel points to projector space.
         Uses ProjectionService if available, otherwise falls back to homography.
@@ -53,7 +58,7 @@ class ArucoMaskLayer(Layer):
 
         if self.projection_service:
             return self.projection_service.project_camera_to_projector(
-                camera_pixels, height_mm=height_mm
+                camera_pixels, height_mm=height_mm, prefer_homography=prefer_homography
             )
 
         # Fallback to standard surface homography (Z=0)
@@ -87,7 +92,7 @@ class ArucoMaskLayer(Layer):
         limit_w = self.config.width
         limit_h = self.config.height
 
-        default_height = 50.0  # Default height in mm if no profile found
+        default_height = DEFAULT_TOKEN_HEIGHT_MM
 
         for i, corners in enumerate(corners_list):
             marker_id = ids[i] if i < len(ids) else -1
@@ -110,7 +115,10 @@ class ArucoMaskLayer(Layer):
 
             # corners is (4, 2) in camera pixel coordinates.
             # We target the actual height of the token for mask projection.
-            projector_corners = self._transform_pts(corners, height_mm=height_mm)
+            # We prefer homography for masking because it's usually better calibrated for the tabletop.
+            projector_corners = self._transform_pts(
+                corners, height_mm=height_mm, prefer_homography=True
+            )
             projector_corners = np.array(projector_corners, dtype=np.float32).reshape(
                 -1, 2
             )
@@ -125,14 +133,7 @@ class ArucoMaskLayer(Layer):
 
             patch_w, patch_h = int(x2 - x1), int(y2 - y1)
             if patch_w <= 0 or patch_h <= 0:
-                logging.debug(
-                    f"ArucoMaskLayer: Marker {marker_id} off-limits: x1={x1}, y1={y1}, x2={x2}, y2={y2}"
-                )
                 continue
-
-            logging.debug(
-                f"ArucoMaskLayer: Final patch for marker {marker_id}: x={x1}, y={y1}, w={patch_w}, h={patch_h}"
-            )
 
             # Local coordinates for the patch
             local_corners = projector_corners - [x1, y1]

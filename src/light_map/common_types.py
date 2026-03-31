@@ -54,6 +54,7 @@ class CalibrationState:
     captured_count: int = 0
     total_required: int = 0
     candidate_ppi: float = 0.0
+    step_index: int = 0
 
 
 class Layer(ABC):

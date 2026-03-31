@@ -1813,7 +1813,9 @@ class Projector3DCalibrationScene(Scene):
 
         from light_map.common_types import CalibrationState
 
-        self.context.state.calibration = CalibrationState(stage="PATTERN_UPDATE")
+        self.context.state.calibration = CalibrationState(
+            stage="PATTERN_UPDATE", step_index=self.current_box_pos_idx
+        )
 
         self.feedback_layer.box_markers = box_markers
         self.feedback_layer.table_markers = table_markers
@@ -1987,10 +1989,9 @@ class Projector3DCalibrationScene(Scene):
                 rms,
             ) = result
             logging.info("Projector 3D Calibration Successful! RMS: %.3f", rms)
-            # Save results
-            ext_file = os.path.join(
-                self.context.app_config.storage_manager.get_config_dir(),
-                "projector_3d_calibration.npz",
+            # Save results to data directory (where loader expects it)
+            ext_file = self.context.app_config.storage_manager.get_data_path(
+                "projector_3d_calibration.npz"
             )
             np.savez(
                 ext_file,

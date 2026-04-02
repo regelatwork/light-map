@@ -203,8 +203,6 @@ class ArucoTokenDetector:
         token_configs: Dict[int, Dict] = None,
         ppi: float = 55.0,
         default_height_mm: float = DEFAULT_TOKEN_HEIGHT_MM,
-        distortion_model: Optional["ProjectorDistortionModel"] = None,
-        projector_3d_model: Optional["Projector3DModel"] = None,
         projection_service: Optional["ProjectionService"] = None,
     ) -> List[Token]:
         """
@@ -221,13 +219,12 @@ class ArucoTokenDetector:
             return []
 
         tokens = []
-        ppi_mm = ppi / 25.4 if ppi > 0 else 0.0
 
         for i, marker_id in enumerate(ids):
             marker_corners = np.array(corners[i])
             u, v = np.mean(marker_corners, axis=0)
 
-            # Apply parallax correction
+            # Get token-specific height or use default
             height_mm = default_height_mm
             token_type = "NPC"
             if token_configs and marker_id in token_configs:
@@ -236,7 +233,7 @@ class ArucoTokenDetector:
                 token_type = config.get("type", "NPC")
 
             # 1. Reconstruct logical world position (mm) from camera perspective
-            # We want the 3D position of the marker itself first.
+            # This finds where the token actually is in the real world.
             if projection_service:
                 marker_pts_3d = (
                     projection_service.camera_model.reconstruct_world_points_3d(
@@ -248,49 +245,15 @@ class ArucoTokenDetector:
                     np.array([[u, v]], dtype=np.float32), height_mm=height_mm
                 )
 
-            marker_x_mm, marker_y_mm, marker_z_mm = marker_pts_3d[0]
-
-            # Logical world position is the vertical projection to the floor (Z=0)
-            world_x_mm, world_y_mm = marker_x_mm, marker_y_mm
+            marker_x_mm, marker_y_mm, _ = marker_pts_3d[0]
 
             # Map true world position directly to SVG (independent of projector position)
-            wx_svg, wy_svg = map_system.world_mm_to_svg(world_x_mm, world_y_mm, ppi=ppi)
+            wx_svg, wy_svg = map_system.world_mm_to_svg(marker_x_mm, marker_y_mm, ppi=ppi)
 
-            # 2. Reconstruct marker position for masking (account for projector perspective)
-            if projection_service:
-                # Find the projector pixel that hits the physical object (target_z=height_mm)
-                # This uses the Pm0 = (Pm - C*Proj)/(1-C) formula.
-                px_py = projection_service.project_camera_to_projector(
-                    np.array([[u, v]], dtype=np.float32),
-                    height_mm=height_mm,
-                    target_z=height_mm,
-                    prefer_homography=False,
-                )[0]
-                px, py = px_py
-            else:
-                # Fallback to local logic
-                if (
-                    projector_3d_model
-                    and projector_3d_model.use_3d
-                    and projector_3d_model.is_calibrated_3d
-                ):
-                    world_points_3d = np.array(
-                        [[marker_x_mm, marker_y_mm, height_mm]], dtype=np.float32
-                    )
-                    projector_pixels = projector_3d_model.project_world_to_projector(
-                        world_points_3d
-                    )[0]
-                    px, py = projector_pixels[0], projector_pixels[1]
-                else:
-                    # Very basic fallback (ignores parallax for masking)
-                    px = marker_x_mm * ppi_mm
-                    py = marker_y_mm * ppi_mm
-
-                    if distortion_model:
-                        px, py = distortion_model.correct_theoretical_point(px, py)
-
-            # Marker coordinates in SVG space are where the projector should aim to hit it
-            mx_svg, my_svg = map_system.screen_to_world(px, py)
+            # NOTE: We do NOT perform projector parallax correction here for UI anchors (marker_x/y).
+            # The ArucoMaskLayer handles its own more precise 4-corner projection using the raw corners.
+            # For simplicity and consistency with other detectors, marker_x/y matches world_x/y.
+            mx_svg, my_svg = wx_svg, wy_svg
 
             tokens.append(
                 Token(
@@ -316,9 +279,7 @@ class ArucoTokenDetector:
         token_configs: Dict[int, Dict] = None,
         ppi: float = 55.0,
         default_height_mm: float = DEFAULT_TOKEN_HEIGHT_MM,
-        distortion_model: Optional["ProjectorDistortionModel"] = None,
         projector_matrix: Optional[np.ndarray] = None,
-        projector_3d_model: Optional["Projector3DModel"] = None,
         projection_service: Optional["ProjectionService"] = None,
     ) -> List[Token]:
         """
@@ -335,8 +296,6 @@ class ArucoTokenDetector:
             token_configs=token_configs,
             ppi=ppi,
             default_height_mm=default_height_mm,
-            distortion_model=distortion_model,
-            projector_3d_model=projector_3d_model,
             projection_service=projection_service,
         )
 

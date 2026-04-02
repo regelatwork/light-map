@@ -98,9 +98,7 @@ class TokenTracker:
                 token_configs=token_configs,
                 ppi=ppi,
                 default_height_mm=default_height_mm,
-                distortion_model=distortion_model,
                 projector_matrix=projector_matrix,
-                projector_3d_model=projector_3d_model,
                 projection_service=projection_service,
             )
 

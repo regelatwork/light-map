@@ -73,8 +73,6 @@ class TrackingCoordinator:
             map_system,
             token_configs=token_configs,
             ppi=map_config.get_ppi(),
-            distortion_model=projector_config.distortion_model,
-            projector_3d_model=projector_config.projector_3d_model,
             projection_service=projection_service,
         )
 

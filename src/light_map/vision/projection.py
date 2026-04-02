@@ -237,7 +237,7 @@ class ProjectionService:
         prefer_homography: bool = True,
     ) -> np.ndarray:
         """
-        Maps camera pixel coordinates to projector pixel coordinates.
+        Maps camera pixel coordinates to projector pixel coordinates with parallax correction.
 
         Args:
             camera_pixels: (N, 2) array of camera pixel coordinates.
@@ -246,8 +246,7 @@ class ProjectionService:
                      If None, it defaults to height_mm (hits the object).
                      If 0.0, it hits the ground directly under the object.
             prefer_homography: If True, uses the 2D homography (with parallax correction)
-                               instead of the 3D projective model. This is often more
-                               accurate for the tabletop surface.
+                               instead of the 3D projective model.
         """
         if camera_pixels.size == 0:
             return np.zeros((0, 2), dtype=np.float32)
@@ -255,48 +254,46 @@ class ProjectionService:
         if target_z is None:
             target_z = height_mm
 
-        # 1. Use 3D Projective Model ONLY if preferred and available
+        # 1. Reconstruct Object Position in 3D (at height_mm)
+        # This gives us the true (X, Y) where the object actually is.
+        marker_pts_3d = self.camera_model.reconstruct_world_points_3d(
+            camera_pixels, height_mm=height_mm
+        )
+
+        # 2. Define the 3D Target Point (at target_z)
+        # We want to hit the spot directly under/over the marker at target_z.
+        target_pts_3d = marker_pts_3d.copy()
+        target_pts_3d[:, 2] = target_z
+
+        # 3. Use 3D Projective Model if preferred and available
         if (
             not prefer_homography
             and self.projector_model.is_calibrated_3d
             and self.projector_model.use_3d
         ):
-            # Camera Pixels -> World (X, Y, Z) at physical target_z
-            world_points_3d = self.camera_model.reconstruct_world_points_3d(
-                camera_pixels, height_mm=target_z
-            )
-            return self.projector_model.project_world_to_projector(world_points_3d)
+            return self.projector_model.project_world_to_projector(target_pts_3d)
 
-        # 2. Use 2D Homography or PPI-based projection (with parallax correction)
-        # B = Point on the marker (at physical height_mm) reconstructed from camera
-        marker_pts_3d = self.camera_model.reconstruct_world_points_3d(
-            camera_pixels, height_mm=height_mm
-        )
-
-        # We want the projector ray passing through marker_pts_3d to hit the marker.
-        # Since the homography is calibrated for the floor (Z=0), we find where
-        # that projector ray hits the floor.
+        # 4. Use 2D Homography or PPI-based projection (with parallax correction)
+        # To hit target_pts_3d using a floor-based (Z=0) mapping, we find where
+        # the projector ray through target_pts_3d would hit the floor.
         proj_pos = self.projector_model.projector_center
         if proj_pos is None:
             # Fallback to co-located assumption
             proj_pos = self.camera_model.camera_center
 
-        # Projector ray from Pj through B hits the ground at P:
-        # P = Pj + s * (B - Pj)
-        # P.z = 0  => 0 = Pj.z + s * (B.z - Pj.z)
-        # s = -Pj.z / (B.z - Pj.z)
-        # Since B.z = height_mm and Pj is above the table (Pj.z > 0 or < 0 depending on system):
-        # We use the Z coordinates directly.
+        # Projector ray from Pj through Target(T) hits the ground at P:
+        # P = Pj + s * (T - Pj)
+        # P.z = 0  => 0 = Pj.z + s * (T.z - Pj.z)
+        # s = -Pj.z / (T.z - Pj.z)
         pj_z = proj_pos[2]
-        s = -pj_z / (height_mm - pj_z + 1e-9)
+        s = -pj_z / (target_z - pj_z + 1e-9)
 
         # Ground points P (pm0)
-        pm0 = proj_pos.reshape(1, 3) + s * (marker_pts_3d - proj_pos.reshape(1, 3))
+        pm0 = proj_pos.reshape(1, 3) + s * (target_pts_3d - proj_pos.reshape(1, 3))
 
         # A. Use Homography if available (maps Camera at Z=0 to Projector)
         if self.projector_model.homography_matrix is not None:
-            # IMPORTANT: The homography matrix maps camera pixels (at Z=0) to projector pixels.
-            # So we find the camera pixel that *sees* the floor point pm0.
+            # Map the floor point P back to the camera pixel that sees it
             ground_camera_pixels = self.camera_model.project_world_to_camera(pm0)
 
             camera_pixels_reshaped = ground_camera_pixels.reshape(-1, 1, 2).astype(
@@ -328,5 +325,5 @@ class ProjectionService:
                 return np.array(res, dtype=np.float32)
             return pts.astype(np.float32)
 
-        # 3. Last Fallback: Just return world points (not floor intersection)
-        return marker_pts_3d[:, :2].astype(np.float32)
+        # 5. Last Fallback: Just return target world points (not floor intersection)
+        return target_pts_3d[:, :2].astype(np.float32)

@@ -57,7 +57,7 @@ class ArucoMaskLayer(Layer):
 
         if self.projection_service:
             return self.projection_service.project_camera_to_projector(
-                camera_pixels, height_mm=height_mm, prefer_homography=prefer_homography
+                camera_pixels, height_mm=height_mm, prefer_homography=prefer_homography,
             )
 
         # Fallback to standard surface homography (Z=0)

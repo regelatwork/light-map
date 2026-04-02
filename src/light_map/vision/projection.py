@@ -289,7 +289,7 @@ class ProjectionService:
         # We use the Z coordinates directly.
         pj_z = proj_pos[2]
         s = -pj_z / (height_mm - pj_z + 1e-9)
-        
+
         # Ground points P (pm0)
         pm0 = proj_pos.reshape(1, 3) + s * (marker_pts_3d - proj_pos.reshape(1, 3))
 
@@ -329,4 +329,4 @@ class ProjectionService:
             return pts.astype(np.float32)
 
         # 3. Last Fallback: Just return world points (not floor intersection)
-        return target_points_3d[:, :2].astype(np.float32)
+        return marker_pts_3d[:, :2].astype(np.float32)

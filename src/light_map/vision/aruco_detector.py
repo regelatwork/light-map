@@ -254,9 +254,7 @@ class ArucoTokenDetector:
             world_x_mm, world_y_mm = marker_x_mm, marker_y_mm
 
             # Map true world position directly to SVG (independent of projector position)
-            wx_svg, wy_svg = map_system.world_mm_to_svg(
-                world_x_mm, world_y_mm, ppi=ppi
-            )
+            wx_svg, wy_svg = map_system.world_mm_to_svg(world_x_mm, world_y_mm, ppi=ppi)
 
             # 2. Reconstruct marker position for masking (account for projector perspective)
             if projection_service:

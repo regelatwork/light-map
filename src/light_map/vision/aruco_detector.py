@@ -9,8 +9,7 @@ from light_map.vision.projection import CameraProjectionModel
 from light_map.constants import DEFAULT_TOKEN_HEIGHT_MM
 
 if TYPE_CHECKING:
-    from light_map.projector import ProjectorDistortionModel
-    from light_map.vision.projection import Projector3DModel, ProjectionService
+    from light_map.vision.projection import ProjectionService
 
 
 class ArucoTokenDetector:
@@ -248,7 +247,9 @@ class ArucoTokenDetector:
             marker_x_mm, marker_y_mm, _ = marker_pts_3d[0]
 
             # Map true world position directly to SVG (independent of projector position)
-            wx_svg, wy_svg = map_system.world_mm_to_svg(marker_x_mm, marker_y_mm, ppi=ppi)
+            wx_svg, wy_svg = map_system.world_mm_to_svg(
+                marker_x_mm, marker_y_mm, ppi=ppi
+            )
 
             # NOTE: We do NOT perform projector parallax correction here for UI anchors (marker_x/y).
             # The ArucoMaskLayer handles its own more precise 4-corner projection using the raw corners.

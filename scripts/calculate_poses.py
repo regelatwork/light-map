@@ -14,11 +14,11 @@ def get_position(rotation_vector, translation_vector):
 def main():
     home = Path.home()
     data_dir = home / ".local" / "share" / "light_map"
-    config_dir = home / ".config" / "light_map"
+    # config_dir = home / ".config" / "light_map"
 
     # Files
     camera_extrinsics_file = data_dir / "camera_extrinsics.npz"
-    projector_3d_file = config_dir / "projector_3d_calibration.npz"
+    projector_3d_file = data_dir / "projector_3d_calibration.npz"
 
     print("-" * 40)
     print("LIGHT MAP: 3D POSE CALCULATION")

@@ -281,23 +281,12 @@ class ProjectionService:
             # Fallback to co-located assumption
             proj_pos = self.camera_model.camera_center
 
-        # Projector ray from Pj through Target(T) hits the ground at P:
-        # P = Pj + s * (T - Pj)
-        # P.z = 0  => 0 = Pj.z + s * (T.z - Pj.z)
-        # s = -Pj.z / (T.z - Pj.z)
         pj_z = proj_pos[2]
-        s = -np.abs(pj_z) / (np.abs(pj_z) - target_z + 1e-9) * np.sign(pj_z)
-
-        # Ground points P (pm0)
-        pm0 = proj_pos.reshape(1, 3) + s * (target_pts_3d - proj_pos.reshape(1, 3))
-
-        # C = height_mm / (np.abs(pj_z) - height_mm)
-        # pm0 = target_pts_3d + (target_pts_3d - proj_pos.reshape(1, 3)) * C
-
-        # pm0 = target_pts_3d
+        C = height_mm / (np.abs(pj_z) - height_mm)
+        pm0 = target_pts_3d + (target_pts_3d - proj_pos.reshape(1, 3)) * C
 
         # A. Use Homography if available (maps Camera at Z=0 to Projector)
-        if False and self.projector_model.homography_matrix is not None:
+        if self.projector_model.homography_matrix is not None:
             # Map the floor point P back to the camera pixel that sees it
             ground_camera_pixels = self.camera_model.project_world_to_camera(pm0)
 
@@ -321,7 +310,7 @@ class ProjectionService:
             px = pm0[:, 0] * ppi_mm
             py = pm0[:, 1] * ppi_mm
             pts = np.vstack([px, py]).T
-            if False and self.distortion_model:
+            if self.distortion_model:
                 # Distortion model expects (N, 1, 2) but we can use correct_theoretical_point loop
                 res = []
                 for p in pts:

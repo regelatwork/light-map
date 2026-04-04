@@ -10,8 +10,8 @@ if TYPE_CHECKING:
 # --- Calibration Pattern Colors (BGRA) ---
 CALIB_BG_COLOR = (255, 255, 255, 255)
 CALIB_BORDER_COLOR = (0, 0, 0, 255)
-CALIB_TABLE_MARKER_COLOR = (0, 100, 0, 255)
-CALIB_BOX_MARKER_COLOR = (100, 0, 0, 255)
+CALIB_TABLE_MARKER_COLOR = (0, 0, 0, 255)
+CALIB_BOX_MARKER_COLOR = (0, 0, 0, 255)
 CALIB_BOX_OUTLINE_COLOR = (60, 60, 60, 255)
 
 
@@ -113,8 +113,13 @@ class Projector3DPatternLayer(Layer):
         # We warp onto a temporary layer then composite
         temp = cv2.warpPerspective(padded_marker, M, (self.width, self.height))
 
-        # Composite (simple max or addition since base is black)
-        mask = (temp > 0).any(axis=2)
+        # Composite: use a mask of where the marker is warped to ensure all pixels (including black) are copied
+        mask_src = np.full(
+            (marker_size + padding, marker_size + padding), 255, dtype=np.uint8
+        )
+        mask_warped = cv2.warpPerspective(mask_src, M, (self.width, self.height))
+        mask = mask_warped > 0
+
         img[mask, :3] = temp[mask]
 
         # Draw ID for debugging/info - Move below the marker

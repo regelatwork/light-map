@@ -867,7 +867,9 @@ class ExtrinsicsCalibrationScene(Scene):
             canvas = self._cached_canvas.copy()
         else:
             # Cache Miss: Redraw everything
-            canvas = np.full((h, w, 3), SCENE_BG_COLOR, dtype=np.uint8)  # White "Arena" for better camera contrast
+            canvas = np.full(
+                (h, w, 3), SCENE_BG_COLOR, dtype=np.uint8
+            )  # White "Arena" for better camera contrast
 
             # Draw Target Zones
             for idx, (tx, ty, tid) in enumerate(self._target_zones):
@@ -1045,7 +1047,13 @@ class ExtrinsicsCalibrationScene(Scene):
         elif self._stage == "VALIDATION":
             instr = "Victory (hold) to Accept, Fist (hold 2s) to Retry"
         draw_text_with_background(
-            canvas, instr, (50, h - 50), cv2.FONT_HERSHEY_SIMPLEX, 0.8, SCENE_INSTR_TEXT_COLOR, 2
+            canvas,
+            instr,
+            (50, h - 50),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.8,
+            SCENE_INSTR_TEXT_COLOR,
+            2,
         )
 
         return canvas
@@ -1140,7 +1148,8 @@ class PpiCalibrationScene(Scene):
     def render(self, frame: np.ndarray) -> np.ndarray:
         h, w = frame.shape[:2]
         canvas = np.full(
-            (h, w, 3), SCENE_BG_COLOR, dtype=np.uint8)  # White background for better contrast
+            (h, w, 3), SCENE_BG_COLOR, dtype=np.uint8
+        )  # White background for better contrast
 
         cx, cy = w // 2, h // 2
 
@@ -1220,7 +1229,7 @@ class PpiCalibrationScene(Scene):
                 (cx - 150, cy - 80),
                 cv2.FONT_HERSHEY_SIMPLEX,
                 1.0,
-                SCENE_SUCCESS_COLOR, # Darker green
+                SCENE_SUCCESS_COLOR,  # Darker green
                 2,
             )
             cv2.putText(

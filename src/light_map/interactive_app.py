@@ -27,6 +27,7 @@ from light_map.core.analytics import AnalyticsManager
 from light_map.core.notification import NotificationManager
 from light_map.core.layer_stack_manager import LayerStackManager
 from light_map.core.scene import Scene
+from light_map.scenes.exclusive_vision_scene import ExclusiveVisionScene
 from light_map.scenes.menu_scene import MenuScene
 from light_map.scenes.map_scene import MapScene, ViewingScene
 from light_map.scenes.scanning_scene import ScanningScene
@@ -457,6 +458,7 @@ class InteractiveApp:
             SceneId.VIEWING: ViewingScene(self.app_context),
             SceneId.MAP: MapScene(self.app_context),
             SceneId.SCANNING: ScanningScene(self.app_context),
+            SceneId.EXCLUSIVE_VISION: ExclusiveVisionScene(self.app_context),
             SceneId.CALIBRATE_FLASH: FlashCalibrationScene(self.app_context),
             SceneId.CALIBRATE_PPI: PpiCalibrationScene(self.app_context),
             SceneId.CALIBRATE_MAP_GRID: MapGridCalibrationScene(self.app_context),

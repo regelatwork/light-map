@@ -54,15 +54,15 @@ class BaseMapScene(Scene):
             dwell_time_threshold=2.0,
         )
 
-    def _handle_dwell_trigger(self, cursor_pos: Tuple[int, int]):
-        """Detects if we are pointing at a token or a door."""
+    def _handle_dwell_trigger(
+        self, cursor_pos: Tuple[int, int]
+    ) -> Tuple[SelectionType, Optional[str]]:
+        """Detects if we are pointing at a token or a door. Returns (type, id)."""
         world_x, world_y = self.context.map_system.screen_to_world(
             cursor_pos[0], cursor_pos[1]
         )
 
         # Combine physical and logical tokens for inspection check
-        # logical 'tokens' take precedence if they have the same ID?
-        # Actually, let's just combine them and iterate.
         all_candidate_tokens = []
         if self.context.state:
             all_candidate_tokens.extend(self.context.state.tokens)
@@ -88,6 +88,7 @@ class BaseMapScene(Scene):
                     self.context.state.selection = SelectionState(
                         type=SelectionType.TOKEN, id=str(token.id)
                     )
+                    self.context.state.inspected_token_id = token.id
 
                 # Resolve token name for better notification
                 map_file = (
@@ -102,14 +103,13 @@ class BaseMapScene(Scene):
                     f"Inspecting: {resolved.name}", duration=2.0
                 )
 
-                # --- NEW: Calculate LOS mask for inspection on-demand ---
+                # Update context mask for scenes that need it immediately
                 if (
                     self.context.visibility_engine
                     and self.context.map_system.is_map_loaded()
                 ):
                     engine = self.context.visibility_engine
-                    mask_w = engine.width
-                    mask_h = engine.height
+                    mask_w, mask_h = engine.width, engine.height
 
                     token_mask = engine.get_token_vision_mask(
                         token.id,
@@ -122,7 +122,7 @@ class BaseMapScene(Scene):
                     )
                     self.context.inspected_token_mask = token_mask
 
-                return
+                return (SelectionType.TOKEN, str(token.id))
 
         # 2. Check Doors
         door_id = self._check_door_collision(world_x, world_y)
@@ -136,7 +136,9 @@ class BaseMapScene(Scene):
             self.context.notifications.add_notification(
                 f"Selected Door: {door_id}", duration=2.0
             )
-            return
+            return (SelectionType.DOOR, door_id)
+
+        return (SelectionType.NONE, None)
 
     def _check_door_collision(self, wx: float, wy: float) -> Optional[str]:
         """Checks if world coordinate (wx, wy) is near any door segment."""
@@ -287,6 +289,7 @@ class ViewingScene(BaseMapScene):
 
         if Action.CLEAR_INSPECTION in actions:
             self.context.inspected_token_id = None
+            self.context.inspected_token_mask = None
 
         dt = (
             current_time - self.last_update_time if self.last_update_time > 0 else 0.033
@@ -312,7 +315,11 @@ class ViewingScene(BaseMapScene):
         )
 
         if (dwell_just_triggered or Action.DWELL_TRIGGER in actions) and cursor_pos:
-            self._handle_dwell_trigger(cursor_pos)
+            stype, sid = self._handle_dwell_trigger(cursor_pos)
+            if stype == SelectionType.TOKEN and sid:
+                return SceneTransition(
+                    SceneId.EXCLUSIVE_VISION, payload={"token_id": int(sid)}
+                )
             self.context.events.cancel(TimerKey.INSPECTION_LINGER)
 
         # Multi-step menu summoning (Step 1: VICTORY for 2s, Step 2: SHAKA for 2s)
@@ -401,6 +408,7 @@ class MapScene(BaseMapScene):
 
         if Action.CLEAR_INSPECTION in actions:
             self.context.inspected_token_id = None
+            self.context.inspected_token_mask = None
 
         dt = (
             current_time - self.last_update_time if self.last_update_time > 0 else 0.033
@@ -421,7 +429,11 @@ class MapScene(BaseMapScene):
         )
 
         if (dwell_just_triggered or Action.DWELL_TRIGGER in actions) and cursor_pos:
-            self._handle_dwell_trigger(cursor_pos)
+            stype, sid = self._handle_dwell_trigger(cursor_pos)
+            if stype == SelectionType.TOKEN and sid:
+                return SceneTransition(
+                    SceneId.EXCLUSIVE_VISION, payload={"token_id": int(sid)}
+                )
             self.context.events.cancel(TimerKey.INSPECTION_LINGER)
 
         # Toggle token visibility (using Action trigger)

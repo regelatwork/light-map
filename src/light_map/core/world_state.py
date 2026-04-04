@@ -85,6 +85,7 @@ class WorldState:
         self._dwell_state_atom = VersionedAtom({}, "dwell_state")
         self._summon_progress_atom = VersionedAtom(0.0, "summon_progress")
         self._selection_atom = VersionedAtom(SelectionState(), "selection")
+        self._inspected_token_id_atom = VersionedAtom(None, "inspected_token_id")
         self._grid_metadata_atom = VersionedAtom(GridMetadata(), "grid_metadata")
         self._fps_atom = VersionedAtom(0.0, "fps")
 
@@ -284,6 +285,14 @@ class WorldState:
     @selection.setter
     def selection(self, value: SelectionState):
         self._selection_atom.update(value)
+
+    @property
+    def inspected_token_id(self) -> Optional[int]:
+        return self._inspected_token_id_atom.value
+
+    @inspected_token_id.setter
+    def inspected_token_id(self, value: Optional[int]):
+        self._inspected_token_id_atom.update(value)
 
     @property
     def grid_metadata(self) -> GridMetadata:

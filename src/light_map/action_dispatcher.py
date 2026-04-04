@@ -300,43 +300,30 @@ def handle_toggle_debug_mode(
 def handle_inspect_token(
     app: "InteractiveApp", payload: Dict[str, Any], state: Optional["WorldState"] = None
 ) -> Optional["SceneTransition"]:
+    from .common_types import SceneId
+    from .core.scene import SceneTransition
+
     token_id_str = payload.get("payload")
     if token_id_str is not None:
         try:
             token_id = int(token_id_str)
-            target_token = None
+            # Find token in state to ensure it exists
+            found = False
             if state is not None:
                 for t in state.tokens:
                     if t.id == token_id:
-                        target_token = t
+                        found = True
                         break
-                if not target_token:
+                if not found:
                     for t in state.raw_tokens:
                         if t.id == token_id:
-                            target_token = t
+                            found = True
                             break
 
-            if target_token:
-                app.app_context.inspected_token_id = token_id
-                map_file = (
-                    app.map_system.svg_loader.filename
-                    if app.map_system.svg_loader
-                    else None
+            if found:
+                return SceneTransition(
+                    SceneId.EXCLUSIVE_VISION, payload={"token_id": token_id}
                 )
-                resolved = app.map_config.resolve_token_profile(token_id, map_file)
-                app.notifications.add_notification(f"Inspecting: {resolved.name}")
-
-                if app.visibility_engine and app.map_system.is_map_loaded():
-                    engine = app.visibility_engine
-                    app.app_context.inspected_token_mask = engine.get_token_vision_mask(
-                        token_id,
-                        target_token.world_x,
-                        target_token.world_y,
-                        size=resolved.size,
-                        vision_range_grid=25.0,
-                        mask_width=engine.width,
-                        mask_height=engine.height,
-                    )
         except ValueError:
             pass
     return None

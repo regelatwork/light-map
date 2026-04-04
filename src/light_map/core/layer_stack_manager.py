@@ -1,7 +1,6 @@
 from __future__ import annotations
 from typing import List, TYPE_CHECKING, Any
 
-from light_map.common_types import MapRenderState
 from light_map.map_layer import MapLayer
 from light_map.door_layer import DoorLayer
 from light_map.menu_layer import MenuLayer
@@ -155,53 +154,11 @@ class LayerStackManager:
     def get_stack(self, current_scene: Scene) -> List[Layer]:
         """
         Returns the optimized layer stack for the current scene and state.
-        Ensures correct ordering and applies transformations like Exclusive Vision.
+        Ensures correct ordering and applies transformations.
         """
         # Get base stack from scene
         # We pass a shim that looks like the app for compatibility with Scene.get_active_layers(app)
-        stack = current_scene.get_active_layers(self._get_app_shim())
-
-        # Apply Exclusive Vision transformation if active
-        inspected_token_id = self.context.inspected_token_id
-        inspected_token_mask = self.context.inspected_token_mask
-
-        if inspected_token_id is not None and inspected_token_mask is not None:
-            if self.exclusive_vision_layer:
-                self.exclusive_vision_layer.set_mask(inspected_token_mask)
-
-                # Ensure Map is full brightness during inspection
-                if self.map_layer.opacity != 1.0:
-                    self.map_layer.opacity = 1.0
-                    ws = self.context.state
-                    current = ws.map_render_state
-                    ws.map_render_state = MapRenderState(
-                        opacity=1.0, quality=current.quality, filepath=current.filepath
-                    )
-
-                # Transformation: Insert ExclusiveVisionLayer above Visibility/FoW
-                new_stack = []
-                for layer in stack:
-                    new_stack.append(layer)
-                    # After visibility or FoW, insert the exclusive mask
-                    if layer == self.visibility_layer or layer == self.fow_layer:
-                        if self.exclusive_vision_layer not in new_stack:
-                            new_stack.append(self.exclusive_vision_layer)
-
-                # Ensure Exclusive mask is present even if FoW/Visibility were not in stack
-                if self.exclusive_vision_layer not in new_stack:
-                    # Fallback: insert before UI layers (HandMask, Menu, etc.)
-                    try:
-                        idx = new_stack.index(self.hand_mask_layer)
-                        new_stack.insert(idx, self.exclusive_vision_layer)
-                    except ValueError:
-                        new_stack.append(self.exclusive_vision_layer)
-
-                return new_stack
-        else:
-            # Clear mask if not inspecting
-            self.context.inspected_token_mask = None
-
-        return stack
+        return current_scene.get_active_layers(self._get_app_shim())
 
     def _get_app_shim(self) -> Any:
         """

@@ -29,6 +29,15 @@ if TYPE_CHECKING:
     from light_map.interactive_app import InteractiveApp
     from light_map.common_types import Layer
 
+# --- Calibration Scene Colors (BGR) ---
+SCENE_BG_COLOR = (255, 255, 255)
+SCENE_TEXT_COLOR = (0, 0, 0)
+SCENE_TEXT_SECONDARY_COLOR = (60, 60, 60)
+SCENE_TARGET_IDLE_COLOR = (40, 40, 40)
+SCENE_TARGET_VALID_COLOR = (0, 255, 0)
+SCENE_SUCCESS_COLOR = (0, 150, 0)  # Darker green for white background
+SCENE_INSTR_TEXT_COLOR = (255, 255, 255)  # White text on black box
+
 
 class FlashCalibStage(Enum):
     START = auto()
@@ -858,7 +867,7 @@ class ExtrinsicsCalibrationScene(Scene):
             canvas = self._cached_canvas.copy()
         else:
             # Cache Miss: Redraw everything
-            canvas = np.full((h, w, 3), 255, dtype=np.uint8)  # White "Arena" for better camera contrast
+            canvas = np.full((h, w, 3), SCENE_BG_COLOR, dtype=np.uint8)  # White "Arena" for better camera contrast
 
             # Draw Target Zones
             for idx, (tx, ty, tid) in enumerate(self._target_zones):
@@ -871,12 +880,12 @@ class ExtrinsicsCalibrationScene(Scene):
                 half_size = rect_size // 2
 
                 # Default IDLE: Dark rectangle
-                color = (40, 40, 40)
+                color = SCENE_TARGET_IDLE_COLOR
                 thickness = 2
                 label = "Target"
 
                 if status == "VALID":
-                    color = (0, 255, 0)  # Green
+                    color = SCENE_TARGET_VALID_COLOR  # Green
                     thickness = -1  # Filled
                     label = info.get("name", "Locked")
 
@@ -888,7 +897,7 @@ class ExtrinsicsCalibrationScene(Scene):
                         (tx - half_size, ty - half_size - 40),
                         cv2.FONT_HERSHEY_SIMPLEX,
                         0.5,
-                        (0, 100, 0),
+                        SCENE_SUCCESS_COLOR,
                         1,
                     )
 
@@ -914,7 +923,7 @@ class ExtrinsicsCalibrationScene(Scene):
                     (tx - half_size, ty + half_size + 45),
                     cv2.FONT_HERSHEY_SIMPLEX,
                     0.5,
-                    color if thickness > 0 else (0, 100, 0),
+                    color if thickness > 0 else SCENE_SUCCESS_COLOR,
                     1 if thickness > 0 else 2,
                 )
 
@@ -1036,7 +1045,7 @@ class ExtrinsicsCalibrationScene(Scene):
         elif self._stage == "VALIDATION":
             instr = "Victory (hold) to Accept, Fist (hold 2s) to Retry"
         draw_text_with_background(
-            canvas, instr, (50, h - 50), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 255), 2
+            canvas, instr, (50, h - 50), cv2.FONT_HERSHEY_SIMPLEX, 0.8, SCENE_INSTR_TEXT_COLOR, 2
         )
 
         return canvas
@@ -1131,8 +1140,7 @@ class PpiCalibrationScene(Scene):
     def render(self, frame: np.ndarray) -> np.ndarray:
         h, w = frame.shape[:2]
         canvas = np.full(
-            (h, w, 3), 255, dtype=np.uint8
-        )  # White background for better contrast
+            (h, w, 3), SCENE_BG_COLOR, dtype=np.uint8)  # White background for better contrast
 
         cx, cy = w // 2, h // 2
 
@@ -1143,7 +1151,7 @@ class PpiCalibrationScene(Scene):
             (cx - 280, cy),
             cv2.FONT_HERSHEY_SIMPLEX,
             0.8,
-            (0, 0, 0),
+            SCENE_TEXT_COLOR,
             2,
         )
 
@@ -1153,7 +1161,7 @@ class PpiCalibrationScene(Scene):
             (cx - 200, cy + 40),
             cv2.FONT_HERSHEY_SIMPLEX,
             0.6,
-            (60, 60, 60),
+            SCENE_TEXT_SECONDARY_COLOR,
             1,
         )
 
@@ -1212,7 +1220,7 @@ class PpiCalibrationScene(Scene):
                 (cx - 150, cy - 80),
                 cv2.FONT_HERSHEY_SIMPLEX,
                 1.0,
-                (0, 150, 0), # Darker green
+                SCENE_SUCCESS_COLOR, # Darker green
                 2,
             )
             cv2.putText(
@@ -1221,7 +1229,7 @@ class PpiCalibrationScene(Scene):
                 (cx - 200, cy + 120),
                 cv2.FONT_HERSHEY_SIMPLEX,
                 0.8,
-                (0, 0, 0),
+                SCENE_TEXT_COLOR,
                 2,
             )
 

@@ -7,6 +7,13 @@ from .display_utils import draw_text_with_background
 if TYPE_CHECKING:
     from .core.world_state import WorldState
 
+# --- Calibration Pattern Colors (BGRA) ---
+CALIB_BG_COLOR = (255, 255, 255, 255)
+CALIB_BORDER_COLOR = (0, 0, 0, 255)
+CALIB_TABLE_MARKER_COLOR = (0, 100, 0, 255)
+CALIB_BOX_MARKER_COLOR = (100, 0, 0, 255)
+CALIB_BOX_OUTLINE_COLOR = (60, 60, 60, 255)
+
 
 class Projector3DPatternLayer(Layer):
     """
@@ -40,21 +47,21 @@ class Projector3DPatternLayer(Layer):
             return []
 
         # Create full white background (BGRA) for better projector-camera visibility
-        img = np.full((self.height, self.width, 4), 255, dtype=np.uint8)
-        img[:, :, 3] = 255  # Fully opaque alpha
+        img = np.full((self.height, self.width, 4), CALIB_BG_COLOR, dtype=np.uint8)
+        img[:, :, 3] = CALIB_BG_COLOR[3]
 
         # Draw a dark border (BGRA)
         cv2.rectangle(
-            img, (5, 5), (self.width - 6, self.height - 6), (0, 0, 0, 255), 10
+            img, (5, 5), (self.width - 6, self.height - 6), CALIB_BORDER_COLOR, 10
         )
 
         # Draw Table Markers (Reference) - Dark Green (BGRA)
         for aruco_id, corners in self.table_markers:
-            self._draw_marker(img, aruco_id, corners, (0, 100, 0, 255))
+            self._draw_marker(img, aruco_id, corners, CALIB_TABLE_MARKER_COLOR)
 
         # Draw Box Markers (Target) - Dark Blue (BGRA)
         for aruco_id, corners in self.box_markers:
-            self._draw_marker(img, aruco_id, corners, (100, 0, 0, 255))
+            self._draw_marker(img, aruco_id, corners, CALIB_BOX_MARKER_COLOR)
 
         # Draw Box Outline if provided - Dark Gray
         if self.box_outline is not None:
@@ -62,7 +69,7 @@ class Projector3DPatternLayer(Layer):
                 img,
                 [self.box_outline.astype(np.int32)],
                 True,
-                (60, 60, 60, 255),
+                CALIB_BOX_OUTLINE_COLOR,
                 2,
             )
 

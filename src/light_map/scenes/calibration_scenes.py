@@ -858,7 +858,7 @@ class ExtrinsicsCalibrationScene(Scene):
             canvas = self._cached_canvas.copy()
         else:
             # Cache Miss: Redraw everything
-            canvas = np.full((h, w, 3), 200, dtype=np.uint8)  # Light gray "Arena"
+            canvas = np.full((h, w, 3), 255, dtype=np.uint8)  # White "Arena" for better camera contrast
 
             # Draw Target Zones
             for idx, (tx, ty, tid) in enumerate(self._target_zones):
@@ -870,8 +870,8 @@ class ExtrinsicsCalibrationScene(Scene):
                 rect_size = int(token_size * ppi)
                 half_size = rect_size // 2
 
-                # Default IDLE: White rectangle
-                color = (255, 255, 255)
+                # Default IDLE: Dark rectangle
+                color = (40, 40, 40)
                 thickness = 2
                 label = "Target"
 
@@ -1036,7 +1036,7 @@ class ExtrinsicsCalibrationScene(Scene):
         elif self._stage == "VALIDATION":
             instr = "Victory (hold) to Accept, Fist (hold 2s) to Retry"
         draw_text_with_background(
-            canvas, instr, (50, h - 50), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 0, 0), 2
+            canvas, instr, (50, h - 50), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 255), 2
         )
 
         return canvas
@@ -1131,8 +1131,8 @@ class PpiCalibrationScene(Scene):
     def render(self, frame: np.ndarray) -> np.ndarray:
         h, w = frame.shape[:2]
         canvas = np.full(
-            (h, w, 3), 0, dtype=np.uint8
-        )  # Black background to avoid glare
+            (h, w, 3), 255, dtype=np.uint8
+        )  # White background for better contrast
 
         cx, cy = w // 2, h // 2
 
@@ -1143,7 +1143,7 @@ class PpiCalibrationScene(Scene):
             (cx - 280, cy),
             cv2.FONT_HERSHEY_SIMPLEX,
             0.8,
-            (255, 255, 255),
+            (0, 0, 0),
             2,
         )
 
@@ -1153,7 +1153,7 @@ class PpiCalibrationScene(Scene):
             (cx - 200, cy + 40),
             cv2.FONT_HERSHEY_SIMPLEX,
             0.6,
-            (200, 200, 200),
+            (60, 60, 60),
             1,
         )
 
@@ -1212,7 +1212,7 @@ class PpiCalibrationScene(Scene):
                 (cx - 150, cy - 80),
                 cv2.FONT_HERSHEY_SIMPLEX,
                 1.0,
-                (0, 255, 0),
+                (0, 150, 0), # Darker green
                 2,
             )
             cv2.putText(
@@ -1221,7 +1221,7 @@ class PpiCalibrationScene(Scene):
                 (cx - 200, cy + 120),
                 cv2.FONT_HERSHEY_SIMPLEX,
                 0.8,
-                (255, 255, 255),
+                (0, 0, 0),
                 2,
             )
 

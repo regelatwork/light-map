@@ -39,30 +39,30 @@ class Projector3DPatternLayer(Layer):
         if self.width <= 0 or self.height <= 0:
             return []
 
-        # Create full black background (BGRA)
-        img = np.zeros((self.height, self.width, 4), dtype=np.uint8)
+        # Create full white background (BGRA) for better projector-camera visibility
+        img = np.full((self.height, self.width, 4), 255, dtype=np.uint8)
         img[:, :, 3] = 255  # Fully opaque alpha
 
-        # Draw a bright white border (BGRA)
+        # Draw a dark border (BGRA)
         cv2.rectangle(
-            img, (5, 5), (self.width - 6, self.height - 6), (255, 255, 255, 255), 10
+            img, (5, 5), (self.width - 6, self.height - 6), (0, 0, 0, 255), 10
         )
 
-        # Draw Table Markers (Reference) - Green (BGRA)
+        # Draw Table Markers (Reference) - Dark Green (BGRA)
         for aruco_id, corners in self.table_markers:
-            self._draw_marker(img, aruco_id, corners, (0, 255, 0, 255))
+            self._draw_marker(img, aruco_id, corners, (0, 100, 0, 255))
 
-        # Draw Box Markers (Target) - Yellow (BGRA)
+        # Draw Box Markers (Target) - Dark Blue (BGRA)
         for aruco_id, corners in self.box_markers:
-            self._draw_marker(img, aruco_id, corners, (0, 255, 255, 255))
+            self._draw_marker(img, aruco_id, corners, (100, 0, 0, 255))
 
-        # Draw Box Outline if provided
+        # Draw Box Outline if provided - Dark Gray
         if self.box_outline is not None:
             cv2.polylines(
                 img,
                 [self.box_outline.astype(np.int32)],
                 True,
-                (0, 255, 255, 255),
+                (60, 60, 60, 255),
                 2,
             )
 

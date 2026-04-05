@@ -48,6 +48,7 @@ class MenuScene(Scene):
             self.context.map_config_manager,
             selected_door=selected_door,
             door_is_open=door_is_open,
+            show_tokens=self.context.show_tokens,
         )
 
         self.menu_system = MenuSystem(
@@ -82,6 +83,7 @@ class MenuScene(Scene):
             self.context.map_config_manager,
             selected_door=selected_door,
             door_is_open=door_is_open,
+            show_tokens=self.context.show_tokens,
         )
         self.menu_system.set_root_menu(new_root)
 
@@ -261,6 +263,11 @@ class MenuScene(Scene):
             return SceneTransition(SceneId.VIEWING, payload={"action": "RESET_FOW"})
         elif action == MenuActions.TOGGLE_FOW:
             return SceneTransition(SceneId.VIEWING, payload={"action": "TOGGLE_FOW"})
+        elif action == MenuActions.TOGGLE_TOKENS:
+            self.context.show_tokens = not self.context.show_tokens
+            state_str = "ON" if self.context.show_tokens else "OFF"
+            self.context.notifications.add_notification(f"GM: Tokens {state_str}")
+            self.on_enter()  # Rebuild menu to update title
         elif action == MenuActions.TOGGLE_DOOR:
             return SceneTransition(
                 SceneId.VIEWING, payload={"action": "TOGGLE_DOOR", "door": payload}

@@ -257,6 +257,7 @@ class MenuActions(StrEnum):
     RESET_FOW = "RESET_FOW"
     TOGGLE_FOW = "TOGGLE_FOW"
     TOGGLE_DOOR = "TOGGLE_DOOR"
+    TOGGLE_TOKENS = "TOGGLE_TOKENS"
 
 
 class SceneId(StrEnum):
@@ -282,7 +283,6 @@ class SelectionType(StrEnum):
 
 class TimerKey(StrEnum):
     INSPECTION_LINGER = "inspection_linger"
-    TOKEN_TOGGLE_COOLDOWN = "token_toggle_cooldown"
     SUMMON_MENU = "summon_menu"
     SUMMON_MENU_STEP_1 = "summon_menu_step_1"
     SUMMON_MENU_STEP_2 = "summon_menu_step_2"

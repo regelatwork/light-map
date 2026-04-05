@@ -72,26 +72,6 @@ def test_viewing_scene_robust_summon_step_2_ready(viewing_scene_context):
     assert found_step2
 
 
-def test_viewing_scene_shaka_toggle_disabled_when_ready(viewing_scene_context):
-    scene = ViewingScene(viewing_scene_context)
-
-    # Simulate Step 1 complete
-    viewing_scene_context.events.has_event.side_effect = lambda k: (
-        k == TimerKey.SUMMON_MENU
-    )
-
-    # SHAKA gesture
-    inputs = [HandInput(GestureType.SHAKA, (100, 100), (0.0, 0.0), None)]
-
-    scene.update(inputs, [], 0.0)
-
-    # Verify TOGGLE_TOKEN_VISIBILITY was NOT scheduled
-    for call in viewing_scene_context.events.schedule.call_args_list:
-        args, kwargs = call
-        if kwargs.get("key") == TimerKey.TOKEN_TOGGLE_COOLDOWN:
-            pytest.fail("Token toggle should be disabled when menu summon is ready")
-
-
 def test_on_summon_step1_complete(viewing_scene_context):
     scene = ViewingScene(viewing_scene_context)
     scene._on_summon_step1_complete()

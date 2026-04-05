@@ -51,6 +51,7 @@ def build_root_menu(
     map_config: MapConfigManager,
     selected_door: Optional[str] = None,
     door_is_open: bool = False,
+    show_tokens: bool = True,
 ) -> MenuItem:
 
     # Build Maps Submenu
@@ -181,6 +182,11 @@ def build_root_menu(
                     MenuItem(
                         title="GM: Toggle Fog of War",
                         action_id=MenuActions.TOGGLE_FOW,
+                        should_close_on_trigger=False,
+                    ),
+                    MenuItem(
+                        title=f"GM: Tokens {'ON' if show_tokens else 'OFF'}",
+                        action_id=MenuActions.TOGGLE_TOKENS,
                         should_close_on_trigger=False,
                     ),
                 ],

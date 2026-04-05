@@ -325,15 +325,6 @@ class ViewingScene(BaseMapScene):
         # Multi-step menu summoning (Step 1: VICTORY for 2s, Step 2: SHAKA for 2s)
         is_step1_ready = self.context.events.has_event(TimerKey.SUMMON_MENU)
 
-        # Toggle token visibility (only if not in middle of summoning step 2)
-        if primary_gesture == GestureType.SHAKA and not is_step1_ready:
-            if not self.context.events.has_event(TimerKey.TOKEN_TOGGLE_COOLDOWN):
-                self.context.events.schedule(
-                    1.0,
-                    lambda: Action.TOGGLE_TOKEN_VISIBILITY,
-                    key=TimerKey.TOKEN_TOGGLE_COOLDOWN,
-                )
-
         # Step 1 logic
         if primary_gesture == config_vars.SUMMON_STEP_1_GESTURE and not is_step1_ready:
             if not self.context.events.has_event(TimerKey.SUMMON_MENU_STEP_1):
@@ -435,15 +426,6 @@ class MapScene(BaseMapScene):
                     SceneId.EXCLUSIVE_VISION, payload={"token_id": int(sid)}
                 )
             self.context.events.cancel(TimerKey.INSPECTION_LINGER)
-
-        # Toggle token visibility (using Action trigger)
-        if primary_gesture == GestureType.SHAKA:
-            if not self.context.events.has_event(TimerKey.TOKEN_TOGGLE_COOLDOWN):
-                self.context.events.schedule(
-                    1.0,
-                    lambda: Action.TOGGLE_TOKEN_VISIBILITY,
-                    key=TimerKey.TOKEN_TOGGLE_COOLDOWN,
-                )
 
         if primary_gesture == config_vars.SUMMON_GESTURE:
             if not self.context.events.has_event(TimerKey.SUMMON_MENU):

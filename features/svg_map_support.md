@@ -25,7 +25,7 @@ To prevent conflict with menu navigation and accidental shifts during gameplay, 
 - **Viewing Mode (Default)**:
   - Entered automatically when a map is loaded or the menu is closed.
   - **Pan/Zoom**: Disabled.
-  - **Token Toggle**: `Shaka` gesture.
+  - **Token Toggle**: `Map Settings` menu item.
   - **Summon Menu**: `Victory` gesture.
 - **Map Control Mode (Interactive)**:
   - **Entry**: Select "Map Interaction Mode" from the main menu.

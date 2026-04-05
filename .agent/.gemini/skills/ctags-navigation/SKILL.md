@@ -32,6 +32,26 @@ Search for the EXACT symbol definition using `grep -w`.
 grep -w "SymbolName" tags
 ```
 
+## Examples
+
+### Finding a Python class definition
+
+```bash
+# Generate tags first
+ctags -R --exclude=.venv --exclude=.git .
+# Search for the class
+grep -w "InteractiveApp" tags
+```
+
+### Tracing a React component from the frontend
+
+```bash
+# Generate tags with TSX support
+ctags -R --exclude=node_modules --langmap=TypeScript:+.tsx .
+# Search for the component
+grep -w "MapOverlay" tags
+```
+
 ## Quick Reference
 
 | Operation | Command |

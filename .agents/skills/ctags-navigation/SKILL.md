@@ -1,6 +1,10 @@
-______________________________________________________________________
-
-## name: ctags-navigation description: Use when needing to find definitions of functions, classes, or components across both backend (Python) and frontend (TypeScript/React).
+---
+name: ctags-navigation
+description:
+  Use when needing to find definitions of functions, 
+  classes, or components across both backend (Python)
+  and frontend (TypeScript/React).
+---
 
 # Ctags Navigation
 

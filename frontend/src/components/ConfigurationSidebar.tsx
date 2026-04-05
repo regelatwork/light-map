@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
 import { useSystemState } from '../hooks/useSystemState';
 import { useSelection } from './SelectionContext';
 import { useGridEdit } from './GridEditContext';
@@ -39,11 +39,13 @@ export const ConfigurationSidebar: React.FC = () => {
   };
 
   // Synchronize manual ID field with selection
-  useEffect(() => {
-    if (activeTokenId !== null) {
-      setManualArUcoId(activeTokenId.toString());
-    } else {
-      setManualArUcoId('');
+  const lastSyncedId = useRef<string | null>(null);
+  useLayoutEffect(() => {
+    const newId = activeTokenId !== null ? activeTokenId.toString() : '';
+    if (newId !== lastSyncedId.current) {
+      lastSyncedId.current = newId;
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setManualArUcoId(newId);
     }
   }, [activeTokenId]);
 

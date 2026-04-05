@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, type ReactNode, type FC } from 'react';
+import { useState, useRef, useLayoutEffect, useCallback, type ReactNode, type FC } from 'react';
 import { GridLayer } from './GridLayer';
 import { TokenLayer } from './TokenLayer';
 import { MapLayer } from './MapLayer';
@@ -16,7 +16,7 @@ interface SchematicCanvasProps {
 }
 
 export const SchematicCanvas: FC<SchematicCanvasProps> = ({ children }) => {
-  const { world, config } = useSystemState();
+  const { world, config, grid_origin_svg_x, grid_origin_svg_y } = useSystemState();
   const rotation = world.viewport?.rotation || 0;
 
   const centerX = (config.proj_res?.[0] || 1000) / 2;
@@ -33,22 +33,26 @@ export const SchematicCanvas: FC<SchematicCanvasProps> = ({ children }) => {
   // Use a ref to ensure we only do the initial centering once
   const initialCentered = useRef(false);
 
-  const resetView = () => {
-    // Center on the screen center since rotation happens around it
+  const resetView = useCallback(() => {
+    // Center on the grid origin if available, otherwise screen center
+    const targetX = grid_origin_svg_x || centerX;
+    const targetY = grid_origin_svg_y || centerY;
+    
     setViewBox({
-      x: centerX - 500,
-      y: centerY - 375,
+      x: targetX - 500,
+      y: targetY - 375,
       w: 1000,
       h: 750,
     });
-  };
+  }, [grid_origin_svg_x, grid_origin_svg_y, centerX, centerY]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (world.scene !== 'LOADING' && world.scene !== '' && !initialCentered.current) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       resetView();
       initialCentered.current = true;
     }
-  }, [world.scene, centerX, centerY]);
+  }, [world.scene, resetView]);
 
   const handleMouseDown = (e: React.MouseEvent) => {
     // Only pan if we didn't click an interactive element (handled by layers)

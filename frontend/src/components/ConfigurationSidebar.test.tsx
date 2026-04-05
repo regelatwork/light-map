@@ -4,7 +4,7 @@ import { ConfigurationSidebar } from './ConfigurationSidebar';
 import * as useSystemStateHook from '../hooks/useSystemState';
 import * as useSelectionHook from './SelectionContext';
 import * as useGridEditHook from './GridEditContext';
-import { SelectionType, GmPosition } from '../types/system';
+import { SelectionType, GmPosition, VisibilityType } from '../types/system';
 import { updateToken } from '../services/api';
 
 // Mock the services/api to avoid actual network requests
@@ -345,7 +345,7 @@ describe('ConfigurationSidebar', () => {
     const mockToken = { id: 1, name: 'Token 1', world_x: 0, world_y: 0 };
     const mockDoor = {
       id: 'door-1',
-      type: 'door' as any,
+      type: VisibilityType.DOOR,
       is_open: false,
       points: [],
     };

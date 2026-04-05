@@ -105,7 +105,7 @@ export const TokenLibrary: React.FC = () => {
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {Object.entries(config.token_profiles || {})
-            .filter(([_, profile]) => profile !== null && typeof profile === 'object')
+            .filter(([, profile]) => profile !== null && typeof profile === 'object')
             .map(([name, profile]) => (
               <div
                 key={name}
@@ -232,7 +232,7 @@ export const TokenLibrary: React.FC = () => {
             </thead>
             <tbody className="divide-y divide-gray-200 text-black">
               {Object.entries(config.aruco_defaults || {})
-                .filter(([_, def]) => def !== null && typeof def === 'object')
+                .filter(([, def]) => def !== null && typeof def === 'object')
                 .sort((a, b) => Number(a[0]) - Number(b[0]))
                 .map(([id, def]) => (
                   <tr key={id} className="hover:bg-gray-50 transition-colors">

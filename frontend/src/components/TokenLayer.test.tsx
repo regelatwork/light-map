@@ -2,6 +2,7 @@ import { render } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
 import { TokenLayer } from './TokenLayer';
 import { SelectionProvider } from './SelectionContext';
+import { type Token } from '../types/system';
 
 // Mock useSystemState hook
 vi.mock('../hooks/useSystemState', () => ({
@@ -83,7 +84,7 @@ describe('TokenLayer', () => {
       ...INITIAL_STATE,
       isConnected: true,
       tokens: [
-        { id: 3, world_x: 300, world_y: 300 } as any, // type missing
+        { id: 3, world_x: 300, world_y: 300 } as unknown as Token, // type missing
       ],
       world: { scene: 'VIEWING', fps: 60, blockers: [] },
       grid_spacing_svg: 50,

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "light-map"
-version = "0.4.3"
+version = "0.4.4"
 description = "Interactive AR tabletop platform for physical gaming"
 authors = [
     {name = "Rodrigo Chandia", email = "rodrigo.chandia@gmail.com"}

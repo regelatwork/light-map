@@ -1,8 +1,15 @@
 /* eslint-disable react-refresh/only-export-components */
-import React, { createContext, useContext, type ReactNode } from 'react';
+import React, { createContext, useContext, useCallback, type ReactNode } from 'react';
+import { rotatePoint } from '../utils/geometry';
 
 interface CanvasContextType {
-  screenToWorld: (clientX: number, clientY: number, element?: SVGGraphicsElement) => { x: number; y: number } | null;
+  screenToWorld: (
+    clientX: number,
+    clientY: number,
+    element?: SVGGraphicsElement
+  ) => { x: number; y: number } | null;
+  worldToSVG: (x: number, y: number) => { x: number; y: number };
+  svgToWorld: (x: number, y: number) => { x: number; y: number };
 }
 
 const CanvasContext = createContext<CanvasContextType | null>(null);
@@ -32,50 +39,49 @@ export const CanvasProvider: React.FC<CanvasProviderProps> = ({
   centerX = 0,
   centerY = 0,
 }) => {
-  const screenToWorld = (clientX: number, clientY: number, element?: SVGGraphicsElement) => {
-    const svg = svgRef.current;
-    if (!svg) return null;
+  const worldToSVG = useCallback(
+    (x: number, y: number) => rotatePoint(x, y, centerX, centerY, rotation),
+    [centerX, centerY, rotation]
+  );
 
-    try {
-      // Use browser's native CTM if an element is provided.
-      // This is extremely robust as it handles all SVG transforms (viewBox, rotate, scale) automatically.
-      if (element) {
-        const pt = svg.createSVGPoint();
-        pt.x = clientX;
-        pt.y = clientY;
-        const ctm = element.getScreenCTM();
-        if (ctm) {
-          const localPt = pt.matrixTransform(ctm.inverse());
-          return { x: localPt.x, y: localPt.y };
+  const svgToWorld = useCallback(
+    (x: number, y: number) => rotatePoint(x, y, centerX, centerY, -rotation),
+    [centerX, centerY, rotation]
+  );
+
+  const screenToWorld = useCallback(
+    (clientX: number, clientY: number, element?: SVGGraphicsElement) => {
+      const svg = svgRef.current;
+      if (!svg) return null;
+
+      try {
+        if (element) {
+          const pt = svg.createSVGPoint();
+          pt.x = clientX;
+          pt.y = clientY;
+          const ctm = element.getScreenCTM();
+          if (ctm) {
+            const localPt = pt.matrixTransform(ctm.inverse());
+            return { x: localPt.x, y: localPt.y };
+          }
         }
+
+        const rect = svg.getBoundingClientRect();
+        const x_svg = viewBox.x + ((clientX - rect.left) * viewBox.w) / rect.width;
+        const y_svg = viewBox.y + ((clientY - rect.top) * viewBox.h) / rect.height;
+
+        return svgToWorld(x_svg, y_svg);
+      } catch (err) {
+        console.error('screenToWorld error:', err);
+        return null;
       }
+    },
+    [svgRef, viewBox, svgToWorld]
+  );
 
-      // Fallback to manual calculation if no element provided (or CTM fails)
-      const rect = svg.getBoundingClientRect();
-      const mouseX = clientX - rect.left;
-      const mouseY = clientY - rect.top;
-
-      const x_svg = viewBox.x + (mouseX * viewBox.w) / rect.width;
-      const y_svg = viewBox.y + (mouseY * viewBox.h) / rect.height;
-
-      if (rotation === 0) {
-        return { x: x_svg, y: y_svg };
-      }
-
-      // Rotate point BACKWARDS around center to get world coordinates
-      const angleRad = (-rotation * Math.PI) / 180;
-      const dx = x_svg - centerX;
-      const dy = y_svg - centerY;
-
-      const x = dx * Math.cos(angleRad) - dy * Math.sin(angleRad) + centerX;
-      const y = dx * Math.sin(angleRad) + dy * Math.cos(angleRad) + centerY;
-
-      return { x, y };
-    } catch (err) {
-      console.error('screenToWorld error:', err);
-      return null;
-    }
-  };
-
-  return <CanvasContext.Provider value={{ screenToWorld }}>{children}</CanvasContext.Provider>;
+  return (
+    <CanvasContext.Provider value={{ screenToWorld, worldToSVG, svgToWorld }}>
+      {children}
+    </CanvasContext.Provider>
+  );
 };

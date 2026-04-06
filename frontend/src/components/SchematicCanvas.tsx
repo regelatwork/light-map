@@ -1,4 +1,5 @@
 import { useState, useRef, useLayoutEffect, useCallback, type ReactNode, type FC } from 'react';
+import { rotatePoint } from '../utils/geometry';
 import { GridLayer } from './GridLayer';
 import { TokenLayer } from './TokenLayer';
 import { MapLayer } from './MapLayer';
@@ -30,26 +31,31 @@ export const SchematicCanvas: FC<SchematicCanvasProps> = ({ children }) => {
   const svgRef = useRef<SVGSVGElement>(null);
   const { setSelection } = useSelection();
 
-  // Use a ref to ensure we only do the initial centering once
-  const initialCentered = useRef(false);
+  const lastCenteredMapPath = useRef<string | null>(null);
 
   const resetView = useCallback(() => {
-    // Current grid origin (in unrotated world space)
-    const targetX = grid_origin_svg_x;
-    const targetY = grid_origin_svg_y;
-    
-    let displayX = targetX;
-    let displayY = targetY;
+    let targetX = grid_origin_svg_x;
+    let targetY = grid_origin_svg_y;
 
-    // Map layers are rotated around (centerX, centerY) in the <g> tag.
-    // To center the origin on screen, we must find where it lands after rotation.
-    if (rotation !== 0) {
-      const rad = (rotation * Math.PI) / 180;
-      const dx = targetX - centerX;
-      const dy = targetY - centerY;
-      displayX = dx * Math.cos(rad) - dy * Math.sin(rad) + centerX;
-      displayY = dx * Math.sin(rad) + dy * Math.cos(rad) + centerY;
+    // Fallback to map center if origin is (0,0) and map dimensions are available
+    if (targetX === 0 && targetY === 0 && config.map_width && config.map_height) {
+      targetX = config.map_width / 2;
+      targetY = config.map_height / 2;
     }
+
+    // Ultimate fallback to projection center if still (0,0)
+    if (targetX === 0 && targetY === 0) {
+      targetX = centerX;
+      targetY = centerY;
+    }
+    
+    const { x: displayX, y: displayY } = rotatePoint(
+      targetX,
+      targetY,
+      centerX,
+      centerY,
+      rotation
+    );
     
     setViewBox({
       x: displayX - 500,
@@ -57,15 +63,17 @@ export const SchematicCanvas: FC<SchematicCanvasProps> = ({ children }) => {
       w: 1000,
       h: 750,
     });
-  }, [grid_origin_svg_x, grid_origin_svg_y, centerX, centerY, rotation]);
+  }, [grid_origin_svg_x, grid_origin_svg_y, config.map_width, config.map_height, centerX, centerY, rotation]);
 
   useLayoutEffect(() => {
-    if (world.scene !== 'LOADING' && world.scene !== '' && !initialCentered.current) {
+    // Only center if we have a map path and it's different from what we last centered on
+    // This also ensures we don't center prematurely (e.g. on MenuScene)
+    if (config.current_map_path && config.current_map_path !== lastCenteredMapPath.current) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       resetView();
-      initialCentered.current = true;
+      lastCenteredMapPath.current = config.current_map_path;
     }
-  }, [world.scene, resetView]);
+  }, [config.current_map_path, resetView]);
 
   const handleMouseDown = (e: React.MouseEvent) => {
     // Only pan if we didn't click an interactive element (handled by layers)

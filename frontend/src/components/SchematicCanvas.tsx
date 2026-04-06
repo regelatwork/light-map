@@ -34,17 +34,30 @@ export const SchematicCanvas: FC<SchematicCanvasProps> = ({ children }) => {
   const initialCentered = useRef(false);
 
   const resetView = useCallback(() => {
-    // Center on the grid origin if available, otherwise screen center
-    const targetX = grid_origin_svg_x || centerX;
-    const targetY = grid_origin_svg_y || centerY;
+    // Current grid origin (in unrotated world space)
+    const targetX = grid_origin_svg_x;
+    const targetY = grid_origin_svg_y;
+    
+    let displayX = targetX;
+    let displayY = targetY;
+
+    // Map layers are rotated around (centerX, centerY) in the <g> tag.
+    // To center the origin on screen, we must find where it lands after rotation.
+    if (rotation !== 0) {
+      const rad = (rotation * Math.PI) / 180;
+      const dx = targetX - centerX;
+      const dy = targetY - centerY;
+      displayX = dx * Math.cos(rad) - dy * Math.sin(rad) + centerX;
+      displayY = dx * Math.sin(rad) + dy * Math.cos(rad) + centerY;
+    }
     
     setViewBox({
-      x: targetX - 500,
-      y: targetY - 375,
+      x: displayX - 500,
+      y: displayY - 375,
       w: 1000,
       h: 750,
     });
-  }, [grid_origin_svg_x, grid_origin_svg_y, centerX, centerY]);
+  }, [grid_origin_svg_x, grid_origin_svg_y, centerX, centerY, rotation]);
 
   useLayoutEffect(() => {
     if (world.scene !== 'LOADING' && world.scene !== '' && !initialCentered.current) {

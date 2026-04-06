@@ -163,7 +163,7 @@ describe('SchematicCanvas', () => {
     expect(svg).toHaveAttribute('viewBox', '25 -250 1000 750');
   });
 
-  it('centers on 0,0 if grid origin is 0,0 and no rotation', () => {
+  it('centers on map center if grid origin is 0,0 and map dimensions available', () => {
     mockSystemState = {
       ...INITIAL_STATE,
       isConnected: true,
@@ -171,6 +171,9 @@ describe('SchematicCanvas', () => {
       tokens: [],
       config: {
         ...INITIAL_STATE.config,
+        current_map_path: 'test.svg',
+        map_width: 800,
+        map_height: 600,
         proj_res: [1000, 750],
       },
       grid_origin_svg_x: 0,
@@ -188,8 +191,71 @@ describe('SchematicCanvas', () => {
     );
 
     const svg = container.querySelector('svg');
-    // viewBox.x = 0 - 500 = -500
-    // viewBox.y = 0 - 375 = -375
+    // Target is map center: (400, 300)
+    // viewBox.x = 400 - 500 = -100
+    // viewBox.y = 300 - 375 = -75
+    expect(svg).toHaveAttribute('viewBox', '-100 -75 1000 750');
+  });
+
+  it('centers on projection center if grid origin is 0,0 and no map dimensions', () => {
+    mockSystemState = {
+      ...INITIAL_STATE,
+      isConnected: true,
+      world: { scene: 'MAP', fps: 60, blockers: [] },
+      tokens: [],
+      config: {
+        ...INITIAL_STATE.config,
+        current_map_path: 'test.svg',
+        proj_res: [1000, 750],
+      },
+      grid_origin_svg_x: 0,
+      grid_origin_svg_y: 0,
+    };
+
+    const { container } = render(
+      <SystemStateProvider>
+        <GridEditProvider>
+          <SelectionProvider>
+            <SchematicCanvas />
+          </SelectionProvider>
+        </GridEditProvider>
+      </SystemStateProvider>
+    );
+
+    const svg = container.querySelector('svg');
+    // Target is projection center: (500, 375)
+    // viewBox.x = 500 - 500 = 0
+    // viewBox.y = 375 - 375 = 0
+    expect(svg).toHaveAttribute('viewBox', '0 0 1000 750');
+  });
+
+  it('does not center if current_map_path is missing', () => {
+    mockSystemState = {
+      ...INITIAL_STATE,
+      isConnected: true,
+      world: { scene: 'MAP', fps: 60, blockers: [] },
+      tokens: [],
+      config: {
+        ...INITIAL_STATE.config,
+        current_map_path: '', // Missing map path
+        proj_res: [1000, 750],
+      },
+      grid_origin_svg_x: 100,
+      grid_origin_svg_y: 100,
+    };
+
+    const { container } = render(
+      <SystemStateProvider>
+        <GridEditProvider>
+          <SelectionProvider>
+            <SchematicCanvas />
+          </SelectionProvider>
+        </GridEditProvider>
+      </SystemStateProvider>
+    );
+
+    const svg = container.querySelector('svg');
+    // Should stay at initial state: -500 -375 1000 750
     expect(svg).toHaveAttribute('viewBox', '-500 -375 1000 750');
   });
 });

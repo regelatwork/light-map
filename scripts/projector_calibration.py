@@ -141,6 +141,7 @@ def run_projector_calibrate(args):
 
                 # Prepare token heights (empty dict for base calibration)
                 token_heights = {}
+                token_sizes = {}
 
                 ext_result = calibrate_extrinsics(
                     frame,
@@ -151,6 +152,7 @@ def run_projector_calibrate(args):
                     ppi,
                     ground_points_camera=ground_points_camera,
                     ground_points_projector=ground_points_projector,
+                    token_sizes=token_sizes,
                 )
 
                 if ext_result is not None:

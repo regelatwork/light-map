@@ -129,25 +129,14 @@ def calibrate_extrinsics(
     known_targets: Optional[Dict[int, Tuple[float, float]]] = None,
     aruco_corners: Optional[Tuple[np.ndarray, ...]] = None,
     aruco_ids: Optional[np.ndarray] = None,
+    token_sizes: Optional[Dict[int, int]] = None,
 ) -> Optional[Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]]:
     """
     Estimates Camera Extrinsics (R, t) using pre-detected ArUco markers or internal detection.
 
     Args:
-        frame: The camera frame containing ArUco markers (fallback if corners/ids missing).
-        projector_matrix: Homography (Camera -> Projector).
-        camera_matrix: Camera intrinsic matrix.
-        distortion_coefficients: Camera distortion coefficients.
-        token_heights: Mapping of ArUco ID to token height in mm.
-        ppi: Projector PPI (Pixels Per Inch).
-        ground_points_camera: (N, 2) array of camera coordinates at Z=0.
-        ground_points_projector: (N, 2) array of projector coordinates corresponding to ground_points_camera.
-        known_targets: Optional mapping of ArUco ID to (x, y) projector coordinates.
-        aruco_corners: Pre-detected ArUco corners.
-        aruco_ids: Pre-detected ArUco IDs.
-
-    Returns:
-        (rotation_vector, translation_vector, object_points, image_points) or None.
+        ...
+        token_sizes: Mapping of ArUco ID to token size (inches or whatever unit ppi is in).
     """
     if aruco_ids is None or aruco_corners is None:
         if frame is not None:
@@ -172,7 +161,7 @@ def calibrate_extrinsics(
             object_points_list.append([wx, wy, wz])
             image_points_list.append(ground_points_camera[i])
 
-    # 2. Add Token Points (Z=h)
+    # 2. Add Token Points (Z=h) - Using all 4 corners per token
     if aruco_ids is not None and aruco_corners is not None:
         ids = aruco_ids.flatten()
         for i, aruco_id in enumerate(ids):
@@ -180,29 +169,42 @@ def calibrate_extrinsics(
                 continue
 
             h = token_heights[aruco_id]
-            c_cam = np.mean(aruco_corners[i][0], axis=0)
-
-            # Find (X, Y)
+            # Use all 4 corners
+            corners_cam = aruco_corners[i][0]  # (4, 2)
+            
+            # Find (X, Y) for each corner
             if known_targets and aruco_id in known_targets:
-                px, py = known_targets[aruco_id]
+                # Use known center and size to derive projector corners
+                px_c, py_c = known_targets[aruco_id]
+                # Default size to 1.0 inch if missing
+                size_inches = token_sizes.get(aruco_id, 1.0) if token_sizes else 1.0
+                size_px = size_inches * ppi
+                
+                # ArUco corners are defined as TL, TR, BR, BL
+                offsets = [
+                    [-size_px/2, -size_px/2],
+                    [size_px/2, -size_px/2],
+                    [size_px/2, size_px/2],
+                    [-size_px/2, size_px/2]
+                ]
+                for j in range(4):
+                    px = px_c + offsets[j][0]
+                    py = py_c + offsets[j][1]
+                    object_points_list.append([px / ppi_mm, py / ppi_mm, h])
+                    image_points_list.append(corners_cam[j])
             else:
-                # Fallback to homography projection (estimate from top of token)
-                pts_cam = np.array([c_cam], dtype=np.float32).reshape(-1, 1, 2)
-                pts_proj = cv2.perspectiveTransform(pts_cam, projector_matrix).reshape(
-                    -1, 2
-                )
-                px, py = pts_proj[0]
-
-            wx = px / ppi_mm
-            wy = py / ppi_mm
-            wz = h
-
-            object_points_list.append([wx, wy, wz])
-            image_points_list.append(c_cam)
+                # Fallback to homography projection for each corner
+                pts_cam = corners_cam.reshape(-1, 1, 2).astype(np.float32)
+                pts_proj = cv2.perspectiveTransform(pts_cam, projector_matrix).reshape(-1, 2)
+                
+                for j in range(4):
+                    px, py = pts_proj[j]
+                    object_points_list.append([px / ppi_mm, py / ppi_mm, h])
+                    image_points_list.append(corners_cam[j])
 
     if len(object_points_list) < 4:
         logging.warning(
-            "Extrinsics: Not enough points detected (need at least 4 combined points)."
+            f"Extrinsics: Not enough points detected (need at least 4 combined points, got {len(object_points_list)})."
         )
         return None
 
@@ -224,120 +226,78 @@ def calibrate_extrinsics(
 
     # If we have both ground points and token markers, we check for 180-degree ambiguity
     # which often happens with symmetric chessboard patterns and rotated cameras.
-    if (
-        ground_points_camera is not None
-        and ground_points_projector is not None
-        and aruco_ids is not None
-        and len(aruco_ids) >= 2
-    ):
-        # Try both original and flipped ground points
-        best_ret = None
-        best_err = float("inf")
-
-        for flipped in [False, True]:
-            current_obj_pts = []
-            current_img_pts = []
-
-            # Ground points (flip if requested)
-            for i in range(len(ground_points_camera)):
-                idx = len(ground_points_camera) - 1 - i if flipped else i
-                px, py = ground_points_projector[i]  # Fixed projector coords
-                wx = px / ppi_mm
-                wy = py / ppi_mm
-                current_obj_pts.append([wx, wy, 0.0])
-                current_img_pts.append(ground_points_camera[idx])  # Flipped camera obs
-
-            # Token points (always standard)
-            if aruco_ids is not None:
-                ids = aruco_ids.flatten()
-                for i, aruco_id in enumerate(ids):
-                    if aruco_id not in token_heights:
-                        continue
-                    h = token_heights[aruco_id]
-                    c_cam = np.mean(aruco_corners[i][0], axis=0)
-                    if known_targets and aruco_id in known_targets:
-                        px, py = known_targets[aruco_id]
-                    else:
-                        pts_cam = np.array([c_cam], dtype=np.float32).reshape(-1, 1, 2)
-                        pts_proj = cv2.perspectiveTransform(
-                            pts_cam, projector_matrix
-                        ).reshape(-1, 2)
-                        px, py = pts_proj[0]
-                    current_obj_pts.append([px / ppi_mm, py / ppi_mm, h])
-                    current_img_pts.append(c_cam)
-
-            obj_arr = np.array(current_obj_pts, dtype=np.float32)
-            img_arr = np.array(current_img_pts, dtype=np.float32)
-
-            ret, rvec, tvec = cv2.solvePnP(
-                obj_arr,
-                img_arr,
-                camera_matrix,
-                distortion_coefficients,
-                rvec=rotation_vector_guess.copy(),
-                tvec=translation_vector_guess.copy(),
-                useExtrinsicGuess=True,
-                flags=cv2.SOLVEPNP_SQPNP,
-            )
-
-            if ret:
-                # Calculate error
-                proj, _ = cv2.projectPoints(
-                    obj_arr, rvec, tvec, camera_matrix, distortion_coefficients
-                )
-                err = np.sqrt(
-                    np.mean(np.linalg.norm(img_arr - proj.reshape(-1, 2), axis=1) ** 2)
-                )
-                if err < best_err:
-                    best_err = err
-                    best_ret = (rvec, tvec, obj_arr, img_arr)
-                    if flipped:
-                        logging.info(
-                            f"Extrinsics: Detected 180-degree ground point flip! Error: {err:.2f}"
-                        )
-
-        if best_ret:
-            rotation_vector, translation_vector, object_points, image_points = best_ret
-            ret = True
-        else:
-            ret = False
-    else:
-        # Standard single-pass solve
-        object_points = np.array(object_points_list, dtype=np.float32)
-        image_points = np.array(image_points_list, dtype=np.float32)
-        ret, rotation_vector, translation_vector = cv2.solvePnP(
+    # Pick Solver based on planarity
+    # SQPNP is highly robust to both planar and non-planar configurations.
+    # We still provide an initial guess to help it converge to the "looking down" solution.
+    is_planar = np.all(object_points[:, 2] == object_points[0, 2])
+    
+    if is_planar and len(object_points) >= 4:
+        # IPPE returns 2 solutions for planar points
+        ret, rvecs, tvecs, errs = cv2.solvePnPGeneric(
             object_points,
             image_points,
             camera_matrix,
             distortion_coefficients,
-            rvec=rotation_vector_guess,
-            tvec=translation_vector_guess,
-            useExtrinsicGuess=True,
+            flags=cv2.SOLVEPNP_IPPE,
+        )
+    else:
+        # SQPNP only returns 1 solution
+        # Note: We don't use useExtrinsicGuess here because we want to see the 
+        # actual raw solutions from the solver before filtering.
+        ret, rvecs, tvecs, errs = cv2.solvePnPGeneric(
+            object_points,
+            image_points,
+            camera_matrix,
+            distortion_coefficients,
             flags=cv2.SOLVEPNP_SQPNP,
         )
 
-    if ret:
-        # Physical plausibility check: tz MUST be positive for the table to be in front of the camera
-        if translation_vector[2] < 0:
-            logging.warning(
-                "Extrinsics: solvePnP returned inverted solution (tz < 0). Attempting flip."
-            )
-            # Flip the solution
-            rotation_matrix, _ = cv2.Rodrigues(rotation_vector)
-            camera_center = -(rotation_matrix.T @ translation_vector)
+    best_ret = None
+    min_err = float("inf")
 
-            rotation_matrix_flip = np.array(
-                [[1, 0, 0], [0, -1, 0], [0, 0, -1]], dtype=np.float32
-            )
-            rotation_matrix_new = rotation_matrix_flip @ rotation_matrix
-            rotation_vector_new, _ = cv2.Rodrigues(rotation_matrix_new)
-            translation_vector_new = -rotation_matrix_new @ camera_center
+    # If the solver found solutions, filter them for physical plausibility
+    if ret and len(rvecs) > 0:
+        logging.info(f"Extrinsics: Solver found {len(rvecs)} solutions.")
+        
+        candidates = []
+        for i in range(len(rvecs)):
+            rv, tv = rvecs[i], tvecs[i]
+            rmat, _ = cv2.Rodrigues(rv)
+            cc = -(rmat.T @ tv.flatten())
+            
+            proj, _ = cv2.projectPoints(object_points, rv, tv, camera_matrix, distortion_coefficients)
+            err = np.mean(np.linalg.norm(image_points - proj.reshape(-1, 2), axis=1))
+            
+            candidates.append({
+                'rv': rv, 'tv': tv, 'cc': cc, 'err': err, 'index': i
+            })
+            logging.info(f"  Sol {i}: cc_z={cc[2]:.1f}, tv_z={tv[2][0]:.1f}, err={err:.2f}")
 
-            rotation_vector, translation_vector = (
-                rotation_vector_new,
-                translation_vector_new,
-            )
+        # Selection Strategy:
+        # 1. MUST have tz > 0 (Points in front of camera)
+        # 2. Prefer cc_z > 0 (Camera above table) if both sides are equally good.
+        # 3. BUT, if only cc_z < 0 is found, accept it to avoid failure (Z-down system).
+        
+        # Sort candidates by error
+        candidates.sort(key=lambda x: x['err'])
+        
+        # Pass 1: Strict (Above table AND in front)
+        for c in candidates:
+            if c['cc'][2] > 0 and c['tv'][2] > 0:
+                best_ret = (c['rv'], c['tv'])
+                logging.info(f"Extrinsics: Selected Above-Table solution (err={c['err']:.2f})")
+                break
+        
+        # Pass 2: Fallback (Below-Table AND in front)
+        if not best_ret:
+            for c in candidates:
+                if c['tv'][2] > 0:
+                    best_ret = (c['rv'], c['tv'])
+                    logging.info(f"Extrinsics: Selected Below-Table solution (err={c['err']:.2f})")
+                    break
 
+    if best_ret:
+        rotation_vector, translation_vector = best_ret
         return rotation_vector, translation_vector, object_points, image_points
 
     return None
@@ -440,11 +400,29 @@ def calibrate_projector_3d(
         if ret:
             # calibrateCamera returns a list of rvecs/tvecs (one per 'view').
             # Since we treat all points as one 'view', we take the first one.
+            rotation_vector = rotation_vectors[0]
+            translation_vector = translation_vectors[0]
+
+            # Physical Plausibility: Ensure t.z is positive (Table in front of projector)
+            # This is the ONLY invariant we can strictly enforce without manual mirroring.
+            if translation_vector[2] < 0:
+                logging.warning(
+                    "calibrate_projector_3d: Inverted orientation detected (tz < 0). Attempting 180-flip."
+                )
+                # Proper rotation flip (not reflection)
+                rotation_matrix_flip = np.array(
+                    [[1, 0, 0], [0, -1, 0], [0, 0, -1]], dtype=np.float32
+                )
+                rotation_matrix, _ = cv2.Rodrigues(rotation_vector)
+                rotation_matrix = rotation_matrix_flip @ rotation_matrix
+                rotation_vector, _ = cv2.Rodrigues(rotation_matrix)
+                translation_vector = rotation_matrix_flip @ translation_vector
+
             return (
                 intrinsic_matrix,
                 distortion_coefficients,
-                rotation_vectors[0],
-                translation_vectors[0],
+                rotation_vector,
+                translation_vector,
                 ret,
             )
 

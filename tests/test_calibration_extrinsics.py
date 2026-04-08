@@ -12,10 +12,10 @@ def test_calibrate_extrinsics_synthetic():
     distortion_coefficients = np.zeros(5, dtype=np.float32)
 
     # Setup Pose (R, t)
-    # Rotation: 30 degrees around X axis
-    rotation_vector_true = np.array([np.radians(30), 0, 0], dtype=np.float32)
-    # Translation: (100, 200, 1000)
-    translation_vector_true = np.array([100, 200, 1000], dtype=np.float32)
+    # Rotation: ~180 degrees around X (looking down) + 10 degree tilt
+    rotation_vector_true = np.array([np.pi + np.radians(10), 0, 0], dtype=np.float32)
+    # Translation: (100, 200, 1200)
+    translation_vector_true = np.array([100, 200, 1200], dtype=np.float32)
 
     # Setup World Points (X, Y, Z in mm)
     # 4 points at Z=25 (tokens)
@@ -26,6 +26,7 @@ def test_calibrate_extrinsics_synthetic():
     projector_coords = [[100, 100], [500, 100], [100, 400], [500, 400]]
     known_targets = {1: (100, 100), 2: (500, 100), 3: (100, 400), 4: (500, 400)}
     token_heights = {1: 25.0, 2: 25.0, 3: 25.0, 4: 25.0}
+    token_sizes = {1: 1.0, 2: 1.0, 3: 1.0, 4: 1.0}
 
     object_points = []
     for i, (px, py) in enumerate(projector_coords):
@@ -57,17 +58,34 @@ def test_calibrate_extrinsics_synthetic():
         class MockDetector:
             def detectMarkers(self, frame):
                 corners = []
-                for p in image_points:
-                    c = np.array(
-                        [
-                            [p[0] - 5, p[1] - 5],
-                            [p[0] + 5, p[1] - 5],
-                            [p[0] + 5, p[1] + 5],
-                            [p[0] - 5, p[1] + 5],
-                        ],
-                        dtype=np.float32,
-                    ).reshape(1, 4, 2)
-                    corners.append(c)
+                # In the test, token_sizes[id] = 1.0 inch, ppi = 100.0 => 100 pixels
+                # But our true object points were just the centers. 
+                # We need to project the ACTUAL 4 corners of each token to get the image points.
+                size_inches = 1.0
+                size_px = size_inches * ppi
+                offsets = [
+                    [-size_px/2, -size_px/2],
+                    [size_px/2, -size_px/2],
+                    [size_px/2, size_px/2],
+                    [-size_px/2, size_px/2]
+                ]
+                
+                for i, (px_c, py_c) in enumerate(projector_coords):
+                    # Derive world corners for this token
+                    w_corners = []
+                    for dx, dy in offsets:
+                        w_corners.append([(px_c + dx) / ppi_mm, (py_c + dy) / ppi_mm, 25.0])
+                    
+                    w_corners = np.array(w_corners, dtype=np.float32)
+                    img_corners, _ = cv2.projectPoints(
+                        w_corners,
+                        rotation_vector_true,
+                        translation_vector_true,
+                        camera_matrix,
+                        distortion_coefficients,
+                    )
+                    corners.append(img_corners.reshape(1, 4, 2))
+                    
                 ids = np.array([[1], [2], [3], [4]], dtype=np.int32)
                 return corners, ids, []
 
@@ -100,6 +118,7 @@ def test_calibrate_extrinsics_synthetic():
             token_heights,
             ppi,
             known_targets=known_targets,
+            token_sizes=token_sizes,
         )
 
         assert result is not None
@@ -121,6 +140,7 @@ def test_calibrate_extrinsics_synthetic():
             ground_points_camera=image_points_ground,
             ground_points_projector=np.array(projector_coords, dtype=np.float32),
             known_targets=known_targets,
+            token_sizes=token_sizes,
         )
 
         assert result_combined is not None

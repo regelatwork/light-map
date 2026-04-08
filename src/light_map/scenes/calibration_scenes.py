@@ -30,11 +30,11 @@ if TYPE_CHECKING:
     from light_map.common_types import Layer
 
 # --- Calibration Scene Colors (BGR) ---
-SCENE_BG_COLOR = (255, 255, 255)
+SCENE_BG_COLOR = (204, 204, 204)
 SCENE_TEXT_COLOR = (0, 0, 0)
 SCENE_TEXT_SECONDARY_COLOR = (60, 60, 60)
-SCENE_TARGET_IDLE_COLOR = (40, 40, 40)
-SCENE_TARGET_VALID_COLOR = (0, 255, 0)
+SCENE_TARGET_IDLE_COLOR = (255, 255, 255)
+SCENE_TARGET_VALID_COLOR = (128, 255, 255)
 SCENE_SUCCESS_COLOR = (0, 150, 0)  # Darker green for white background
 SCENE_INSTR_TEXT_COLOR = (255, 255, 255)  # White text on black box
 
@@ -756,6 +756,7 @@ class ExtrinsicsCalibrationScene(Scene):
                 known_targets=self._known_targets,
                 aruco_corners=formatted_corners,
                 aruco_ids=formatted_ids,
+                token_sizes=self._token_sizes,
             )
 
             if result:
@@ -1944,11 +1945,14 @@ class Projector3DCalibrationScene(Scene):
                 ray_world = rotation_matrix_camera.T @ ray_camera
                 ray_world /= np.linalg.norm(ray_world)
 
-                # 3. Intersect with plane Z = height
+                # 3. Intersect with plane Z = target_z
+                # We must ensure height H is on the same side of Z=0 as the camera.
+                target_z = np.sign(camera_center_world[2]) * height if camera_center_world[2] != 0 else height
+                
                 if abs(ray_world[2]) < 1e-6:
                     continue  # Ray parallel to plane
 
-                ray_distance = (height - camera_center_world[2]) / ray_world[2]
+                ray_distance = (target_z - camera_center_world[2]) / ray_world[2]
                 world_point = camera_center_world + ray_distance * ray_world
 
                 self.correspondences.append(

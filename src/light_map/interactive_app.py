@@ -154,6 +154,7 @@ class InteractiveApp:
 
         # Layer Management
         self.layer_manager = LayerStackManager(self.app_context, self.state)
+        self.app_context.layer_manager = self.layer_manager
         self.layer_manager.update_visibility_stack(
             self.fow_manager,
             config.width,

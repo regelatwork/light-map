@@ -44,6 +44,7 @@ class AppContext:
     )
     raw_tokens: List[Any] = field(default_factory=list)
     state: Optional[WorldState] = None
+    layer_manager: Optional[Any] = None  # Avoid circular import
     inspected_token_id: Optional[int] = None
     inspected_token_mask: Optional[np.ndarray] = None
     save_session: Optional[Callable[[], None]] = None

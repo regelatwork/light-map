@@ -251,11 +251,9 @@ class ProjectionService:
         if camera_pixels.size == 0:
             return np.zeros((0, 2), dtype=np.float32)
 
-        if target_z is None:
-            target_z = height_mm
-
         # 1. Reconstruct Object Position in 3D (at height_mm)
         # This gives us the true (X, Y) where the object actually is.
+        # It uses the robust reconstruct_world_points_3d which handles C.z sign.
         marker_pts_3d = self.camera_model.reconstruct_world_points_3d(
             camera_pixels, height_mm=height_mm
         )
@@ -263,7 +261,12 @@ class ProjectionService:
         # 2. Define the 3D Target Point (at target_z)
         # We want to hit the spot directly under/over the marker at target_z.
         target_pts_3d = marker_pts_3d.copy()
-        target_pts_3d[:, 2] = target_z
+        
+        if target_z is not None:
+            # If target_z is provided (e.g. 0.0 for floor), we ensure it has the correct sign.
+            # Most users provide positive heights, but if C.z is negative, Z is negative.
+            target_pts_3d[:, 2] = np.sign(self.camera_model.camera_center[2]) * target_z if target_z != 0 else 0.0
+        # else: target_z is None, so we hit the object at its reconstructed Z (e.g. at height_mm)
 
         # 3. Use 3D Projective Model if preferred and available
         # if (
@@ -282,7 +285,20 @@ class ProjectionService:
             proj_pos = self.camera_model.camera_center
 
         pj_z = proj_pos[2]
-        C = height_mm / (np.abs(pj_z) - height_mm)
+        
+        # Parallax factor calculation
+        # We want pm0 = proj_pos + s * (target_pts_3d - proj_pos) such that pm0.z = 0.
+        # s = -pj_z / (target_pts_3d.z - pj_z)
+        # C in pm0 = target_pts_3d + (target_pts_3d - proj_pos) * C
+        # s = 1 + C => C = s - 1 = -pj_z / (target_pts_3d.z - pj_z) - 1
+        # C = (-pj_z - (target_pts_3d.z - pj_z)) / (target_pts_3d.z - pj_z)
+        # C = -target_pts_3d.z / (target_pts_3d.z - pj_z)
+        # If target_pts_3d.z and pj_z are same sign (e.g. negative), this works.
+        denominator = (target_pts_3d[:, 2] - pj_z)
+        C = -target_pts_3d[:, 2] / (denominator + 1e-9)
+        
+        # Reshape C for broadcasting (N, 1)
+        C = C.reshape(-1, 1)
         pm0 = target_pts_3d + (target_pts_3d - proj_pos.reshape(1, 3)) * C
 
         # A. Use Homography if available (maps Camera at Z=0 to Projector)

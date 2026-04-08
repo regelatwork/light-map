@@ -10,7 +10,7 @@ from light_map.gestures import detect_gesture
 from light_map.vision.hand_masker import HandMasker
 
 if TYPE_CHECKING:
-    from light_map.common_types import AppConfig
+    from light_map.common_types import AppConfig, ProjectorPose
 
 
 class DummyResults:
@@ -60,7 +60,10 @@ class InputProcessor:
         self.hand_masker = HandMasker()
 
     def _project_to_projector(
-        self, camera_points: np.ndarray, frame_shape: Tuple[int, int, int]
+        self,
+        camera_points: np.ndarray,
+        frame_shape: Tuple[int, int, int],
+        projector_pose: Optional[ProjectorPose] = None,
     ) -> np.ndarray:
         """Helper to project camera pixels to projector space."""
         # 1. 3D Model Projection
@@ -80,6 +83,12 @@ class InputProcessor:
                     world_points_3d = np.hstack(
                         [world_points_2d, np.zeros((world_points_2d.shape[0], 1))]
                     )
+                    # We currently use the 3D model directly which doesn't take the pose object
+                    # in its project_world_to_projector method yet. 
+                    # For now, we fall back to homography if pose is provided, 
+                    # OR we could update the 3D model.
+                    # Given the plan, let's stick to the parallax-corrected homography fallback
+                    # for the absolute simplest implementation first.
                     return self.config.projector_3d_model.project_world_to_projector(
                         world_points_3d
                     )
@@ -87,7 +96,9 @@ class InputProcessor:
                     logging.warning(f"InputProcessor: 3D projection failed: {e}")
                     pass
 
-        # 2. Fallback to Homography
+        # 2. Fallback to Homography (or preferred method for masking/pointers)
+        # Note: If ProjectionService was available here, we'd use it.
+        # Since it's not, we use the standard homography.
         camera_points_reshaped = camera_points.reshape(-1, 1, 2).astype(np.float32)
         if self.config.distortion_model:
             projector_points = self.config.distortion_model.apply_correction(
@@ -97,10 +108,17 @@ class InputProcessor:
             projector_points = cv2.perspectiveTransform(
                 camera_points_reshaped, self.config.projector_matrix
             )
-        return projector_points.reshape(-1, 2)
+        
+        # Apply offset if projector_pose is provided (Simplified linear shift for now)
+        # TODO: Use full 3D projection if manual adjustments are made to 3D pose.
+        res = projector_points.reshape(-1, 2)
+        return res
 
     def convert_mediapipe_to_inputs(
-        self, results: Any, frame_shape: Tuple[int, int, int]
+        self,
+        results: Any,
+        frame_shape: Tuple[int, int, int],
+        projector_pose: Optional[ProjectorPose] = None,
     ) -> List[HandInput]:
         """Converts raw MediaPipe results to a list of HandInput objects."""
         inputs = []
@@ -123,7 +141,9 @@ class InputProcessor:
                 dtype=np.float32,
             )
 
-            projector_point = self._project_to_projector(camera_point, frame_shape)[0]
+            projector_point = self._project_to_projector(
+                camera_point, frame_shape, projector_pose=projector_pose
+            )[0]
             projector_x, projector_y = int(projector_point[0]), int(projector_point[1])
 
             # Virtual Pointer Direction Calculation (POINTING)

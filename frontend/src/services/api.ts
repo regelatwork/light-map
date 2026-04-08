@@ -166,6 +166,10 @@ export const updateSystemConfig = async (update: {
   enable_hand_masking?: boolean;
   enable_aruco_masking?: boolean;
   gm_position?: string;
+  use_projector_3d_model?: boolean;
+  projector_pos_x_override?: number | null;
+  projector_pos_y_override?: number | null;
+  projector_pos_z_override?: number | null;
 }) => {
   const host = import.meta.env.DEV ? 'http://localhost:8000' : window.location.origin;
   const response = await fetch(`${host}/config/system`, {

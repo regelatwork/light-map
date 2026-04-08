@@ -359,6 +359,18 @@ class GmPosition(StrEnum):
 _DEFAULT_STORAGE = StorageManager()
 
 
+@dataclass(frozen=True)
+class ProjectorPose:
+    """Represents the absolute 3D position of the projector in world coordinates (mm)."""
+
+    x: float
+    y: float
+    z: float
+
+    def to_list(self) -> List[float]:
+        return [self.x, self.y, self.z]
+
+
 @dataclass
 class AppConfig:
     width: int
@@ -389,6 +401,12 @@ class AppConfig:
     calibration_box_width_mm: float = 188.0
     calibration_box_length_mm: float = 295.0
     use_projector_3d_model: bool = True
+    
+    # Manual Projector Position Overrides
+    projector_pos_x_override: Optional[float] = None
+    projector_pos_y_override: Optional[float] = None
+    projector_pos_z_override: Optional[float] = None
+
     aruco_defaults: Dict[int, Any] = field(default_factory=dict)
     token_profiles: Dict[str, Any] = field(default_factory=dict)
     pointer_extension_inches: float = DEFAULT_POINTER_EXTENSION_INCHES
@@ -423,6 +441,18 @@ class AppConfig:
         self.use_projector_3d_model = getattr(
             gs, "use_projector_3d_model", self.use_projector_3d_model
         )
+        
+        # Sync Projector Position Overrides
+        self.projector_pos_x_override = getattr(
+            gs, "projector_pos_x_override", self.projector_pos_x_override
+        )
+        self.projector_pos_y_override = getattr(
+            gs, "projector_pos_y_override", self.projector_pos_y_override
+        )
+        self.projector_pos_z_override = getattr(
+            gs, "projector_pos_z_override", self.projector_pos_z_override
+        )
+
         self.aruco_defaults = getattr(gs, "aruco_defaults", self.aruco_defaults)
         self.token_profiles = getattr(gs, "token_profiles", self.token_profiles)
         self.inspection_linger_duration = getattr(

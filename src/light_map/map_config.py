@@ -97,6 +97,9 @@ class GlobalMapConfig:
     calibration_box_width_mm: float = 188.0
     calibration_box_length_mm: float = 295.0
     use_projector_3d_model: bool = True
+    projector_pos_x_override: Optional[float] = None
+    projector_pos_y_override: Optional[float] = None
+    projector_pos_z_override: Optional[float] = None
     gm_position: GmPosition = GmPosition.NONE
     naming_style: NamingStyle = NamingStyle.SCI_FI
     inspection_linger_duration: float = 10.0
@@ -229,6 +232,9 @@ class MapConfigManager:
                     "calibration_box_height_mm", 78.0
                 ),
                 use_projector_3d_model=global_data.get("use_projector_3d_model", False),
+                projector_pos_x_override=global_data.get("projector_pos_x_override"),
+                projector_pos_y_override=global_data.get("projector_pos_y_override"),
+                projector_pos_z_override=global_data.get("projector_pos_z_override"),
                 gm_position=GmPosition(global_data.get("gm_position", GmPosition.NONE)),
                 naming_style=NamingStyle(
                     global_data.get("naming_style", NamingStyle.SCI_FI)

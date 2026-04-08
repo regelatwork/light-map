@@ -11,6 +11,7 @@ from light_map.common_types import (
     GridMetadata,
     MapRenderState,
     CalibrationState,
+    ProjectorPose,
 )
 from light_map.menu_system import MenuState
 from light_map.core.scene import HandInput
@@ -87,6 +88,9 @@ class WorldState:
         self._selection_atom = VersionedAtom(SelectionState(), "selection")
         self._inspected_token_id_atom = VersionedAtom(None, "inspected_token_id")
         self._grid_metadata_atom = VersionedAtom(GridMetadata(), "grid_metadata")
+        self._projector_pose_atom = VersionedAtom(
+            ProjectorPose(0.0, 0.0, 0.0), "projector_pose"
+        )
         self._fps_atom = VersionedAtom(0.0, "fps")
 
         # Remote Action Queuing
@@ -295,6 +299,14 @@ class WorldState:
         self._inspected_token_id_atom.update(value)
 
     @property
+    def projector_pose(self) -> ProjectorPose:
+        return self._projector_pose_atom.value
+
+    @projector_pose.setter
+    def projector_pose(self, value: ProjectorPose):
+        self._projector_pose_atom.update(value)
+
+    @property
     def grid_metadata(self) -> GridMetadata:
         return self._grid_metadata_atom.value
 
@@ -384,6 +396,10 @@ class WorldState:
     @property
     def selection_version(self) -> int:
         return self._selection_atom.timestamp
+
+    @property
+    def projector_pose_version(self) -> int:
+        return self._projector_pose_atom.timestamp
 
     @property
     def grid_metadata_version(self) -> int:
@@ -623,10 +639,12 @@ class WorldState:
             "dwell_state_version": self.dwell_state_version,
             "summon_progress_version": self.summon_progress_version,
             "selection_version": self.selection_version,
+            "projector_pose_version": self.projector_pose_version,
             "grid_metadata_version": self.grid_metadata_version,
             "system_time": self.system_time,
             "system_time_version": self.system_time_version,
             "effective_show_tokens": self.effective_show_tokens,
+            "projector_pose": self.projector_pose.to_list(),
         }
 
     def clear_raw_aruco(self):

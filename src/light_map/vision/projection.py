@@ -2,7 +2,8 @@ import numpy as np
 import cv2
 import logging
 import os
-from typing import Optional, Any
+from typing import Optional, Any, List, Tuple
+from light_map.common_types import ProjectorPose
 
 
 class CameraProjectionModel:
@@ -119,17 +120,36 @@ class Projector3DModel:
         self.homography_matrix = homography_matrix
         self.use_3d = use_3d
 
-        self.projector_center = None
+        self.calibrated_projector_center = None
         if self.rotation_vector is not None and self.translation_vector is not None:
             R, _ = cv2.Rodrigues(self.rotation_vector)
-            self.projector_center = -(R.T @ self.translation_vector.flatten())
+            self.calibrated_projector_center = -(
+                R.T @ self.translation_vector.flatten()
+            )
+
+    def get_projector_center(
+        self, override: Optional[ProjectorPose] = None
+    ) -> Optional[np.ndarray]:
+        """Returns the absolute 3D position of the projector center."""
+        if override is not None:
+            return np.array([override.x, override.y, override.z], dtype=np.float32)
+        return self.calibrated_projector_center
+
+    @property
+    def projector_center(self) -> Optional[np.ndarray]:
+        """Legacy property for backward compatibility (no override)."""
+        return self.calibrated_projector_center
 
     @property
     def is_calibrated_3d(self) -> bool:
         """Returns True if full 3D calibration data is present."""
         return self.intrinsic_matrix is not None and self.rotation_vector is not None
 
-    def project_world_to_projector(self, world_points: np.ndarray) -> np.ndarray:
+    def project_world_to_projector(
+        self,
+        world_points: np.ndarray,
+        projector_pose: Optional[ProjectorPose] = None,
+    ) -> np.ndarray:
         """
         Maps (N, 3) World points to (N, 2) Projector pixels.
         If use_3d and 3D calibration is present, it uses full projective transformation.
@@ -141,11 +161,24 @@ class Projector3DModel:
             and self.intrinsic_matrix is not None
             and self.rotation_vector is not None
         ):
+            # 1. Determine Pose
+            rv = self.rotation_vector
+            tv = self.translation_vector
+
+            if projector_pose is not None:
+                # Calculate adjusted translation vector: t = -R * C
+                R, _ = cv2.Rodrigues(rv)
+                C = np.array(
+                    [projector_pose.x, projector_pose.y, projector_pose.z],
+                    dtype=np.float32,
+                )
+                tv = -(R @ C).reshape(3, 1)
+
             # Full 3D Projective transformation
             projector_pixels, _ = cv2.projectPoints(
                 world_points.astype(np.float32),
-                self.rotation_vector,
-                self.translation_vector,
+                rv,
+                tv,
                 self.intrinsic_matrix,
                 self.distortion_coefficients,
             )
@@ -235,6 +268,7 @@ class ProjectionService:
         height_mm: float = 0.0,
         target_z: Optional[float] = None,
         prefer_homography: bool = True,
+        projector_pose: Optional[ProjectorPose] = None,
     ) -> np.ndarray:
         """
         Maps camera pixel coordinates to projector pixel coordinates with parallax correction.
@@ -247,6 +281,7 @@ class ProjectionService:
                      If 0.0, it hits the ground directly under the object.
             prefer_homography: If True, uses the 2D homography (with parallax correction)
                                instead of the 3D projective model.
+            projector_pose: Optional absolute 3D position override for the projector.
         """
         if camera_pixels.size == 0:
             return np.zeros((0, 2), dtype=np.float32)
@@ -279,7 +314,7 @@ class ProjectionService:
         # 4. Use 2D Homography or PPI-based projection (with parallax correction)
         # To hit target_pts_3d using a floor-based (Z=0) mapping, we find where
         # the projector ray through target_pts_3d would hit the floor.
-        proj_pos = self.projector_model.projector_center
+        proj_pos = self.projector_model.get_projector_center(override=projector_pose)
         if proj_pos is None:
             # Fallback to co-located assumption
             proj_pos = self.camera_model.camera_center

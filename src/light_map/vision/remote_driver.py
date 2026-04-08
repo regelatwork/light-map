@@ -94,6 +94,10 @@ class SystemConfigUpdate(BaseModel):
     enable_hand_masking: Optional[bool] = None
     enable_aruco_masking: Optional[bool] = None
     gm_position: Optional[str] = None
+    use_projector_3d_model: Optional[bool] = None
+    projector_pos_x_override: Optional[float] = None
+    projector_pos_y_override: Optional[float] = None
+    projector_pos_z_override: Optional[float] = None
 
 
 def numpy_to_python(obj: Any) -> Any:
@@ -584,6 +588,16 @@ def create_app(
             data["enable_aruco_masking"] = config.enable_aruco_masking
         if config.gm_position is not None:
             data["gm_position"] = config.gm_position
+        if config.use_projector_3d_model is not None:
+            data["use_projector_3d_model"] = config.use_projector_3d_model
+        
+        # Absolute position overrides (can be null to reset)
+        if hasattr(config, 'projector_pos_x_override'):
+            data["projector_pos_x_override"] = config.projector_pos_x_override
+        if hasattr(config, 'projector_pos_y_override'):
+            data["projector_pos_y_override"] = config.projector_pos_y_override
+        if hasattr(config, 'projector_pos_z_override'):
+            data["projector_pos_z_override"] = config.projector_pos_z_override
 
         res = DetectionResult(
             timestamp=time.monotonic_ns(),

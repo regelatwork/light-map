@@ -252,6 +252,37 @@ def handle_update_system_config(
             app.config.projector_3d_model.use_3d = gs.use_projector_3d_model
         changed = True
 
+    # Projector Position Overrides
+    pos_changed = False
+    if "projector_pos_x_override" in payload:
+        gs.projector_pos_x_override = payload["projector_pos_x_override"]
+        app.config.projector_pos_x_override = gs.projector_pos_x_override
+        pos_changed = True
+        changed = True
+    if "projector_pos_y_override" in payload:
+        gs.projector_pos_y_override = payload["projector_pos_y_override"]
+        app.config.projector_pos_y_override = gs.projector_pos_y_override
+        pos_changed = True
+        changed = True
+    if "projector_pos_z_override" in payload:
+        gs.projector_pos_z_override = payload["projector_pos_z_override"]
+        app.config.projector_pos_z_override = gs.projector_pos_z_override
+        pos_changed = True
+        changed = True
+
+    if pos_changed and state is not None:
+        # Update WorldState Atom for real-time feedback
+        from .common_types import ProjectorPose
+        
+        calibrated_pos = app.config.projector_3d_model.calibrated_projector_center
+        if calibrated_pos is not None:
+            new_pose = ProjectorPose(
+                x=gs.projector_pos_x_override if gs.projector_pos_x_override is not None else calibrated_pos[0],
+                y=gs.projector_pos_y_override if gs.projector_pos_y_override is not None else calibrated_pos[1],
+                z=gs.projector_pos_z_override if gs.projector_pos_z_override is not None else calibrated_pos[2],
+            )
+            state.projector_pose = new_pose
+
     if changed:
         app.map_config.save()
         app.notifications.add_notification("System Settings Updated")

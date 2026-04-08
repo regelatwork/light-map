@@ -434,6 +434,7 @@ def run_app(args):
                     last_world_ts = -1
                     last_tokens_ts = -1
                     last_menu_ts = -1
+                    last_projector_pose_ts = -1
 
                     def render_cb(state, actions):
                         nonlocal \
@@ -447,7 +448,8 @@ def run_app(args):
                             last_aruco_masking, \
                             last_world_ts, \
                             last_tokens_ts, \
-                            last_menu_ts
+                            last_menu_ts, \
+                            last_projector_pose_ts
 
                         # A. Handle Startup Actions (Execute once)
                         if args.action and not startup_action_executed:
@@ -560,6 +562,7 @@ def run_app(args):
 
                             if (
                                 current_map_config_version != last_map_config_version
+                                or state.projector_pose_version != last_projector_pose_ts
                                 or app.debug_mode != last_debug_mode
                                 or app.current_map_path != last_map_path
                                 or fow_disabled != last_fow_disabled
@@ -567,6 +570,8 @@ def run_app(args):
                                 or app.config.enable_hand_masking != last_hand_masking
                                 or app.config.enable_aruco_masking != last_aruco_masking
                             ):
+                                last_projector_pose_ts = state.projector_pose_version
+                                calibrated_pos = app.config.projector_3d_model.calibrated_projector_center
                                 state_mirror["config"] = {
                                     "cam_res": (
                                         current_camera_width,
@@ -576,6 +581,8 @@ def run_app(args):
                                         native_screen_width,
                                         native_screen_height,
                                     ),
+                                    "calibrated_projector_pos": calibrated_pos.tolist() if calibrated_pos is not None else None,
+                                    "current_projector_pos": state.projector_pose.to_list(),
                                     "remote_hands": args.remote_hands,
                                     "remote_tokens": args.remote_tokens,
                                     "remote_port": args.remote_port,

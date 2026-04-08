@@ -33,7 +33,7 @@ class InputCoordinator:
         if state.hands or state.handedness:
             results = DummyResults(state.hands, state.handedness)
             inputs = self.input_processor.convert_mediapipe_to_inputs(
-                results, frame_shape
+                results, frame_shape, projector_pose=state.projector_pose
             )
             state.update_inputs(inputs, current_time)
         # Priority 2: Use existing inputs (might be from Remote Driver)

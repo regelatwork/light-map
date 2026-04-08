@@ -33,10 +33,12 @@ class ArucoMaskLayer(Layer):
 
         # Use raw_aruco_version to ensure masks persist even if logical tokens change.
         # Include grid metadata and viewport for 3D projection stability.
+        # NEW: Include projector_pose_version for manual adjustment feedback.
         v = max(
             self.state.raw_aruco_version,
             self.state.grid_metadata_version,
             self.state.viewport_version,
+            self.state.projector_pose_version,
         )
         return (v << 1) | enabled_bit
 
@@ -60,6 +62,7 @@ class ArucoMaskLayer(Layer):
                 camera_pixels,
                 height_mm=height_mm,
                 prefer_homography=prefer_homography,
+                projector_pose=self.state.projector_pose if self.state else None,
             )
 
         # Fallback to standard surface homography (Z=0)

@@ -3,13 +3,14 @@ import { useSystemState } from '../hooks/useSystemState';
 import { useGridEdit } from './GridEditContext';
 import { VisionControl } from './VisionControl';
 import { saveGridConfig, injectAction } from '../services/api';
+import { HardwareAlignment } from './HardwareAlignment';
 
 interface SettingsModalProps {
   isOpen: boolean;
   onClose: () => void;
 }
 
-type Tab = 'grid' | 'vision' | 'system';
+type Tab = 'grid' | 'vision' | 'hardware' | 'system';
 
 export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
   const { config, grid_origin_svg_x, grid_origin_svg_y } = useSystemState();
@@ -71,6 +72,16 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
             }`}
           >
             Vision & Masking
+          </button>
+          <button
+            onClick={() => setActiveTab('hardware')}
+            className={`px-4 py-3 text-sm font-semibold transition-colors border-b-2 ${
+              activeTab === 'hardware'
+                ? 'border-blue-600 text-blue-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            Hardware
           </button>
           <button
             onClick={() => setActiveTab('system')}
@@ -166,6 +177,12 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
           {activeTab === 'vision' && (
             <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-200">
                <VisionControl showOnlyToggles={true} />
+            </div>
+          )}
+
+          {activeTab === 'hardware' && (
+            <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-200">
+               <HardwareAlignment />
             </div>
           )}
 

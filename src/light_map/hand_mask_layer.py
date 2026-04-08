@@ -33,6 +33,7 @@ class HandMaskLayer(Layer):
             self.state.hands_version,
             self.state.grid_metadata_version,
             self.state.viewport_version,
+            self.state.projector_pose_version,
         )
 
         # If we have active hulls, we are rendering every frame for persistence fading
@@ -59,7 +60,10 @@ class HandMaskLayer(Layer):
             # This helps the mask better align with the physical hand.
             # We prefer homography for masking because it's usually better calibrated for the tabletop.
             return self.projection_service.project_camera_to_projector(
-                cam_pts, height_mm=20.0, prefer_homography=True
+                cam_pts,
+                height_mm=20.0,
+                prefer_homography=True,
+                projector_pose=self.state.projector_pose if self.state else None,
             )
 
         # Fallback to standard surface homography (Z=0)

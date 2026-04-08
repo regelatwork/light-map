@@ -156,6 +156,9 @@ export interface SystemConfig {
   gm_position: GmPosition;
   debug_mode: boolean;
   fow_disabled: boolean;
+  use_projector_3d_model: boolean;
+  calibrated_projector_pos?: [number, number, number] | null;
+  current_projector_pos?: [number, number, number];
   current_map_path?: string;
   map_width?: number;
   map_height?: number;
@@ -211,6 +214,7 @@ export const INITIAL_STATE: SystemState = {
     gm_position: GmPosition.NONE,
     debug_mode: false,
     fow_disabled: false,
+    use_projector_3d_model: true,
   },
   maps: {},
   timestamp: 0,

@@ -165,6 +165,18 @@ class InteractiveApp:
 
         # Scene Management
         self.scenes = self._initialize_scenes()
+        
+        # Initialize Projector Pose Atom with current absolute position
+        calibrated_pos = self.config.projector_3d_model.calibrated_projector_center
+        if calibrated_pos is not None:
+            from .common_types import ProjectorPose
+            gs = self.map_config.data.global_settings
+            self.state.projector_pose = ProjectorPose(
+                x=gs.projector_pos_x_override if gs.projector_pos_x_override is not None else calibrated_pos[0],
+                y=gs.projector_pos_y_override if gs.projector_pos_y_override is not None else calibrated_pos[1],
+                z=gs.projector_pos_z_override if gs.projector_pos_z_override is not None else calibrated_pos[2],
+            )
+
         self.current_scene: Scene = self.scenes[SceneId.MENU]
         self.current_scene_name = self.current_scene.__class__.__name__
         self.state.current_scene_name = self.current_scene_name

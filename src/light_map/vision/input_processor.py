@@ -3,7 +3,7 @@ import cv2
 import numpy as np
 import mediapipe as mp
 import logging
-from typing import List, Tuple, Any, Dict, TYPE_CHECKING
+from typing import List, Tuple, Any, Dict, TYPE_CHECKING, Optional
 
 from light_map.core.scene import HandInput
 from light_map.gestures import detect_gesture
@@ -84,8 +84,8 @@ class InputProcessor:
                         [world_points_2d, np.zeros((world_points_2d.shape[0], 1))]
                     )
                     # We currently use the 3D model directly which doesn't take the pose object
-                    # in its project_world_to_projector method yet. 
-                    # For now, we fall back to homography if pose is provided, 
+                    # in its project_world_to_projector method yet.
+                    # For now, we fall back to homography if pose is provided,
                     # OR we could update the 3D model.
                     # Given the plan, let's stick to the parallax-corrected homography fallback
                     # for the absolute simplest implementation first.
@@ -108,7 +108,7 @@ class InputProcessor:
             projector_points = cv2.perspectiveTransform(
                 camera_points_reshaped, self.config.projector_matrix
             )
-        
+
         # Apply offset if projector_pose is provided (Simplified linear shift for now)
         # TODO: Use full 3D projection if manual adjustments are made to 3D pose.
         res = projector_points.reshape(-1, 2)

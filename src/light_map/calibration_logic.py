@@ -171,7 +171,7 @@ def calibrate_extrinsics(
             h = token_heights[aruco_id]
             # Use all 4 corners
             corners_cam = aruco_corners[i][0]  # (4, 2)
-            
+
             # Find (X, Y) for each corner
             if known_targets and aruco_id in known_targets:
                 # Use known center and size to derive projector corners
@@ -179,13 +179,13 @@ def calibrate_extrinsics(
                 # Default size to 1.0 inch if missing
                 size_inches = token_sizes.get(aruco_id, 1.0) if token_sizes else 1.0
                 size_px = size_inches * ppi
-                
+
                 # ArUco corners are defined as TL, TR, BR, BL
                 offsets = [
-                    [-size_px/2, -size_px/2],
-                    [size_px/2, -size_px/2],
-                    [size_px/2, size_px/2],
-                    [-size_px/2, size_px/2]
+                    [-size_px / 2, -size_px / 2],
+                    [size_px / 2, -size_px / 2],
+                    [size_px / 2, size_px / 2],
+                    [-size_px / 2, size_px / 2],
                 ]
                 for j in range(4):
                     px = px_c + offsets[j][0]
@@ -195,8 +195,10 @@ def calibrate_extrinsics(
             else:
                 # Fallback to homography projection for each corner
                 pts_cam = corners_cam.reshape(-1, 1, 2).astype(np.float32)
-                pts_proj = cv2.perspectiveTransform(pts_cam, projector_matrix).reshape(-1, 2)
-                
+                pts_proj = cv2.perspectiveTransform(pts_cam, projector_matrix).reshape(
+                    -1, 2
+                )
+
                 for j in range(4):
                     px, py = pts_proj[j]
                     object_points_list.append([px / ppi_mm, py / ppi_mm, h])
@@ -218,19 +220,10 @@ def calibrate_extrinsics(
         f"Extrinsics: Solving for {len(object_points)} points ({num_ground} ground, {num_tokens} tokens)."
     )
 
-    # Solve PnP
-    # SQPNP is highly robust to both planar and non-planar configurations.
-    # We still provide an initial guess to help it converge to the "looking down" solution.
-    rotation_vector_guess = np.array([np.pi, 0, 0], dtype=np.float32).reshape(3, 1)
-    translation_vector_guess = np.array([0, 0, 1000], dtype=np.float32).reshape(3, 1)
-
-    # If we have both ground points and token markers, we check for 180-degree ambiguity
-    # which often happens with symmetric chessboard patterns and rotated cameras.
     # Pick Solver based on planarity
     # SQPNP is highly robust to both planar and non-planar configurations.
-    # We still provide an initial guess to help it converge to the "looking down" solution.
     is_planar = np.all(object_points[:, 2] == object_points[0, 2])
-    
+
     if is_planar and len(object_points) >= 4:
         # IPPE returns 2 solutions for planar points
         ret, rvecs, tvecs, errs = cv2.solvePnPGeneric(
@@ -242,7 +235,7 @@ def calibrate_extrinsics(
         )
     else:
         # SQPNP only returns 1 solution
-        # Note: We don't use useExtrinsicGuess here because we want to see the 
+        # Note: We don't use useExtrinsicGuess here because we want to see the
         # actual raw solutions from the solver before filtering.
         ret, rvecs, tvecs, errs = cv2.solvePnPGeneric(
             object_points,
@@ -253,47 +246,52 @@ def calibrate_extrinsics(
         )
 
     best_ret = None
-    min_err = float("inf")
 
     # If the solver found solutions, filter them for physical plausibility
     if ret and len(rvecs) > 0:
         logging.info(f"Extrinsics: Solver found {len(rvecs)} solutions.")
-        
+
         candidates = []
         for i in range(len(rvecs)):
             rv, tv = rvecs[i], tvecs[i]
             rmat, _ = cv2.Rodrigues(rv)
             cc = -(rmat.T @ tv.flatten())
-            
-            proj, _ = cv2.projectPoints(object_points, rv, tv, camera_matrix, distortion_coefficients)
+
+            proj, _ = cv2.projectPoints(
+                object_points, rv, tv, camera_matrix, distortion_coefficients
+            )
             err = np.mean(np.linalg.norm(image_points - proj.reshape(-1, 2), axis=1))
-            
-            candidates.append({
-                'rv': rv, 'tv': tv, 'cc': cc, 'err': err, 'index': i
-            })
-            logging.info(f"  Sol {i}: cc_z={cc[2]:.1f}, tv_z={tv[2][0]:.1f}, err={err:.2f}")
+
+            candidates.append({"rv": rv, "tv": tv, "cc": cc, "err": err, "index": i})
+            logging.info(
+                f"  Sol {i}: cc_z={cc[2]:.1f}, tv_z={tv[2][0]:.1f}, err={err:.2f}"
+            )
 
         # Selection Strategy:
         # 1. MUST have tz > 0 (Points in front of camera)
         # 2. Prefer cc_z > 0 (Camera above table) if both sides are equally good.
         # 3. BUT, if only cc_z < 0 is found, accept it to avoid failure (Z-down system).
-        
+
         # Sort candidates by error
-        candidates.sort(key=lambda x: x['err'])
-        
+        candidates.sort(key=lambda x: x["err"])
+
         # Pass 1: Strict (Above table AND in front)
         for c in candidates:
-            if c['cc'][2] > 0 and c['tv'][2] > 0:
-                best_ret = (c['rv'], c['tv'])
-                logging.info(f"Extrinsics: Selected Above-Table solution (err={c['err']:.2f})")
+            if c["cc"][2] > 0 and c["tv"][2] > 0:
+                best_ret = (c["rv"], c["tv"])
+                logging.info(
+                    f"Extrinsics: Selected Above-Table solution (err={c['err']:.2f})"
+                )
                 break
-        
+
         # Pass 2: Fallback (Below-Table AND in front)
         if not best_ret:
             for c in candidates:
-                if c['tv'][2] > 0:
-                    best_ret = (c['rv'], c['tv'])
-                    logging.info(f"Extrinsics: Selected Below-Table solution (err={c['err']:.2f})")
+                if c["tv"][2] > 0:
+                    best_ret = (c["rv"], c["tv"])
+                    logging.info(
+                        f"Extrinsics: Selected Below-Table solution (err={c['err']:.2f})"
+                    )
                     break
 
     if best_ret:

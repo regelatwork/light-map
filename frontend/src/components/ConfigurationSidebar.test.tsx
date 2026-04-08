@@ -30,6 +30,7 @@ vi.mock('../hooks/useSystemState', () => ({
       gm_position: 'None',
       debug_mode: false,
       fow_disabled: false,
+      use_projector_3d_model: true,
     },
     maps: {},
     timestamp: 0,
@@ -91,6 +92,7 @@ describe('ConfigurationSidebar', () => {
         enable_hand_masking: false,
         enable_aruco_masking: true,
         fow_disabled: false,
+        use_projector_3d_model: true,
         token_profiles: {
           small: { size: 1, height_mm: 15 },
           large: { size: 2, height_mm: 40 },
@@ -158,6 +160,7 @@ describe('ConfigurationSidebar', () => {
         enable_hand_masking: false,
         enable_aruco_masking: true,
         fow_disabled: false,
+        use_projector_3d_model: true,
         token_profiles: {
           small: { size: 1, height_mm: 15 },
           large: { size: 2, height_mm: 40 },
@@ -224,6 +227,7 @@ describe('ConfigurationSidebar', () => {
         enable_hand_masking: false,
         enable_aruco_masking: true,
         fow_disabled: false,
+        use_projector_3d_model: true,
         token_profiles: {
           small: { size: 1, height_mm: 15 },
           large: { size: 2, height_mm: 40 },
@@ -293,6 +297,7 @@ describe('ConfigurationSidebar', () => {
         enable_hand_masking: false,
         enable_aruco_masking: true,
         fow_disabled: false,
+        use_projector_3d_model: true,
         aruco_defaults: {
           42: { name: 'Deep Thought', type: 'NPC', color: '#0000ff' },
         },
@@ -357,6 +362,7 @@ describe('ConfigurationSidebar', () => {
       config: {
         ...useSystemStateHook.INITIAL_STATE.config,
         gm_position: GmPosition.NONE,
+        use_projector_3d_model: true,
       },
     };
 
@@ -403,6 +409,7 @@ describe('ConfigurationSidebar', () => {
       config: {
         ...useSystemStateHook.INITIAL_STATE.config,
         gm_position: GmPosition.NONE,
+        use_projector_3d_model: true,
       },
     });
 

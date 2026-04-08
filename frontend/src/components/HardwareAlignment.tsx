@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useSystemState } from '../hooks/useSystemState';
 import { updateSystemConfig } from '../services/api';
 
@@ -7,22 +7,28 @@ export const HardwareAlignment: React.FC = () => {
   const [localX, setLocalX] = useState<string>('');
   const [localY, setLocalY] = useState<string>('');
   const [localZ, setLocalZ] = useState<string>('');
+  const [prevPos, setPrevPos] = useState<[number, number, number] | undefined>(undefined);
 
-  // Sync from config when it arrives
-  useEffect(() => {
-    if (config?.current_projector_pos) {
-      setLocalX(config.current_projector_pos[0].toFixed(2));
-      setLocalY(config.current_projector_pos[1].toFixed(2));
-      setLocalZ(config.current_projector_pos[2].toFixed(2));
-    }
-  }, [config?.current_projector_pos]);
+  // Sync state from props during render (Idiomatic React pattern for "storing state from props")
+  const currentPos = config?.current_projector_pos;
+  if (currentPos && (
+    !prevPos || 
+    currentPos[0] !== prevPos[0] || 
+    currentPos[1] !== prevPos[1] || 
+    currentPos[2] !== prevPos[2]
+  )) {
+    setPrevPos(currentPos);
+    setLocalX(currentPos[0].toFixed(2));
+    setLocalY(currentPos[1].toFixed(2));
+    setLocalZ(currentPos[2].toFixed(2));
+  }
 
   const handleUpdate = async (axis: 'x' | 'y' | 'z', value: string) => {
     const numValue = parseFloat(value);
     if (isNaN(numValue)) return;
 
     try {
-      const update: any = {};
+      const update: Record<string, number | null> = {};
       update[`projector_pos_${axis}_override`] = numValue;
       await updateSystemConfig(update);
     } catch (e) {

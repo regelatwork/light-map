@@ -61,7 +61,7 @@ def main():
         translation_vector = data["translation_vector"]
         rms_error = data.get("rms", 0.0)
         world_position = get_position(rotation_vector, translation_vector)
-        
+
         # Apply Overrides
         adj_x = overrides["x"] if overrides["x"] is not None else world_position[0]
         adj_y = overrides["y"] if overrides["y"] is not None else world_position[1]
@@ -78,7 +78,7 @@ def main():
             print(f"  X: {world_position[0]:8.2f} mm")
             print(f"  Y: {world_position[1]:8.2f} mm")
             print(f"  Z: {world_position[2]:8.2f} mm (Height above table)")
-        
+
         print(f"  RMS Error: {rms_error:.3f} px")
     else:
         print(f"Projector 3D calibration file not found at: {projector_3d_file}")

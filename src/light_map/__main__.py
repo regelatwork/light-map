@@ -562,7 +562,8 @@ def run_app(args):
 
                             if (
                                 current_map_config_version != last_map_config_version
-                                or state.projector_pose_version != last_projector_pose_ts
+                                or state.projector_pose_version
+                                != last_projector_pose_ts
                                 or app.debug_mode != last_debug_mode
                                 or app.current_map_path != last_map_path
                                 or fow_disabled != last_fow_disabled
@@ -581,7 +582,9 @@ def run_app(args):
                                         native_screen_width,
                                         native_screen_height,
                                     ),
-                                    "calibrated_projector_pos": calibrated_pos.tolist() if calibrated_pos is not None else None,
+                                    "calibrated_projector_pos": calibrated_pos.tolist()
+                                    if calibrated_pos is not None
+                                    else None,
                                     "current_projector_pos": state.projector_pose.to_list(),
                                     "remote_hands": args.remote_hands,
                                     "remote_tokens": args.remote_tokens,

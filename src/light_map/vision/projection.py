@@ -2,7 +2,7 @@ import numpy as np
 import cv2
 import logging
 import os
-from typing import Optional, Any, List, Tuple
+from typing import Optional, Any
 from light_map.common_types import ProjectorPose
 
 
@@ -296,11 +296,15 @@ class ProjectionService:
         # 2. Define the 3D Target Point (at target_z)
         # We want to hit the spot directly under/over the marker at target_z.
         target_pts_3d = marker_pts_3d.copy()
-        
+
         if target_z is not None:
             # If target_z is provided (e.g. 0.0 for floor), we ensure it has the correct sign.
             # Most users provide positive heights, but if C.z is negative, Z is negative.
-            target_pts_3d[:, 2] = np.sign(self.camera_model.camera_center[2]) * target_z if target_z != 0 else 0.0
+            target_pts_3d[:, 2] = (
+                np.sign(self.camera_model.camera_center[2]) * target_z
+                if target_z != 0
+                else 0.0
+            )
         # else: target_z is None, so we hit the object at its reconstructed Z (e.g. at height_mm)
 
         # 3. Use 3D Projective Model if preferred and available
@@ -320,7 +324,7 @@ class ProjectionService:
             proj_pos = self.camera_model.camera_center
 
         pj_z = proj_pos[2]
-        
+
         # Parallax factor calculation
         # We want pm0 = proj_pos + s * (target_pts_3d - proj_pos) such that pm0.z = 0.
         # s = -pj_z / (target_pts_3d.z - pj_z)
@@ -329,9 +333,9 @@ class ProjectionService:
         # C = (-pj_z - (target_pts_3d.z - pj_z)) / (target_pts_3d.z - pj_z)
         # C = -target_pts_3d.z / (target_pts_3d.z - pj_z)
         # If target_pts_3d.z and pj_z are same sign (e.g. negative), this works.
-        denominator = (target_pts_3d[:, 2] - pj_z)
+        denominator = target_pts_3d[:, 2] - pj_z
         C = -target_pts_3d[:, 2] / (denominator + 1e-9)
-        
+
         # Reshape C for broadcasting (N, 1)
         C = C.reshape(-1, 1)
         pm0 = target_pts_3d + (target_pts_3d - proj_pos.reshape(1, 3)) * C

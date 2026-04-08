@@ -1947,8 +1947,12 @@ class Projector3DCalibrationScene(Scene):
 
                 # 3. Intersect with plane Z = target_z
                 # We must ensure height H is on the same side of Z=0 as the camera.
-                target_z = np.sign(camera_center_world[2]) * height if camera_center_world[2] != 0 else height
-                
+                target_z = (
+                    np.sign(camera_center_world[2]) * height
+                    if camera_center_world[2] != 0
+                    else height
+                )
+
                 if abs(ray_world[2]) < 1e-6:
                     continue  # Ray parallel to plane
 

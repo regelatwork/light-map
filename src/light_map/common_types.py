@@ -401,7 +401,7 @@ class AppConfig:
     calibration_box_width_mm: float = 188.0
     calibration_box_length_mm: float = 295.0
     use_projector_3d_model: bool = True
-    
+
     # Manual Projector Position Overrides
     projector_pos_x_override: Optional[float] = None
     projector_pos_y_override: Optional[float] = None
@@ -441,7 +441,7 @@ class AppConfig:
         self.use_projector_3d_model = getattr(
             gs, "use_projector_3d_model", self.use_projector_3d_model
         )
-        
+
         # Sync Projector Position Overrides
         self.projector_pos_x_override = getattr(
             gs, "projector_pos_x_override", self.projector_pos_x_override

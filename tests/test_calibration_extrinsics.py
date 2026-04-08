@@ -59,23 +59,25 @@ def test_calibrate_extrinsics_synthetic():
             def detectMarkers(self, frame):
                 corners = []
                 # In the test, token_sizes[id] = 1.0 inch, ppi = 100.0 => 100 pixels
-                # But our true object points were just the centers. 
+                # But our true object points were just the centers.
                 # We need to project the ACTUAL 4 corners of each token to get the image points.
                 size_inches = 1.0
                 size_px = size_inches * ppi
                 offsets = [
-                    [-size_px/2, -size_px/2],
-                    [size_px/2, -size_px/2],
-                    [size_px/2, size_px/2],
-                    [-size_px/2, size_px/2]
+                    [-size_px / 2, -size_px / 2],
+                    [size_px / 2, -size_px / 2],
+                    [size_px / 2, size_px / 2],
+                    [-size_px / 2, size_px / 2],
                 ]
-                
+
                 for i, (px_c, py_c) in enumerate(projector_coords):
                     # Derive world corners for this token
                     w_corners = []
                     for dx, dy in offsets:
-                        w_corners.append([(px_c + dx) / ppi_mm, (py_c + dy) / ppi_mm, 25.0])
-                    
+                        w_corners.append(
+                            [(px_c + dx) / ppi_mm, (py_c + dy) / ppi_mm, 25.0]
+                        )
+
                     w_corners = np.array(w_corners, dtype=np.float32)
                     img_corners, _ = cv2.projectPoints(
                         w_corners,
@@ -85,7 +87,7 @@ def test_calibrate_extrinsics_synthetic():
                         distortion_coefficients,
                     )
                     corners.append(img_corners.reshape(1, 4, 2))
-                    
+
                 ids = np.array([[1], [2], [3], [4]], dtype=np.int32)
                 return corners, ids, []
 

@@ -1,6 +1,6 @@
 import os
 import re
-from light_map.common_types import (
+from light_map.core.common_types import (
     GestureType,
     ResultType,
     SceneId,
@@ -8,7 +8,7 @@ from light_map.common_types import (
     MenuActions,
     GmPosition,
 )
-from light_map.visibility_types import VisibilityType
+from light_map.visibility.visibility_types import VisibilityType
 
 
 def parse_ts_enums(file_path):

@@ -3,15 +3,15 @@ from unittest.mock import MagicMock, patch
 import numpy as np
 import pytest
 
-from light_map.common_types import GestureType, SceneId
-from light_map.scenes.calibration_scenes import PpiCalibrationScene
+from light_map.core.common_types import GestureType, SceneId
+from light_map.calibration.calibration_scenes import PpiCalibrationScene
 from light_map.core.scene import HandInput, SceneTransition
 
 
 @pytest.fixture
 def mock_app_context():
     """Creates a mock AppContext for testing."""
-    from light_map.common_types import AppConfig
+    from light_map.core.common_types import AppConfig
 
     mock_context = MagicMock()
     mock_context.app_config = AppConfig(
@@ -37,7 +37,7 @@ def test_ppi_calibration_scene_detecting_to_confirming(mock_app_context):
 
     # Simulate PPI detection
     with patch(
-        "light_map.scenes.calibration_scenes.calculate_ppi_from_frame",
+        "light_map.calibration.calibration_scenes.calculate_ppi_from_frame",
         return_value=100.0,
     ) as mock_calc:
         frame = np.zeros((100, 100, 3), dtype=np.uint8)
@@ -102,7 +102,7 @@ def test_ppi_calibration_scene_no_detection(mock_app_context):
 
     # Simulate no PPI detection
     with patch(
-        "light_map.scenes.calibration_scenes.calculate_ppi_from_frame",
+        "light_map.calibration.calibration_scenes.calculate_ppi_from_frame",
         return_value=None,
     ):
         frame = np.zeros((100, 100, 3), dtype=np.uint8)

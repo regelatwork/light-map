@@ -1,11 +1,11 @@
 import pytest
 from unittest.mock import MagicMock
-from light_map.scenes.map_scene import ViewingScene
+from light_map.map.map_scene import ViewingScene
 from light_map.core.app_context import AppContext
 from light_map.core.scene import HandInput
-from light_map.gestures import GestureType
-from light_map.common_types import TimerKey
-import light_map.menu_config as config_vars
+from light_map.input.gestures import GestureType
+from light_map.core.common_types import TimerKey
+import light_map.menu.menu_config as config_vars
 
 
 @pytest.fixture

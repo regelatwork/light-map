@@ -1,7 +1,7 @@
 import numpy as np
 import time
-from light_map.renderer import Renderer
-from light_map.common_types import ImagePatch, LayerMode, AppConfig
+from light_map.rendering.renderer import Renderer
+from light_map.core.common_types import ImagePatch, LayerMode, AppConfig
 
 
 def test_renderer_correctness():

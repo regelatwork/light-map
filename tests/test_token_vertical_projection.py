@@ -3,8 +3,8 @@ import numpy as np
 import cv2
 import os
 from unittest.mock import patch
-from light_map.vision.aruco_detector import ArucoTokenDetector
-from light_map.map_system import MapSystem
+from light_map.vision.detectors.aruco_detector import ArucoTokenDetector
+from light_map.map.map_system import MapSystem
 
 
 def test_token_vertical_projection():
@@ -66,7 +66,7 @@ def test_token_vertical_projection():
         v_coord = float(v[0])
 
         # Integration Check: detect() method
-        from light_map.common_types import AppConfig
+        from light_map.core.common_types import AppConfig
 
         config = AppConfig(width=1920, height=1080, projector_matrix=np.eye(3))
         map_system = MapSystem(

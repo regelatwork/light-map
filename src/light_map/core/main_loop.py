@@ -2,12 +2,12 @@ import cv2
 import time
 import logging
 from typing import Optional, List, Callable, Dict, Any
-from light_map.core.world_state import WorldState
-from light_map.core.temporal_event_manager import TemporalEventManager
-from light_map.vision.process_manager import VisionProcessManager
-from light_map.vision.frame_producer import FrameProducer
-from light_map.input_manager import InputManager
-from light_map.common_types import DetectionResult, ResultType, Action, Token
+from light_map.state.world_state import WorldState
+from light_map.state.temporal_event_manager import TemporalEventManager
+from light_map.vision.infrastructure.process_manager import VisionProcessManager
+from light_map.vision.infrastructure.frame_producer import FrameProducer
+from light_map.input.input_manager import InputManager
+from light_map.core.common_types import DetectionResult, ResultType, Action, Token
 from light_map.core.analytics import LatencyInstrument, track_wait
 
 

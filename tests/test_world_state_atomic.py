@@ -1,5 +1,5 @@
-from light_map.core.world_state import WorldState
-from light_map.common_types import ViewportState
+from light_map.state.world_state import WorldState
+from light_map.core.common_types import ViewportState
 
 
 def test_viewport_is_atomic():
@@ -23,7 +23,7 @@ def test_menu_state_is_atomic():
 
 
 def test_update_menu_state_updates_atom():
-    from light_map.menu_system import MenuState
+    from light_map.menu.menu_system import MenuState
 
     state = WorldState()
     # Provide required arguments for MenuState
@@ -76,7 +76,7 @@ def test_dwell_state_and_summon_progress_are_atomic():
 
 def test_selection_and_grid_metadata_are_atomic():
     import time
-    from light_map.common_types import SelectionState, SelectionType, GridMetadata
+    from light_map.core.common_types import SelectionState, SelectionType, GridMetadata
 
     state = WorldState()
 

@@ -2,9 +2,9 @@ import pytest
 import numpy as np
 from unittest.mock import MagicMock, patch
 from light_map.interactive_app import InteractiveApp, AppConfig
-from light_map.common_types import Token, SceneId
-from light_map.map_config import MapConfigManager
-from light_map.core.world_state import WorldState
+from light_map.core.common_types import Token, SceneId
+from light_map.map.map_config import MapConfigManager
+from light_map.state.world_state import WorldState
 
 
 # Reuse Mock classes from test_viewing_mode
@@ -77,7 +77,7 @@ def app(app_config):
             return_value=(np.eye(3), np.zeros(5), np.zeros((3, 1)), np.zeros((3, 1))),
         ),
         patch(
-            "light_map.vision.tracking_coordinator.TrackingCoordinator.process_aruco_tracking"
+            "light_map.vision.infrastructure.tracking_coordinator.TrackingCoordinator.process_aruco_tracking"
         ),
     ):
         _app = InteractiveApp(_app_config)
@@ -106,7 +106,7 @@ def test_token_count_display_no_tokens(app):
 
     # OverlayRenderer.draw_ghost_tokens is where token drawing happens now
     with patch(
-        "light_map.overlay_layer.OverlayRenderer.draw_ghost_tokens"
+        "light_map.rendering.layers.overlay_layer.OverlayRenderer.draw_ghost_tokens"
     ) as mock_draw_tokens:
         app.process_state(state, [])
         mock_draw_tokens.assert_called()  # Called but should draw nothing if tokens empty
@@ -132,7 +132,7 @@ def test_token_count_display_with_tokens(app):
 
     # Verify that OverlayRenderer draws onto the internal buffer
     with patch(
-        "light_map.overlay_layer.OverlayRenderer.draw_ghost_tokens"
+        "light_map.rendering.layers.overlay_layer.OverlayRenderer.draw_ghost_tokens"
     ) as mock_draw_tokens:
         app.process_state(state, [])
         assert mock_draw_tokens.called
@@ -157,7 +157,7 @@ def test_token_count_hidden_when_toggled_off(app):
     state.tokens = app.map_system.ghost_tokens
 
     with patch(
-        "light_map.overlay_layer.OverlayRenderer.draw_ghost_tokens"
+        "light_map.rendering.layers.overlay_layer.OverlayRenderer.draw_ghost_tokens"
     ) as mock_draw_tokens:
         app.process_state(state, [])
         # In OverlayLayer, draw_ghost_tokens is only called if show_tokens is True
@@ -183,7 +183,7 @@ def test_token_count_hidden_in_menu(app):
     state.last_frame_timestamp = 1
     state.tokens = app.map_system.ghost_tokens
 
-    with patch("light_map.overlay_layer.OverlayRenderer.draw_ghost_tokens"):
+    with patch("light_map.rendering.layers.overlay_layer.OverlayRenderer.draw_ghost_tokens"):
         app.process_state(state, [])
         # MenuScene is not in (ViewingScene, MapScene), but OverlayLayer
         # doesn't check scene type anymore, OverlayRenderer did?

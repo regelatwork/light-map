@@ -1,9 +1,9 @@
 import numpy as np
-from light_map.fow_layer import FogOfWarLayer
-from light_map.fow_manager import FogOfWarManager
+from light_map.rendering.layers.fow_layer import FogOfWarLayer
+from light_map.visibility.fow_manager import FogOfWarManager
 
 
-from light_map.core.world_state import WorldState
+from light_map.state.world_state import WorldState
 
 
 def test_fow_initialization():
@@ -55,7 +55,7 @@ def test_fow_rendering_with_non_zero_origin():
     ws.fow_mask = manager.explored_mask.copy()
 
     # Viewport at zoom=1.0, no offset
-    from light_map.common_types import ViewportState
+    from light_map.core.common_types import ViewportState
 
     ws.update_viewport(ViewportState(x=0, y=0, zoom=1.0, rotation=0))
 

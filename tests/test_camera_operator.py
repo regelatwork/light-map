@@ -1,5 +1,5 @@
 import numpy as np
-from light_map.vision.camera_operator import CameraOperator
+from light_map.vision.infrastructure.camera_operator import CameraOperator
 import time
 
 

@@ -2,9 +2,9 @@ import pytest
 import numpy as np
 from unittest.mock import MagicMock, patch
 from light_map.interactive_app import InteractiveApp, AppConfig
-from light_map.common_types import SceneId
+from light_map.core.common_types import SceneId
 from light_map.core.scene import SceneTransition
-from light_map.core.world_state import WorldState
+from light_map.state.world_state import WorldState
 
 
 @pytest.fixture

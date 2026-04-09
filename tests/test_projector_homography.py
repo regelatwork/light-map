@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 import cv2
-from light_map.projector import compute_projector_homography
+from light_map.rendering.projector import compute_projector_homography
 
 
 def test_compute_projector_homography_success(monkeypatch):

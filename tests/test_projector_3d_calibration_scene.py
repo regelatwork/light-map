@@ -1,8 +1,8 @@
 import unittest
 from unittest.mock import MagicMock, patch
 from light_map.core.app_context import AppContext
-from light_map.common_types import GestureType
-from light_map.scenes.calibration_scenes import (
+from light_map.core.common_types import GestureType
+from light_map.calibration.calibration_scenes import (
     Projector3DCalibrationScene,
     Projector3DCalibStage,
 )

@@ -1,6 +1,6 @@
 import time
-from light_map.core.temporal_event_manager import TemporalEventManager
-from light_map.common_types import Action
+from light_map.state.temporal_event_manager import TemporalEventManager
+from light_map.core.common_types import Action
 
 
 def test_schedule_and_check():
@@ -114,7 +114,7 @@ def test_event_manager_produces_actions():
 
 
 def test_schedule_mutation():
-    from light_map.core.versioned_atom import VersionedAtom
+    from light_map.state.versioned_atom import VersionedAtom
 
     manager = TemporalEventManager()
     atom = VersionedAtom(10, "test_atom")

@@ -1,6 +1,6 @@
 import pytest
 from unittest.mock import MagicMock
-from light_map.scenes.calibration_scenes import (
+from light_map.calibration.calibration_scenes import (
     ExtrinsicsCalibrationScene,
     PpiCalibrationScene,
     IntrinsicsCalibrationScene,

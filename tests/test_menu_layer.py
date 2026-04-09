@@ -1,7 +1,7 @@
-from light_map.menu_layer import MenuLayer
-from light_map.common_types import MenuItem
-from light_map.menu_system import MenuState
-from light_map.core.world_state import WorldState
+from light_map.rendering.layers.menu_layer import MenuLayer
+from light_map.core.common_types import MenuItem
+from light_map.menu.menu_system import MenuState
+from light_map.state.world_state import WorldState
 
 
 def get_default_menu_state(

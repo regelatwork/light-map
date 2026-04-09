@@ -1,5 +1,5 @@
 import numpy as np
-from light_map.projector import generate_calibration_pattern
+from light_map.rendering.projector import generate_calibration_pattern
 
 
 def test_generate_calibration_pattern_dimensions():

@@ -1,5 +1,5 @@
 import numpy as np
-from light_map.projector import ProjectorDistortionModel
+from light_map.rendering.projector import ProjectorDistortionModel
 
 
 def test_projector_distortion_model_interpolation():

@@ -2,8 +2,8 @@ import pytest
 import numpy as np
 from unittest.mock import MagicMock, patch
 from light_map.interactive_app import InteractiveApp
-from light_map.common_types import AppConfig, SessionData, ViewportState
-from light_map.visibility_types import VisibilityBlocker, VisibilityType
+from light_map.core.common_types import AppConfig, SessionData, ViewportState
+from light_map.visibility.visibility_types import VisibilityBlocker, VisibilityType
 
 
 @pytest.fixture
@@ -71,7 +71,7 @@ def test_door_state_restoration_syncs_to_state(mock_config, monkeypatch, tmp_pat
     )
 
     with patch(
-        "light_map.session_manager.SessionManager.load_for_map",
+        "light_map.map.session_manager.SessionManager.load_for_map",
         return_value=session_data,
     ):
         app = InteractiveApp(mock_config)

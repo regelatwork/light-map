@@ -3,8 +3,8 @@ from unittest.mock import MagicMock, patch
 import numpy as np
 
 from light_map.core.app_context import AppContext
-from light_map.scenes.calibration_scenes import IntrinsicsCalibrationScene
-from light_map.common_types import AppConfig, GestureType, SceneId
+from light_map.calibration.calibration_scenes import IntrinsicsCalibrationScene
+from light_map.core.common_types import AppConfig, GestureType, SceneId
 from light_map.core.scene import HandInput, SceneTransition
 
 
@@ -46,11 +46,11 @@ def test_intrinsics_calibration_capture_and_process(
     mock_app_context.last_camera_frame = np.zeros((100, 100, 3), dtype=np.uint8)
 
     with patch(
-        "light_map.scenes.calibration_scenes.process_chessboard_images",
+        "light_map.calibration.calibration_scenes.process_chessboard_images",
         return_value=((np.eye(3), np.zeros(5)), [np.eye(4)]),
     ) as mock_process_images:
         with patch(
-            "light_map.scenes.calibration_scenes.save_camera_calibration"
+            "light_map.calibration.calibration_scenes.save_camera_calibration"
         ) as mock_save_calibration:
             # Add enough images to trigger processing
             for _ in range(intrinsics_calib_scene._required_images):
@@ -94,7 +94,7 @@ def test_intrinsics_calibration_process_failure(
     mock_app_context.last_camera_frame = np.zeros((100, 100, 3), dtype=np.uint8)
 
     with patch(
-        "light_map.scenes.calibration_scenes.process_chessboard_images",
+        "light_map.calibration.calibration_scenes.process_chessboard_images",
         return_value=None,
     ) as mock_process_images:
         # Trigger processing with enough images

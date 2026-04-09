@@ -1,5 +1,5 @@
-from light_map.common_types import Layer, ImagePatch
-from light_map.core.world_state import WorldState
+from light_map.core.common_types import Layer, ImagePatch
+from light_map.state.world_state import WorldState
 from typing import List
 import numpy as np
 
@@ -40,7 +40,7 @@ def test_layer_caching():
     assert layer.generate_count == 1
 
     # Change state
-    from light_map.common_types import MapRenderState
+    from light_map.core.common_types import MapRenderState
 
     state.map_render_state = MapRenderState(opacity=0.5)
     patches = layer.render()[0]

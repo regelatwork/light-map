@@ -1,5 +1,5 @@
 import time
-from light_map.core.versioned_atom import VersionedAtom
+from light_map.state.versioned_atom import VersionedAtom
 
 
 def test_versioned_atom_updates_timestamp_on_change():

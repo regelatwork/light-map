@@ -1,8 +1,8 @@
 import unittest
 import numpy as np
 import cv2
-from light_map.vision.projection import Projector3DModel
-from light_map.calibration_logic import calibrate_projector_3d
+from light_map.rendering.projection import Projector3DModel
+from light_map.calibration.calibration_logic import calibrate_projector_3d
 
 
 class TestProjector3DModel(unittest.TestCase):

@@ -6,7 +6,7 @@ import sys
 import logging
 from typing import List, Tuple, Any, Dict, Optional, TYPE_CHECKING, Callable
 
-from light_map.common_types import (
+from light_map.core.common_types import (
     AppConfig,
     Layer,
     SceneId,
@@ -14,24 +14,24 @@ from light_map.common_types import (
     GridMetadata,
     MapRenderState,
 )
-from light_map.renderer import Renderer
-from light_map.map_system import MapSystem
-from light_map.svg import SVGLoader
-from light_map.map_config import MapConfigManager
-from light_map.session_manager import SessionManager
-from light_map.fow_manager import FogOfWarManager
-from light_map.visibility_engine import VisibilityEngine
+from light_map.rendering.renderer import Renderer
+from light_map.map.map_system import MapSystem
+from light_map.rendering.svg import SVGLoader
+from light_map.map.map_config import MapConfigManager
+from light_map.map.session_manager import SessionManager
+from light_map.visibility.fow_manager import FogOfWarManager
+from light_map.visibility.visibility_engine import VisibilityEngine
 
 from light_map.core.app_context import AppContext
 from light_map.core.analytics import AnalyticsManager
 from light_map.core.notification import NotificationManager
 from light_map.core.layer_stack_manager import LayerStackManager
 from light_map.core.scene import Scene
-from light_map.scenes.exclusive_vision_scene import ExclusiveVisionScene
-from light_map.scenes.menu_scene import MenuScene
-from light_map.scenes.map_scene import MapScene, ViewingScene
-from light_map.scenes.scanning_scene import ScanningScene
-from light_map.scenes.calibration_scenes import (
+from light_map.visibility.exclusive_vision_scene import ExclusiveVisionScene
+from light_map.menu.menu_scene import MenuScene
+from light_map.map.map_scene import MapScene, ViewingScene
+from light_map.vision.scanning_scene import ScanningScene
+from light_map.calibration.calibration_scenes import (
     FlashCalibrationScene,
     MapGridCalibrationScene,
     PpiCalibrationScene,
@@ -42,25 +42,25 @@ from light_map.scenes.calibration_scenes import (
 )
 
 
-from light_map.vision.tracking_coordinator import TrackingCoordinator
-from light_map.vision.input_processor import InputProcessor
-from light_map.vision.aruco_detector import ArucoTokenDetector
-from light_map.vision.projection import (
+from light_map.vision.infrastructure.tracking_coordinator import TrackingCoordinator
+from light_map.vision.processing.input_processor import InputProcessor
+from light_map.vision.detectors.aruco_detector import ArucoTokenDetector
+from light_map.rendering.projection import (
     Projector3DModel,
     CameraProjectionModel,
     ProjectionService,
 )
 
-from light_map.core.world_state import WorldState
+from light_map.state.world_state import WorldState
 
 if TYPE_CHECKING:
-    from light_map.common_types import Action, Token
+    from light_map.core.common_types import Action, Token
     from light_map.core.scene import SceneTransition
 
 
-from light_map.core.temporal_event_manager import TemporalEventManager
+from light_map.state.temporal_event_manager import TemporalEventManager
 from light_map.action_dispatcher import ActionDispatcher
-from light_map.input_coordinator import InputCoordinator
+from light_map.input.input_coordinator import InputCoordinator
 
 
 class InteractiveApp:
@@ -113,7 +113,7 @@ class InteractiveApp:
         self.input_processor = InputProcessor(config)
 
         # Performance Tracking
-        from .core.analytics import LatencyInstrument
+        from light_map.core.analytics import LatencyInstrument
 
         self.instrument = LatencyInstrument()
         self.action_dispatcher = ActionDispatcher(self)
@@ -169,7 +169,7 @@ class InteractiveApp:
         # Initialize Projector Pose Atom with current absolute position
         calibrated_pos = self.config.projector_3d_model.calibrated_projector_center
         if calibrated_pos is not None:
-            from .common_types import ProjectorPose
+            from light_map.core.common_types import ProjectorPose
 
             gs = self.map_config.data.global_settings
             self.state.projector_pose = ProjectorPose(
@@ -584,7 +584,7 @@ class InteractiveApp:
     def process_state(
         self, state: Optional["WorldState"] = None, actions: List["Action"] = None
     ) -> Tuple[Optional[np.ndarray], List[str]]:
-        from .core.analytics import track_wait
+        from light_map.core.analytics import track_wait
 
         # Log performance stats every 10s at DEBUG level
         self.instrument.log_and_reset_if_needed(interval_s=10.0, level=logging.DEBUG)
@@ -654,7 +654,7 @@ class InteractiveApp:
 
         # Update summon progress
         summon_p = 0.0
-        import light_map.menu_config as config_vars
+        import light_map.menu.menu_config as config_vars
 
         if self.events.has_event(TimerKey.SUMMON_MENU_STEP_1):
             rem = self.events.get_remaining_time(TimerKey.SUMMON_MENU_STEP_1)
@@ -859,7 +859,7 @@ class InteractiveApp:
 
         entry = self.map_config.data.maps.get(filename)
         if entry is None:
-            from light_map.map_config import MapEntry
+            from light_map.map.map_config import MapEntry
 
             self.map_config.data.maps[filename] = MapEntry()
             entry = self.map_config.data.maps[filename]
@@ -902,7 +902,7 @@ class InteractiveApp:
                 self.map_system.ghost_tokens = session.tokens
                 self.state.tokens = list(session.tokens)
 
-                from light_map.visibility_types import VisibilityType
+                from light_map.visibility.visibility_types import VisibilityType
 
                 # Restore door states
                 for blocker in self.visibility_engine.blockers:
@@ -989,9 +989,9 @@ class InteractiveApp:
                 self.config.storage_manager.get_data_dir(), "sessions"
             )
 
-        from light_map.common_types import SessionData, ViewportState
+        from light_map.core.common_types import SessionData, ViewportState
 
-        from light_map.visibility_types import VisibilityType
+        from light_map.visibility.visibility_types import VisibilityType
 
         # Collect current door states
         door_states = {

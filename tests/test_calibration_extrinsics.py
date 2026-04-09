@@ -1,7 +1,7 @@
 import pytest
 import numpy as np
 import cv2
-from light_map.calibration_logic import calibrate_extrinsics
+from light_map.calibration.calibration_logic import calibrate_extrinsics
 
 
 def test_calibrate_extrinsics_synthetic():

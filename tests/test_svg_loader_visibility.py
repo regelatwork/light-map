@@ -1,5 +1,5 @@
-from light_map.svg import SVGLoader
-from light_map.visibility_types import VisibilityType
+from light_map.rendering.svg import SVGLoader
+from light_map.visibility.visibility_types import VisibilityType
 
 
 def create_test_svg(tmp_path, content):

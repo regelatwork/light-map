@@ -1,6 +1,6 @@
 import numpy as np
-from light_map.vision.hand_masker import HandMasker
-from light_map.common_types import GmPosition
+from light_map.vision.processing.hand_masker import HandMasker
+from light_map.core.common_types import GmPosition
 
 
 def test_is_point_masked_inside_always_allowed():

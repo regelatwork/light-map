@@ -2,8 +2,8 @@ import cv2
 import numpy as np
 import os
 import pytest
-from light_map.vision.aruco_detector import ArucoTokenDetector
-from light_map.map_system import MapSystem
+from light_map.vision.detectors.aruco_detector import ArucoTokenDetector
+from light_map.map.map_system import MapSystem
 
 
 def test_aruco_parallax_correction_math():
@@ -122,7 +122,7 @@ def test_aruco_detect_integration():
     frame[190:290, 370:470] = marker_img
 
     # MapSystem (Identity for simplicity)
-    from light_map.common_types import AppConfig
+    from light_map.core.common_types import AppConfig
 
     config = AppConfig(width=1920, height=1080, projector_matrix=np.eye(3))
     map_system = MapSystem(config)

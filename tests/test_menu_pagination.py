@@ -1,6 +1,6 @@
 import pytest
-from light_map.menu_system import MenuSystem, MenuSystemState
-from light_map.common_types import MenuItem, MenuActions
+from light_map.menu.menu_system import MenuSystem, MenuSystemState
+from light_map.core.common_types import MenuItem, MenuActions
 
 # Override MAX_VISIBLE_ITEMS for testing if possible, or assume 8.
 # Since it's imported, we can patch it or rely on logic.
@@ -50,7 +50,7 @@ def test_pagination_flow(paged_menu_system):
     next_idx = next(
         i for i, item in enumerate(items) if item.action_id == MenuActions.PAGE_NEXT
     )
-    from light_map.common_types import GestureType
+    from light_map.core.common_types import GestureType
 
     rect = rects[next_idx]
     cx, cy = rect[0] + 10, rect[1] + 10
@@ -100,7 +100,7 @@ def test_pagination_flow(paged_menu_system):
     prev_idx = next(
         i for i, item in enumerate(items) if item.action_id == MenuActions.PAGE_PREV
     )
-    from light_map.common_types import GestureType
+    from light_map.core.common_types import GestureType
 
     rect = rects[prev_idx]
     cx, cy = rect[0] + 10, rect[1] + 10

@@ -1,8 +1,8 @@
 import pytest
 import numpy as np
 from unittest.mock import MagicMock
-from light_map.vision.input_processor import InputProcessor
-from light_map.common_types import AppConfig, GmPosition, GestureType
+from light_map.vision.processing.input_processor import InputProcessor
+from light_map.core.common_types import AppConfig, GmPosition, GestureType
 
 
 @pytest.fixture
@@ -34,7 +34,7 @@ def test_convert_mediapipe_to_inputs_filtering(config):
     results.multi_handedness = [handedness]
 
     # Mock detect_gesture
-    import light_map.vision.input_processor as ip
+    import light_map.vision.processing.input_processor as ip
 
     ip.detect_gesture = MagicMock(return_value=GestureType.OPEN_PALM)
 

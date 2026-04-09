@@ -3,9 +3,9 @@ import os
 import logging
 
 if TYPE_CHECKING:
-    from .interactive_app import InteractiveApp
-    from .core.scene import SceneTransition, WorldState
-from .common_types import GridMetadata, SelectionState
+    from light_map.interactive_app import InteractiveApp
+    from light_map.core.scene import SceneTransition, WorldState
+from light_map.core.common_types import GridMetadata, SelectionState
 
 
 ActionHandler = Callable[
@@ -74,8 +74,8 @@ class ActionDispatcher:
         self.register("MENU_INTERACT", handle_menu_interact)
 
     def _handle_menu_transition(self, action_name: str) -> Optional["SceneTransition"]:
-        from .common_types import MenuActions, SceneId
-        from .core.scene import SceneTransition
+        from light_map.core.common_types import MenuActions, SceneId
+        from light_map.core.scene import SceneTransition
 
         scene_map = {
             MenuActions.CALIBRATE_INTRINSICS: SceneId.CALIBRATE_INTRINSICS,
@@ -113,8 +113,8 @@ def handle_sync_vision(
 def handle_trigger_menu(
     app: "InteractiveApp", payload: Dict[str, Any], state: Optional["WorldState"] = None
 ) -> Optional["SceneTransition"]:
-    from .common_types import SceneId
-    from .core.scene import SceneTransition
+    from light_map.core.common_types import SceneId
+    from light_map.core.scene import SceneTransition
 
     return SceneTransition(SceneId.MENU)
 
@@ -157,8 +157,8 @@ def handle_update_grid(
 def handle_inject_hands_world(
     app: "InteractiveApp", payload: Dict[str, Any], state: Optional["WorldState"] = None
 ) -> Optional["SceneTransition"]:
-    from .core.scene import HandInput
-    from .common_types import GestureType
+    from light_map.core.scene import HandInput
+    from light_map.core.common_types import GestureType
 
     hands_data = payload.get("hands", [])
     processed_hands = []
@@ -221,7 +221,7 @@ def handle_toggle_fow(
 def handle_update_system_config(
     app: "InteractiveApp", payload: Dict[str, Any], state: Optional["WorldState"] = None
 ) -> Optional["SceneTransition"]:
-    from .common_types import GmPosition
+    from light_map.core.common_types import GmPosition
 
     gs = app.map_config.data.global_settings
     changed = False
@@ -272,7 +272,7 @@ def handle_update_system_config(
 
     if pos_changed and state is not None:
         # Update WorldState Atom for real-time feedback
-        from .common_types import ProjectorPose
+        from light_map.core.common_types import ProjectorPose
 
         calibrated_pos = app.config.projector_3d_model.calibrated_projector_center
         if calibrated_pos is not None:
@@ -311,7 +311,7 @@ def handle_toggle_hand_masking(
 def handle_set_gm_position(
     app: "InteractiveApp", payload: Dict[str, Any], state: Optional["WorldState"] = None
 ) -> Optional["SceneTransition"]:
-    from light_map.common_types import GmPosition
+    from light_map.core.common_types import GmPosition
 
     try:
         new_pos = GmPosition(payload.get("payload", "None"))
@@ -337,8 +337,8 @@ def handle_toggle_debug_mode(
 def handle_inspect_token(
     app: "InteractiveApp", payload: Dict[str, Any], state: Optional["WorldState"] = None
 ) -> Optional["SceneTransition"]:
-    from .common_types import SceneId
-    from .core.scene import SceneTransition
+    from light_map.core.common_types import SceneId
+    from light_map.core.scene import SceneTransition
 
     token_id_str = payload.get("payload")
     if token_id_str is not None:
@@ -377,7 +377,7 @@ def handle_clear_inspection(
 def handle_toggle_door(
     app: "InteractiveApp", payload: Dict[str, Any], state: Optional["WorldState"] = None
 ) -> Optional["SceneTransition"]:
-    from light_map.common_types import SelectionType
+    from light_map.core.common_types import SelectionType
 
     door_id = payload.get("door_id") or payload.get("payload")
     if door_id:

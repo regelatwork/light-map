@@ -3,17 +3,17 @@ import numpy as np
 from unittest.mock import MagicMock
 
 from light_map.core.app_context import AppContext
-from light_map.scenes.map_scene import ViewingScene
-from light_map.common_types import (
+from light_map.map.map_scene import ViewingScene
+from light_map.core.common_types import (
     Action,
     AppConfig,
     SceneId,
     GestureType,
     SelectionType,
 )
-from light_map.core.world_state import WorldState
-from light_map.core.temporal_event_manager import TemporalEventManager
-from light_map.scenes.exclusive_vision_scene import ExclusiveVisionScene
+from light_map.state.world_state import WorldState
+from light_map.state.temporal_event_manager import TemporalEventManager
+from light_map.visibility.exclusive_vision_scene import ExclusiveVisionScene
 from light_map.core.scene import HandInput
 
 

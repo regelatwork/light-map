@@ -1,5 +1,5 @@
-from light_map.visibility_engine import VisibilityEngine
-from light_map.visibility_types import VisibilityBlocker, VisibilityType
+from light_map.visibility.visibility_engine import VisibilityEngine
+from light_map.visibility.visibility_types import VisibilityBlocker, VisibilityType
 
 
 def test_blocker_mask_watertight_rendering():

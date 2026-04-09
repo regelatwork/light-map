@@ -1,13 +1,13 @@
 import pytest
 import numpy as np
 from unittest.mock import MagicMock, patch
-from light_map.calibration_logic import run_calibration_sequence, calibrate_extrinsics
-from light_map.camera import Camera
+from light_map.calibration.calibration_logic import run_calibration_sequence, calibrate_extrinsics
+from light_map.vision.infrastructure.camera import Camera
 
 
 @pytest.fixture
 def mock_cv2():
-    with patch("light_map.calibration_logic.cv2") as mock:
+    with patch("light_map.calibration.calibration_logic.cv2") as mock:
         yield mock
 
 
@@ -22,9 +22,9 @@ def mock_camera():
 @pytest.fixture
 def mock_projector_utils():
     with (
-        patch("light_map.calibration_logic.generate_calibration_pattern") as mock_gen,
+        patch("light_map.calibration.calibration_logic.generate_calibration_pattern") as mock_gen,
         patch(
-            "light_map.calibration_logic.compute_projector_homography"
+            "light_map.calibration.calibration_logic.compute_projector_homography"
         ) as mock_compute,
     ):
         mock_gen.return_value = (np.zeros((100, 100, 3), dtype=np.uint8), "params")
@@ -34,7 +34,7 @@ def mock_projector_utils():
 
 @pytest.fixture
 def mock_projector_window():
-    with patch("light_map.calibration_logic.ProjectorWindow") as mock:
+    with patch("light_map.calibration.calibration_logic.ProjectorWindow") as mock:
         instance = mock.return_value
         instance.is_closed.return_value = False
         yield mock
@@ -97,17 +97,25 @@ def test_run_calibration_sequence_exception(
 
 
 def test_calibrate_extrinsics_flip_inverted(mock_cv2):
-    # Setup mock for solvePnP to return tz < 0
-    mock_cv2.solvePnP.return_value = (
+    # Setup mock for solvePnPGeneric to return two solutions (one with tz < 0, one with tz > 0)
+    # This simulates IPPE solver behavior for planar points.
+    mock_cv2.solvePnPGeneric.return_value = (
         True,
-        np.zeros((3, 1)),
-        np.array([[0.0], [0.0], [-1000.0]], dtype=np.float32),
+        [np.zeros((3, 1)), np.zeros((3, 1))],
+        [
+            np.array([[0.0], [0.0], [-1000.0]], dtype=np.float32),
+            np.array([[0.0], [0.0], [1000.0]], dtype=np.float32),
+        ],
+        [0.0, 0.0],
     )
 
     # Mock Rodrigues for flip logic
     mock_cv2.Rodrigues.side_effect = lambda x: (
         (np.eye(3), None) if x.ndim == 2 else (np.eye(3), None)
     )
+
+    # Mock projectPoints
+    mock_cv2.projectPoints.return_value = (np.zeros((4, 1, 2)), None)
 
     # Mock ArUco detector
     mock_detector = MagicMock()
@@ -138,7 +146,6 @@ def test_calibrate_extrinsics_flip_inverted(mock_cv2):
 
     # Verify translation_vector[2] is now positive
     assert translation_vector[2] > 0
-    # Check it called solvePnP with useExtrinsicGuess and SQPNP
-    args, kwargs = mock_cv2.solvePnP.call_args
-    assert kwargs["useExtrinsicGuess"] is True
-    assert kwargs["flags"] == mock_cv2.SOLVEPNP_SQPNP
+    # Check it called solvePnPGeneric with IPPE (since points are planar)
+    args, kwargs = mock_cv2.solvePnPGeneric.call_args
+    assert kwargs["flags"] == mock_cv2.SOLVEPNP_IPPE

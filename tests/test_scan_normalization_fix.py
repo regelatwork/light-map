@@ -1,11 +1,11 @@
 import os
 import numpy as np
-from light_map.common_types import AppConfig
+from light_map.core.common_types import AppConfig
 from light_map.interactive_app import InteractiveApp
 
 
 def test_svg_loader_path_normalization(tmp_path):
-    from light_map.svg import SVGLoader
+    from light_map.rendering.svg import SVGLoader
 
     # Create a dummy svg file
     svg_file = tmp_path / "test.svg"
@@ -73,7 +73,7 @@ def test_interactive_app_resolution_sync(tmp_path):
 
 
 def test_token_tracker_determinism():
-    from light_map.token_tracker import TokenTracker
+    from light_map.vision.processing.token_tracker import TokenTracker
 
     tracker = TokenTracker()
 
@@ -84,7 +84,7 @@ def test_token_tracker_determinism():
 
 
 def test_interactive_app_load_map_normalization(tmp_path):
-    from light_map.map_config import MapEntry
+    from light_map.map.map_config import MapEntry
     from light_map.core.storage import StorageManager
 
     storage = StorageManager(base_dir=str(tmp_path))

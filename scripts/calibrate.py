@@ -8,12 +8,12 @@ sys.path.insert(
 
 import logging
 import argparse
-from light_map.calibration import (
+from light_map.calibration.calibration import (
     load_calibration_images,
     calibrate_camera_from_images,
     save_camera_calibration,
 )
-from light_map.display_utils import setup_logging
+from light_map.core.display_utils import setup_logging
 from light_map.core.storage import StorageManager
 
 

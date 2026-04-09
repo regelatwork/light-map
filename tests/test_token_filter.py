@@ -1,7 +1,7 @@
 import pytest
 import time
-from light_map.vision.token_filter import TokenFilter
-from light_map.common_types import Token
+from light_map.vision.processing.token_filter import TokenFilter
+from light_map.core.common_types import Token
 
 
 def test_token_filter_temporal_smoothing():

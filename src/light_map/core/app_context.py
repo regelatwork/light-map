@@ -7,17 +7,17 @@ import time
 import numpy as np
 
 from light_map.core.analytics import AnalyticsManager
-from light_map.core.temporal_event_manager import TemporalEventManager
+from light_map.state.temporal_event_manager import TemporalEventManager
 
 if TYPE_CHECKING:
-    from .world_state import WorldState
-    from light_map.map_config import MapConfigManager
-    from light_map.map_system import MapSystem
-    from .notification import NotificationManager
-    from light_map.renderer import Renderer
-    from light_map.common_types import AppConfig
-    from light_map.vision.aruco_detector import ArucoTokenDetector
-    from light_map.vision.projection import CameraProjectionModel, ProjectionService
+    from light_map.state.world_state import WorldState
+    from light_map.map.map_config import MapConfigManager
+    from light_map.map.map_system import MapSystem
+    from light_map.core.notification import NotificationManager
+    from light_map.rendering.renderer import Renderer
+    from light_map.core.common_types import AppConfig
+    from light_map.vision.detectors.aruco_detector import ArucoTokenDetector
+    from light_map.rendering.projection import CameraProjectionModel, ProjectionService
 
 
 @dataclass

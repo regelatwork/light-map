@@ -1,6 +1,6 @@
 from unittest.mock import MagicMock
-from light_map.menu_builder import build_root_menu, build_map_actions_submenu
-from light_map.map_config import MapEntry
+from light_map.menu.menu_builder import build_root_menu, build_map_actions_submenu
+from light_map.map.map_config import MapEntry
 
 
 def test_build_map_actions_submenu():

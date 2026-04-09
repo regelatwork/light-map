@@ -1,6 +1,6 @@
 import numpy as np
 from unittest.mock import MagicMock, patch
-from light_map.display_utils import draw_text_with_background
+from light_map.core.display_utils import draw_text_with_background
 
 
 def test_draw_text_with_background_calls_rectangle_and_puttext():
@@ -28,12 +28,12 @@ def test_draw_text_with_background_clipping():
     # Should not crash
 
 
-@patch("light_map.vision.overlay_renderer.draw_text_with_background")
+@patch("light_map.rendering.overlay_renderer.draw_text_with_background")
 def test_overlay_renderer_uses_background_text(mock_draw_bg):
     # For simplicity, let's just mock what we need
-    from light_map.vision.overlay_renderer import OverlayRenderer
-    from light_map.common_types import Token
-    from light_map.map_config import ResolvedToken
+    from light_map.rendering.overlay_renderer import OverlayRenderer
+    from light_map.core.common_types import Token
+    from light_map.map.map_config import ResolvedToken
 
     context = MagicMock()
     context.map_config_manager.get_ppi.return_value = 100.0

@@ -1,5 +1,5 @@
 import pytest
-from light_map.vision.process_manager import VisionProcessManager
+from light_map.vision.infrastructure.process_manager import VisionProcessManager
 from multiprocessing.shared_memory import SharedMemory
 
 

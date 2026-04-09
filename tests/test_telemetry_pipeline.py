@@ -1,9 +1,9 @@
 import time
 from unittest.mock import MagicMock
 from light_map.core.main_loop import MainLoopController
-from light_map.core.world_state import WorldState
-from light_map.common_types import DetectionResult, ResultType
-from light_map.vision.frame_producer import FrameProducer
+from light_map.state.world_state import WorldState
+from light_map.core.common_types import DetectionResult, ResultType
+from light_map.vision.infrastructure.frame_producer import FrameProducer
 
 
 def test_telemetry_pipeline_integration():

@@ -9,21 +9,21 @@ import logging
 import multiprocessing as mp
 import threading
 
-from .camera import Camera
-from .common_types import Action, MenuActions, SceneId, TokenDetectionAlgorithm
-from .interactive_app import InteractiveApp, AppConfig
-from .map_config import MapConfigManager
-from .display_utils import (
+from light_map.vision.infrastructure.camera import Camera
+from light_map.core.common_types import Action, MenuActions, SceneId, TokenDetectionAlgorithm
+from light_map.interactive_app import InteractiveApp, AppConfig
+from light_map.map.map_config import MapConfigManager
+from light_map.core.display_utils import (
     get_screen_resolution,
     setup_logging,
     ProjectorWindow,
 )
-from .core.storage import StorageManager
-from .projector import ProjectorDistortionModel
-from .vision.process_manager import VisionProcessManager
-from .core.main_loop import MainLoopController
-from .vision.frame_producer import FrameProducer
-from .input_manager import InputManager
+from light_map.core.storage import StorageManager
+from light_map.rendering.projector import ProjectorDistortionModel
+from light_map.vision.infrastructure.process_manager import VisionProcessManager
+from light_map.core.main_loop import MainLoopController
+from light_map.vision.infrastructure.frame_producer import FrameProducer
+from light_map.input.input_manager import InputManager
 
 # Import calibration functions from scripts (these will be renamed/moved later)
 # For now we use relative imports if possible, or we might need to add scripts to path

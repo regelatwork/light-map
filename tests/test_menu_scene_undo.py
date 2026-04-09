@@ -1,11 +1,11 @@
 import pytest
 import numpy as np
 from unittest.mock import MagicMock
-from light_map.scenes.menu_scene import MenuScene
+from light_map.menu.menu_scene import MenuScene
 from light_map.core.app_context import AppContext
-from light_map.common_types import MenuActions
-from light_map.map_system import MapSystem
-from light_map.core.world_state import WorldState
+from light_map.core.common_types import MenuActions
+from light_map.map.map_system import MapSystem
+from light_map.state.world_state import WorldState
 
 
 @pytest.fixture
@@ -14,7 +14,7 @@ def context():
     ctx.app_config = MagicMock()
     ctx.app_config.width = 1000
     ctx.app_config.height = 1000
-    from light_map.common_types import AppConfig
+    from light_map.core.common_types import AppConfig
 
     config = AppConfig(width=1000, height=1000, projector_matrix=np.eye(3))
     ctx.map_system = MapSystem(config)

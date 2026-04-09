@@ -3,8 +3,8 @@ from unittest.mock import MagicMock, patch
 import numpy as np
 
 from light_map.core.app_context import AppContext
-from light_map.scenes.calibration_scenes import ProjectorCalibrationScene
-from light_map.common_types import AppConfig, SceneId
+from light_map.calibration.calibration_scenes import ProjectorCalibrationScene
+from light_map.core.common_types import AppConfig, SceneId
 from light_map.core.scene import SceneTransition
 
 
@@ -37,7 +37,7 @@ def test_projector_calibration_flow_success(mock_app_context):
     with (
         patch("time.monotonic", side_effect=mock_monotonic),
         patch(
-            "light_map.projector.compute_projector_homography",
+            "light_map.rendering.projector.compute_projector_homography",
             return_value=(np.eye(3), [], []),
         ),
     ):

@@ -1,8 +1,8 @@
 import numpy as np
 from multiprocessing import Queue, Event
 from fastapi.testclient import TestClient
-from light_map.vision.remote_driver import create_app, numpy_to_python
-from light_map.common_types import ResultType, DetectionResult
+from light_map.vision.remote.remote_driver import create_app, numpy_to_python
+from light_map.core.common_types import ResultType, DetectionResult
 
 
 def test_numpy_to_python_converter():

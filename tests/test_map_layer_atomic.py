@@ -1,6 +1,6 @@
 from unittest.mock import MagicMock
-from light_map.core.world_state import WorldState
-from light_map.map_layer import MapLayer
+from light_map.state.world_state import WorldState
+from light_map.rendering.layers.map_layer import MapLayer
 
 
 def test_map_layer_uses_atomic_timestamps():
@@ -19,7 +19,7 @@ def test_map_layer_uses_atomic_timestamps():
 
     # Update map should increment version
     v2 = layer.get_current_version()
-    from light_map.common_types import MapRenderState
+    from light_map.core.common_types import MapRenderState
 
     state.map_render_state = MapRenderState(opacity=0.5)
     assert layer.get_current_version() > v2

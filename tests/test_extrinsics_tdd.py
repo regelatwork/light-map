@@ -1,9 +1,9 @@
 import pytest
 import numpy as np
 from unittest.mock import MagicMock, patch
-from light_map.scenes.calibration_scenes import ExtrinsicsCalibrationScene
+from light_map.calibration.calibration_scenes import ExtrinsicsCalibrationScene
 from light_map.core.scene import HandInput
-from light_map.gestures import GestureType
+from light_map.input.gestures import GestureType
 
 
 @pytest.fixture
@@ -36,7 +36,7 @@ def mock_context():
     return context
 
 
-@patch("light_map.scenes.calibration_scenes.calibrate_extrinsics")
+@patch("light_map.calibration.calibration_scenes.calibrate_extrinsics")
 @patch("os.path.exists")
 def test_extrinsics_scene_passes_known_targets(
     mock_exists, mock_calibrate, mock_context

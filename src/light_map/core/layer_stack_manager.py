@@ -1,24 +1,24 @@
 from __future__ import annotations
 from typing import List, TYPE_CHECKING, Any
 
-from light_map.map_layer import MapLayer
-from light_map.door_layer import DoorLayer
-from light_map.menu_layer import MenuLayer
-from light_map.scene_layer import SceneLayer
-from light_map.hand_mask_layer import HandMaskLayer
-from light_map.aruco_mask_layer import ArucoMaskLayer
-from light_map.overlay_layer import TokenLayer, NotificationLayer, DebugLayer
-from light_map.fow_layer import FogOfWarLayer
-from light_map.visibility_layer import VisibilityLayer, ExclusiveVisionLayer
-from light_map.cursor_layer import CursorLayer
-from light_map.selection_progress_layer import SelectionProgressLayer
+from light_map.rendering.layers.map_layer import MapLayer
+from light_map.rendering.layers.door_layer import DoorLayer
+from light_map.rendering.layers.menu_layer import MenuLayer
+from light_map.rendering.layers.scene_layer import SceneLayer
+from light_map.rendering.layers.hand_mask_layer import HandMaskLayer
+from light_map.rendering.layers.aruco_mask_layer import ArucoMaskLayer
+from light_map.rendering.layers.overlay_layer import TokenLayer, NotificationLayer, DebugLayer
+from light_map.rendering.layers.fow_layer import FogOfWarLayer
+from light_map.rendering.layers.visibility_layer import VisibilityLayer, ExclusiveVisionLayer
+from light_map.rendering.layers.cursor_layer import CursorLayer
+from light_map.rendering.layers.selection_progress_layer import SelectionProgressLayer
 
 if TYPE_CHECKING:
     from light_map.core.app_context import AppContext
-    from light_map.core.world_state import WorldState
-    from light_map.common_types import Layer
+    from light_map.state.world_state import WorldState
+    from light_map.core.common_types import Layer
     from light_map.core.scene import Scene
-    from light_map.fow_manager import FogOfWarManager
+    from light_map.visibility.fow_manager import FogOfWarManager
 
 
 class LayerStackManager:

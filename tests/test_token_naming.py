@@ -1,7 +1,7 @@
 import os
-from light_map.map_config import MapConfigManager
-from light_map.common_types import NamingStyle
-from light_map.token_naming import (
+from light_map.map.map_config import MapConfigManager
+from light_map.core.common_types import NamingStyle
+from light_map.core.token_naming import (
     generate_token_name,
     NAMES_SCI_FI,
     NAMES_FANTASY,

@@ -7,9 +7,9 @@ import os
 # Ensure we can import the local package
 sys.path.insert(0, os.path.abspath("src"))
 
-from light_map.vision.aruco_detector import ArucoTokenDetector
-from light_map.map_system import MapSystem
-from light_map.vision.projection import CameraProjectionModel
+from light_map.vision.detectors.aruco_detector import ArucoTokenDetector
+from light_map.map.map_system import MapSystem
+from light_map.rendering.projection import CameraProjectionModel
 
 
 class TestArucoResizing(unittest.TestCase):

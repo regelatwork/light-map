@@ -2,9 +2,9 @@ import pytest
 import numpy as np
 from unittest.mock import MagicMock, patch
 from light_map.interactive_app import InteractiveApp, AppConfig
-from light_map.common_types import Token, SceneId, GmPosition
-from light_map.map_config import MapConfigManager, ResolvedToken
-from light_map.core.world_state import WorldState
+from light_map.core.common_types import Token, SceneId, GmPosition
+from light_map.map.map_config import MapConfigManager, ResolvedToken
+from light_map.state.world_state import WorldState
 
 
 # Reuse Mock classes from test_viewing_mode
@@ -79,7 +79,7 @@ def app(app_config):
             return_value=(np.eye(3), np.zeros(5), np.zeros((3, 1)), np.zeros((3, 1))),
         ),
         patch(
-            "light_map.vision.tracking_coordinator.TrackingCoordinator.process_aruco_tracking"
+            "light_map.vision.infrastructure.tracking_coordinator.TrackingCoordinator.process_aruco_tracking"
         ),
     ):
         _app = InteractiveApp(_app_config)
@@ -114,7 +114,7 @@ def test_draw_ghost_tokens_unknown(app):
         patch("cv2.circle") as mock_circle,
         patch("cv2.putText") as mock_putText,
         patch(
-            "light_map.vision.overlay_renderer.draw_dashed_circle"
+            "light_map.rendering.overlay_renderer.draw_dashed_circle"
         ) as mock_dashed_circle,
     ):
         # Trigger a render via OverlayLayer
@@ -153,7 +153,7 @@ def test_draw_ghost_tokens_duplicate(app):
         patch("cv2.circle") as mock_circle,
         patch("cv2.putText"),
         patch(
-            "light_map.vision.overlay_renderer.draw_dashed_circle"
+            "light_map.rendering.overlay_renderer.draw_dashed_circle"
         ) as mock_dashed_circle,
     ):
         app.token_layer.state = ws

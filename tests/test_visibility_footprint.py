@@ -1,5 +1,5 @@
 import numpy as np
-from light_map.visibility_engine import VisibilityEngine
+from light_map.visibility.visibility_engine import VisibilityEngine
 
 
 def test_token_footprint_expansion():

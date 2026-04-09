@@ -2,7 +2,7 @@ import pytest
 import numpy as np
 from unittest.mock import MagicMock
 from light_map.interactive_app import InteractiveApp
-from light_map.common_types import AppConfig
+from light_map.core.common_types import AppConfig
 
 
 @pytest.fixture
@@ -149,7 +149,7 @@ def test_interactive_app_process_state_actions(mock_config, monkeypatch):
     assert len(ws.pending_actions) == 0
 
     # 4. Inject TOGGLE_DOOR action with door_id
-    from light_map.visibility_types import VisibilityBlocker, VisibilityType
+    from light_map.visibility.visibility_types import VisibilityBlocker, VisibilityType
 
     door = VisibilityBlocker(
         segments=[(0, 0), (10, 10)],

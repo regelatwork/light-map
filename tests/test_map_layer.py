@@ -1,8 +1,8 @@
 import pytest
 from unittest.mock import MagicMock
 import numpy as np
-from light_map.map_layer import MapLayer
-from light_map.core.world_state import WorldState
+from light_map.rendering.layers.map_layer import MapLayer
+from light_map.state.world_state import WorldState
 
 
 @pytest.fixture
@@ -57,7 +57,7 @@ def test_map_layer_caching(mock_map_system):
     # 3. Change params - should trigger re-render
     # We must ensure get_current_version() also increases if we want Layer to re-call _generate_patches
     # MapLayer.get_current_version checks map_version, viewport_version and self._version
-    from light_map.common_types import MapRenderState
+    from light_map.core.common_types import MapRenderState
 
     ws.map_render_state = MapRenderState(opacity=1.0, quality=100, filepath="test.svg")
 

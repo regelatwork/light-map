@@ -1,10 +1,10 @@
 import pytest
 from unittest.mock import MagicMock, patch
 import numpy as np
-from light_map.overlay_layer import TokenLayer, NotificationLayer, DebugLayer
-from light_map.core.world_state import WorldState
+from light_map.rendering.layers.overlay_layer import TokenLayer, NotificationLayer, DebugLayer
+from light_map.state.world_state import WorldState
 from light_map.core.app_context import AppContext
-from light_map.common_types import AppConfig
+from light_map.core.common_types import AppConfig
 
 
 @pytest.fixture
@@ -35,7 +35,7 @@ def test_notification_layer_render(mock_app_context):
     layer = NotificationLayer(ws, mock_app_context)
 
     # Mock OverlayRenderer to avoid complex logic
-    from light_map.common_types import ImagePatch
+    from light_map.core.common_types import ImagePatch
 
     with patch.object(layer.overlay_renderer, "draw_notifications") as mock_draw:
         # Side effect: return a mock patch
@@ -58,7 +58,7 @@ def test_notification_layer_render(mock_app_context):
 
 
 def test_token_layer_render(mock_app_context):
-    from light_map.common_types import Token
+    from light_map.core.common_types import Token
 
     ws = WorldState()
     ws.tokens = [Token(id=1, world_x=10, world_y=10)]
@@ -72,7 +72,7 @@ def test_token_layer_render(mock_app_context):
 
 def test_debug_layer_render(mock_app_context):
     from light_map.core.scene import HandInput
-    from light_map.common_types import GestureType
+    from light_map.core.common_types import GestureType
 
     ws = WorldState()
     # Trigger hands_version change by setting an input
@@ -93,7 +93,7 @@ def test_debug_layer_render(mock_app_context):
         assert mock_draw.called
 
     def test_token_layer_caching(mock_app_context):
-        from light_map.common_types import Token
+        from light_map.core.common_types import Token
 
         ws = WorldState()
         ws.tokens = [Token(id=1, world_x=10, world_y=10)]

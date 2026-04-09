@@ -1,5 +1,5 @@
 import pytest
-from light_map.gestures import is_finger_extended, detect_gesture
+from light_map.input.gestures import is_finger_extended, detect_gesture
 
 
 class MockLandmark:

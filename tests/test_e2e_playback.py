@@ -2,11 +2,11 @@ import numpy as np
 import time
 import cv2
 import threading
-from light_map.vision.process_manager import VisionProcessManager
+from light_map.vision.infrastructure.process_manager import VisionProcessManager
 from light_map.core.main_loop import MainLoopController
-from light_map.core.world_state import WorldState
-from light_map.input_manager import InputManager
-from light_map.vision.frame_producer import FrameProducer
+from light_map.state.world_state import WorldState
+from light_map.input.input_manager import InputManager
+from light_map.vision.infrastructure.frame_producer import FrameProducer
 
 
 def test_multiprocessing_e2e():

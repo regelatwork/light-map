@@ -3,12 +3,12 @@ from unittest.mock import MagicMock, patch
 import numpy as np
 
 from light_map.core.app_context import AppContext
-from light_map.scenes.scanning_scene import ScanningScene, ScanStage
-from light_map.common_types import AppConfig, SceneId
+from light_map.vision.scanning_scene import ScanningScene, ScanStage
+from light_map.core.common_types import AppConfig, SceneId
 from light_map.core.scene import SceneTransition
 
 
-from light_map.core.temporal_event_manager import TemporalEventManager
+from light_map.state.temporal_event_manager import TemporalEventManager
 
 
 @pytest.fixture

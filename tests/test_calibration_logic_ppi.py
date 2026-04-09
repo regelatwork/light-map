@@ -1,7 +1,7 @@
 import pytest
 import numpy as np
 import cv2
-from light_map.calibration_logic import calculate_ppi_from_frame
+from light_map.calibration.calibration_logic import calculate_ppi_from_frame
 
 
 def test_calculate_ppi_success():

@@ -1,5 +1,5 @@
 import pytest
-from light_map.svg import SVGLoader
+from light_map.rendering.svg import SVGLoader
 
 
 @pytest.fixture

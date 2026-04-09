@@ -1,8 +1,8 @@
 import pytest
 from unittest.mock import MagicMock
 import numpy as np
-from light_map.scene_layer import SceneLayer
-from light_map.core.world_state import WorldState
+from light_map.rendering.layers.scene_layer import SceneLayer
+from light_map.state.world_state import WorldState
 
 
 @pytest.fixture

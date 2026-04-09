@@ -1,5 +1,5 @@
 import logging
-from light_map.display_utils import setup_logging
+from light_map.core.display_utils import setup_logging
 
 
 def test_setup_logging_creates_file(tmp_path):

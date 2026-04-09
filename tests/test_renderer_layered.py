@@ -1,7 +1,7 @@
 import numpy as np
-from light_map.renderer import Renderer
-from light_map.common_types import Layer, LayerMode, ImagePatch, AppConfig
-from light_map.core.world_state import WorldState
+from light_map.rendering.renderer import Renderer
+from light_map.core.common_types import Layer, LayerMode, ImagePatch, AppConfig
+from light_map.state.world_state import WorldState
 from typing import List, Optional
 
 

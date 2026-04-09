@@ -1,7 +1,7 @@
 import numpy as np
 import os
-from light_map.fow_manager import FogOfWarManager
-from light_map.map_config import MapConfigManager
+from light_map.visibility.fow_manager import FogOfWarManager
+from light_map.map.map_config import MapConfigManager
 from light_map.core.storage import StorageManager
 
 

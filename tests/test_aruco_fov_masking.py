@@ -2,8 +2,8 @@ import cv2
 import numpy as np
 import os
 import pytest
-from light_map.vision.aruco_detector import ArucoTokenDetector
-from light_map.map_system import MapSystem
+from light_map.vision.detectors.aruco_detector import ArucoTokenDetector
+from light_map.map.map_system import MapSystem
 
 
 def test_aruco_fov_masking():
@@ -47,7 +47,7 @@ def test_aruco_fov_masking():
     marker2 = cv2.aruco.generateImageMarker(aruco_dict, 2, 50)
     frame[375:425, 375:425] = cv2.cvtColor(marker2, cv2.COLOR_GRAY2BGR)
 
-    from light_map.common_types import AppConfig
+    from light_map.core.common_types import AppConfig
 
     config = AppConfig(width=640, height=480, projector_matrix=np.eye(3))
     map_system = MapSystem(config)

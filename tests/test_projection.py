@@ -1,7 +1,7 @@
 import numpy as np
 import cv2
 import pytest
-from light_map.vision.projection import CameraProjectionModel
+from light_map.rendering.projection import CameraProjectionModel
 
 
 def test_camera_projection_model_parallax_math():

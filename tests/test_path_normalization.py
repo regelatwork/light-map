@@ -1,8 +1,8 @@
 from unittest.mock import patch, MagicMock
 import os
 import pytest
-from light_map.map_config import MapConfigManager
-from light_map.session_manager import SessionManager
+from light_map.map.map_config import MapConfigManager
+from light_map.map.session_manager import SessionManager
 
 
 @pytest.fixture

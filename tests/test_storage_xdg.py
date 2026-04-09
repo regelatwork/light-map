@@ -2,9 +2,9 @@ import os
 import shutil
 import pytest
 from light_map.core.storage import StorageManager
-from light_map.map_config import MapConfigManager
-from light_map.session_manager import SessionManager
-from light_map.common_types import SessionData, ViewportState
+from light_map.map.map_config import MapConfigManager
+from light_map.map.session_manager import SessionManager
+from light_map.core.common_types import SessionData, ViewportState
 
 
 @pytest.fixture
@@ -14,16 +14,16 @@ def storage_mock(tmp_path, monkeypatch):
     storage.ensure_dirs()
 
     # Monkeypatch the default storage objects in the modules
-    monkeypatch.setattr("light_map.session_manager._DEFAULT_STORAGE", storage)
+    monkeypatch.setattr("light_map.map.session_manager._DEFAULT_STORAGE", storage)
     monkeypatch.setattr(
-        "light_map.session_manager.SESSION_DIR",
+        "light_map.map.session_manager.SESSION_DIR",
         os.path.join(storage.get_data_dir(), "sessions"),
     )
-    monkeypatch.setattr("light_map.map_config._DEFAULT_STORAGE", storage)
+    monkeypatch.setattr("light_map.map.map_config._DEFAULT_STORAGE", storage)
     monkeypatch.setattr(
-        "light_map.map_config.STATE_FILE", storage.get_config_path("map_state.json")
+        "light_map.map.map_config.STATE_FILE", storage.get_config_path("map_state.json")
     )
-    monkeypatch.setattr("light_map.common_types._DEFAULT_STORAGE", storage)
+    monkeypatch.setattr("light_map.core.common_types._DEFAULT_STORAGE", storage)
 
     return storage
 
@@ -66,7 +66,7 @@ def test_map_config_manager_session_status_storage(storage_mock):
     SessionManager.save_for_map(map_path, data)
 
     # Register map in config
-    from light_map.map_config import MapEntry
+    from light_map.map.map_config import MapEntry
 
     config_mgr.data.maps[map_path] = MapEntry(grid_spacing_svg=10.0)
 

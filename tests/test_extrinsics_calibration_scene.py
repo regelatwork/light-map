@@ -1,15 +1,15 @@
 import pytest
 import numpy as np
 from unittest.mock import MagicMock, patch
-from light_map.scenes.calibration_scenes import ExtrinsicsCalibrationScene
+from light_map.calibration.calibration_scenes import ExtrinsicsCalibrationScene
 from light_map.core.scene import HandInput
-from light_map.gestures import GestureType
-from light_map.common_types import SceneId
+from light_map.input.gestures import GestureType
+from light_map.core.common_types import SceneId
 
 
 @pytest.fixture
 def mock_context():
-    from light_map.common_types import AppConfig
+    from light_map.core.common_types import AppConfig
 
     context = MagicMock()
     context.app_config = AppConfig(
@@ -37,7 +37,7 @@ def mock_context():
     return context
 
 
-@patch("light_map.scenes.calibration_scenes.calibrate_extrinsics")
+@patch("light_map.calibration.calibration_scenes.calibrate_extrinsics")
 @patch("numpy.load")
 @patch("os.path.exists")
 def test_extrinsics_scene_uses_ground_points(
@@ -135,8 +135,8 @@ def test_extrinsics_scene_uses_ground_points(
             )
 
 
-@patch("light_map.scenes.calibration_scenes.calibrate_extrinsics")
-@patch("light_map.scenes.calibration_scenes.save_camera_extrinsics")
+@patch("light_map.calibration.calibration_scenes.calibrate_extrinsics")
+@patch("light_map.calibration.calibration_scenes.save_camera_extrinsics")
 def test_extrinsics_scene_validation_flow(mock_save, mock_calibrate, mock_context):
     # Setup
     mock_context.camera_matrix = np.eye(3)
@@ -170,7 +170,7 @@ def test_extrinsics_scene_validation_flow(mock_save, mock_calibrate, mock_contex
     assert scene._reprojection_error >= 0.0
     mock_save.assert_not_called()  # Should not save yet
 
-    from light_map.common_types import TimerKey
+    from light_map.core.common_types import TimerKey
 
     # 2. Validation - Retry Flow
     mock_context.events.has_event.return_value = False

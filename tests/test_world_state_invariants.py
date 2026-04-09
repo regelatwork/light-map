@@ -1,5 +1,5 @@
-from light_map.core.world_state import WorldState
-from light_map.common_types import MapRenderState
+from light_map.state.world_state import WorldState
+from light_map.core.common_types import MapRenderState
 import numpy as np
 
 

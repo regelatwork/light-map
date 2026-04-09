@@ -1,4 +1,4 @@
-from light_map.common_types import DetectionResult, ResultType
+from light_map.core.common_types import DetectionResult, ResultType
 
 
 def test_detection_result_serialization():

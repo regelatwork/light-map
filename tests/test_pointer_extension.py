@@ -1,8 +1,8 @@
 import pytest
 import numpy as np
 from unittest.mock import MagicMock
-from light_map.vision.input_processor import InputProcessor
-from light_map.common_types import AppConfig, GestureType
+from light_map.vision.processing.input_processor import InputProcessor
+from light_map.core.common_types import AppConfig, GestureType
 
 
 @pytest.fixture
@@ -40,7 +40,7 @@ def test_pointer_extension_calculation(config):
     results.multi_handedness = [handedness]
 
     # Mock detect_gesture to return POINTING
-    import light_map.vision.input_processor as ip
+    import light_map.vision.processing.input_processor as ip
 
     original_detect = ip.detect_gesture
     ip.detect_gesture = MagicMock(return_value=GestureType.POINTING)

@@ -1,8 +1,8 @@
 from unittest.mock import MagicMock
-from light_map.cursor_layer import CursorLayer
-from light_map.core.world_state import WorldState
+from light_map.rendering.layers.cursor_layer import CursorLayer
+from light_map.state.world_state import WorldState
 from light_map.core.scene import HandInput
-from light_map.common_types import GestureType
+from light_map.core.common_types import GestureType
 
 
 def test_cursor_layer_initialization():

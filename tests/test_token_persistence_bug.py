@@ -2,9 +2,9 @@ from unittest.mock import MagicMock
 import time
 import numpy as np
 from light_map.core.main_loop import MainLoopController
-from light_map.core.world_state import WorldState
-from light_map.common_types import DetectionResult, ResultType, Token
-from light_map.overlay_layer import TokenLayer
+from light_map.state.world_state import WorldState
+from light_map.core.common_types import DetectionResult, ResultType, Token
+from light_map.rendering.layers.overlay_layer import TokenLayer
 from light_map.core.app_context import AppContext
 
 

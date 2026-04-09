@@ -1,11 +1,11 @@
 import pytest
 import numpy as np
-from light_map.map_system import MapSystem
+from light_map.map.map_system import MapSystem
 
 
 @pytest.fixture
 def map_system():
-    from light_map.common_types import AppConfig
+    from light_map.core.common_types import AppConfig
 
     config = AppConfig(width=1000, height=1000, projector_matrix=np.eye(3))
     return MapSystem(config)

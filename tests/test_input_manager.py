@@ -1,7 +1,7 @@
 import pytest
-from light_map.input_manager import InputManager
-from light_map.common_types import GestureType
-from light_map.core.temporal_event_manager import TemporalEventManager
+from light_map.input.input_manager import InputManager
+from light_map.core.common_types import GestureType
+from light_map.state.temporal_event_manager import TemporalEventManager
 
 
 class MockTimeProvider:
@@ -84,7 +84,7 @@ def test_flicker_timeout(input_manager, time_provider, events):
 
 
 def test_keyboard_debug_and_quit(input_manager):
-    from light_map.common_types import Action
+    from light_map.core.common_types import Action
 
     # Check 'd' and 'D'
     for k in ["d", "D"]:

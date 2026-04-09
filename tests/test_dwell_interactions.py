@@ -3,10 +3,10 @@ import time
 import numpy as np
 import pytest
 
-from light_map.common_types import Action, AppConfig, GestureType, TimerKey
-from light_map.core.temporal_event_manager import TemporalEventManager
-from light_map.dwell_tracker import DwellTracker
-from light_map.vision.input_processor import DummyResults, InputProcessor
+from light_map.core.common_types import Action, AppConfig, GestureType, TimerKey
+from light_map.state.temporal_event_manager import TemporalEventManager
+from light_map.input.dwell_tracker import DwellTracker
+from light_map.vision.processing.input_processor import DummyResults, InputProcessor
 
 
 def test_dwell_tracker_basic():
@@ -87,7 +87,7 @@ def test_input_processor_virtual_pointer_offset(mocker):
 
     # Mock detect_gesture to return POINTING
     mocker.patch(
-        "light_map.vision.input_processor.detect_gesture",
+        "light_map.vision.processing.input_processor.detect_gesture",
         return_value=GestureType.POINTING,
     )
 

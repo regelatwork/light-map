@@ -1,7 +1,7 @@
 from unittest.mock import MagicMock
 import numpy as np
-from light_map.selection_progress_layer import SelectionProgressLayer
-from light_map.core.world_state import WorldState
+from light_map.rendering.layers.selection_progress_layer import SelectionProgressLayer
+from light_map.state.world_state import WorldState
 from light_map.core.scene import HandInput
 
 

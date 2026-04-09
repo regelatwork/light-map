@@ -1,6 +1,6 @@
 import numpy as np
-from light_map.renderer import Renderer
-from light_map.common_types import ImagePatch, Layer
+from light_map.rendering.renderer import Renderer
+from light_map.core.common_types import ImagePatch, Layer
 
 
 class MockLayer(Layer):
@@ -21,7 +21,7 @@ class MockLayer(Layer):
 
 
 def test_renderer_visibility_composition():
-    from light_map.common_types import AppConfig
+    from light_map.core.common_types import AppConfig
 
     config = AppConfig(width=100, height=100, projector_matrix=np.eye(3))
     renderer = Renderer(config)

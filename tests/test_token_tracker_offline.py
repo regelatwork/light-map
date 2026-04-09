@@ -2,8 +2,8 @@ import json
 import os
 import cv2
 import numpy as np
-from light_map.token_tracker import TokenTracker
-from light_map.map_system import MapSystem
+from light_map.vision.processing.token_tracker import TokenTracker
+from light_map.map.map_system import MapSystem
 
 # Path to samples
 SAMPLES_DIR = os.path.join(os.path.dirname(__file__), "../samples")
@@ -34,7 +34,7 @@ def test_token_tracker_offline_detection():
 
     # 2. Setup MapSystem
     h, w = image.shape[:2]
-    from light_map.common_types import AppConfig
+    from light_map.core.common_types import AppConfig
 
     app_config = AppConfig(width=w, height=h, projector_matrix=np.eye(3))
     map_system = MapSystem(app_config)

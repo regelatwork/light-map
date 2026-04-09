@@ -2,10 +2,10 @@ import numpy as np
 import pytest
 import cv2
 from unittest.mock import MagicMock
-from light_map.aruco_mask_layer import ArucoMaskLayer
-from light_map.common_types import AppConfig
-from light_map.core.world_state import WorldState
-from light_map.vision.projection import CameraProjectionModel
+from light_map.rendering.layers.aruco_mask_layer import ArucoMaskLayer
+from light_map.core.common_types import AppConfig
+from light_map.state.world_state import WorldState
+from light_map.rendering.projection import CameraProjectionModel
 
 
 @pytest.fixture
@@ -93,7 +93,7 @@ def test_aruco_mask_layer_rendering(mock_state, mock_config):
     # Center of patch should be the default mask color
     # Patch center in local coords is around (60, 60)
     center_pixel = patch.data[60, 60]
-    from light_map.constants import DEFAULT_ARUCO_MASK_COLOR
+    from light_map.core.constants import DEFAULT_ARUCO_MASK_COLOR
 
     assert np.array_equal(center_pixel[:3], DEFAULT_ARUCO_MASK_COLOR[:3])
     assert center_pixel[3] == 255
@@ -172,7 +172,7 @@ def test_aruco_mask_layer_parallax_rendering(mock_state, mock_config):
         mock_config.translation_vector,
     )
     # Also need Projector3DModel and ProjectionService for it to work
-    from light_map.vision.projection import Projector3DModel, ProjectionService
+    from light_map.rendering.projection import Projector3DModel, ProjectionService
 
     # Use a mock 3D projector model that just returns world points
     mock_config.projector_3d_model = Projector3DModel(

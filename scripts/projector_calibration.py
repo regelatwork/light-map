@@ -9,18 +9,18 @@ sys.path.insert(
     0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "src"))
 )
 
-from light_map.camera import Camera
-from light_map.calibration_logic import (
+from light_map.vision.infrastructure.camera import Camera
+from light_map.calibration.calibration_logic import (
     run_calibration_sequence,
     calculate_ppi_from_frame,
     calibrate_extrinsics,
 )
-from light_map.display_utils import (
+from light_map.core.display_utils import (
     get_screen_resolution,
     setup_logging,
 )
 from light_map.core.storage import StorageManager
-from light_map.map_config import MapConfigManager
+from light_map.map.map_config import MapConfigManager
 
 
 def run_projector_calibrate(args):

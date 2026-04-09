@@ -2,8 +2,8 @@ import pytest
 import numpy as np
 from unittest.mock import MagicMock, patch
 from light_map.interactive_app import InteractiveApp, AppConfig
-from light_map.core.world_state import WorldState
-from light_map.common_types import SceneId
+from light_map.state.world_state import WorldState
+from light_map.core.common_types import SceneId
 
 
 @pytest.fixture
@@ -31,7 +31,7 @@ def app_with_real_scenes(tmp_path):
                 np.zeros((3, 1)),
             ),
         ),
-        patch("light_map.map_config.MapConfigManager._load", return_value=MagicMock()),
+        patch("light_map.map.map_config.MapConfigManager._load", return_value=MagicMock()),
     ):
         _app = InteractiveApp(config)
         return _app

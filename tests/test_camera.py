@@ -1,6 +1,6 @@
 import pytest
 from unittest.mock import MagicMock, patch
-from light_map.camera import Camera
+from light_map.vision.infrastructure.camera import Camera
 
 
 @pytest.fixture
@@ -18,7 +18,7 @@ def mock_capture():
 @pytest.fixture
 def mock_is_pi():
     """Patches Camera._is_raspberry_pi and returns the mock."""
-    with patch("light_map.camera.Camera._is_raspberry_pi") as mock:
+    with patch("light_map.vision.infrastructure.camera.Camera._is_raspberry_pi") as mock:
         mock.return_value = False
         yield mock
 

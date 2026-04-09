@@ -2,7 +2,7 @@ import pytest
 import numpy as np
 import os
 from unittest.mock import MagicMock
-from light_map.common_types import AppConfig, TokenDetectionAlgorithm
+from light_map.core.common_types import AppConfig, TokenDetectionAlgorithm
 
 
 @pytest.fixture
@@ -54,7 +54,7 @@ def test_aruco_detection_snapped_to_detected_grid(grid_svg_file, tmp_path):
         TokenDetectionAlgorithm.ARUCO
     )
 
-    from light_map.common_types import Token
+    from light_map.core.common_types import Token
 
     fixed_token = Token(id=1, world_x=53.0, world_y=102.0, world_z=0.0)
 

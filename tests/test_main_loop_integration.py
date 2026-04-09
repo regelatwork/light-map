@@ -1,8 +1,8 @@
 from light_map.core.main_loop import MainLoopController
-from light_map.core.world_state import WorldState
-from light_map.vision.process_manager import VisionProcessManager
-from light_map.input_manager import InputManager
-from light_map.common_types import DetectionResult, ResultType, Action
+from light_map.state.world_state import WorldState
+from light_map.vision.infrastructure.process_manager import VisionProcessManager
+from light_map.input.input_manager import InputManager
+from light_map.core.common_types import DetectionResult, ResultType, Action
 from unittest.mock import MagicMock
 
 

@@ -1,6 +1,6 @@
 import pytest
 import json
-from light_map.map_config import MapConfigManager
+from light_map.map.map_config import MapConfigManager
 
 
 @pytest.fixture

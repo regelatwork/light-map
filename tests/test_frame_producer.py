@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
-from light_map.vision.camera_operator import CameraOperator
-from light_map.vision.frame_producer import FrameProducer
+from light_map.vision.infrastructure.camera_operator import CameraOperator
+from light_map.vision.infrastructure.frame_producer import FrameProducer
 
 
 def test_frame_producer_lifecycle():

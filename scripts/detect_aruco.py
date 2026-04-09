@@ -5,7 +5,7 @@ import os
 # Add src to path so we can import light_map
 sys.path.append(os.path.join(os.path.dirname(__file__), "..", "src"))
 
-from light_map.camera import Camera
+from light_map.vision.infrastructure.camera import Camera
 
 
 def detect_aruco():

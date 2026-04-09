@@ -2,11 +2,11 @@ from __future__ import annotations
 import time
 from dataclasses import dataclass, field
 from typing import List, Callable, TYPE_CHECKING, Optional
-from light_map.common_types import TimerKey
+from light_map.core.common_types import TimerKey
 
 if TYPE_CHECKING:
-    from light_map.core.temporal_event_manager import TemporalEventManager
-    from .versioned_atom import VersionedAtom
+    from light_map.state.temporal_event_manager import TemporalEventManager
+    from light_map.state.versioned_atom import VersionedAtom
 
 
 @dataclass

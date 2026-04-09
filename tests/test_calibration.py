@@ -1,7 +1,7 @@
 import pytest
 import numpy as np
 from unittest.mock import patch
-from light_map.calibration import (
+from light_map.calibration.calibration import (
     load_calibration_images,
     find_corners,
     calibrate_camera_from_images,
@@ -10,7 +10,7 @@ from light_map.calibration import (
 
 @pytest.fixture
 def mock_cv2():
-    with patch("light_map.calibration.cv2") as mock:
+    with patch("light_map.calibration.calibration.cv2") as mock:
         # Defaults for commonly used cv2 functions
         mock.CALIB_CB_ADAPTIVE_THRESH = 1
         mock.CALIB_CB_FAST_CHECK = 2
@@ -78,7 +78,7 @@ def test_calibrate_camera_from_images_success(mock_cv2):
 
     # Mock find_corners logic internal to the function
     # The function calls find_corners, which calls cv2 functions.
-    # Since we patched 'light_map.calibration.cv2', the internal calls are mocked.
+    # Since we patched 'light_map.calibration.calibration.cv2', the internal calls are mocked.
     mock_cv2.findChessboardCorners.return_value = (True, np.zeros((54, 1, 2)))
 
     # Mock calibrateCamera return

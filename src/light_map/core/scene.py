@@ -6,12 +6,12 @@ from typing import TYPE_CHECKING, Any, List, Optional, Tuple
 
 import numpy as np
 
-from light_map.common_types import GestureType, SceneId
+from light_map.core.common_types import GestureType, SceneId
 
 if TYPE_CHECKING:
-    from .app_context import AppContext
+    from light_map.core.app_context import AppContext
     from light_map.interactive_app import InteractiveApp
-    from light_map.common_types import Layer, Action
+    from light_map.core.common_types import Layer, Action
 
 
 @dataclass
@@ -31,7 +31,7 @@ class HandInput:
         Returns the virtual pointer position (1-inch extension) if pointing.
         Requires ppi to be provided via context or external calculation.
         """
-        from light_map.common_types import GestureType
+        from light_map.core.common_types import GestureType
 
         if self.gesture != GestureType.POINTING:
             return None

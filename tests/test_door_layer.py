@@ -1,15 +1,15 @@
 import pytest
 import numpy as np
-from light_map.door_layer import DoorLayer
-from light_map.core.world_state import WorldState
-from light_map.visibility_engine import VisibilityEngine
-from light_map.visibility_types import VisibilityBlocker, VisibilityType
+from light_map.rendering.layers.door_layer import DoorLayer
+from light_map.state.world_state import WorldState
+from light_map.visibility.visibility_engine import VisibilityEngine
+from light_map.visibility.visibility_types import VisibilityBlocker, VisibilityType
 
 
 @pytest.fixture
 def state():
     ws = WorldState()
-    from light_map.common_types import ViewportState
+    from light_map.core.common_types import ViewportState
 
     ws.update_viewport(ViewportState(x=0, y=0, zoom=1.0, rotation=0.0))
     return ws
@@ -128,7 +128,7 @@ def test_door_layer_version_logic(state, engine):
     assert rv3 == v2
 
     # Update viewport
-    from light_map.common_types import ViewportState
+    from light_map.core.common_types import ViewportState
 
     # Update viewport to trigger new version
     state.update_viewport(ViewportState(x=100, y=100, zoom=2.0, rotation=45.0))

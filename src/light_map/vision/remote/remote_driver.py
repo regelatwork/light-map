@@ -734,7 +734,7 @@ def create_app(
     # Mount static files for the frontend dashboard
     # MUST BE LAST to avoid overriding API routes
     frontend_dist = os.path.abspath(
-        os.path.join(os.path.dirname(__file__), "../../../../../frontend/dist")
+        os.path.join(os.path.dirname(__file__), "../../../../frontend/dist")
     )
     if os.path.exists(frontend_dist):
         app.mount("/", StaticFiles(directory=frontend_dist, html=True), name="frontend")

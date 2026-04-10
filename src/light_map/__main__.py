@@ -32,7 +32,7 @@ from light_map.input.input_manager import InputManager
 
 # Import calibration functions from scripts (these will be renamed/moved later)
 # For now we use relative imports if possible, or we might need to add scripts to path
-sys.path.append(os.path.join(os.path.dirname(__file__), "..", "..", "..", "scripts"))
+sys.path.append(os.path.join(os.path.dirname(__file__), "..", "..", "scripts"))
 try:
     from calibrate import run_calibrate
     from projector_calibration import run_projector_calibrate

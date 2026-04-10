@@ -162,8 +162,8 @@ Directly sets the map's zoom, pan, and rotation.
 ```json
 {
   "zoom": 1.0,
-  "pan_x": 0.0,
-  "pan_y": 0.0,
+  "x": 0.0,
+  "y": 0.0,
   "rotation": 0.0
 }
 ```

@@ -187,9 +187,9 @@ def handle_set_viewport(
 ) -> Optional["SceneTransition"]:
     if "zoom" in payload:
         app.map_system.state.zoom = payload["zoom"]
-    if "pan_x" in payload and "pan_y" in payload:
-        app.map_system.state.pan_x = payload["pan_x"]
-        app.map_system.state.pan_y = payload["pan_y"]
+    if "x" in payload and "y" in payload:
+        app.map_system.state.x = payload["x"]
+        app.map_system.state.y = payload["y"]
     if "rotation" in payload:
         app.map_system.state.rotation = payload["rotation"]
     return None

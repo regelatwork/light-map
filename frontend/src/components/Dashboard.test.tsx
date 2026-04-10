@@ -3,17 +3,17 @@ import { describe, it, expect } from 'vitest';
 import { Dashboard } from './Dashboard';
 import { SystemStateProvider } from '../hooks/useSystemState';
 import { SelectionProvider } from './SelectionContext';
-import { GridEditProvider } from './GridEditContext';
+import { CalibrationProvider } from './CalibrationContext';
 
 describe('Dashboard', () => {
   it('renders the sidebar title correctly', () => {
     render(
       <SystemStateProvider>
-        <GridEditProvider>
+        <CalibrationProvider>
           <SelectionProvider>
             <Dashboard />
           </SelectionProvider>
-        </GridEditProvider>
+        </CalibrationProvider>
       </SystemStateProvider>
     );
     const title = screen.getByText(/Light Map Control/i);
@@ -23,11 +23,11 @@ describe('Dashboard', () => {
   it('renders the schematic view', () => {
     render(
       <SystemStateProvider>
-        <GridEditProvider>
+        <CalibrationProvider>
           <SelectionProvider>
             <Dashboard />
           </SelectionProvider>
-        </GridEditProvider>
+        </CalibrationProvider>
       </SystemStateProvider>
     );
     const placeholder = screen.getByRole('heading', { name: /Schematic View/i });

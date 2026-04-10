@@ -66,7 +66,7 @@ def verify_remote_api():
 
         # 6. Check /config/viewport
         print("Setting explicit viewport...")
-        viewport_data = {"zoom": 1.5, "pan_x": 10.0, "pan_y": 10.0}
+        viewport_data = {"zoom": 1.5, "x": 10.0, "y": 10.0}
         resp = httpx.post(f"{base_url}/config/viewport", json=viewport_data)
         assert resp.status_code == 200
 

@@ -3,7 +3,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { SchematicCanvas } from './SchematicCanvas';
 import { SystemStateProvider } from '../hooks/useSystemState';
 import { SelectionProvider } from './SelectionContext';
-import { GridEditProvider } from './GridEditContext';
+import { CalibrationProvider } from './CalibrationContext';
 import { type SystemState, INITIAL_STATE } from '../types/system';
 
 let mockSystemState: SystemState = {
@@ -56,11 +56,11 @@ describe('SchematicCanvas', () => {
     };
     const { container } = render(
       <SystemStateProvider>
-        <GridEditProvider>
+        <CalibrationProvider>
           <SelectionProvider>
             <SchematicCanvas />
           </SelectionProvider>
-        </GridEditProvider>
+        </CalibrationProvider>
       </SystemStateProvider>
     );
     const rect = container.querySelector('rect');
@@ -70,11 +70,11 @@ describe('SchematicCanvas', () => {
   it('renders tokens', () => {
     render(
       <SystemStateProvider>
-        <GridEditProvider>
+        <CalibrationProvider>
           <SelectionProvider>
             <SchematicCanvas />
           </SelectionProvider>
-        </GridEditProvider>
+        </CalibrationProvider>
       </SystemStateProvider>
     );
     expect(screen.getByText(/#1/)).toBeInTheDocument();
@@ -84,11 +84,11 @@ describe('SchematicCanvas', () => {
   it('renders reset button', () => {
     render(
       <SystemStateProvider>
-        <GridEditProvider>
+        <CalibrationProvider>
           <SelectionProvider>
             <SchematicCanvas />
           </SelectionProvider>
-        </GridEditProvider>
+        </CalibrationProvider>
       </SystemStateProvider>
     );
     expect(screen.getByText(/Reset View/i)).toBeInTheDocument();
@@ -115,11 +115,11 @@ describe('SchematicCanvas', () => {
 
     const { container, rerender } = render(
       <SystemStateProvider>
-        <GridEditProvider>
+        <CalibrationProvider>
           <SelectionProvider>
             <SchematicCanvas />
           </SelectionProvider>
-        </GridEditProvider>
+        </CalibrationProvider>
       </SystemStateProvider>
     );
 
@@ -140,11 +140,11 @@ describe('SchematicCanvas', () => {
 
     rerender(
       <SystemStateProvider>
-        <GridEditProvider>
+        <CalibrationProvider>
           <SelectionProvider>
             <SchematicCanvas />
           </SelectionProvider>
-        </GridEditProvider>
+        </CalibrationProvider>
       </SystemStateProvider>
     );
 
@@ -182,11 +182,11 @@ describe('SchematicCanvas', () => {
 
     const { container } = render(
       <SystemStateProvider>
-        <GridEditProvider>
+        <CalibrationProvider>
           <SelectionProvider>
             <SchematicCanvas />
           </SelectionProvider>
-        </GridEditProvider>
+        </CalibrationProvider>
       </SystemStateProvider>
     );
 
@@ -214,11 +214,11 @@ describe('SchematicCanvas', () => {
 
     const { container } = render(
       <SystemStateProvider>
-        <GridEditProvider>
+        <CalibrationProvider>
           <SelectionProvider>
             <SchematicCanvas />
           </SelectionProvider>
-        </GridEditProvider>
+        </CalibrationProvider>
       </SystemStateProvider>
     );
 
@@ -246,11 +246,11 @@ describe('SchematicCanvas', () => {
 
     const { container } = render(
       <SystemStateProvider>
-        <GridEditProvider>
+        <CalibrationProvider>
           <SelectionProvider>
             <SchematicCanvas />
           </SelectionProvider>
-        </GridEditProvider>
+        </CalibrationProvider>
       </SystemStateProvider>
     );
 

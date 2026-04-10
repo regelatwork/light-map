@@ -62,6 +62,28 @@ export const saveGridConfig = async (offset_x: number, offset_y: number, spacing
   return response.json();
 };
 
+export const setViewportConfig = async (
+  x: number,
+  y: number,
+  zoom: number,
+  rotation: number
+) => {
+  const host = import.meta.env.DEV ? 'http://localhost:8000' : window.location.origin;
+  const response = await fetch(`${host}/config/viewport`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ x, y, zoom, rotation }),
+  });
+
+  if (!response.ok) {
+    throw new Error('Failed to save viewport configuration');
+  }
+
+  return response.json();
+};
+
 export const interactMenu = async (index: number) => {
   const host = import.meta.env.DEV ? 'http://localhost:8000' : window.location.origin;
   const url = new URL(`${host}/menu/interact`);

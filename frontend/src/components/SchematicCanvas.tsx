@@ -1,6 +1,7 @@
 import { useState, useRef, useLayoutEffect, useCallback, type ReactNode, type FC } from 'react';
 import { rotatePoint } from '../utils/geometry';
 import { GridLayer } from './GridLayer';
+import { ViewportEditLayer } from './ViewportEditLayer';
 import { TokenLayer } from './TokenLayer';
 import { MapLayer } from './MapLayer';
 import { FowLayer } from './FowLayer';
@@ -180,6 +181,7 @@ export const SchematicCanvas: FC<SchematicCanvasProps> = ({ children }) => {
             <DoorLayer />
             <TokenLayer />
             <GridLayer />
+            <ViewportEditLayer />
           </g>
 
           <HandMaskLayer />

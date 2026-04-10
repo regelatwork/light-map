@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useSystemState } from '../hooks/useSystemState';
-import { useGridEdit } from './GridEditContext';
+import { useCalibration, CalibrationMode } from './CalibrationContext';
 import { VisionControl } from './VisionControl';
 import { saveGridConfig, injectAction } from '../services/api';
 import { HardwareAlignment } from './HardwareAlignment';
@@ -14,7 +14,8 @@ type Tab = 'grid' | 'vision' | 'hardware' | 'system';
 
 export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
   const { config, grid_origin_svg_x, grid_origin_svg_y } = useSystemState();
-  const { isGridEditMode, setIsGridEditMode } = useGridEdit();
+  const { activeMode, setMode } = useCalibration();
+  const isGridEditMode = activeMode === CalibrationMode.GRID;
   const [activeTab, setActiveTab] = useState<Tab>('grid');
 
   const [localGridX, setLocalGridX] = useState<number | null>(null);
@@ -106,7 +107,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                     <p className="text-sm text-gray-500">Enable on-canvas handles for precise grid alignment.</p>
                   </div>
                   <button
-                    onClick={() => setIsGridEditMode(!isGridEditMode)}
+                    onClick={() => setMode(isGridEditMode ? CalibrationMode.NONE : CalibrationMode.GRID)}
                     className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none shadow-sm ${
                       isGridEditMode ? 'bg-blue-600' : 'bg-gray-200'
                     }`}

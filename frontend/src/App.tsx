@@ -1,14 +1,14 @@
 import { Dashboard } from './components/Dashboard';
 import { SelectionProvider } from './components/SelectionContext';
-import { GridEditProvider } from './components/GridEditContext';
+import { CalibrationProvider } from './components/CalibrationContext';
 
 function App() {
   return (
-    <GridEditProvider>
+    <CalibrationProvider>
       <SelectionProvider>
         <Dashboard />
       </SelectionProvider>
-    </GridEditProvider>
+    </CalibrationProvider>
   );
 }
 

@@ -3,7 +3,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ConfigurationSidebar } from './ConfigurationSidebar';
 import * as useSystemStateHook from '../hooks/useSystemState';
 import * as useSelectionHook from './SelectionContext';
-import * as useGridEditHook from './GridEditContext';
+import * as useCalibrationHook from './CalibrationContext';
 import { SelectionType, GmPosition, VisibilityType } from '../types/system';
 import { updateToken } from '../services/api';
 
@@ -56,17 +56,22 @@ vi.mock('./SelectionContext', () => ({
   useSelection: vi.fn(),
 }));
 
-vi.mock('./GridEditContext', () => ({
-  useGridEdit: vi.fn(),
+vi.mock('./CalibrationContext', () => ({
+  useCalibration: vi.fn(),
+  CalibrationMode: {
+    NONE: 'NONE',
+    GRID: 'GRID',
+    VIEWPORT: 'VIEWPORT',
+  },
 }));
 
 describe('ConfigurationSidebar', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.mocked(useGridEditHook.useGridEdit).mockReturnValue({
-      isGridEditMode: false,
-      setIsGridEditMode: vi.fn(),
-    });
+    vi.mocked(useCalibrationHook.useCalibration).mockReturnValue({
+      activeMode: useCalibrationHook.CalibrationMode.NONE,
+      setMode: vi.fn(),
+    } as any);
   });
 
   it('hides World X/Y by default and shows them when Advanced is toggled', () => {
@@ -395,11 +400,11 @@ describe('ConfigurationSidebar', () => {
   });
 
   it('allows toggling Visual Grid Editor and shows origin inputs when enabled', () => {
-    const setIsGridEditMode = vi.fn();
-    vi.mocked(useGridEditHook.useGridEdit).mockReturnValue({
-      isGridEditMode: false,
-      setIsGridEditMode,
-    });
+    const setMode = vi.fn();
+    vi.mocked(useCalibrationHook.useCalibration).mockReturnValue({
+      activeMode: useCalibrationHook.CalibrationMode.NONE,
+      setMode,
+    } as any);
 
     vi.mocked(useSystemStateHook.useSystemState).mockReturnValue({
       ...useSystemStateHook.INITIAL_STATE,
@@ -429,13 +434,13 @@ describe('ConfigurationSidebar', () => {
 
     // Click the toggle
     fireEvent.click(toggleButton);
-    expect(setIsGridEditMode).toHaveBeenCalledWith(true);
+    expect(setMode).toHaveBeenCalledWith(useCalibrationHook.CalibrationMode.GRID);
 
     // Now mock it as enabled
-    vi.mocked(useGridEditHook.useGridEdit).mockReturnValue({
-      isGridEditMode: true,
-      setIsGridEditMode,
-    });
+    vi.mocked(useCalibrationHook.useCalibration).mockReturnValue({
+      activeMode: useCalibrationHook.CalibrationMode.GRID,
+      setMode,
+    } as any);
 
     rerender(<ConfigurationSidebar />);
 

@@ -3,14 +3,14 @@ import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { GridLayer } from './GridLayer';
 import { CanvasProvider, type CanvasProviderProps } from './CanvasContext';
-import { GridEditProvider, useGridEdit } from './GridEditContext';
+import { CalibrationProvider, useCalibration, CalibrationMode } from './CalibrationContext';
 import * as api from '../services/api';
 
 const EnableGridEdit = ({ children }: { children: React.ReactNode }) => {
-  const { setIsGridEditMode } = useGridEdit();
+  const { setMode } = useCalibration();
   React.useEffect(() => {
-    setIsGridEditMode(true);
-  }, [setIsGridEditMode]);
+    setMode(CalibrationMode.GRID);
+  }, [setMode]);
   return <>{children}</>;
 };
 
@@ -49,7 +49,7 @@ describe('GridLayer', () => {
 
   it('renders grid lines and handles', () => {
     const { container } = render(
-      <GridEditProvider>
+      <CalibrationProvider>
         <EnableGridEdit>
           <CanvasProvider {...dummyProps}>
             <svg>
@@ -57,7 +57,7 @@ describe('GridLayer', () => {
             </svg>
           </CanvasProvider>
         </EnableGridEdit>
-      </GridEditProvider>
+      </CalibrationProvider>
     );
 
     // Should have grid lines
@@ -77,7 +77,7 @@ describe('GridLayer', () => {
 
   it('calls saveGridConfig when dragging origin', async () => {
     const { container } = render(
-      <GridEditProvider>
+      <CalibrationProvider>
         <EnableGridEdit>
           <CanvasProvider {...dummyProps}>
             <svg>
@@ -85,7 +85,7 @@ describe('GridLayer', () => {
             </svg>
           </CanvasProvider>
         </EnableGridEdit>
-      </GridEditProvider>
+      </CalibrationProvider>
     );
 
     const originHandle = container.querySelectorAll('circle')[0];
@@ -106,7 +106,7 @@ describe('GridLayer', () => {
 
   it('calls saveGridConfig with new spacing when dragging scale handle', async () => {
     const { container } = render(
-      <GridEditProvider>
+      <CalibrationProvider>
         <EnableGridEdit>
           <CanvasProvider {...dummyProps}>
             <svg>
@@ -114,7 +114,7 @@ describe('GridLayer', () => {
             </svg>
           </CanvasProvider>
         </EnableGridEdit>
-      </GridEditProvider>
+      </CalibrationProvider>
     );
 
     const scaleHandle = container.querySelectorAll('circle')[1];

@@ -79,8 +79,8 @@ class ProfileUpdate(BaseModel):
 
 class ViewportConfig(BaseModel):
     zoom: Optional[float] = None
-    pan_x: Optional[float] = None
-    pan_y: Optional[float] = None
+    x: Optional[float] = None
+    y: Optional[float] = None
     rotation: Optional[float] = None
 
 
@@ -561,10 +561,10 @@ def create_app(
         data = {"action": "SET_VIEWPORT"}
         if config.zoom is not None:
             data["zoom"] = config.zoom
-        if config.pan_x is not None:
-            data["pan_x"] = config.pan_x
-        if config.pan_y is not None:
-            data["pan_y"] = config.pan_y
+        if config.x is not None:
+            data["x"] = config.x
+        if config.y is not None:
+            data["y"] = config.y
         if config.rotation is not None:
             data["rotation"] = config.rotation
 

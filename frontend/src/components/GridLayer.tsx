@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useSystemState } from '../hooks/useSystemState';
 import { useCanvas } from './CanvasContext';
-import { useGridEdit } from './GridEditContext';
+import { useCalibration, CalibrationMode } from './CalibrationContext';
 import { saveGridConfig } from '../services/api';
 
 type InteractionMode = 'IDLE' | 'MOVING_ORIGIN' | 'SCALING';
@@ -12,8 +12,10 @@ export const GridLayer: React.FC = () => {
   const { world, grid_spacing_svg, grid_origin_svg_x, grid_origin_svg_y, isConnected } =
     useSystemState();
   const { screenToWorld } = useCanvas();
-  const { isGridEditMode } = useGridEdit();
+  const { activeMode } = useCalibration();
+  const isGridEditMode = activeMode === CalibrationMode.GRID;
   const groupRef = React.useRef<SVGGElement>(null);
+
 
   useEffect(() => {
     if (world.scene && world.scene !== 'LOADING' && isGridEditMode) {

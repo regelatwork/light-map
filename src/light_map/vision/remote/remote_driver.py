@@ -592,11 +592,11 @@ def create_app(
             data["use_projector_3d_model"] = config.use_projector_3d_model
 
         # Absolute position overrides (can be null to reset)
-        if hasattr(config, "projector_pos_x_override"):
+        if config.projector_pos_x_override is not None:
             data["projector_pos_x_override"] = config.projector_pos_x_override
-        if hasattr(config, "projector_pos_y_override"):
+        if config.projector_pos_y_override is not None:
             data["projector_pos_y_override"] = config.projector_pos_y_override
-        if hasattr(config, "projector_pos_z_override"):
+        if config.projector_pos_z_override is not None:
             data["projector_pos_z_override"] = config.projector_pos_z_override
 
         res = DetectionResult(

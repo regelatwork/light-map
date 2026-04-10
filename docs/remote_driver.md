@@ -32,6 +32,7 @@ The driver is integrated into the main application and can be enabled using CLI 
 | :--- | :--- | :--- |
 | `--remote-hands` | Remote hand input mode | `exclusive`, `merge`, `ignore` (default) |
 | `--remote-tokens` | Remote token input mode | `exclusive`, `merge`, `ignore` (default) |
+| `--remote-host` | Host address for the HTTP API | String (default: `127.0.0.1`) |
 | `--remote-port` | Port for the HTTP API | Integer (default: `8000`) |
 | `--remote-origins` | Allowed CORS origins | Space-separated list (default: localhost/127.0.0.1 on 8000/5173) |
 
@@ -64,7 +65,7 @@ python3 -m light_map --remote-hands merge --remote-tokens merge
 
 ## 2. API Reference
 
-By default, the API is available at `http://127.0.0.1:8000`.
+By default, the API is available at `http://127.0.0.1:8000` (can be changed with `--remote-host` and `--remote-port`).
 
 ### 2.1 Input Injection (POST)
 

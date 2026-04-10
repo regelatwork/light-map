@@ -142,6 +142,8 @@ def create_app(
     height: int = 1080,
     num_consumers: int = 2,
     allowed_origins: Optional[List[str]] = None,
+    host: str = "127.0.0.1",
+    port: int = 8000,
 ):
     manager = ConnectionManager()
 
@@ -306,6 +308,18 @@ def create_app(
             "http://localhost:5173",
             "http://127.0.0.1:5173",
         ]
+        # Include current host and port if they are different from defaults
+        current_origin = f"http://{host}:{port}"
+        if current_origin not in allowed_origins:
+            allowed_origins.append(current_origin)
+        # Also allow localhost and 127.0.0.1 on the current port
+        if port != 8000:
+            allowed_origins.extend(
+                [f"http://localhost:{port}", f"http://127.0.0.1:{port}"]
+            )
+        # If host is 0.0.0.0, we can't really guess what the client's host is,
+        # but the common case is they access the machine's IP or name.
+        # We don't need to add anything for 0.0.0.0 specifically.
 
     app.add_middleware(
         CORSMiddleware,
@@ -771,6 +785,8 @@ def remote_driver_worker(
         height,
         num_consumers,
         allowed_origins=allowed_origins,
+        host=host,
+        port=port,
     )
 
     config = uvicorn.Config(

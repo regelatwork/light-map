@@ -303,6 +303,7 @@ def run_app(args):
                 "proj_res": (native_screen_width, native_screen_height),
                 "remote_hands": args.remote_hands,
                 "remote_tokens": args.remote_tokens,
+                "remote_host": args.remote_host,
                 "remote_port": args.remote_port,
                 "enable_hand_masking": app.config.enable_hand_masking,
                 "enable_aruco_masking": app.config.enable_aruco_masking,
@@ -391,6 +392,7 @@ def run_app(args):
                 distortion_coefficients=app.config.distortion_coefficients,
                 remote_mode_hands=args.remote_hands,
                 remote_mode_tokens=args.remote_tokens,
+                remote_host=args.remote_host,
                 remote_port=args.remote_port,
                 remote_origins=args.remote_origins,
                 state_mirror=state_mirror,
@@ -780,6 +782,12 @@ def main():
         type=int,
         default=8000,
         help="Port for the remote driver HTTP API",
+    )
+    run_parser.add_argument(
+        "--remote-host",
+        type=str,
+        default="127.0.0.1",
+        help="Host address for the remote driver HTTP API",
     )
     run_parser.add_argument(
         "--remote-origins",

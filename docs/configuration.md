@@ -4,7 +4,7 @@ This document describes the various configuration and state files used in the Li
 
 ## Visual Configuration via Web Dashboard
 
-While most settings can be manually edited in JSON files, the **Light Map Control Dashboard** (available at `http://localhost:8000`) provides a more intuitive way to manage configuration.
+While most settings can be manually edited in JSON files, the **Light Map Control Dashboard** (available by default at `http://localhost:8000`) provides a more intuitive way to manage configuration.
 
 ### 1. Map Browser
 

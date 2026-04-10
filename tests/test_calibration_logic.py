@@ -1,7 +1,10 @@
 import pytest
 import numpy as np
 from unittest.mock import MagicMock, patch
-from light_map.calibration.calibration_logic import run_calibration_sequence, calibrate_extrinsics
+from light_map.calibration.calibration_logic import (
+    run_calibration_sequence,
+    calibrate_extrinsics,
+)
 from light_map.vision.infrastructure.camera import Camera
 
 
@@ -22,7 +25,9 @@ def mock_camera():
 @pytest.fixture
 def mock_projector_utils():
     with (
-        patch("light_map.calibration.calibration_logic.generate_calibration_pattern") as mock_gen,
+        patch(
+            "light_map.calibration.calibration_logic.generate_calibration_pattern"
+        ) as mock_gen,
         patch(
             "light_map.calibration.calibration_logic.compute_projector_homography"
         ) as mock_compute,

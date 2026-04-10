@@ -31,7 +31,9 @@ def app_with_real_scenes(tmp_path):
                 np.zeros((3, 1)),
             ),
         ),
-        patch("light_map.map.map_config.MapConfigManager._load", return_value=MagicMock()),
+        patch(
+            "light_map.map.map_config.MapConfigManager._load", return_value=MagicMock()
+        ),
     ):
         _app = InteractiveApp(config)
         return _app

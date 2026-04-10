@@ -4,7 +4,10 @@ import numpy as np
 import os
 
 from light_map.core.app_context import AppContext
-from light_map.calibration.calibration_scenes import MapGridCalibrationScene, GridOverlay
+from light_map.calibration.calibration_scenes import (
+    MapGridCalibrationScene,
+    GridOverlay,
+)
 from light_map.core.common_types import AppConfig, GestureType, SceneId
 from light_map.core.scene import HandInput, SceneTransition
 from light_map.map.map_system import MapSystem, MapState

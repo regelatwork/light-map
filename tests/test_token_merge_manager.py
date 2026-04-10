@@ -1,5 +1,10 @@
 from light_map.vision.processing.token_merge_manager import TokenMergeManager
-from light_map.core.common_types import DetectionResult, ResultType, Token, TokenMergePolicy
+from light_map.core.common_types import (
+    DetectionResult,
+    ResultType,
+    Token,
+    TokenMergePolicy,
+)
 
 
 def test_token_merge_manager_policies():

@@ -1,5 +1,10 @@
 from light_map.state.world_state import WorldState
-from light_map.core.common_types import DetectionResult, ResultType, Token, ViewportState
+from light_map.core.common_types import (
+    DetectionResult,
+    ResultType,
+    Token,
+    ViewportState,
+)
 
 
 def test_world_state_timestamps_init():

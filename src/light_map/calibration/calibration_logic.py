@@ -5,7 +5,10 @@ import time
 from typing import Optional, Tuple, Dict, List
 
 from light_map.vision.infrastructure.camera import Camera
-from light_map.rendering.projector import generate_calibration_pattern, compute_projector_homography
+from light_map.rendering.projector import (
+    generate_calibration_pattern,
+    compute_projector_homography,
+)
 from light_map.core.display_utils import ProjectorWindow
 
 

@@ -15,7 +15,10 @@ from light_map.core.scene import Scene, SceneTransition
 from light_map.input.map_interaction import MapInteractionController
 from light_map.input.gestures import GestureType
 from light_map.vision.processing.token_tracker import TokenTracker
-from light_map.calibration.calibration_logic import calculate_ppi_from_frame, calibrate_extrinsics
+from light_map.calibration.calibration_logic import (
+    calculate_ppi_from_frame,
+    calibrate_extrinsics,
+)
 from light_map.core.common_types import SceneId, Action, AppConfig, TimerKey
 from light_map.calibration.calibration import (
     process_chessboard_images,

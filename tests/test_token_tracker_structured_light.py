@@ -2,7 +2,10 @@ import numpy as np
 import pytest
 import cv2
 from unittest.mock import MagicMock
-from light_map.vision.processing.token_tracker import TokenTracker, TokenDetectionAlgorithm
+from light_map.vision.processing.token_tracker import (
+    TokenTracker,
+    TokenDetectionAlgorithm,
+)
 from light_map.map.map_system import MapSystem
 
 

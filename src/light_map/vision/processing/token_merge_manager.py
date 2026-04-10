@@ -1,5 +1,10 @@
 from typing import List
-from light_map.core.common_types import Token, ResultType, DetectionResult, TokenMergePolicy
+from light_map.core.common_types import (
+    Token,
+    ResultType,
+    DetectionResult,
+    TokenMergePolicy,
+)
 
 
 class TokenMergeManager:

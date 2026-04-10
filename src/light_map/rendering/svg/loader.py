@@ -6,7 +6,10 @@ import numpy as np
 import cv2
 from typing import List
 from light_map.rendering.svg.utils import get_element_label, get_viewport_matrix
-from light_map.rendering.svg.geometry import collect_grid_coordinates, analyze_spacing_and_origin
+from light_map.rendering.svg.geometry import (
+    collect_grid_coordinates,
+    analyze_spacing_and_origin,
+)
 from light_map.rendering.svg.renderer import (
     render_image_element,
     render_text_element,

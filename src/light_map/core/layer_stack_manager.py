@@ -7,9 +7,16 @@ from light_map.rendering.layers.menu_layer import MenuLayer
 from light_map.rendering.layers.scene_layer import SceneLayer
 from light_map.rendering.layers.hand_mask_layer import HandMaskLayer
 from light_map.rendering.layers.aruco_mask_layer import ArucoMaskLayer
-from light_map.rendering.layers.overlay_layer import TokenLayer, NotificationLayer, DebugLayer
+from light_map.rendering.layers.overlay_layer import (
+    TokenLayer,
+    NotificationLayer,
+    DebugLayer,
+)
 from light_map.rendering.layers.fow_layer import FogOfWarLayer
-from light_map.rendering.layers.visibility_layer import VisibilityLayer, ExclusiveVisionLayer
+from light_map.rendering.layers.visibility_layer import (
+    VisibilityLayer,
+    ExclusiveVisionLayer,
+)
 from light_map.rendering.layers.cursor_layer import CursorLayer
 from light_map.rendering.layers.selection_progress_layer import SelectionProgressLayer
 

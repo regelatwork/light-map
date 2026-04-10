@@ -87,7 +87,9 @@ def test_get_map_status(mock_config_file):
     manager.data.maps["/maps/calibrated.svg"] = MapEntry(grid_spacing_svg=10.0)
     manager.data.maps["/maps/uncalibrated.svg"] = MapEntry(grid_spacing_svg=0.0)
 
-    with patch("light_map.map.map_config.SessionManager.has_session") as mock_has_session:
+    with patch(
+        "light_map.map.map_config.SessionManager.has_session"
+    ) as mock_has_session:
         mock_has_session.return_value = True
 
         status1 = manager.get_map_status("/maps/calibrated.svg")

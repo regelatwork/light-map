@@ -3,7 +3,9 @@ from typing import List, Optional, Tuple, Dict, TYPE_CHECKING
 from light_map.core.common_types import Token, TokenDetectionAlgorithm
 from light_map.map.map_system import MapSystem
 from light_map.vision.detectors.flash_detector import FlashTokenDetector
-from light_map.vision.detectors.structured_light_detector import StructuredLightTokenDetector
+from light_map.vision.detectors.structured_light_detector import (
+    StructuredLightTokenDetector,
+)
 from light_map.vision.detectors.aruco_detector import ArucoTokenDetector
 
 if TYPE_CHECKING:

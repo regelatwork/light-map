@@ -74,7 +74,9 @@ class WorldState:
         self._fow_mask_atom = VersionedAtom(
             None, "fow_mask", equality_fn=np.array_equal
         )
-        self._calibration_atom = VersionedAtom(CalibrationState(), "calibration")
+        self._calibration_atom = VersionedAtom(
+            CalibrationState(), "calibration", equality_fn=self._calibration_equal
+        )
         self._notifications_atom = VersionedAtom([], "notifications")
         self._map_render_state_atom = VersionedAtom(
             MapRenderState(), "map_render_state"
@@ -545,6 +547,43 @@ class WorldState:
                 self.pending_actions.append(result.data)
 
     # Equality Helpers for Atoms
+
+    def _calibration_equal(self, c1: CalibrationState, c2: CalibrationState) -> bool:
+        """Correctly compares CalibrationState objects, handling numpy array fields."""
+        if not isinstance(c1, CalibrationState) or not isinstance(c2, CalibrationState):
+            return c1 == c2
+
+        # Basic Fields
+        if (
+            c1.stage != c2.stage
+            or c1.target_status != c2.target_status
+            or c1.target_info != c2.target_info
+            or c1.reprojection_error != c2.reprojection_error
+            or c1.animation_start_times != c2.animation_start_times
+            or c1.last_camera_frame_ts != c2.last_camera_frame_ts
+            or c1.captured_count != c2.captured_count
+            or c1.total_required != c2.total_required
+            or c1.candidate_ppi != c2.candidate_ppi
+            or c1.step_index != c2.step_index
+            or c1.flash_intensity != c2.flash_intensity
+            or c1.instruction_text != c2.instruction_text
+            or c1.instruction_pos != c2.instruction_pos
+        ):
+            return False
+
+        # Numpy Array Fields
+        if not np.array_equal(c1.pattern_image, c2.pattern_image):
+            return False
+        if not np.array_equal(c1.object_points, c2.object_points):
+            return False
+        if not np.array_equal(c1.image_points, c2.image_points):
+            return False
+        if not np.array_equal(c1.rotation_vector, c2.rotation_vector):
+            return False
+        if not np.array_equal(c1.translation_vector, c2.translation_vector):
+            return False
+
+        return True
 
     def _inputs_equal(self, i1: List[HandInput], i2: List[HandInput]) -> bool:
         """Checks for semantic equality between two lists of hand inputs."""

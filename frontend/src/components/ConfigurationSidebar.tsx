@@ -64,7 +64,7 @@ export const ConfigurationSidebar: React.FC = () => {
 
   const handleResetZoom = async () => {
     try {
-      await setViewportConfig(vpX, vpY, 1.0, vpRotation);
+      await injectAction('RESET_ZOOM');
     } catch (e) {
       console.error(e);
     }

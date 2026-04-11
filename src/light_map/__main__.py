@@ -588,14 +588,18 @@ def run_app(args):
                                 or str(app.config.gm_position) != last_gm_position
                                 or app.config.enable_hand_masking != last_hand_masking
                                 or app.config.enable_aruco_masking != last_aruco_masking
-                                or app.config.aruco_mask_intensity != last_aruco_intensity
-                                or app.config.aruco_mask_persistence_s != last_aruco_persistence
+                                or app.config.aruco_mask_intensity
+                                != last_aruco_intensity
+                                or app.config.aruco_mask_persistence_s
+                                != last_aruco_persistence
                                 or app.config.pointer_offset_mm != last_pointer_offset
                             ):
                                 last_projector_pose_ts = state.projector_pose_version
                                 last_config_ts = state.config_version
                                 last_aruco_intensity = app.config.aruco_mask_intensity
-                                last_aruco_persistence = app.config.aruco_mask_persistence_s
+                                last_aruco_persistence = (
+                                    app.config.aruco_mask_persistence_s
+                                )
                                 last_pointer_offset = app.config.pointer_offset_mm
                                 calibrated_pos = app.config.projector_3d_model.calibrated_projector_center
                                 state_mirror["config"] = {
@@ -676,7 +680,9 @@ def run_app(args):
                                 last_gm_position = str(app.config.gm_position)
                                 last_hand_masking = app.config.enable_hand_masking
                                 last_aruco_masking = app.config.enable_aruco_masking
-                                last_aruco_persistence = app.config.aruco_mask_persistence_s
+                                last_aruco_persistence = (
+                                    app.config.aruco_mask_persistence_s
+                                )
 
                         # E. Process Actions
                         should_break = False

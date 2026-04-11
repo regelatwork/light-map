@@ -37,7 +37,10 @@ def test_handle_set_viewport_action(mock_config, monkeypatch):
     app.current_scene.version = 1
     app.current_scene.update.return_value = None
     app.current_scene.get_active_layers.return_value = []
-    app.current_scene.render.return_value = (np.zeros((750, 1000, 3), dtype=np.uint8), 1)
+    app.current_scene.render.return_value = (
+        np.zeros((750, 1000, 3), dtype=np.uint8),
+        1,
+    )
 
     # Initial state
     assert app.map_system.state.x == 0.0
@@ -63,6 +66,7 @@ def test_handle_set_viewport_action(mock_config, monkeypatch):
     assert app.map_system.state.rotation == 90.0
     assert len(ws.pending_actions) == 0
 
+
 def test_handle_set_viewport_action_partial(mock_config, monkeypatch):
     monkeypatch.setattr(
         InteractiveApp,
@@ -74,16 +78,21 @@ def test_handle_set_viewport_action_partial(mock_config, monkeypatch):
     ws = app.state
 
     app.current_scene = MagicMock()
-    app.current_scene.render.return_value = (np.zeros((750, 1000, 3), dtype=np.uint8), 1)
+    app.current_scene.render.return_value = (
+        np.zeros((750, 1000, 3), dtype=np.uint8),
+        1,
+    )
 
     # Inject only ZOOM
-    ws.pending_actions.append({
-        "action": "SET_VIEWPORT",
-        "zoom": 1.5,
-    })
+    ws.pending_actions.append(
+        {
+            "action": "SET_VIEWPORT",
+            "zoom": 1.5,
+        }
+    )
 
     app.process_state(ws, [])
 
     assert app.map_system.state.zoom == 1.5
-    assert app.map_system.state.x == 0.0 # Unchanged
-    assert app.map_system.state.y == 0.0 # Unchanged
+    assert app.map_system.state.x == 0.0  # Unchanged
+    assert app.map_system.state.y == 0.0  # Unchanged

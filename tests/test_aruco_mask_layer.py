@@ -219,7 +219,7 @@ def test_aruco_mask_layer_persistence(mock_state, mock_config):
 
     # 2. Lost detection (empty state)
     mock_state.raw_aruco = {"corners": [], "ids": []}
-    
+
     # Still present after 1s
     patches2 = layer._generate_patches(101.0)
     assert len(patches2) == 1
@@ -246,14 +246,14 @@ def test_aruco_mask_layer_version_with_persistence(mock_state, mock_config):
     # 2. Lost detection
     mock_state.raw_aruco = {"corners": [], "ids": []}
     current_ns = mock_state.raw_aruco_version
-    
+
     # system_time_version should trigger every-frame updates if last_seen is not empty
     mock_state._system_time_atom.update(101.0, force_timestamp=current_ns + 1000)
     v2 = layer.get_current_version()
     assert v2 > v1
 
     # 3. After persistence expires
-    layer._generate_patches(103.0) # This will clear last_seen
+    layer._generate_patches(103.0)  # This will clear last_seen
     v3 = layer.get_current_version()
     # Now it should be back to just base versioning (v3 should be based on raw_aruco_version)
     assert v3 < v2

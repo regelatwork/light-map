@@ -54,7 +54,21 @@ def run_calibration_sequence(
         cv2.imwrite("captured_frame.jpg", frame)
         logging.info("Saved capture to captured_frame.jpg")
 
-        return compute_projector_homography(frame, params)
+        # Detect ArUco markers for orientation correction
+        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        aruco_dict = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_4X4_50)
+        parameters = cv2.aruco.DetectorParameters()
+        detector = cv2.aruco.ArucoDetector(aruco_dict, parameters)
+        aruco_corners, aruco_ids, _ = detector.detectMarkers(gray)
+
+        if aruco_ids is not None:
+            logging.info(
+                f"Detected ArUco markers: {aruco_ids.flatten()}. Using for orientation."
+            )
+
+        return compute_projector_homography(
+            frame, params, aruco_corners=aruco_corners, aruco_ids=aruco_ids
+        )
 
     except Exception as e:
         logging.error("Error computing homography: %s", e)

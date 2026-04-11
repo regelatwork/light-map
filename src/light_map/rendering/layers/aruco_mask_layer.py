@@ -96,7 +96,9 @@ class ArucoMaskLayer(Layer):
         # Update persistent store
         for i, marker_id in enumerate(ids):
             if i < len(corners_list):
-                self.last_corners[marker_id] = np.array(corners_list[i], dtype=np.float32)
+                self.last_corners[marker_id] = np.array(
+                    corners_list[i], dtype=np.float32
+                )
                 self.last_seen[marker_id] = current_time
 
         # Cleanup and collect markers to render

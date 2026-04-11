@@ -453,7 +453,9 @@ class AppConfig:
         )
 
         # Sync Pointer Offset
-        self.pointer_offset_mm = getattr(gs, "pointer_offset_mm", self.pointer_offset_mm)
+        self.pointer_offset_mm = getattr(
+            gs, "pointer_offset_mm", self.pointer_offset_mm
+        )
 
         # Sync Projector Position Overrides
         self.projector_pos_x_override = getattr(

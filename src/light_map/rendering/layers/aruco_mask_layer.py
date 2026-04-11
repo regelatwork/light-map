@@ -3,7 +3,7 @@ import cv2
 import numpy as np
 from light_map.core.common_types import Layer, LayerMode, ImagePatch, AppConfig
 from light_map.state.world_state import WorldState
-from light_map.core.constants import DEFAULT_ARUCO_MASK_COLOR, DEFAULT_TOKEN_HEIGHT_MM
+from light_map.core.constants import DEFAULT_TOKEN_HEIGHT_MM
 from light_map.rendering.projection import ProjectionService
 
 
@@ -23,6 +23,8 @@ class ArucoMaskLayer(Layer):
         super().__init__(state=state, is_static=False, layer_mode=LayerMode.NORMAL)
         self.config = config
         self.projection_service = projection_service
+        self.last_corners: dict[int, np.ndarray] = {}
+        self.last_seen: dict[int, float] = {}
 
     def get_current_version(self) -> int:
         if self.state is None:
@@ -33,13 +35,19 @@ class ArucoMaskLayer(Layer):
 
         # Use raw_aruco_version to ensure masks persist even if logical tokens change.
         # Include grid metadata and viewport for 3D projection stability.
-        # NEW: Include projector_pose_version for manual adjustment feedback.
+        # NEW: Include projector_pose_version and general config_version for manual adjustment feedback.
         v = max(
             self.state.raw_aruco_version,
             self.state.grid_metadata_version,
             self.state.viewport_version,
             self.state.projector_pose_version,
+            self.state.config_version,
         )
+
+        # If we have lingering masks, we need every-frame updates for the timer
+        if self.last_seen:
+            v = max(v, self.state.system_time_version)
+
         return (v << 1) | enabled_bit
 
     def _transform_pts(
@@ -85,12 +93,35 @@ class ArucoMaskLayer(Layer):
         corners_list = raw_aruco.get("corners", [])
         ids = raw_aruco.get("ids", [])
 
-        if not corners_list:
+        # Update persistent store
+        for i, marker_id in enumerate(ids):
+            if i < len(corners_list):
+                self.last_corners[marker_id] = np.array(corners_list[i], dtype=np.float32)
+                self.last_seen[marker_id] = current_time
+
+        # Cleanup and collect markers to render
+        to_render = []
+        ids_to_remove = []
+        persistence_s = self.config.aruco_mask_persistence_s
+
+        for marker_id, last_time in self.last_seen.items():
+            if current_time - last_time <= persistence_s:
+                to_render.append((marker_id, self.last_corners[marker_id]))
+            else:
+                ids_to_remove.append(marker_id)
+
+        for marker_id in ids_to_remove:
+            del self.last_seen[marker_id]
+            if marker_id in self.last_corners:
+                del self.last_corners[marker_id]
+
+        if not to_render:
             return []
 
         patches = []
         padding = self.config.aruco_mask_padding
-        color = DEFAULT_ARUCO_MASK_COLOR
+        intensity = self.config.aruco_mask_intensity
+        color = (intensity, intensity, intensity, 255)
 
         # Projector resolution for clamping
         limit_w = self.config.width
@@ -98,10 +129,7 @@ class ArucoMaskLayer(Layer):
 
         default_height = DEFAULT_TOKEN_HEIGHT_MM
 
-        for i, corners in enumerate(corners_list):
-            marker_id = ids[i] if i < len(ids) else -1
-            corners = np.array(corners, dtype=np.float32)
-
+        for marker_id, corners in to_render:
             # Determine height
             height_mm = default_height
             if marker_id != -1 and marker_id in getattr(

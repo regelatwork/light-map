@@ -103,14 +103,14 @@ class LayerStackManager:
             self.fow_layer,
             self.visibility_layer,
             self.scene_layer,
-            self.aruco_mask_layer,
             self.hand_mask_layer,
-            self.token_layer,  # Tokens below Menu
+            self.token_layer,
             self.menu_layer,
             self.notification_layer,
             self.debug_layer,
             self.selection_progress_layer,
             self.cursor_layer,
+            self.aruco_mask_layer,  # TOPMOST
         ]
 
     def update_visibility_stack(

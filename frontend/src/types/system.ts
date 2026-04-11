@@ -155,6 +155,9 @@ export interface SystemConfig {
   proj_res: [number, number];
   enable_hand_masking: boolean;
   enable_aruco_masking: boolean;
+  aruco_mask_intensity?: number;
+  aruco_mask_persistence_s?: number;
+  pointer_offset_mm?: number;
   gm_position: GmPosition;
   debug_mode: boolean;
   fow_disabled: boolean;

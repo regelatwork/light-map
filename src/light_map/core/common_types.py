@@ -14,7 +14,9 @@ from light_map.core.constants import (
     DEFAULT_PROJECTOR_RESOLUTION,
     DEFAULT_HAND_MASK_PADDING,
     DEFAULT_PROJECTOR_PPI,
-    DEFAULT_POINTER_EXTENSION_INCHES,
+    DEFAULT_POINTER_OFFSET_MM,
+    DEFAULT_ARUCO_MASK_INTENSITY,
+    DEFAULT_ARUCO_MASK_PERSISTENCE_S,
     DEFAULT_INSPECTION_LINGER_DURATION,
     DEFAULT_DOOR_THICKNESS_MULTIPLIER,
     DEFAULT_ARUCO_MASK_PADDING,
@@ -395,6 +397,8 @@ class AppConfig:
     hand_mask_padding: int = DEFAULT_HAND_MASK_PADDING
     enable_aruco_masking: bool = True
     aruco_mask_padding: int = DEFAULT_ARUCO_MASK_PADDING
+    aruco_mask_intensity: int = DEFAULT_ARUCO_MASK_INTENSITY
+    aruco_mask_persistence_s: float = DEFAULT_ARUCO_MASK_PERSISTENCE_S
     gm_position: GmPosition = GmPosition.NONE
     projector_ppi: float = DEFAULT_PROJECTOR_PPI
     calibration_box_height_mm: float = 78.0
@@ -409,7 +413,7 @@ class AppConfig:
 
     aruco_defaults: Dict[int, Any] = field(default_factory=dict)
     token_profiles: Dict[str, Any] = field(default_factory=dict)
-    pointer_extension_inches: float = DEFAULT_POINTER_EXTENSION_INCHES
+    pointer_offset_mm: float = DEFAULT_POINTER_OFFSET_MM
     inspection_linger_duration: float = DEFAULT_INSPECTION_LINGER_DURATION
     door_thickness_multiplier: float = DEFAULT_DOOR_THICKNESS_MULTIPLIER
 
@@ -427,6 +431,12 @@ class AppConfig:
         self.aruco_mask_padding = getattr(
             gs, "aruco_mask_padding", self.aruco_mask_padding
         )
+        self.aruco_mask_intensity = getattr(
+            gs, "aruco_mask_intensity", self.aruco_mask_intensity
+        )
+        self.aruco_mask_persistence_s = getattr(
+            gs, "aruco_mask_persistence_s", self.aruco_mask_persistence_s
+        )
         self.gm_position = getattr(gs, "gm_position", self.gm_position)
         self.projector_ppi = getattr(gs, "projector_ppi", self.projector_ppi)
         self.calibration_box_height_mm = getattr(
@@ -441,6 +451,9 @@ class AppConfig:
         self.use_projector_3d_model = getattr(
             gs, "use_projector_3d_model", self.use_projector_3d_model
         )
+
+        # Sync Pointer Offset
+        self.pointer_offset_mm = getattr(gs, "pointer_offset_mm", self.pointer_offset_mm)
 
         # Sync Projector Position Overrides
         self.projector_pos_x_override = getattr(

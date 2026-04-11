@@ -891,6 +891,9 @@ class InteractiveApp:
             self.state.visibility_mask = self.fow_manager.visible_mask.copy()
             self.state.fow_mask = self.fow_manager.explored_mask.copy()
 
+        # Calculate and set base scale (1:1 zoom level)
+        self.refresh_base_scale()
+
         if load_session:
             session_dir = None
             if self.config.storage_manager:
@@ -934,21 +937,6 @@ class InteractiveApp:
         # Default loading if no session or session load failed
         vp = self.map_config.get_map_viewport(filename)
         self.map_system.set_state(vp.x, vp.y, vp.zoom, vp.rotation)
-
-        # Calculate and set base scale (1:1 zoom level)
-        # If we have grid info, we can always derive the correct scale from PPI.
-        # This handles changes in PPI (projector height/model) automatically.
-        ppi = self.map_config.get_ppi()
-        if entry and entry.grid_spacing_svg > 0 and ppi > 0:
-            self.map_system.base_scale = (
-                entry.physical_unit_inches * ppi
-            ) / entry.grid_spacing_svg
-        else:
-            self.map_system.base_scale = (
-                entry.scale_factor_1to1
-                if entry and entry.scale_factor_1to1 > 0
-                else 1.0
-            )
 
         self.map_config.data.global_settings.last_used_map = filename
         self.map_config.save()

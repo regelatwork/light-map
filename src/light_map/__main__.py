@@ -307,6 +307,8 @@ def run_app(args):
                 "remote_port": args.remote_port,
                 "enable_hand_masking": app.config.enable_hand_masking,
                 "enable_aruco_masking": app.config.enable_aruco_masking,
+                "aruco_mask_intensity": app.config.aruco_mask_intensity,
+                "pointer_offset_mm": app.config.pointer_offset_mm,
                 "gm_position": str(app.config.gm_position),
                 "debug_mode": app.debug_mode,
                 "fow_disabled": app.fow_manager.is_disabled
@@ -442,6 +444,10 @@ def run_app(args):
                     last_tokens_ts = -1
                     last_menu_ts = -1
                     last_projector_pose_ts = -1
+                    last_config_ts = -1
+                    last_aruco_intensity = -1
+                    last_aruco_persistence = -1
+                    last_pointer_offset = -1
 
                     def render_cb(state, actions):
                         nonlocal \
@@ -456,7 +462,11 @@ def run_app(args):
                             last_world_ts, \
                             last_tokens_ts, \
                             last_menu_ts, \
-                            last_projector_pose_ts
+                            last_projector_pose_ts, \
+                            last_config_ts, \
+                            last_aruco_intensity, \
+                            last_aruco_persistence, \
+                            last_pointer_offset
 
                         # A. Handle Startup Actions (Execute once)
                         if args.action and not startup_action_executed:
@@ -571,14 +581,22 @@ def run_app(args):
                                 current_map_config_version != last_map_config_version
                                 or state.projector_pose_version
                                 != last_projector_pose_ts
+                                or state.config_version != last_config_ts
                                 or app.debug_mode != last_debug_mode
                                 or app.current_map_path != last_map_path
                                 or fow_disabled != last_fow_disabled
                                 or str(app.config.gm_position) != last_gm_position
                                 or app.config.enable_hand_masking != last_hand_masking
                                 or app.config.enable_aruco_masking != last_aruco_masking
+                                or app.config.aruco_mask_intensity != last_aruco_intensity
+                                or app.config.aruco_mask_persistence_s != last_aruco_persistence
+                                or app.config.pointer_offset_mm != last_pointer_offset
                             ):
                                 last_projector_pose_ts = state.projector_pose_version
+                                last_config_ts = state.config_version
+                                last_aruco_intensity = app.config.aruco_mask_intensity
+                                last_aruco_persistence = app.config.aruco_mask_persistence_s
+                                last_pointer_offset = app.config.pointer_offset_mm
                                 calibrated_pos = app.config.projector_3d_model.calibrated_projector_center
                                 state_mirror["config"] = {
                                     "cam_res": (
@@ -598,6 +616,9 @@ def run_app(args):
                                     "remote_port": args.remote_port,
                                     "enable_hand_masking": app.config.enable_hand_masking,
                                     "enable_aruco_masking": app.config.enable_aruco_masking,
+                                    "aruco_mask_intensity": app.config.aruco_mask_intensity,
+                                    "aruco_mask_persistence_s": app.config.aruco_mask_persistence_s,
+                                    "pointer_offset_mm": app.config.pointer_offset_mm,
                                     "gm_position": str(app.config.gm_position),
                                     "debug_mode": app.debug_mode,
                                     "fow_disabled": fow_disabled,
@@ -655,6 +676,7 @@ def run_app(args):
                                 last_gm_position = str(app.config.gm_position)
                                 last_hand_masking = app.config.enable_hand_masking
                                 last_aruco_masking = app.config.enable_aruco_masking
+                                last_aruco_persistence = app.config.aruco_mask_persistence_s
 
                         # E. Process Actions
                         should_break = False

@@ -15,6 +15,8 @@ def mock_config():
     config.height = 4000
     config.enable_aruco_masking = True
     config.aruco_mask_padding = 10
+    config.aruco_mask_intensity = 64
+    config.aruco_mask_persistence_s = 2.0
     config.projector_matrix = np.eye(3)
     config.distortion_model = None
     config.camera_matrix = None
@@ -204,3 +206,54 @@ def test_aruco_mask_layer_parallax_rendering(mock_state, mock_config):
     x100 = patches_100[0].x
 
     assert x100 < x0
+
+
+def test_aruco_mask_layer_persistence(mock_state, mock_config):
+    """Verifies that masks persist even after detection is lost."""
+    mock_config.aruco_mask_persistence_s = 2.0
+    layer = ArucoMaskLayer(mock_state, mock_config)
+
+    # 1. Initial detection
+    patches1 = layer._generate_patches(100.0)
+    assert len(patches1) == 1
+
+    # 2. Lost detection (empty state)
+    mock_state.raw_aruco = {"corners": [], "ids": []}
+    
+    # Still present after 1s
+    patches2 = layer._generate_patches(101.0)
+    assert len(patches2) == 1
+    assert patches2[0].x == patches1[0].x
+
+    # Still present after 2s
+    patches3 = layer._generate_patches(102.0)
+    assert len(patches3) == 1
+
+    # Gone after 2.1s
+    patches4 = layer._generate_patches(102.1)
+    assert len(patches4) == 0
+
+
+def test_aruco_mask_layer_version_with_persistence(mock_state, mock_config):
+    """Verifies that version updates every frame during lingering."""
+    mock_config.aruco_mask_persistence_s = 2.0
+    layer = ArucoMaskLayer(mock_state, mock_config)
+
+    # 1. Initial detection
+    layer._generate_patches(100.0)
+    v1 = layer.get_current_version()
+
+    # 2. Lost detection
+    mock_state.raw_aruco = {"corners": [], "ids": []}
+    current_ns = mock_state.raw_aruco_version
+    
+    # system_time_version should trigger every-frame updates if last_seen is not empty
+    mock_state._system_time_atom.update(101.0, force_timestamp=current_ns + 1000)
+    v2 = layer.get_current_version()
+    assert v2 > v1
+
+    # 3. After persistence expires
+    layer._generate_patches(103.0) # This will clear last_seen
+    v3 = layer.get_current_version()
+    # Now it should be back to just base versioning (v3 should be based on raw_aruco_version)
+    assert v3 < v2

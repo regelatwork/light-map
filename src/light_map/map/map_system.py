@@ -149,7 +149,7 @@ class MapSystem:
         self.state.rotation = (self.state.rotation + degrees) % 360
 
     def reset_view(self):
-        self.state = MapState()
+        self.state = MapState(zoom=self.base_scale)
 
     def reset_zoom_to_base(self):
         """Resets the zoom to the current map's base 1:1 scale, pivoting around screen center."""

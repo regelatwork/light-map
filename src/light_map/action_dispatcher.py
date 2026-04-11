@@ -236,6 +236,16 @@ def handle_update_system_config(
         app.config.enable_aruco_masking = gs.enable_aruco_masking
         changed = True
 
+    if "aruco_mask_intensity" in payload:
+        gs.aruco_mask_intensity = payload["aruco_mask_intensity"]
+        app.config.aruco_mask_intensity = gs.aruco_mask_intensity
+        changed = True
+
+    if "pointer_offset_mm" in payload:
+        gs.pointer_offset_mm = payload["pointer_offset_mm"]
+        app.config.pointer_offset_mm = gs.pointer_offset_mm
+        changed = True
+
     if "gm_position" in payload:
         try:
             new_pos = GmPosition(payload["gm_position"])
@@ -270,6 +280,12 @@ def handle_update_system_config(
         pos_changed = True
         changed = True
 
+    if "projector_ppi" in payload:
+        gs.projector_ppi = payload["projector_ppi"]
+        app.config.projector_ppi = gs.projector_ppi
+        app.refresh_base_scale()
+        changed = True
+
     if pos_changed and state is not None:
         # Update WorldState Atom for real-time feedback
         from light_map.core.common_types import ProjectorPose
@@ -290,6 +306,8 @@ def handle_update_system_config(
             state.projector_pose = new_pose
 
     if changed:
+        if state is not None:
+            state.config_data += 1
         app.map_config.save()
         app.notifications.add_notification("System Settings Updated")
 

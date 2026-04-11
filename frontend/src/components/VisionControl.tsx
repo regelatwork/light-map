@@ -106,6 +106,41 @@ export const VisionControl: FC<VisionControlProps> = ({ showOnlyToggles = false 
           </button>
         </div>
 
+        {config?.enable_aruco_masking && (
+          <div className="p-4 bg-gray-50 rounded-xl border border-gray-100 space-y-3">
+            <div className="flex justify-between items-center">
+              <label className="text-sm font-bold text-gray-700 uppercase tracking-wider">Mask Intensity</label>
+              <span className="text-sm font-mono bg-white px-2 py-0.5 rounded border border-gray-200">{config?.aruco_mask_intensity ?? 64}</span>
+            </div>
+            <input
+              type="range"
+              min="0"
+              max="255"
+              value={config?.aruco_mask_intensity ?? 64}
+              onChange={(e) => updateSystemConfig({ aruco_mask_intensity: parseInt(e.target.value) })}
+              className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
+            />
+            <p className="text-xs text-gray-500">Adjust the grey level of the ArUco masks (0=Black, 255=White).</p>
+          </div>
+        )}
+
+        <div className="p-4 bg-gray-50 rounded-xl border border-gray-100 space-y-3">
+          <div className="flex justify-between items-center">
+            <label className="text-sm font-bold text-gray-700 uppercase tracking-wider">Pointer Offset (mm)</label>
+          </div>
+          <div className="flex gap-4 items-center">
+            <input
+              type="number"
+              value={config?.pointer_offset_mm ?? 50.8}
+              onChange={(e) => updateSystemConfig({ pointer_offset_mm: parseFloat(e.target.value) })}
+              className="flex-1 px-4 py-2 text-sm border-2 border-gray-200 rounded-lg focus:ring-4 focus:ring-blue-100 focus:border-blue-500 transition-all outline-none bg-white font-medium text-black"
+              step="0.1"
+            />
+            <span className="text-sm text-gray-500 font-medium">mm</span>
+          </div>
+          <p className="text-xs text-gray-500">Distance the virtual cursor extends beyond your fingertip.</p>
+        </div>
+
         <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl border border-gray-100">
           <div>
             <h4 className="font-bold text-gray-800">Fog of War</h4>
@@ -171,6 +206,37 @@ export const VisionControl: FC<VisionControlProps> = ({ showOnlyToggles = false 
         >
           {config?.enable_aruco_masking ? 'ENABLED' : 'DISABLED'}
         </button>
+      </div>
+
+      {config?.enable_aruco_masking && (
+        <div className="space-y-1">
+          <div className="flex justify-between items-center">
+            <label className="text-xs font-medium text-gray-700">Mask Intensity</label>
+            <span className="text-xs font-mono">{config?.aruco_mask_intensity ?? 64}</span>
+          </div>
+          <input
+            type="range"
+            min="0"
+            max="255"
+            value={config?.aruco_mask_intensity ?? 64}
+            onChange={(e) => updateSystemConfig({ aruco_mask_intensity: parseInt(e.target.value) })}
+            className="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
+          />
+        </div>
+      )}
+
+      <div className="space-y-1">
+        <label className="block text-xs font-medium text-gray-700">Pointer Offset (mm)</label>
+        <div className="flex gap-2 items-center">
+          <input
+            type="number"
+            value={config?.pointer_offset_mm ?? 50.8}
+            onChange={(e) => updateSystemConfig({ pointer_offset_mm: parseFloat(e.target.value) })}
+            className="w-full px-2 py-1 text-xs border rounded bg-white text-black font-medium"
+            step="0.1"
+          />
+          <span className="text-[10px] text-gray-500 font-bold uppercase">mm</span>
+        </div>
       </div>
 
       <div className="flex items-center justify-between">

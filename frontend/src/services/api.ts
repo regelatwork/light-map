@@ -187,6 +187,8 @@ export const deleteProfile = async (name: string) => {
 export const updateSystemConfig = async (update: {
   enable_hand_masking?: boolean;
   enable_aruco_masking?: boolean;
+  aruco_mask_intensity?: number;
+  pointer_offset_mm?: number;
   gm_position?: string;
   use_projector_3d_model?: boolean;
   projector_pos_x_override?: number | null;

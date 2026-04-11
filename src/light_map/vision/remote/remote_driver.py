@@ -93,6 +93,8 @@ class GridConfig(BaseModel):
 class SystemConfigUpdate(BaseModel):
     enable_hand_masking: Optional[bool] = None
     enable_aruco_masking: Optional[bool] = None
+    aruco_mask_intensity: Optional[int] = None
+    pointer_offset_mm: Optional[float] = None
     gm_position: Optional[str] = None
     use_projector_3d_model: Optional[bool] = None
     projector_pos_x_override: Optional[float] = None
@@ -600,6 +602,10 @@ def create_app(
             data["enable_hand_masking"] = config.enable_hand_masking
         if config.enable_aruco_masking is not None:
             data["enable_aruco_masking"] = config.enable_aruco_masking
+        if config.aruco_mask_intensity is not None:
+            data["aruco_mask_intensity"] = config.aruco_mask_intensity
+        if config.pointer_offset_mm is not None:
+            data["pointer_offset_mm"] = config.pointer_offset_mm
         if config.gm_position is not None:
             data["gm_position"] = config.gm_position
         if config.use_projector_3d_model is not None:

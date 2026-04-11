@@ -92,6 +92,7 @@ class WorldState:
             ProjectorPose(0.0, 0.0, 0.0), "projector_pose"
         )
         self._fps_atom = VersionedAtom(0.0, "fps")
+        self._config_version_atom = VersionedAtom(0, "config")
 
         # Remote Action Queuing
         self.pending_actions: List[Dict[str, Any]] = []
@@ -297,6 +298,18 @@ class WorldState:
     @inspected_token_id.setter
     def inspected_token_id(self, value: Optional[int]):
         self._inspected_token_id_atom.update(value)
+
+    @property
+    def config_version(self) -> int:
+        return self._config_version_atom.timestamp
+
+    @property
+    def config_data(self) -> int:
+        return self._config_version_atom.value
+
+    @config_data.setter
+    def config_data(self, value: int):
+        self._config_version_atom.update(value)
 
     @property
     def projector_pose(self) -> ProjectorPose:

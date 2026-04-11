@@ -3,6 +3,7 @@ import { useSystemState } from '../hooks/useSystemState';
 import { useCanvas } from './CanvasContext';
 import { useCalibration, CalibrationMode } from './CalibrationContext';
 import { setViewportConfig } from '../services/api';
+import { rotatePoint } from '../utils/geometry';
 
 type InteractionMode = 'IDLE' | 'PANNING' | 'ZOOMING_TOP' | 'ZOOMING_BOTTOM' | 'ZOOMING_LEFT' | 'ZOOMING_RIGHT';
 
@@ -20,62 +21,64 @@ export const ViewportEditLayer: React.FC = () => {
     x: 0,
     y: 0,
     zoom: 1.0,
+    rotation: 0,
   });
+  const [fixedPoint, setFixedPoint] = useState<{ x: number, y: number } | null>(null);
 
   const currentVp = world.viewport || { x: 0, y: 0, zoom: 1.0, rotation: 0 };
   
   const displayedVp = interactionMode !== 'IDLE' ? dragState : currentVp;
   const safeZoom = Math.max(0.001, displayedVp.zoom || 1.0);
 
-  const projW = config.proj_res?.[0] || 1920;
-  const projH = config.proj_res?.[1] || 1080;
+  // Use same defaults as SchematicCanvas for consistency
+  const projW = config.proj_res?.[0] || 1000;
+  const projH = config.proj_res?.[1] || 750;
+  const centerX = projW / 2;
+  const centerY = projH / 2;
+  const rotation = displayedVp.rotation || 0;
 
-  // In the backend, P_screen = Translate( Rotate_around_center( Scale( P_world ) ) )
-  // So P_world = Scale_inv( Rotate_inv_around_center( P_screen - Translate ) )
-  // To get the viewport center in world space (where P_screen = center):
-  // We need to account for the fact that we are INSIDE the rotated group in SchematicCanvas.
-  // The group is rotated around (projW/2, projH/2) by 'rotation'.
+  // Function to map screen coordinates to world coordinates (inverting the projection)
+  // P_screen = T + R_center(Zoom * P_world)
+  // P_world = R_center_inv(P_screen - T) / Zoom
+  const getW = useCallback((sx: number, sy: number, vpX: number, vpY: number, vpZoom: number, vpRot: number) => {
+    const p = rotatePoint(sx - vpX, sy - vpY, centerX, centerY, -vpRot);
+    return { x: p.x / vpZoom, y: p.y / vpZoom };
+  }, [centerX, centerY]);
+
+  // Viewport corners and midpoints in world space
+  const wTL = getW(0, 0, displayedVp.x, displayedVp.y, safeZoom, rotation);
+  const wTR = getW(projW, 0, displayedVp.x, displayedVp.y, safeZoom, rotation);
+  const wBR = getW(projW, projH, displayedVp.x, displayedVp.y, safeZoom, rotation);
+  const wBL = getW(0, projH, displayedVp.x, displayedVp.y, safeZoom, rotation);
   
-  // If we are inside the group, we just need to handle Translation and Scale.
-  // Center in world space:
-  const vCenterX = (projW / 2 - (displayedVp.x || 0)) / safeZoom;
-  const vCenterY = (projH / 2 - (displayedVp.y || 0)) / safeZoom;
-
-  // Viewport dimensions in world space
-  const vW = projW / safeZoom;
-  const vH = projH / safeZoom;
-
-  // Rectangle bounds
-  const xMin = vCenterX - vW / 2;
-  const yMin = vCenterY - vH / 2;
-
-  useEffect(() => {
-    if (isVisible) {
-      console.log('ViewportEditLayer Visible:', {
-        isVisible,
-        currentVp,
-        projW,
-        projH,
-        vCenterX,
-        vCenterY,
-        vW,
-        vH,
-        xMin,
-        yMin
-      });
-    }
-  }, [isVisible, currentVp, projW, projH, vCenterX, vCenterY, vW, vH, xMin, yMin]);
+  const wTop = getW(centerX, 0, displayedVp.x, displayedVp.y, safeZoom, rotation);
+  const wBottom = getW(centerX, projH, displayedVp.x, displayedVp.y, safeZoom, rotation);
+  const wLeft = getW(0, centerY, displayedVp.x, displayedVp.y, safeZoom, rotation);
+  const wRight = getW(projW, centerY, displayedVp.x, displayedVp.y, safeZoom, rotation);
+  const wCenter = getW(centerX, centerY, displayedVp.x, displayedVp.y, safeZoom, rotation);
 
   const handleMouseDownCenter = (e: React.MouseEvent) => {
     e.stopPropagation();
     setInteractionMode('PANNING');
-    setDragState({ x: currentVp.x, y: currentVp.y, zoom: currentVp.zoom });
+    setDragState({ x: currentVp.x, y: currentVp.y, zoom: currentVp.zoom, rotation: currentVp.rotation });
   };
 
   const handleMouseDownSide = (e: React.MouseEvent, mode: InteractionMode) => {
     e.stopPropagation();
+    
+    // Fixed screen point for each handle (the opposite side)
+    let Sf = { x: centerX, y: centerY };
+    if (mode === 'ZOOMING_TOP') Sf = { x: centerX, y: projH };
+    if (mode === 'ZOOMING_BOTTOM') Sf = { x: centerX, y: 0 };
+    if (mode === 'ZOOMING_LEFT') Sf = { x: projW, y: centerY };
+    if (mode === 'ZOOMING_RIGHT') Sf = { x: 0, y: centerY };
+
+    // Calculate initial world coordinate for this fixed point
+    const Wf = getW(Sf.x, Sf.y, currentVp.x, currentVp.y, currentVp.zoom, currentVp.rotation);
+
+    setFixedPoint(Wf);
     setInteractionMode(mode);
-    setDragState({ x: currentVp.x, y: currentVp.y, zoom: currentVp.zoom });
+    setDragState({ x: currentVp.x, y: currentVp.y, zoom: currentVp.zoom, rotation: currentVp.rotation });
   };
 
   const handleMouseMove = useCallback(
@@ -86,71 +89,52 @@ export const ViewportEditLayer: React.FC = () => {
       if (!worldPos) return;
 
       if (interactionMode === 'PANNING') {
-        // Translation change
-        // sx = Zoom * wx + tx  => tx = sx - Zoom * wx
-        // We want sx = projW/2, sy = projH/2
         const spacing = grid_spacing_svg || 1;
         const snappedWx = Math.round(worldPos.x / spacing) * spacing;
         const snappedWy = Math.round(worldPos.y / spacing) * spacing;
         
-        const newTx = projW / 2 - displayedVp.zoom * snappedWx;
-        const newTy = projH / 2 - displayedVp.zoom * snappedWy;
+        // We want the snapped world point to be at the center of the screen
+        const rotatedSnappedW = rotatePoint(
+          currentVp.zoom * snappedWx,
+          currentVp.zoom * snappedWy,
+          centerX,
+          centerY,
+          currentVp.rotation
+        );
+        const newTx = centerX - rotatedSnappedW.x;
+        const newTy = centerY - rotatedSnappedW.y;
         
         setDragState((prev) => ({ ...prev, x: newTx, y: newTy }));
-      } else {
+      } else if (fixedPoint) {
         // Zooming logic - Opposite Side Fixed
-        const currentVW = projW / currentVp.zoom;
-        const currentVH = projH / currentVp.zoom;
-        
-        // P_fixed in world space
-        let pFixed = { x: vCenterX, y: vCenterY };
+        let Sf = { x: centerX, y: centerY };
+        let targetDist = 0;
+        let isVertical = false;
 
-        if (interactionMode === 'ZOOMING_TOP') {
-          pFixed = { x: vCenterX, y: vCenterY + currentVH / 2 };
-          const newH = Math.max(10, Math.abs(worldPos.y - pFixed.y));
-          const newZoom = projH / newH;
-          // New Center Y in world space
-          const newVcy = pFixed.y - newH / 2;
-          // ty = projH/2 - newZoom * newVcy
-          setDragState({
-            zoom: newZoom,
-            y: projH / 2 - newZoom * newVcy,
-            x: projW / 2 - newZoom * vCenterX,
-          });
-        } else if (interactionMode === 'ZOOMING_BOTTOM') {
-          pFixed = { x: vCenterX, y: vCenterY - currentVH / 2 };
-          const newH = Math.max(10, Math.abs(worldPos.y - pFixed.y));
-          const newZoom = projH / newH;
-          const newVcy = pFixed.y + newH / 2;
-          setDragState({
-            zoom: newZoom,
-            y: projH / 2 - newZoom * newVcy,
-            x: projW / 2 - newZoom * vCenterX,
-          });
-        } else if (interactionMode === 'ZOOMING_LEFT') {
-          pFixed = { x: vCenterX + currentVW / 2, y: vCenterY };
-          const newW = Math.max(10, Math.abs(worldPos.x - pFixed.x));
-          const newZoom = projW / newW;
-          const newVcx = pFixed.x - newW / 2;
-          setDragState({
-            zoom: newZoom,
-            x: projW / 2 - newZoom * newVcx,
-            y: projH / 2 - newZoom * vCenterY,
-          });
-        } else if (interactionMode === 'ZOOMING_RIGHT') {
-          pFixed = { x: vCenterX - currentVW / 2, y: vCenterY };
-          const newW = Math.max(10, Math.abs(worldPos.x - pFixed.x));
-          const newZoom = projW / newW;
-          const newVcx = pFixed.x + newW / 2;
-          setDragState({
-            zoom: newZoom,
-            x: projW / 2 - newZoom * newVcx,
-            y: projH / 2 - newZoom * vCenterY,
-          });
-        }
+        if (interactionMode === 'ZOOMING_TOP') { Sf = { x: centerX, y: projH }; targetDist = projH; isVertical = true; }
+        if (interactionMode === 'ZOOMING_BOTTOM') { Sf = { x: centerX, y: 0 }; targetDist = projH; isVertical = true; }
+        if (interactionMode === 'ZOOMING_LEFT') { Sf = { x: projW, y: centerY }; targetDist = projW; isVertical = false; }
+        if (interactionMode === 'ZOOMING_RIGHT') { Sf = { x: 0, y: centerY }; targetDist = projW; isVertical = false; }
+
+        // Vector from fixed point to mouse in world space
+        const vWorld = { x: worldPos.x - fixedPoint.x, y: worldPos.y - fixedPoint.y };
+        // Rotate back to screen-aligned coordinates
+        const vScreenDir = rotatePoint(vWorld.x, vWorld.y, 0, 0, currentVp.rotation);
+        
+        // Distance in world space along the relevant screen axis
+        const distWorld = Math.max(10 / currentVp.zoom, isVertical ? Math.abs(vScreenDir.y) : Math.abs(vScreenDir.x));
+        
+        const newZoom = targetDist / distWorld;
+        
+        // Keep the fixed world point at its fixed screen position: T = Sf - R(Z_new * Wf)
+        const rotatedWf = rotatePoint(newZoom * fixedPoint.x, newZoom * fixedPoint.y, centerX, centerY, currentVp.rotation);
+        const newTx = Sf.x - rotatedWf.x;
+        const newTy = Sf.y - rotatedWf.y;
+        
+        setDragState({ zoom: newZoom, x: newTx, y: newTy, rotation: currentVp.rotation });
       }
     },
-    [interactionMode, currentVp, projW, projH, grid_spacing_svg, screenToWorld, vCenterX, vCenterY, displayedVp.zoom]
+    [interactionMode, currentVp, centerX, centerY, projW, projH, grid_spacing_svg, screenToWorld, fixedPoint]
   );
 
   const handleMouseUp = useCallback(async () => {
@@ -158,6 +142,7 @@ export const ViewportEditLayer: React.FC = () => {
 
     const finalState = dragState;
     setInteractionMode('IDLE');
+    setFixedPoint(null);
 
     try {
       await setViewportConfig(finalState.x, finalState.y, finalState.zoom, currentVp.rotation);
@@ -181,35 +166,32 @@ export const ViewportEditLayer: React.FC = () => {
 
   return (
     <g ref={groupRef}>
-      {/* Viewport Rectangle */}
-      <rect
-        x={xMin}
-        y={yMin}
-        width={vW}
-        height={vH}
+      {/* Viewport Polygon */}
+      <polygon
+        points={`${wTL.x},${wTL.y} ${wTR.x},${wTR.y} ${wBR.x},${wBR.y} ${wBL.x},${wBL.y}`}
         fill="rgba(254, 240, 138, 0.2)"
         stroke="#facc15"
-        strokeWidth="4"
-        strokeDasharray="10,5"
+        strokeWidth={4 / safeZoom}
+        strokeDasharray={`${10 / safeZoom},${5 / safeZoom}`}
         pointerEvents="none"
       />
 
       {/* Center Pan Handle */}
       <circle
-        cx={vCenterX}
-        cy={vCenterY}
-        r="16"
+        cx={wCenter.x}
+        cy={wCenter.y}
+        r={16 / safeZoom}
         fill="white"
         stroke="#22c55e"
-        strokeWidth="4"
+        strokeWidth={4 / safeZoom}
         cursor="move"
         onMouseDown={handleMouseDownCenter}
         className="shadow-lg"
       />
       <circle
-        cx={vCenterX}
-        cy={vCenterY}
-        r="6"
+        cx={wCenter.x}
+        cy={wCenter.y}
+        r={6 / safeZoom}
         fill="#22c55e"
         pointerEvents="none"
       />
@@ -217,45 +199,45 @@ export const ViewportEditLayer: React.FC = () => {
       {/* Zoom Handles (Midpoints) */}
       {/* Top */}
       <circle
-        cx={vCenterX}
-        cy={yMin}
-        r="12"
+        cx={wTop.x}
+        cy={wTop.y}
+        r={12 / safeZoom}
         fill="white"
         stroke="#facc15"
-        strokeWidth="4"
+        strokeWidth={4 / safeZoom}
         cursor="ns-resize"
         onMouseDown={(e) => handleMouseDownSide(e, 'ZOOMING_TOP')}
       />
       {/* Bottom */}
       <circle
-        cx={vCenterX}
-        cy={yMin + vH}
-        r="12"
+        cx={wBottom.x}
+        cy={wBottom.y}
+        r={12 / safeZoom}
         fill="white"
         stroke="#facc15"
-        strokeWidth="4"
+        strokeWidth={4 / safeZoom}
         cursor="ns-resize"
         onMouseDown={(e) => handleMouseDownSide(e, 'ZOOMING_BOTTOM')}
       />
       {/* Left */}
       <circle
-        cx={xMin}
-        cy={vCenterY}
-        r="12"
+        cx={wLeft.x}
+        cy={wLeft.y}
+        r={12 / safeZoom}
         fill="white"
         stroke="#facc15"
-        strokeWidth="4"
+        strokeWidth={4 / safeZoom}
         cursor="ew-resize"
         onMouseDown={(e) => handleMouseDownSide(e, 'ZOOMING_LEFT')}
       />
       {/* Right */}
       <circle
-        cx={xMin + vW}
-        cy={vCenterY}
-        r="12"
+        cx={wRight.x}
+        cy={wRight.y}
+        r={12 / safeZoom}
         fill="white"
         stroke="#facc15"
-        strokeWidth="4"
+        strokeWidth={4 / safeZoom}
         cursor="ew-resize"
         onMouseDown={(e) => handleMouseDownSide(e, 'ZOOMING_RIGHT')}
       />

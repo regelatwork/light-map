@@ -16,6 +16,9 @@ export const GridLayer: React.FC = () => {
   const isGridEditMode = activeMode === CalibrationMode.GRID;
   const groupRef = React.useRef<SVGGElement>(null);
 
+  const rotation = world.viewport?.rotation || 0;
+  // Determine if handles are swapped visually on screen
+  const isRotated90 = Math.abs(rotation % 180) === 90;
 
   useEffect(() => {
     if (world.scene && world.scene !== 'LOADING' && isGridEditMode) {
@@ -205,7 +208,7 @@ export const GridLayer: React.FC = () => {
               }
               stroke="#3b82f6"
               strokeWidth="2"
-              className="cursor-ew-resize"
+              className={isRotated90 ? "cursor-ns-resize" : "cursor-ew-resize"}
               onMouseDown={(e) => handleMouseDownScale(e, dist)}
             />
           ))}
@@ -224,7 +227,7 @@ export const GridLayer: React.FC = () => {
               }
               stroke="#3b82f6"
               strokeWidth="2"
-              className="cursor-ns-resize"
+              className={isRotated90 ? "cursor-ew-resize" : "cursor-ns-resize"}
               onMouseDown={(e) => handleMouseDownScale(e, dist)}
             />
           ))}

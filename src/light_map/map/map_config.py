@@ -17,6 +17,9 @@ from light_map.core.common_types import (
 from light_map.core.constants import (
     DEFAULT_TOKEN_HEIGHT_MM,
     DEFAULT_ARUCO_MASK_PADDING,
+    DEFAULT_ARUCO_MASK_INTENSITY,
+    DEFAULT_ARUCO_MASK_PERSISTENCE_S,
+    DEFAULT_POINTER_OFFSET_MM,
 )
 from light_map.map.session_manager import SessionManager
 from light_map.core.storage import StorageManager
@@ -93,6 +96,8 @@ class GlobalMapConfig:
     hand_mask_padding: int = 30
     enable_aruco_masking: bool = True
     aruco_mask_padding: int = DEFAULT_ARUCO_MASK_PADDING
+    aruco_mask_intensity: int = DEFAULT_ARUCO_MASK_INTENSITY
+    aruco_mask_persistence_s: float = DEFAULT_ARUCO_MASK_PERSISTENCE_S
     calibration_box_height_mm: float = 78.0
     calibration_box_width_mm: float = 188.0
     calibration_box_length_mm: float = 295.0
@@ -102,6 +107,7 @@ class GlobalMapConfig:
     projector_pos_z_override: Optional[float] = None
     gm_position: GmPosition = GmPosition.NONE
     naming_style: NamingStyle = NamingStyle.SCI_FI
+    pointer_offset_mm: float = DEFAULT_POINTER_OFFSET_MM
     inspection_linger_duration: float = 10.0
     door_thickness_multiplier: float = 3.0
 
@@ -228,6 +234,9 @@ class MapConfigManager:
                 hand_mask_padding=global_data.get("hand_mask_padding", 30),
                 enable_aruco_masking=global_data.get("enable_aruco_masking", True),
                 aruco_mask_padding=global_data.get("aruco_mask_padding", 10),
+                aruco_mask_persistence_s=global_data.get(
+                    "aruco_mask_persistence_s", DEFAULT_ARUCO_MASK_PERSISTENCE_S
+                ),
                 calibration_box_height_mm=global_data.get(
                     "calibration_box_height_mm", 78.0
                 ),

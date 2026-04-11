@@ -25,9 +25,15 @@ export const ViewportEditLayer: React.FC = () => {
   });
   const [fixedPoint, setFixedPoint] = useState<{ x: number, y: number } | null>(null);
 
-  const currentVp = world.viewport || { x: 0, y: 0, zoom: 1.0, rotation: 0 };
+  const currentVp = React.useMemo(() => 
+    world.viewport || { x: 0, y: 0, zoom: 1.0, rotation: 0 },
+    [world.viewport]
+  );
   
-  const displayedVp = interactionMode !== 'IDLE' ? dragState : currentVp;
+  const displayedVp = React.useMemo(() => 
+    interactionMode !== 'IDLE' ? dragState : currentVp,
+    [interactionMode, dragState, currentVp]
+  );
   const safeZoom = Math.max(0.001, displayedVp.zoom || 1.0);
 
   // Use same defaults as SchematicCanvas for consistency

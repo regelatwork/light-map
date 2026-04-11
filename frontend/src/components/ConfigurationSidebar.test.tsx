@@ -65,13 +65,18 @@ vi.mock('./CalibrationContext', () => ({
   },
 }));
 
+interface CalibrationMock {
+  activeMode: useCalibrationHook.CalibrationMode;
+  setMode: (mode: useCalibrationHook.CalibrationMode) => void;
+}
+
 describe('ConfigurationSidebar', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(useCalibrationHook.useCalibration).mockReturnValue({
       activeMode: useCalibrationHook.CalibrationMode.NONE,
       setMode: vi.fn(),
-    } as any);
+    } as CalibrationMock);
   });
 
   it('hides World X/Y by default and shows them when Advanced is toggled', () => {
@@ -404,7 +409,7 @@ describe('ConfigurationSidebar', () => {
     vi.mocked(useCalibrationHook.useCalibration).mockReturnValue({
       activeMode: useCalibrationHook.CalibrationMode.NONE,
       setMode,
-    } as any);
+    } as CalibrationMock);
 
     vi.mocked(useSystemStateHook.useSystemState).mockReturnValue({
       ...useSystemStateHook.INITIAL_STATE,
@@ -440,7 +445,7 @@ describe('ConfigurationSidebar', () => {
     vi.mocked(useCalibrationHook.useCalibration).mockReturnValue({
       activeMode: useCalibrationHook.CalibrationMode.GRID,
       setMode,
-    } as any);
+    } as CalibrationMock);
 
     rerender(<ConfigurationSidebar />);
 

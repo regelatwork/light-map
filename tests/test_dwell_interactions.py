@@ -71,7 +71,7 @@ def test_input_processor_virtual_pointer_offset(mocker):
     config.height = 1080
     config.projector_matrix = np.eye(3)
     config.projector_ppi = 100.0  # 100 pixels per inch
-    config.pointer_extension_inches = 2.0
+    config.pointer_offset_mm = 50.8
     config.distortion_model = None
     config.gm_position = "None"
 

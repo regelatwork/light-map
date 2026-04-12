@@ -33,7 +33,7 @@ def test_visibility_blocked_by_wall():
     engine = VisibilityEngine(grid_spacing_svg=100.0)
     # A wall at x=150 (svg) = 24px from y=0 to y=200
     wall = VisibilityBlocker(
-        segments=[(150, 0), (150, 200)], type=VisibilityType.WALL, layer_name="Walls"
+        points=[(150, 0), (150, 200)], type=VisibilityType.WALL, layer_name="Walls"
     )
     mask_w, mask_h = 200, 200
     engine.update_blockers([wall], mask_width=mask_w, mask_height=mask_h)
@@ -59,7 +59,7 @@ def test_visibility_blocked_by_wall():
 def test_visibility_door_toggle():
     engine = VisibilityEngine(grid_spacing_svg=100.0)
     door = VisibilityBlocker(
-        segments=[(150, 0), (150, 200)],
+        points=[(150, 0), (150, 200)],
         type=VisibilityType.DOOR,
         layer_name="Doors",
         is_open=False,

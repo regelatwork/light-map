@@ -13,12 +13,12 @@ def test_size_3_token_corner_peeking():
     # Wall 2: (400, 400) to (400, 800) -> x=64, y=64..128
     blockers = [
         VisibilityBlocker(
-            segments=[(0, 400), (400, 400)],
+            points=[(0, 400), (400, 400)],
             type=VisibilityType.WALL,
             layer_name="walls",
         ),
         VisibilityBlocker(
-            segments=[(400, 400), (400, 800)],
+            points=[(400, 400), (400, 800)],
             type=VisibilityType.WALL,
             layer_name="walls",
         ),

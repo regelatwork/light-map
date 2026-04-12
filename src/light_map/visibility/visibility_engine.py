@@ -59,7 +59,7 @@ class VisibilityEngine:
 
         for blocker in blockers:
             # Convert flattened segments into pairs of points
-            points = blocker.segments
+            points = blocker.points
             if len(points) < 2:
                 continue
 

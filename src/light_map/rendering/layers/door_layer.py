@@ -78,22 +78,22 @@ class DoorLayer(Layer):
         BLACK = (0, 0, 0, 255)
 
         for blocker in self.state.blockers:
-            if blocker.get("type") != VisibilityType.DOOR:
+            if blocker.type != VisibilityType.DOOR:
                 continue
 
-            # Transform segments
-            points = []
-            segments = blocker.get("segments", [])
-            for sx, sy in segments:
+            # Transform points
+            transformed_points = []
+            source_points = blocker.points
+            for sx, sy in source_points:
                 p = m_svg_to_screen.point_in_matrix_space((sx, sy))
-                points.append((int(p.x), int(p.y)))
+                transformed_points.append((int(p.x), int(p.y)))
 
-            if len(points) < 2:
+            if len(transformed_points) < 2:
                 continue
 
-            if blocker.get("is_open"):
+            if blocker.is_open:
                 # Render endpoints as circles
-                for pt in points:
+                for pt in transformed_points:
                     # Black outline
                     cv2.circle(
                         image, pt, circle_outline, BLACK, -1, lineType=cv2.LINE_AA
@@ -104,7 +104,9 @@ class DoorLayer(Layer):
                     )
             else:
                 # Render as thick yellow line with black outline
-                pts_array = np.array(points, dtype=np.int32).reshape((-1, 1, 2))
+                pts_array = np.array(transformed_points, dtype=np.int32).reshape(
+                    (-1, 1, 2)
+                )
 
                 # Black outline
                 cv2.polylines(

@@ -1,4 +1,5 @@
 from typing import Any, Callable, Dict, Optional, TYPE_CHECKING
+from dataclasses import replace
 import os
 import logging
 
@@ -402,9 +403,11 @@ def handle_toggle_door(
     if app.state.selection.type == SelectionType.DOOR and app.state.selection.id:
         door_id = app.state.selection.id
         found = False
-        for blocker in app.visibility_engine.blockers:
+        for i, blocker in enumerate(app.visibility_engine.blockers):
             if blocker.id == door_id:
-                blocker.is_open = not blocker.is_open
+                app.visibility_engine.blockers[i] = replace(
+                    blocker, is_open=not blocker.is_open
+                )
                 found = True
         if found:
             app.visibility_engine.update_blockers(
@@ -412,7 +415,7 @@ def handle_toggle_door(
                 app.fow_manager.width,
                 app.fow_manager.height,
             )
-            app._sync_blockers_to_state()
+            app._sync_blockers_to_state(state)
             app.notifications.add_notification(f"Door {door_id} Toggled")
             app.save_session()
             if state is not None:

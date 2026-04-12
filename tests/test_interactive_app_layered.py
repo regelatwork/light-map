@@ -160,7 +160,7 @@ def test_interactive_app_process_state_actions(mock_config, monkeypatch):
     from light_map.visibility.visibility_types import VisibilityBlocker, VisibilityType
 
     door = VisibilityBlocker(
-        segments=[(0, 0), (10, 10)],
+        points=[(0, 0), (10, 10)],
         type=VisibilityType.DOOR,
         layer_name="doors",
         id="door123",

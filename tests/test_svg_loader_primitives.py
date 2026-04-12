@@ -77,7 +77,7 @@ def test_get_visibility_blockers_primitives(svg_primitives):
     assert len(door_blockers) >= 1
 
     rect_wall = next(b for b in wall_blockers if "rect_wall" in b.id)
-    assert len(rect_wall.segments) >= 5
+    assert len(rect_wall.points) >= 5
 
     rect_door = next(b for b in door_blockers if "rect_door" in b.id)
-    assert len(rect_door.segments) >= 5
+    assert len(rect_door.points) >= 5

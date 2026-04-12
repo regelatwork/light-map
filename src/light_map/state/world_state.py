@@ -17,6 +17,7 @@ from light_map.menu.menu_system import MenuState
 from light_map.core.scene import HandInput
 from light_map.vision.processing.token_merge_manager import TokenMergeManager
 from light_map.state.versioned_atom import VersionedAtom
+from light_map.visibility.visibility_types import VisibilityBlocker
 
 
 class Transaction:
@@ -52,7 +53,9 @@ class WorldState:
         # Atoms
         self._tokens_atom = VersionedAtom([], "tokens", equality_fn=self._tokens_equal)
         self._raw_tokens_atom = VersionedAtom([], "raw_tokens")
-        self._blockers_atom = VersionedAtom([], "blockers")
+        self._blockers_atom = VersionedAtom(
+            [], "blockers", equality_fn=self._blockers_equal
+        )
         self._token_merge_manager = TokenMergeManager()
 
         self._raw_aruco_atom = VersionedAtom(
@@ -138,11 +141,11 @@ class WorldState:
         self._raw_tokens_atom.update(value)
 
     @property
-    def blockers(self) -> List[Dict[str, Any]]:
+    def blockers(self) -> List[VisibilityBlocker]:
         return self._blockers_atom.value
 
     @blockers.setter
-    def blockers(self, value: List[Dict[str, Any]]):
+    def blockers(self, value: List[VisibilityBlocker]):
         self._blockers_atom.update(value)
 
     @property
@@ -657,6 +660,33 @@ class WorldState:
 
         return True
 
+    def _blockers_equal(
+        self, b1: List[VisibilityBlocker], b2: List[VisibilityBlocker]
+    ) -> bool:
+        """Checks if two lists of blockers are semantically equal."""
+        if len(b1) != len(b2):
+            return False
+
+        # Check for reference equality first (Optimization)
+        if b1 is b2:
+            # We must assume it might have changed if the list is identical
+            # because we often mutate blockers in-place.
+            # But wait, if we always assign a NEW list (copy), then reference
+            # equality will only happen if we assign exactly the same list.
+            # However, standard VersionedAtom behavior is to NOT update if equality_fn returns True.
+            # If we want to detect in-place mutation, we'd need to compare values.
+            return False
+
+        for blocker1, blocker2 in zip(b1, b2):
+            if (
+                blocker1.id != blocker2.id
+                or blocker1.is_open != blocker2.is_open
+                or blocker1.type != blocker2.type
+                or len(blocker1.points) != len(blocker2.points)
+            ):
+                return False
+        return True
+
     def _raw_aruco_equal(self, d1: Dict[str, Any], d2: Dict[str, Any]) -> bool:
         """Compares raw ArUco results for equality."""
         if d1["ids"] != d2["ids"]:
@@ -685,7 +715,15 @@ class WorldState:
                 "type": str(self.selection.type),
                 "id": self.selection.id,
             },
-            "blockers": self.blockers,
+            "blockers": [
+                {
+                    "id": b.id,
+                    "type": str(b.type),
+                    "is_open": b.is_open,
+                    "points": b.points,
+                }
+                for b in self.blockers
+            ],
             "dwell_state": self.dwell_state,
             "summon_progress": self.summon_progress,
             "grid_spacing_svg": self.grid_spacing_svg,

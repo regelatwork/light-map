@@ -9,7 +9,7 @@ def test_watertight_blocking():
     # Long horizontal wall: (0, 100) to (300, 100)
     blockers = [
         VisibilityBlocker(
-            segments=[(0, 100), (300, 100)],
+            points=[(0, 100), (300, 100)],
             type=VisibilityType.WALL,
             layer_name="walls",
         )
@@ -40,12 +40,12 @@ def test_corner_peeking():
     # L-shape corner at (100, 100)
     blockers = [
         VisibilityBlocker(
-            segments=[(0, 100), (100, 100)],
+            points=[(0, 100), (100, 100)],
             type=VisibilityType.WALL,
             layer_name="walls",
         ),
         VisibilityBlocker(
-            segments=[(100, 100), (100, 200)],
+            points=[(100, 100), (100, 200)],
             type=VisibilityType.WALL,
             layer_name="walls",
         ),

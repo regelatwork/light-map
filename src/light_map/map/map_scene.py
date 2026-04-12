@@ -159,7 +159,7 @@ class BaseMapScene(Scene):
                 continue
 
             # Check proximity to any segment
-            pts = blocker.segments
+            pts = blocker.points
             for i in range(len(pts) - 1):
                 p1 = pts[i]
                 p2 = pts[i + 1]

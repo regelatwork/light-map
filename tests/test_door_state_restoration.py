@@ -44,7 +44,7 @@ def test_door_state_restoration_syncs_to_state(mock_config, monkeypatch, tmp_pat
     # Mock SVGLoader to return a door
     mock_loader = MagicMock()
     door = VisibilityBlocker(
-        segments=[(0, 0), (10, 10)],
+        points=[(0, 0), (10, 10)],
         type=VisibilityType.DOOR,
         layer_name="doors",
         id="door1",
@@ -82,8 +82,8 @@ def test_door_state_restoration_syncs_to_state(mock_config, monkeypatch, tmp_pat
         assert engine_door.is_open is True
 
         # 4. Verify door is open in state (The fix we implemented)
-        state_door = next(b for b in app.state.blockers if b["id"] == "door1")
-        assert state_door["is_open"] is True
+        state_door = next(b for b in app.state.blockers if b.id == "door1")
+        assert state_door.is_open is True
 
         # 5. Verify visibility_version was incremented
         assert app.state.visibility_version > 0
@@ -97,7 +97,7 @@ def test_toggle_door_syncs_to_state(mock_config, monkeypatch, tmp_path):
 
     mock_loader = MagicMock()
     door = VisibilityBlocker(
-        segments=[(0, 0), (10, 10)],
+        points=[(0, 0), (10, 10)],
         type=VisibilityType.DOOR,
         layer_name="doors",
         id="door1",
@@ -119,12 +119,12 @@ def test_toggle_door_syncs_to_state(mock_config, monkeypatch, tmp_path):
     app.load_map(map_file)
 
     # Ensure door is closed initially
-    assert app.state.blockers[0]["is_open"] is False
+    assert app.state.blockers[0].is_open is False
     initial_timestamp = app.state.visibility_version
 
     # Inject TOGGLE_DOOR action
-    app._handle_payloads({"action": "TOGGLE_DOOR", "payload": "door1"}, app.state)
+    app._handle_payloads({"action": "TOGGLE_DOOR", "door_id": "door1"}, app.state)
 
     # Verify door is now open in state
-    assert app.state.blockers[0]["is_open"] is True
+    assert app.state.blockers[0].is_open is True
     assert app.state.visibility_version > initial_timestamp

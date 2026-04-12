@@ -23,32 +23,32 @@ def extract_visibility_blocker(
         final_id = element_id
 
     path = svgelements.Path(element)
-    segments: List[Tuple[float, float]] = []
+    points: List[Tuple[float, float]] = []
     for segment in path:
         if isinstance(segment, svgelements.Move):
             continue
-        if not segments:
-            segments.append((segment.start.x, segment.start.y))
+        if not points:
+            points.append((segment.start.x, segment.start.y))
 
         if isinstance(segment, svgelements.Line):
-            segments.append((segment.end.x, segment.end.y))
+            points.append((segment.end.x, segment.end.y))
         elif isinstance(
             segment,
             (svgelements.QuadraticBezier, svgelements.CubicBezier, svgelements.Arc),
         ):
-            segments.extend(sample_segment(segment, points_per_unit=0.5))
-        elif isinstance(segment, svgelements.Close) and segments:
-            segments.append((segment.end.x, segment.end.y))
+            points.extend(sample_segment(segment, points_per_unit=0.5))
+        elif isinstance(segment, svgelements.Close) and points:
+            points.append((segment.end.x, segment.end.y))
 
     return (
         VisibilityBlocker(
             id=final_id,
-            segments=segments,
+            points=points,
             type=v_type,
             layer_name=layer_name,
             is_unbreakable=is_unbreakable,
         )
-        if segments
+        if points
         else None
     )
 

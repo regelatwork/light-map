@@ -30,9 +30,9 @@ def test_get_visibility_blockers_simple_wall(tmp_path):
     assert blockers[0].type == VisibilityType.WALL
     assert blockers[0].layer_name == "Walls"
     # (10, 10) to (20, 20)
-    assert len(blockers[0].segments) == 2
-    assert blockers[0].segments[0] == (10, 10)
-    assert blockers[0].segments[1] == (20, 20)
+    assert len(blockers[0].points) == 2
+    assert blockers[0].points[0] == (10, 10)
+    assert blockers[0].points[1] == (20, 20)
 
 
 def test_get_visibility_blockers_case_insensitive_substring(tmp_path):
@@ -79,8 +79,8 @@ def test_get_visibility_blockers_nested_transform(tmp_path):
     # Original (0,0)->(10,0)
     # Scaled (0,0)->(20,0)
     # Translated (10,10)->(30,10)
-    assert blockers[0].segments[0] == (10, 10)
-    assert blockers[0].segments[1] == (30, 10)
+    assert blockers[0].points[0] == (10, 10)
+    assert blockers[0].points[1] == (30, 10)
 
 
 def test_get_visibility_blockers_reset_context(tmp_path):

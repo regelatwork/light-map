@@ -12,7 +12,7 @@ def test_starfinder_see_around_corners():
     # Center (16, 16). Radius for size 1 is 8px.
     # Corners are at x=8, 24.
     wall = VisibilityBlocker(
-        segments=[(110, 90), (110, 110)], type=VisibilityType.WALL, layer_name="Wall"
+        points=[(110, 90), (110, 110)], type=VisibilityType.WALL, layer_name="Wall"
     )
     mask_w, mask_h = 256, 256
     engine.update_blockers([wall], mask_width=mask_w, mask_height=mask_h)

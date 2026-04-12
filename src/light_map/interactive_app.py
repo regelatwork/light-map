@@ -750,10 +750,14 @@ class InteractiveApp:
                 self.map_config.save_fow_masks(self.current_map_path, self.fow_manager)
 
                 # 4. Update VisibilityLayer (the highlight)
-                self.state.visibility_mask = combined_pc_mask.copy()
+                state.visibility_mask = combined_pc_mask.copy()
+                if state is not self.state:
+                    self.state.visibility_mask = combined_pc_mask.copy()
 
                 # 5. Invalidate Layer Caches
-                self.state.fow_mask = self.fow_manager.explored_mask.copy()
+                state.fow_mask = self.fow_manager.explored_mask.copy()
+                if state is not self.state:
+                    self.state.fow_mask = self.fow_manager.explored_mask.copy()
 
     def _rebuild_visibility_stack(self, entry: Any):
         """Re-initializes visibility engine and layers based on map configuration."""
@@ -803,20 +807,24 @@ class InteractiveApp:
         # Sync blockers to state
         self._sync_blockers_to_state()
 
-    def _sync_blockers_to_state(self):
+    def _sync_blockers_to_state(self, state: Optional["WorldState"] = None):
         """Synchronizes visibility engine blockers to the public state."""
-        self.state.blockers = [
-            {
-                "id": b.id,
-                "type": b.type.value if hasattr(b.type, "value") else str(b.type),
-                "is_open": b.is_open,
-                "points": b.segments,
-            }
-            for b in self.visibility_engine.blockers
-        ]
+        # Use list() to create a NEW instance, ensuring VersionedAtom detects the change
+        # even if we mutated the blockers in-place.
+        blockers = list(self.visibility_engine.blockers)
+        self.state.blockers = blockers
+        if state is not None and state is not self.state:
+            state.blockers = blockers
+
         # Ensure visibility mask is updated to trigger re-render if blockers changed
         if self.state.visibility_mask is not None:
             self.state.visibility_mask = self.state.visibility_mask.copy()
+        if (
+            state is not None
+            and state is not self.state
+            and state.visibility_mask is not None
+        ):
+            state.visibility_mask = state.visibility_mask.copy()
 
     def _handle_payloads(
         self, payload: Any, state: Optional["WorldState"] = None

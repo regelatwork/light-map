@@ -6,12 +6,12 @@ def test_blocker_mask_watertight_rendering():
     # 100 svg units = 16 pixels.
     engine = VisibilityEngine(grid_spacing_svg=100.0)
 
-    # Create two segments that almost touch but have a tiny gap
+    # Create two points that almost touch but have a tiny gap
     # x=49.5 (svg) = 7.92px -> 7px or 8px
     # x=50.5 (svg) = 8.08px -> 8px or 9px
     # A gap at 50 svg units = 8 pixels.
     blocker = VisibilityBlocker(
-        segments=[(0, 0), (49.5, 0), (50.5, 0), (100, 0)],
+        points=[(0, 0), (49.5, 0), (50.5, 0), (100, 0)],
         type=VisibilityType.WALL,
         layer_name="walls",
     )

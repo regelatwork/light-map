@@ -20,7 +20,7 @@ class ArucoMaskLayer(Layer):
         config: AppConfig,
         projection_service: Optional[ProjectionService] = None,
     ):
-        super().__init__(state=state, is_static=False, layer_mode=LayerMode.NORMAL)
+        super().__init__(state=state, is_static=False, layer_mode=LayerMode.MASKED)
         self.config = config
         self.projection_service = projection_service
         self.last_corners: dict[int, np.ndarray] = {}
@@ -44,8 +44,12 @@ class ArucoMaskLayer(Layer):
             self.state.config_version,
         )
 
-        # If we have lingering masks, we need every-frame updates for the timer
-        if self.last_seen:
+        # Only include system_time_version if there are lingering masks being timed out.
+        # If all masks are currently visible, raw_aruco_version handles updates.
+        current_ids = set(self.state.raw_aruco.get("ids", []))
+        has_lingering = any(marker_id not in current_ids for marker_id in self.last_seen)
+
+        if has_lingering:
             v = max(v, self.state.system_time_version)
 
         return (v << 1) | enabled_bit

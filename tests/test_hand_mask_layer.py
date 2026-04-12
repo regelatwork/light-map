@@ -164,3 +164,37 @@ def test_hand_mask_persistence():
 
     # Should disappear at t=1.1
     assert len(layer._generate_patches(current_time=1.1)) == 0
+
+
+def test_hand_mask_layer_version_with_persistence(mock_config):
+    """Verifies that version updates every frame ONLY during lingering."""
+    ws = WorldState()
+    layer = HandMaskLayer(ws, mock_config)
+
+    # 1. Initial detection (add hand at t=0)
+    ws.hands = [[{"x": 0.5, "y": 0.5}]]  # Triggers hands_version
+    layer._generate_patches(current_time=0.0)
+    v_base = layer.get_current_version()
+
+    # Update system time - should NOT affect version because no lingering yet
+    ws._system_time_atom.update(0.1, force_timestamp=ws.hands_version + 1000)
+    v1 = layer.get_current_version()
+    assert v1 == v_base  # Still based on hands_version
+
+    # 2. Lost detection (hand gone, but lingering in masker)
+    ws.hands = []  # Triggers hands_version
+    v_after_lost = layer.get_current_version()
+
+    # system_time_version should now trigger every-frame updates
+    ws._system_time_atom.update(0.5, force_timestamp=ws.hands_version + 2000)
+    v2 = layer.get_current_version()
+    assert v2 > v_after_lost
+
+    # 3. After persistence expires
+    layer._generate_patches(current_time=1.5)  # This will clear last_hulls
+    v3 = layer.get_current_version()
+
+    # Update system time again - should NOT affect version
+    ws._system_time_atom.update(1.6, force_timestamp=v3 + 1000)
+    v4 = layer.get_current_version()
+    assert v4 == v3

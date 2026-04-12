@@ -30,6 +30,7 @@ if TYPE_CHECKING:
 class LayerMode(StrEnum):
     NORMAL = "NORMAL"
     BLOCKING = "BLOCKING"
+    MASKED = "MASKED"
 
 
 @dataclass
@@ -126,30 +127,32 @@ class CompositeLayer(Layer):
         self.layers = layers
 
     def get_current_version(self) -> int:
-        """The version is a combination (sum) of all internal layers' versions."""
-        total_version = 0
-        for layer in self.layers:
-            total_version += layer.get_current_version()
-        return total_version
+        """The version is the maximum of all internal layers' versions."""
+        if not self.layers:
+            return 0
+        return max(layer.get_current_version() for layer in self.layers)
 
     def _generate_patches(self, current_time: float) -> List[ImagePatch]:
         if not self.layers:
             return []
 
-        all_layer_patches = []
+        # 1. Render all layers and collect their patches
+        rendered_layers: List[Tuple[Layer, List[ImagePatch]]] = []
+        all_patches: List[ImagePatch] = []
         for layer in self.layers:
             patches, _ = layer.render(current_time)
             if patches:
-                all_layer_patches.extend(patches)
+                rendered_layers.append((layer, patches))
+                all_patches.extend(patches)
 
-        if not all_layer_patches:
+        if not all_patches:
             return []
 
-        # Find the bounding box of all patches to optimize buffer size
-        min_x = min(p.x for p in all_layer_patches)
-        min_y = min(p.y for p in all_layer_patches)
-        max_x = max(p.x + p.width for p in all_layer_patches)
-        max_y = max(p.y + p.height for p in all_layer_patches)
+        # 2. Find the bounding box of all patches to optimize buffer size
+        min_x = min(p.x for p in all_patches)
+        min_y = min(p.y for p in all_patches)
+        max_x = max(p.x + p.width for p in all_patches)
+        max_y = max(p.y + p.height for p in all_patches)
 
         w = max_x - min_x
         h = max_y - min_y
@@ -157,46 +160,24 @@ class CompositeLayer(Layer):
         if w <= 0 or h <= 0:
             return []
 
+        # 3. Create a local buffer for composition
         buffer = np.zeros((h, w, 4), dtype=np.uint8)
 
-        # Composite patches onto the local buffer
-        for p in all_layer_patches:
-            px1, py1 = max(0, p.x - min_x), max(0, p.y - min_y)
-            px2, py2 = min(w, p.x - min_x + p.width), min(h, p.y - min_y + p.height)
+        # Local import to avoid circular dependency
+        from light_map.rendering.composition_utils import composite_patch
 
-            if px1 >= px2 or py1 >= py2:
-                continue
-
-            src_x1, src_y1 = px1 - (p.x - min_x), py1 - (p.y - min_y)
-            src_x2, src_y2 = src_x1 + (px2 - px1), src_y1 + (py2 - py1)
-
-            patch_slice = p.data[src_y1:src_y2, src_x1:src_x2]
-
-            if p.data.shape[2] == 4:
-                # Alpha composite
-                alpha_channel = patch_slice[:, :, 3]
-                if not np.any(alpha_channel):
-                    continue
-
-                alpha = alpha_channel[:, :, np.newaxis].astype(np.uint16)
-                roi = buffer[py1:py2, px1:px2].astype(np.uint16)
-                src_bgr = patch_slice[:, :, :3].astype(np.uint16)
-
-                blended_bgr = (src_bgr * alpha + roi[:, :, :3] * (255 - alpha)) // 255
-
-                # Composite alpha (simplified)
-                dst_alpha = roi[:, :, 3]
-                blended_alpha = (
-                    alpha_channel.astype(np.uint16)
-                    + dst_alpha * (255 - alpha_channel.astype(np.uint16)) // 255
+        # 4. Composite internal layers onto the local buffer using their individual modes
+        for layer, patches in rendered_layers:
+            for p in patches:
+                # Adjust patch to be relative to the local buffer's origin
+                rel_patch = ImagePatch(
+                    x=p.x - min_x,
+                    y=p.y - min_y,
+                    width=p.width,
+                    height=p.height,
+                    data=p.data,
                 )
-
-                buffer[py1:py2, px1:px2, :3] = blended_bgr.astype(np.uint8)
-                buffer[py1:py2, px1:px2, 3] = blended_alpha.astype(np.uint8)
-            else:
-                # Opaque block
-                buffer[py1:py2, px1:px2, :3] = patch_slice[:, :, :3]
-                buffer[py1:py2, px1:px2, 3] = 255
+                composite_patch(buffer, rel_patch, layer.layer_mode, w, h)
 
         return [ImagePatch(x=min_x, y=min_y, width=w, height=h, data=buffer)]
 

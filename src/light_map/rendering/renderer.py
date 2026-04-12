@@ -11,6 +11,9 @@ if TYPE_CHECKING:
     from light_map.rendering.projection import Projector3DModel
 
 
+from light_map.rendering.composition_utils import composite_patch
+
+
 class Renderer:
     """
     Coordinates the compositing of multiple visual layers into a final frame.
@@ -92,66 +95,12 @@ class Renderer:
             with track_wait(f"layer_composite_{layer_name}", instrument):
                 if layer_patches:
                     for patch in layer_patches:
-                        self._composite_patch(
-                            self.output_buffer, patch, layer.layer_mode
+                        composite_patch(
+                            self.output_buffer,
+                            patch,
+                            layer.layer_mode,
+                            self.screen_width,
+                            self.screen_height,
                         )
 
         return self.output_buffer
-
-    def _composite_patch(self, buffer: np.ndarray, patch: ImagePatch, mode: LayerMode):
-        """Internal helper to blend a patch onto a buffer."""
-        # Bound checks
-        buffer_x1, buffer_y1 = max(0, patch.x), max(0, patch.y)
-        buffer_x2, buffer_y2 = (
-            min(self.screen_width, patch.x + patch.width),
-            min(self.screen_height, patch.y + patch.height),
-        )
-
-        if buffer_x1 >= buffer_x2 or buffer_y1 >= buffer_y2:
-            return
-
-        # Slice patch data if it's partially off-screen
-        patch_x1, patch_y1 = buffer_x1 - patch.x, buffer_y1 - patch.y
-        patch_x2, patch_y2 = (
-            patch_x1 + (buffer_x2 - buffer_x1),
-            patch_y1 + (buffer_y2 - buffer_y1),
-        )
-        patch_slice = patch.data[patch_y1:patch_y2, patch_x1:patch_x2]
-
-        if mode == LayerMode.BLOCKING:
-            # Fast slice assignment (ignore alpha)
-            buffer[buffer_y1:buffer_y2, buffer_x1:buffer_x2] = patch_slice[:, :, :3]
-        else:
-            # NORMAL mode: Alpha blending
-            # OPTIMIZATION: Check if patch is mostly transparent
-            # If patch has an alpha channel, use it.
-            if patch_slice.shape[2] == 4:
-                alpha_channel = patch_slice[:, :, 3]
-
-                # If all pixels are transparent, skip
-                if not np.any(alpha_channel):
-                    return
-
-                # Standard Alpha blending: (Patch * Alpha) + (Buffer * (ALPHA_OPAQUE - Alpha)) / ALPHA_OPAQUE
-                # Using uint16 to avoid overflow (255 * 255 = 65025 < 65535)
-                # and then back to uint8
-                alpha = alpha_channel[:, :, np.newaxis].astype(np.uint16)
-                roi = buffer[buffer_y1:buffer_y2, buffer_x1:buffer_x2].astype(np.uint16)
-                patch_bgr = patch_slice[:, :, :3].astype(np.uint16)
-
-                if np.mean(alpha_channel) > 200:
-                    logging.debug(
-                        f"Renderer: Compositing highly opaque patch at ({buffer_x1}, {buffer_y1}) size {buffer_x2 - buffer_x1}x{buffer_y2 - buffer_y1}. Mode: {mode}"
-                    )
-
-                # Integer blending formula: (src * alpha + dst * (ALPHA_OPAQUE - alpha)) // ALPHA_OPAQUE
-
-                blended = (
-                    patch_bgr * alpha + roi * (ALPHA_OPAQUE - alpha)
-                ) // ALPHA_OPAQUE
-                buffer[buffer_y1:buffer_y2, buffer_x1:buffer_x2] = blended.astype(
-                    np.uint8
-                )
-            else:
-                # No alpha channel, treat as blocking
-                buffer[buffer_y1:buffer_y2, buffer_x1:buffer_x2] = patch_slice[:, :, :3]

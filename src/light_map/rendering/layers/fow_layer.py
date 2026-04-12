@@ -3,15 +3,14 @@ import numpy as np
 import math
 import svgelements
 from typing import List, Tuple
-from light_map.core.common_types import Layer, ImagePatch
-from light_map.visibility.fow_manager import FogOfWarManager
+from light_map.core.common_types import Layer, ImagePatch, LayerMode
 from light_map.state.world_state import WorldState
 from light_map.core.constants import ALPHA_OPAQUE, ALPHA_TRANSPARENT, GRID_MASK_PPI
 
 
 class FogOfWarLayer(Layer):
     """
-    Renders the Fog of War (exploration) state from a FogOfWarManager.
+    Renders the Fog of War (exploration) state from the WorldState.
     Renders a 3-state mask:
     1. Visible (LOS): Fully transparent.
     2. Explored: Dimmed (e.g. 70% opaque black).
@@ -23,16 +22,10 @@ class FogOfWarLayer(Layer):
     def __init__(
         self,
         state: WorldState,
-        manager: FogOfWarManager,
-        grid_spacing_svg: float,
-        grid_origin_svg: Tuple[float, float],
         width: int,
         height: int,
     ):
-        super().__init__(state=state, is_static=True)
-        self.manager = manager
-        self.grid_spacing_svg = grid_spacing_svg
-        self.grid_origin_svg = grid_origin_svg
+        super().__init__(state=state, is_static=True, layer_mode=LayerMode.MASKED)
         self.width = width  # Screen width
         self.height = height  # Screen height
 
@@ -41,6 +34,7 @@ class FogOfWarLayer(Layer):
             return 0
         return max(
             self.state.fow_version,
+            self.state.fow_disabled_version,
             self.state.viewport_version,
             self.state.visibility_version,
             self.state.grid_metadata_version,
@@ -50,24 +44,23 @@ class FogOfWarLayer(Layer):
         """
         Produces a 4-channel (BGRA) mask patch covering the full screen.
         """
-        if self.manager.is_disabled:
-            # GM Override: No patches to render
+        if self.state is None or self.state.fow_disabled or self.state.fow_mask is None:
+            # GM Override or no mask: No patches to render
             return []
+
+        fow_mask = self.state.fow_mask
+        mask_h, mask_w = fow_mask.shape[:2]
 
         # 1. Create the full map FoW mask in "Mask Space"
         # Create a black BGR image
-        fow_bgr_full = np.zeros(
-            (self.manager.height, self.manager.width, 3), dtype=np.uint8
-        )
+        fow_bgr_full = np.zeros((mask_h, mask_w, 3), dtype=np.uint8)
 
         # Calculate Alpha mask:
         # 1. Start with ALPHA_OPAQUE (Unexplored = Opaque Black)
-        alpha_full = np.full(
-            (self.manager.height, self.manager.width), ALPHA_OPAQUE, dtype=np.uint8
-        )
+        alpha_full = np.full((mask_h, mask_w), ALPHA_OPAQUE, dtype=np.uint8)
 
         # 2. Explored areas are 0% opaque (Alpha 0) - They are fully revealed by THIS layer
-        alpha_full[self.manager.explored_mask == ALPHA_OPAQUE] = ALPHA_TRANSPARENT
+        alpha_full[fow_mask == ALPHA_OPAQUE] = ALPHA_TRANSPARENT
 
         # Combine BGR and Alpha for the full mask
         fow_bgra_full = cv2.merge(
@@ -82,6 +75,7 @@ class FogOfWarLayer(Layer):
         # 2. Transform the full mask to Screen Space
         if self.state and self.state.viewport:
             vp = self.state.viewport
+            grid = self.state.grid_metadata
             cx, cy = self.width / 2, self.height / 2
 
             # M_fow_to_svg:
@@ -89,11 +83,9 @@ class FogOfWarLayer(Layer):
             # Mask (0,0) now corresponds to SVG (0,0)
             m_fow_to_svg = svgelements.Matrix()
             m_fow_to_svg.post_scale(
-                self.grid_spacing_svg / GRID_MASK_PPI,
-                self.grid_spacing_svg / GRID_MASK_PPI,
+                grid.spacing_svg / GRID_MASK_PPI,
+                grid.spacing_svg / GRID_MASK_PPI,
             )
-            # No translation: (0,0) in mask is (0,0) in SVG
-            # m_fow_to_svg.post_translate(self.grid_origin_svg[0], self.grid_origin_svg[1])
 
             # M_svg_to_screen:
             m_svg_to_screen = svgelements.Matrix()

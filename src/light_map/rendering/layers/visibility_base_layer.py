@@ -22,18 +22,10 @@ class VisibilityBaseLayer(Layer):
     def __init__(
         self,
         state: WorldState,
-        mask_width: int,
-        mask_height: int,
-        grid_spacing_svg: float,
-        grid_origin_svg: Tuple[float, float],
         width: int,
         height: int,
     ):
         super().__init__(state=state, is_static=True)
-        self.mask_width = mask_width
-        self.mask_height = mask_height
-        self.grid_spacing_svg = grid_spacing_svg
-        self.grid_origin_svg = grid_origin_svg
         self.width = width  # Screen width
         self.height = height  # Screen height
 
@@ -44,16 +36,10 @@ class VisibilityBaseLayer(Layer):
         background_alpha: int = 0,
     ) -> List[ImagePatch]:
         """Core logic to transform a vision mask to screen space patches."""
-        if mask.shape[0] != self.mask_height or mask.shape[1] != self.mask_width:
-            import logging
-
-            logging.error(
-                f"{self.__class__.__name__}: Shape mismatch. Mask is {mask.shape}, Layer expects ({self.mask_height}, {self.mask_width})"
-            )
-            return []
+        mask_h, mask_w = mask.shape[:2]
 
         # 1. Create shroud in "Mask Space"
-        bgra_full = np.zeros((self.mask_height, self.mask_width, 4), dtype=np.uint8)
+        bgra_full = np.zeros((mask_h, mask_w, 4), dtype=np.uint8)
         bgra_full[:, :, 3] = shroud_alpha
 
         # Punch a hole for currently visible vision (Transparent)
@@ -62,12 +48,13 @@ class VisibilityBaseLayer(Layer):
         # 2. Transform to Screen Space
         if self.state.viewport:
             vp = self.state.viewport
+            grid = self.state.grid_metadata
             cx, cy = self.width / 2, self.height / 2
 
             m_fow_to_svg = svgelements.Matrix()
             m_fow_to_svg.post_scale(
-                self.grid_spacing_svg / GRID_MASK_PPI,
-                self.grid_spacing_svg / GRID_MASK_PPI,
+                grid.spacing_svg / GRID_MASK_PPI,
+                grid.spacing_svg / GRID_MASK_PPI,
             )
 
             m_svg_to_screen = svgelements.Matrix()

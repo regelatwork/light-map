@@ -5,7 +5,6 @@ import svgelements
 from typing import List
 from light_map.core.common_types import Layer, ImagePatch, LayerMode
 from light_map.state.world_state import WorldState
-from light_map.visibility.visibility_engine import VisibilityEngine
 from light_map.visibility.visibility_types import VisibilityType
 
 
@@ -19,13 +18,11 @@ class DoorLayer(Layer):
     def __init__(
         self,
         state: WorldState,
-        visibility_engine: VisibilityEngine,
         width: int,
         height: int,
         thickness_multiplier: float = 3.0,
     ):
         super().__init__(state=state, is_static=True, layer_mode=LayerMode.NORMAL)
-        self.visibility_engine = visibility_engine
         self.width = width
         self.height = height
         self.thickness_multiplier = thickness_multiplier
@@ -44,10 +41,11 @@ class DoorLayer(Layer):
         # Create transparent base
         image = np.zeros((self.height, self.width, 4), dtype=np.uint8)
 
-        if not self.state.viewport:
+        if not self.state or not self.state.viewport:
             return []
 
         vp = self.state.viewport
+        grid = self.state.grid_metadata
         cx, cy = self.width / 2, self.height / 2
 
         # Transformation Matrix: SVG -> Screen
@@ -61,7 +59,7 @@ class DoorLayer(Layer):
         # Mask space is 16px per grid unit. SVG space is 'spacing' px per grid unit.
         # So 1 mask pixel = (spacing / 16.0) SVG pixels.
         # In screen space, that is (spacing / 16.0) * vp.zoom pixels.
-        spacing = self.visibility_engine.grid_spacing_svg
+        spacing = grid.spacing_svg
         base_wall_thickness = (spacing / 16.0) * vp.zoom
 
         # Yellow line: Base thickness * multiplier, min 2px
@@ -79,20 +77,21 @@ class DoorLayer(Layer):
         YELLOW = (0, 255, 255, 255)
         BLACK = (0, 0, 0, 255)
 
-        for blocker in self.visibility_engine.blockers:
-            if blocker.type != VisibilityType.DOOR:
+        for blocker in self.state.blockers:
+            if blocker.get("type") != VisibilityType.DOOR:
                 continue
 
             # Transform segments
             points = []
-            for sx, sy in blocker.segments:
+            segments = blocker.get("segments", [])
+            for sx, sy in segments:
                 p = m_svg_to_screen.point_in_matrix_space((sx, sy))
                 points.append((int(p.x), int(p.y)))
 
             if len(points) < 2:
                 continue
 
-            if blocker.is_open:
+            if blocker.get("is_open"):
                 # Render endpoints as circles
                 for pt in points:
                     # Black outline

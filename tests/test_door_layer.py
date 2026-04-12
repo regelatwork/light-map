@@ -6,30 +6,27 @@ from light_map.visibility.visibility_engine import VisibilityEngine
 from light_map.visibility.visibility_types import VisibilityBlocker, VisibilityType
 
 
+from dataclasses import asdict
+from light_map.core.common_types import GridMetadata
+
+
 @pytest.fixture
 def state():
     ws = WorldState()
     from light_map.core.common_types import ViewportState
 
     ws.update_viewport(ViewportState(x=0, y=0, zoom=1.0, rotation=0.0))
+    ws.grid_metadata = GridMetadata(spacing_svg=10.0)
     return ws
 
 
-@pytest.fixture
-def engine():
-    e = VisibilityEngine(grid_spacing_svg=10.0)
-    e.geometry_version = 100
-    return e
-
-
-def test_door_layer_init(state, engine):
-    layer = DoorLayer(state, engine, 100, 100)
+def test_door_layer_init(state):
+    layer = DoorLayer(state, 100, 100)
     assert layer.width == 100
     assert layer.height == 100
-    assert layer.visibility_engine == engine
 
 
-def test_door_layer_render_closed_door(state, engine):
+def test_door_layer_render_closed_door(state):
     # Add a closed door blocker
     door = VisibilityBlocker(
         id="door1",
@@ -38,9 +35,9 @@ def test_door_layer_render_closed_door(state, engine):
         layer_name="Door 1",
         is_open=False,
     )
-    engine.blockers = [door]
+    state.blockers = [asdict(door)]
 
-    layer = DoorLayer(state, engine, 100, 100)
+    layer = DoorLayer(state, 100, 100)
     patches = layer.render(0.0)[0]
 
     assert len(patches) == 1
@@ -67,7 +64,7 @@ def test_door_layer_render_closed_door(state, engine):
     assert np.any(black_ish)
 
 
-def test_door_layer_render_open_door(state, engine):
+def test_door_layer_render_open_door(state):
     # Add an open door blocker
     door = VisibilityBlocker(
         id="door2",
@@ -76,9 +73,9 @@ def test_door_layer_render_open_door(state, engine):
         layer_name="Door 1",
         is_open=True,
     )
-    engine.blockers = [door]
+    state.blockers = [asdict(door)]
 
-    layer = DoorLayer(state, engine, 100, 100)
+    layer = DoorLayer(state, 100, 100)
     patches = layer.render(0.0)[0]
 
     assert len(patches) == 1
@@ -108,8 +105,8 @@ def test_door_layer_render_open_door(state, engine):
     assert np.all(data[10, 20, :3] == [0, 255, 255])
 
 
-def test_door_layer_version_logic(state, engine):
-    layer = DoorLayer(state, engine, 100, 100)
+def test_door_layer_version_logic(state):
+    layer = DoorLayer(state, 100, 100)
 
     # Initial state
     v1 = layer.get_current_version()

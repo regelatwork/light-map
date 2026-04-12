@@ -235,25 +235,35 @@ def test_aruco_mask_layer_persistence(mock_state, mock_config):
 
 
 def test_aruco_mask_layer_version_with_persistence(mock_state, mock_config):
-    """Verifies that version updates every frame during lingering."""
+    """Verifies that version updates every frame ONLY during lingering."""
     mock_config.aruco_mask_persistence_s = 2.0
     layer = ArucoMaskLayer(mock_state, mock_config)
 
-    # 1. Initial detection
+    # 1. Initial detection (marker 42 present in mock_state)
     layer._generate_patches(100.0)
+    v_base = layer.get_current_version()
+    
+    # Update system time - should NOT affect version because no lingering yet
+    mock_state._system_time_atom.update(101.0, force_timestamp=mock_state.raw_aruco_version + 1000)
     v1 = layer.get_current_version()
+    assert v1 == v_base  # Still based on raw_aruco_version
 
-    # 2. Lost detection
+    # 2. Lost detection (marker 42 gone from state, but in last_seen)
     mock_state.raw_aruco = {"corners": [], "ids": []}
-    current_ns = mock_state.raw_aruco_version
-
-    # system_time_version should trigger every-frame updates if last_seen is not empty
-    mock_state._system_time_atom.update(101.0, force_timestamp=current_ns + 1000)
+    # Important: raw_aruco_version will increment because we changed the value
+    v_after_lost = layer.get_current_version()
+    
+    # system_time_version should now trigger every-frame updates
+    mock_state._system_time_atom.update(102.0, force_timestamp=mock_state.raw_aruco_version + 2000)
     v2 = layer.get_current_version()
-    assert v2 > v1
+    assert v2 > v_after_lost
 
     # 3. After persistence expires
-    layer._generate_patches(103.0)  # This will clear last_seen
+    layer._generate_patches(105.0)  # This will clear last_seen
     v3 = layer.get_current_version()
-    # Now it should be back to just base versioning (v3 should be based on raw_aruco_version)
-    assert v3 < v2
+    # Now it should be back to just base versioning
+    
+    # Update system time again - should NOT affect version
+    mock_state._system_time_atom.update(106.0, force_timestamp=v3 + 1000)
+    v4 = layer.get_current_version()
+    assert v4 == v3

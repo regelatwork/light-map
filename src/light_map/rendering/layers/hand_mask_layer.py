@@ -19,7 +19,7 @@ class HandMaskLayer(Layer):
         config: AppConfig,
         projection_service: Optional[ProjectionService] = None,
     ):
-        super().__init__(state=state, is_static=False, layer_mode=LayerMode.NORMAL)
+        super().__init__(state=state, is_static=False, layer_mode=LayerMode.MASKED)
         self.config = config
         self.projection_service = projection_service
         self.hand_masker = HandMasker()
@@ -36,8 +36,9 @@ class HandMaskLayer(Layer):
             self.state.projector_pose_version,
         )
 
-        # If we have active hulls, we are rendering every frame for persistence fading
-        if self.hand_masker.last_hulls:
+        # Only include system_time_version if we have lingering hulls (fading out)
+        # If hands are present, hands_version handles updates.
+        if self.hand_masker.last_hulls and not self.state.hands:
             v = max(v, self.state.system_time_version)
 
         return (v << 1) | (1 if self.config.enable_hand_masking else 0)

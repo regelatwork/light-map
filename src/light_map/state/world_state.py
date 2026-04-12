@@ -74,6 +74,7 @@ class WorldState:
         self._fow_mask_atom = VersionedAtom(
             None, "fow_mask", equality_fn=np.array_equal
         )
+        self._fow_disabled_atom = VersionedAtom(False, "fow_disabled")
         self._calibration_atom = VersionedAtom(
             CalibrationState(), "calibration", equality_fn=self._calibration_equal
         )
@@ -225,6 +226,14 @@ class WorldState:
         self._fow_mask_atom.update(value)
 
     @property
+    def fow_disabled(self) -> bool:
+        return self._fow_disabled_atom.value
+
+    @fow_disabled.setter
+    def fow_disabled(self, value: bool):
+        self._fow_disabled_atom.update(value)
+
+    @property
     def scene_version(self) -> int:
         return max(
             self._scene_atom.timestamp,
@@ -239,7 +248,11 @@ class WorldState:
 
     @property
     def fow_version(self) -> int:
-        return self._fow_mask_atom.timestamp
+        return max(self._fow_mask_atom.timestamp, self._fow_disabled_atom.timestamp)
+
+    @property
+    def fow_disabled_version(self) -> int:
+        return self._fow_disabled_atom.timestamp
 
     @property
     def visibility_version(self) -> int:

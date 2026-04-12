@@ -33,9 +33,16 @@ def test_interactive_app_layered_init(mock_config, monkeypatch):
     app = InteractiveApp(mock_config)
 
     assert hasattr(app, "layer_stack")
+    stack = app.layer_stack
     assert (
-        len(app.layer_stack) == 12
-    )  # Map, Door, FoW, Visibility, ArucoMask, Hand, Token, Menu, Notif, Debug, SelectionProgress, Cursor
+        len(stack) == 9
+    )  # BackgroundComposite, Hand, Token, Menu, Notif, Debug, SelectionProgress, Cursor, ArucoMask
+
+    # Verify background_composite is the first layer
+    from light_map.core.common_types import CompositeLayer
+
+    assert isinstance(stack[0], CompositeLayer)
+    assert stack[0] == app.layer_manager.background_composite
 
     assert app.renderer.output_buffer.shape == (100, 100, 3)
 

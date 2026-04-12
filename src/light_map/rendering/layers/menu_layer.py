@@ -14,7 +14,7 @@ class MenuLayer(Layer):
     """
 
     def __init__(self, state: WorldState):
-        super().__init__(state=state, is_static=False, layer_mode=LayerMode.NORMAL)
+        super().__init__(state=state, is_static=False, layer_mode=LayerMode.MASKED)
         self.colors = MenuColors()
         self._last_visible = False
 

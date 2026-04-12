@@ -21,11 +21,11 @@ from light_map.rendering.layers.selection_progress_layer import SelectionProgres
 from light_map.rendering.layers.flash_layer import FlashLayer
 from light_map.rendering.layers.map_grid_layer import MapGridLayer
 from light_map.rendering.layers.calibration_layer import CalibrationLayer
+from light_map.core.common_types import Layer, CompositeLayer
 
 if TYPE_CHECKING:
     from light_map.core.app_context import AppContext
     from light_map.state.world_state import WorldState
-    from light_map.core.common_types import Layer
     from light_map.core.scene import Scene
     from light_map.visibility.fow_manager import FogOfWarManager
 
@@ -45,7 +45,6 @@ class LayerStackManager:
         )
         self.door_layer = DoorLayer(
             state,
-            context.visibility_engine,
             config.width,
             config.height,
             thickness_multiplier=config.door_thickness_multiplier,
@@ -68,32 +67,16 @@ class LayerStackManager:
         self.map_grid_layer = MapGridLayer(state, config.width, config.height)
         self.calibration_layer = CalibrationLayer(state, self.config)
 
-        # Visibility and FoW Layers (initialized as placeholders until map loads)
-        self.fow_layer = FogOfWarLayer(
-            state,
-            None,  # No manager yet
-            grid_spacing_svg=10.0,
-            grid_origin_svg=(0.0, 0.0),
-            width=config.width,
-            height=config.height,
-        )
-        self.visibility_layer = VisibilityLayer(
-            state,
-            config.width,
-            config.height,
-            grid_spacing_svg=10.0,
-            grid_origin_svg=(0.0, 0.0),
-            width=config.width,
-            height=config.height,
-        )
+        # Visibility and FoW Layers
+        self.fow_layer = FogOfWarLayer(state, config.width, config.height)
+        self.visibility_layer = VisibilityLayer(state, config.width, config.height)
         self.exclusive_vision_layer = ExclusiveVisionLayer(
-            state,
-            config.width,
-            config.height,
-            grid_spacing_svg=10.0,
-            grid_origin_svg=(0.0, 0.0),
-            width=config.width,
-            height=config.height,
+            state, config.width, config.height
+        )
+
+        # Background Composite (Optimized for performance)
+        self.background_composite = CompositeLayer(
+            [self.map_layer, self.door_layer, self.fow_layer, self.visibility_layer]
         )
 
     @property
@@ -103,10 +86,7 @@ class LayerStackManager:
         Used by Scenes that don't override get_active_layers.
         """
         return [
-            self.map_layer,
-            self.door_layer,
-            self.fow_layer,
-            self.visibility_layer,
+            self.background_composite,
             self.hand_mask_layer,
             self.token_layer,
             self.menu_layer,
@@ -125,42 +105,11 @@ class LayerStackManager:
         spacing: float,
         origin: tuple[float, float],
     ):
-        """Re-initializes visibility-related layers."""
-        config = self.context.app_config
-
-        self.fow_layer = FogOfWarLayer(
-            self.state,
-            fow_manager,
-            spacing,
-            origin,
-            config.width,
-            config.height,
-        )
-        self.visibility_layer = VisibilityLayer(
-            self.state,
-            mask_w,
-            mask_h,
-            spacing,
-            origin,
-            config.width,
-            config.height,
-        )
-        self.exclusive_vision_layer = ExclusiveVisionLayer(
-            self.state,
-            mask_w,
-            mask_h,
-            spacing,
-            origin,
-            config.width,
-            config.height,
-        )
-        self.door_layer = DoorLayer(
-            self.state,
-            self.context.visibility_engine,
-            config.width,
-            config.height,
-            thickness_multiplier=config.door_thickness_multiplier,
-        )
+        """
+        No-op. Layers are now reactive and pull data from WorldState atoms.
+        This method is kept for compatibility with current InteractiveApp calls.
+        """
+        pass
 
     def get_stack(self, current_scene: Scene) -> List[Layer]:
         """
@@ -181,6 +130,7 @@ class LayerStackManager:
     def update_state(self, state: WorldState):
         """Updates the state for all managed layers."""
         self.state = state
+        self.background_composite.state = state
         layers = [
             self.map_layer,
             self.door_layer,

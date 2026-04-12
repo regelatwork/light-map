@@ -7,6 +7,8 @@ from typing import Optional
 from light_map.core.common_types import SessionData, Token, ViewportState
 from light_map.core.storage import StorageManager
 from light_map.core.config_store import ConfigStore
+from light_map.core.config_schema import SessionDataSchema
+from light_map.core.config_utils import sync_pydantic_to_dataclass
 
 _DEFAULT_STORAGE = StorageManager()
 SESSION_DIR = os.path.join(_DEFAULT_STORAGE.get_data_dir(), "sessions")
@@ -58,8 +60,9 @@ class SessionManager:
             if not data.timestamp:
                 data.timestamp = datetime.datetime.now().isoformat()
 
-            # Serialize
-            data_dict = asdict(data)
+            # Serialize using Pydantic for validation and consistent output
+            validated = SessionDataSchema(**asdict(data))
+            data_dict = validated.model_dump()
 
             store = ConfigStore(filepath)
             success = store.save(data_dict)
@@ -80,36 +83,34 @@ class SessionManager:
             return None
 
         try:
-            # Deserialize Viewport
-            vp_data = raw.get("viewport", {})
-            viewport = ViewportState(
-                x=vp_data.get("x", 0.0),
-                y=vp_data.get("y", 0.0),
-                zoom=vp_data.get("zoom", 1.0),
-                rotation=vp_data.get("rotation", 0.0),
+            # 1. Validate with Pydantic
+            validated = SessionDataSchema(**raw)
+
+            # 2. Sync to SessionData dataclass
+            # We need to manually handle nested objects since sync_pydantic_to_dataclass
+            # doesn't handle collections of dataclasses recursively.
+            session = SessionData(
+                map_file=validated.map_file,
+                viewport=ViewportState(),
+                tokens=[],
+                door_states=validated.door_states,
+                timestamp=validated.timestamp,
             )
 
-            # Deserialize Tokens
-            tokens = []
-            for t_data in raw.get("tokens", []):
-                tokens.append(
-                    Token(
-                        id=t_data.get("id", 0),
-                        world_x=t_data.get("world_x", 0.0),
-                        world_y=t_data.get("world_y", 0.0),
-                        grid_x=t_data.get("grid_x"),
-                        grid_y=t_data.get("grid_y"),
-                        confidence=t_data.get("confidence", 1.0),
-                    )
+            # Sync Viewport
+            sync_pydantic_to_dataclass(validated.viewport, session.viewport)
+
+            # Sync Tokens
+            for t_schema in validated.tokens:
+                token = Token(
+                    id=t_schema.id,
+                    world_x=t_schema.world_x,
+                    world_y=t_schema.world_y,
                 )
+                sync_pydantic_to_dataclass(t_schema, token)
+                session.tokens.append(token)
 
-            return SessionData(
-                map_file=raw.get("map_file", ""),
-                viewport=viewport,
-                tokens=tokens,
-                door_states=raw.get("door_states", {}),
-                timestamp=raw.get("timestamp", ""),
-            )
+            return session
 
         except Exception as e:
             logging.error("Error loading session: %s", e)

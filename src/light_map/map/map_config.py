@@ -26,7 +26,11 @@ from light_map.core.storage import StorageManager
 from light_map.core.config_store import ConfigStore
 from light_map.core.token_naming import generate_token_name
 
-from light_map.core.config_schema import GlobalConfigSchema
+from light_map.core.config_schema import (
+    GlobalConfigSchema,
+    TokenConfigSchema,
+    MapEntrySchema,
+)
 from light_map.core.config_utils import sync_pydantic_to_dataclass
 
 # Add TYPE_CHECKING to avoid circular import with FogOfWarManager
@@ -206,7 +210,7 @@ class MapConfigManager:
             if not raw and not tokens_raw:
                 return MapConfigData()
 
-            # Deserialize Global Settings using Pydantic for validation and defaults
+            # 1. Global Settings
             global_raw = raw.get("global", {})
             try:
                 # We use GlobalConfigSchema to handle defaults and validation
@@ -219,82 +223,62 @@ class MapConfigManager:
                 )
                 global_settings = GlobalMapConfig()
 
-            # Load Token Profiles
-            raw_profiles = tokens_raw.get("token_profiles", {})
-            token_profiles = {
-                k: SizeProfile(v.get("size", 1), v.get("height_mm", 10.0))
-                for k, v in raw_profiles.items()
-            }
-            if not token_profiles:  # If empty or missing, use defaults
-                token_profiles = {
-                    "small": SizeProfile(1, 15.0),
-                    "medium": SizeProfile(1, 25.0),
-                    "large": SizeProfile(2, 40.0),
-                    "huge": SizeProfile(3, 60.0),
-                }
+            # 2. Token Config (Profiles & ArUco Defaults)
+            try:
+                validated_tokens = TokenConfigSchema(**tokens_raw)
 
-            # Load ArUco Defaults
-            raw_aruco = tokens_raw.get("aruco_defaults", {})
-            aruco_defaults = {}
-            for k, v in raw_aruco.items():
-                try:
-                    key = int(k)
-                    aruco_defaults[key] = ArucoDefinition(
-                        name=v.get("name", "Unknown"),
-                        type=v.get("type", "NPC"),
-                        profile=v.get("profile"),
-                        size=v.get("size"),
-                        height_mm=v.get("height_mm"),
-                        color=v.get("color"),
-                    )
-                except ValueError:
-                    pass
+                # Sync Profiles
+                if validated_tokens.token_profiles:
+                    global_settings.token_profiles = {}
+                    for name, prof_schema in validated_tokens.token_profiles.items():
+                        prof = SizeProfile()
+                        sync_pydantic_to_dataclass(prof_schema, prof)
+                        global_settings.token_profiles[name] = prof
+                else:
+                    # Fallback defaults if no profiles loaded
+                    global_settings.token_profiles = {
+                        "small": SizeProfile(1, 15.0),
+                        "medium": SizeProfile(1, 25.0),
+                        "large": SizeProfile(2, 40.0),
+                        "huge": SizeProfile(3, 60.0),
+                    }
 
-            # Sync complex fields to the already validated global_settings
-            global_settings.token_profiles = token_profiles
-            global_settings.aruco_defaults = aruco_defaults
+                # Sync ArUco Defaults
+                global_settings.aruco_defaults = {}
+                for aid, aruco_schema in validated_tokens.aruco_defaults.items():
+                    aruco = ArucoDefinition(name=aruco_schema.name)
+                    sync_pydantic_to_dataclass(aruco_schema, aruco)
+                    global_settings.aruco_defaults[aid] = aruco
+
+            except Exception as e:
+                logging.warning(
+                    f"MapConfig: Failed to validate token config: {e}. Using defaults."
+                )
+                # Keep factory defaults in global_settings
+
             global_settings.last_used_map = global_raw.get("last_used_map")
 
-            # Deserialize Maps
+            # 3. Maps
             maps = {}
             raw_maps = raw.get("maps", {})
             for name, entry_data in raw_maps.items():
-                vp_data = entry_data.get("viewport", {})
-                viewport = ViewportState(
-                    x=vp_data.get("x", 0.0),
-                    y=vp_data.get("y", 0.0),
-                    zoom=vp_data.get("zoom", 1.0),
-                    rotation=vp_data.get("rotation", 0.0),
-                )
+                try:
+                    validated_entry = MapEntrySchema(**entry_data)
+                    entry = MapEntry()
+                    sync_pydantic_to_dataclass(validated_entry, entry)
 
-                # Load Map Overrides
-                raw_overrides = entry_data.get("aruco_overrides", {})
-                aruco_overrides = {}
-                for k, v in raw_overrides.items():
-                    try:
-                        key = int(k)
-                        aruco_overrides[key] = ArucoDefinition(
-                            name=v.get("name", "Unknown"),
-                            type=v.get("type", "NPC"),
-                            profile=v.get("profile"),
-                            size=v.get("size"),
-                            height_mm=v.get("height_mm"),
-                            color=v.get("color"),
-                        )
-                    except ValueError:
-                        pass
+                    # Manual sync for aruco_overrides (Dict[int, ArucoDefinition])
+                    entry.aruco_overrides = {}
+                    for aid, aruco_schema in validated_entry.aruco_overrides.items():
+                        aruco = ArucoDefinition(name=aruco_schema.name)
+                        sync_pydantic_to_dataclass(aruco_schema, aruco)
+                        entry.aruco_overrides[aid] = aruco
 
-                maps[name] = MapEntry(
-                    scale_factor=entry_data.get("scale_factor", 1.0),
-                    viewport=viewport,
-                    grid_spacing_svg=entry_data.get("grid_spacing_svg", 0.0),
-                    grid_origin_svg_x=entry_data.get("grid_origin_svg_x", 0.0),
-                    grid_origin_svg_y=entry_data.get("grid_origin_svg_y", 0.0),
-                    physical_unit_inches=entry_data.get("physical_unit_inches", 1.0),
-                    scale_factor_1to1=entry_data.get("scale_factor_1to1", 1.0),
-                    last_seen=entry_data.get("last_seen", ""),
-                    aruco_overrides=aruco_overrides,
-                )
+                    maps[name] = entry
+                except Exception as e:
+                    logging.warning(
+                        f"MapConfig: Failed to validate map entry for {name}: {e}"
+                    )
 
             return MapConfigData(global_settings=global_settings, maps=maps)
 

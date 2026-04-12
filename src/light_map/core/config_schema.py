@@ -19,7 +19,7 @@ Architecture:
 """
 
 from pydantic import BaseModel, Field
-from typing import Optional
+from typing import Optional, Dict, List
 from enum import StrEnum
 
 
@@ -46,6 +46,213 @@ class NamingStyle(StrEnum):
     AMERICAN = "AMERICAN"
     SCI_FI = "SCI_FI"
     FANTASY = "FANTASY"
+
+
+class SizeProfileSchema(BaseModel):
+    size: int = Field(
+        default=1, ge=1, le=10, title="Size", description="Size in grid units."
+    )
+    height_mm: float = Field(
+        default=50.0,
+        ge=0.0,
+        le=500.0,
+        title="Height (mm)",
+        description="Physical height of the token in millimeters.",
+    )
+
+
+class ArucoDefinitionSchema(BaseModel):
+    name: str = Field(
+        ..., title="Name", description="Display name for this ArUco marker."
+    )
+    type: str = Field(
+        default="NPC", title="Type", description="Token type (e.g., PC, NPC, Enemy)."
+    )
+    profile: Optional[str] = Field(
+        default=None,
+        title="Profile",
+        description="Reference to a SizeProfileSchema by name.",
+    )
+    size: Optional[int] = Field(
+        default=None,
+        ge=1,
+        le=10,
+        title="Custom Size",
+        description="Override size in grid units.",
+    )
+    height_mm: Optional[float] = Field(
+        default=None,
+        ge=0.0,
+        le=500.0,
+        title="Custom Height (mm)",
+        description="Override physical height in mm.",
+    )
+    color: Optional[str] = Field(
+        default=None, title="Color", description="CSS color override for the token."
+    )
+
+
+class TokenConfigSchema(BaseModel):
+    token_profiles: Dict[str, SizeProfileSchema] = Field(
+        default_factory=dict,
+        title="Token Profiles",
+        description="Named size and height presets.",
+    )
+    aruco_defaults: Dict[int, ArucoDefinitionSchema] = Field(
+        default_factory=dict,
+        title="ArUco Defaults",
+        description="Global default settings for specific ArUco IDs.",
+    )
+
+
+class ViewportStateSchema(BaseModel):
+    x: float = Field(
+        default=0.0, title="X Offset", description="Horizontal pan offset in SVG units."
+    )
+    y: float = Field(
+        default=0.0, title="Y Offset", description="Vertical pan offset in SVG units."
+    )
+    zoom: float = Field(
+        default=1.0, title="Zoom", description="Zoom level (1.0 = 100%)."
+    )
+    rotation: float = Field(
+        default=0.0, title="Rotation", description="Rotation in degrees."
+    )
+
+
+class TokenSchema(BaseModel):
+    id: int = Field(..., title="ID", description="Unique identifier (e.g., ArUco ID).")
+    world_x: float = Field(
+        ..., title="World X", description="Horizontal position in world coordinates."
+    )
+    world_y: float = Field(
+        ..., title="World Y", description="Vertical position in world coordinates."
+    )
+    world_z: float = Field(
+        default=0.0, title="World Z", description="Height above the map surface."
+    )
+    marker_x: Optional[float] = Field(
+        default=None,
+        title="Marker X",
+        description="Horizontal marker position at its actual height.",
+    )
+    marker_y: Optional[float] = Field(
+        default=None,
+        title="Marker Y",
+        description="Vertical marker position at its actual height.",
+    )
+    marker_z: float = Field(
+        default=0.0, title="Marker Z", description="Physical height of the marker."
+    )
+    grid_x: Optional[int] = Field(
+        default=None, title="Grid X", description="Snapped horizontal grid coordinate."
+    )
+    grid_y: Optional[int] = Field(
+        default=None, title="Grid Y", description="Snapped vertical grid coordinate."
+    )
+    screen_x: Optional[float] = Field(
+        default=None,
+        title="Screen X",
+        description="Horizontal projector pixel position.",
+    )
+    screen_y: Optional[float] = Field(
+        default=None, title="Screen Y", description="Vertical projector pixel position."
+    )
+    confidence: float = Field(
+        default=1.0,
+        title="Confidence",
+        description="Detection confidence (0.0 to 1.0).",
+    )
+    is_occluded: bool = Field(
+        default=False,
+        title="Is Occluded",
+        description="True if the token is currently hidden.",
+    )
+    is_duplicate: bool = Field(
+        default=False,
+        title="Is Duplicate",
+        description="True if this is a ghost detection.",
+    )
+    name: Optional[str] = Field(
+        default=None, title="Name", description="Assigned name of the token."
+    )
+    color: Optional[str] = Field(
+        default=None, title="Color", description="Assigned color for the token ring."
+    )
+    type: str = Field(
+        default="NPC", title="Type", description="Token type (e.g., PC, NPC)."
+    )
+    profile: Optional[str] = Field(
+        default=None, title="Profile", description="The size profile name used."
+    )
+    size: Optional[int] = Field(
+        default=None, title="Size", description="Resolved size in grid units."
+    )
+    height_mm: Optional[float] = Field(
+        default=None, title="Height (mm)", description="Resolved height in mm."
+    )
+
+
+class SessionDataSchema(BaseModel):
+    map_file: str = Field(
+        ..., title="Map File", description="Absolute path to the map image."
+    )
+    viewport: ViewportStateSchema = Field(
+        ..., title="Viewport", description="Saved pan and zoom state."
+    )
+    tokens: List[TokenSchema] = Field(
+        default_factory=list, title="Tokens", description="List of active tokens."
+    )
+    door_states: Dict[str, bool] = Field(
+        default_factory=dict,
+        title="Door States",
+        description="Map of door IDs to their open/closed status.",
+    )
+    timestamp: str = Field(
+        default="", title="Timestamp", description="ISO 8601 creation time."
+    )
+
+
+class MapEntrySchema(BaseModel):
+    scale_factor: float = Field(
+        default=1.0,
+        title="Scale Factor",
+        description="Global zoom multiplier for this map.",
+    )
+    viewport: ViewportStateSchema = Field(
+        default_factory=ViewportStateSchema,
+        title="Viewport",
+        description="Saved viewport state.",
+    )
+    grid_spacing_svg: float = Field(
+        default=0.0,
+        title="Grid Spacing",
+        description="Size of one grid cell in SVG units.",
+    )
+    grid_origin_svg_x: float = Field(
+        default=0.0, title="Grid Origin X", description="Horizontal grid offset."
+    )
+    grid_origin_svg_y: float = Field(
+        default=0.0, title="Grid Origin Y", description="Vertical grid offset."
+    )
+    physical_unit_inches: float = Field(
+        default=1.0,
+        title="Physical Unit",
+        description="Size of one grid cell in inches.",
+    )
+    scale_factor_1to1: float = Field(
+        default=1.0,
+        title="1:1 Scale Factor",
+        description="Zoom level required for physical 1:1 scale.",
+    )
+    last_seen: str = Field(
+        default="", title="Last Seen", description="ISO 8601 timestamp of last usage."
+    )
+    aruco_overrides: Dict[int, ArucoDefinitionSchema] = Field(
+        default_factory=dict,
+        title="ArUco Overrides",
+        description="Map-specific marker definitions.",
+    )
 
 
 class GlobalConfigSchema(BaseModel):

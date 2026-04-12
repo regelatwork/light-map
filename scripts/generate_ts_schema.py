@@ -2,11 +2,19 @@ import json
 from enum import Enum
 from typing import Any, Type, get_args, get_origin, Union
 from pydantic import BaseModel
+from pydantic_core import PydanticUndefined
 from light_map.core.config_schema import (
     GlobalConfigSchema,
     GmPosition,
     TokenDetectionAlgorithm,
     NamingStyle,
+    SizeProfileSchema,
+    ArucoDefinitionSchema,
+    TokenConfigSchema,
+    ViewportStateSchema,
+    TokenSchema,
+    SessionDataSchema,
+    MapEntrySchema,
 )
 
 OUTPUT_FILE = "frontend/src/types/schema.generated.ts"
@@ -21,18 +29,42 @@ def python_type_to_ts(py_type: Any) -> str:
     if py_type is bool:
         return "boolean"
 
-    # Handle Optional/Union
     origin = get_origin(py_type)
+    args = get_args(py_type)
+
+    # Handle Optional/Union
     if origin is Union:
-        args = get_args(py_type)
         ts_types = [python_type_to_ts(arg) for arg in args if arg is not type(None)]
         if type(None) in args:
-            return f"{' | '.join(ts_types)} | null"
+            if len(ts_types) == 1:
+                return f"{ts_types[0]} | null"
+            return f"({' | '.join(ts_types)}) | null"
         return " | ".join(ts_types)
+
+    # Handle Lists
+    if origin is list or py_type is list:
+        if args:
+            return f"{python_type_to_ts(args[0])}[]"
+        return "any[]"
+
+    # Handle Dicts
+    if origin is dict or py_type is dict:
+        if len(args) == 2:
+            key_type = python_type_to_ts(args[0])
+            val_type = python_type_to_ts(args[1])
+            return f"Record<{key_type}, {val_type}>"
+        return "Record<string, any>"
 
     # Handle Enums
     if isinstance(py_type, type) and issubclass(py_type, Enum):
         return py_type.__name__
+
+    # Handle BaseModel subclasses (nested schemas)
+    if isinstance(py_type, type) and issubclass(py_type, BaseModel):
+        name = py_type.__name__
+        if name.endswith("Schema"):
+            return name[:-6]
+        return name
 
     return "any"
 
@@ -41,13 +73,15 @@ def generate_ts_interface(model_name: str, model: Type[BaseModel]) -> str:
     lines = [f"export interface {model_name} {{"]
     for field_name, field in model.model_fields.items():
         ts_type = python_type_to_ts(field.annotation)
-        # Use optional marker if field can be None
-        optional = (
-            "?"
-            if get_origin(field.annotation) is Union
-            and type(None) in get_args(field.annotation)
-            else ""
+        # Use optional marker if field can be None OR has a default value
+        origin = get_origin(field.annotation)
+        args = get_args(field.annotation)
+        is_optional_type = origin is Union and type(None) in args
+        has_default = (
+            field.default is not PydanticUndefined or field.default_factory is not None
         )
+
+        optional = "?" if is_optional_type or has_default else ""
         lines.append(f"  {field_name}{optional}: {ts_type};")
     lines.append("}\n")
     return "\n".join(lines)
@@ -82,21 +116,36 @@ def generate_metadata_registry(model_name: str, model: Type[BaseModel]) -> str:
                 field_meta["max"] = meta.lt
 
         # Add default if it's not Pydantic's PydanticUndefined
-        if field.default is not None and str(field.default) != "PydanticUndefined":
-            field_meta["default"] = field.default
+        if field.default is not PydanticUndefined and field.default is not None:
+            try:
+                # Test if it's JSON serializable
+                json.dumps(field.default)
+                field_meta["default"] = field.default
+            except (TypeError, OverflowError):
+                pass
 
         # For enums, we could add options here
-        if isinstance(field.annotation, type) and issubclass(field.annotation, Enum):
+        annotation = field.annotation
+        # Handle Optional[Enum]
+        if get_origin(annotation) is Union:
+            args = get_args(annotation)
+            enum_types = [
+                arg for arg in args if isinstance(arg, type) and issubclass(arg, Enum)
+            ]
+            if enum_types:
+                annotation = enum_types[0]
+
+        if isinstance(annotation, type) and issubclass(annotation, Enum):
             field_meta["options"] = [
                 {"label": m.name.replace("_", " ").title(), "value": m.value}
-                for m in field.annotation
+                for m in annotation
             ]
 
         metadata[field_name] = field_meta
 
     registry_name = f"{model_name.upper()}_METADATA"
     lines = [
-        f"export const {registry_name}: Record<keyof {model_name}, any> = ",
+        f"export const {registry_name}: Record<keyof {model_name}, FieldMetadata> = ",
         json.dumps(metadata, indent=2),
         ";\n",
     ]
@@ -115,12 +164,26 @@ def main():
     sections.append(generate_ts_enum(TokenDetectionAlgorithm))
     sections.append(generate_ts_enum(NamingStyle))
 
+    # All schemas to generate
+    schemas = [
+        ("SizeProfile", SizeProfileSchema),
+        ("ArucoDefinition", ArucoDefinitionSchema),
+        ("TokenConfig", TokenConfigSchema),
+        ("ViewportState", ViewportStateSchema),
+        ("Token", TokenSchema),
+        ("SessionData", SessionDataSchema),
+        ("MapEntry", MapEntrySchema),
+        ("GlobalConfig", GlobalConfigSchema),
+    ]
+
     # Interfaces
-    sections.append(generate_ts_interface("GlobalConfig", GlobalConfigSchema))
+    for name, model in schemas:
+        sections.append(generate_ts_interface(name, model))
 
     # Metadata
     sections.append(generate_ts_metadata_interface())
-    sections.append(generate_metadata_registry("GlobalConfig", GlobalConfigSchema))
+    for name, model in schemas:
+        sections.append(generate_metadata_registry(name, model))
 
     with open(OUTPUT_FILE, "w") as f:
         f.write("\n".join(sections))

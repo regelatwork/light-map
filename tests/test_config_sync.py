@@ -64,3 +64,45 @@ def test_config_validation():
     # Invalid type
     with pytest.raises(ValueError):
         GlobalConfigSchema(pointer_offset_mm="not a number")
+
+
+def test_recursive_sync_to_dataclass():
+    """Verifies that nested Pydantic models correctly sync to nested dataclasses."""
+    from light_map.core.config_schema import ViewportStateSchema, MapEntrySchema
+    from light_map.map.map_config import MapEntry
+    from light_map.core.config_utils import sync_pydantic_to_dataclass
+
+    # Initial state
+    entry = MapEntry()
+    assert entry.viewport.zoom == 1.0
+    assert entry.scale_factor == 1.0
+
+    # Partial update: just nested viewport zoom
+    update = MapEntrySchema(viewport=ViewportStateSchema(zoom=2.5))
+    sync_pydantic_to_dataclass(update, entry)
+
+    # Check propagation
+    assert entry.viewport.zoom == 2.5
+    # Other fields should remain defaults
+    assert entry.viewport.x == 0.0
+    assert entry.scale_factor == 1.0
+
+
+def test_aruco_defaults_int_keys():
+    """Verifies that ArUco IDs (int keys) are correctly handled between JSON (strings) and Pydantic (ints)."""
+    from light_map.core.config_schema import TokenConfigSchema
+
+    # 1. Loading from JSON-like payload (string keys)
+    payload = {"aruco_defaults": {"42": {"name": "Test Token", "type": "PC"}}}
+    config = TokenConfigSchema(**payload)
+
+    # Pydantic should have cast key to int
+    assert 42 in config.aruco_defaults
+    assert isinstance(list(config.aruco_defaults.keys())[0], int)
+    assert config.aruco_defaults[42].name == "Test Token"
+
+    # 2. Dumping to JSON (string keys)
+    # mode='json' converts types to JSON-compatible ones
+    json_data = config.model_dump(mode="json")
+    assert "42" in json_data["aruco_defaults"]
+    assert isinstance(list(json_data["aruco_defaults"].keys())[0], str)

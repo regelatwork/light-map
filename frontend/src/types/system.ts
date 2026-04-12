@@ -6,6 +6,19 @@
  * This is enforced by the backend test: tests/test_enum_sync.py
  */
 
+import {
+  GmPosition,
+  ViewportState,
+  Token,
+  SizeProfile as TokenProfile,
+  ArucoDefinition as ArucoDefault,
+  TokenDetectionAlgorithm,
+  NamingStyle,
+} from './schema.generated';
+
+export { GmPosition, ViewportState, Token, TokenDetectionAlgorithm, NamingStyle };
+export type { TokenProfile, ArucoDefault };
+
 export enum VisibilityType {
   WALL = 'wall',
   DOOR = 'door',
@@ -89,30 +102,11 @@ export enum MenuActions {
   TOGGLE_TOKENS = 'TOGGLE_TOKENS',
 }
 
-export enum GmPosition {
-  NONE = 'None',
-  NORTH = 'North',
-  SOUTH = 'South',
-  EAST = 'East',
-  WEST = 'West',
-  NORTH_WEST = 'North West',
-  NORTH_EAST = 'North East',
-  SOUTH_WEST = 'South West',
-  SOUTH_EAST = 'South East',
-}
-
 export interface VisibilityBlocker {
   id: string;
   type: VisibilityType;
   is_open: boolean;
   points: [number, number][];
-}
-
-export interface ViewportState {
-  x: number;
-  y: number;
-  zoom: number;
-  rotation: number;
 }
 
 export interface WorldState {
@@ -121,33 +115,6 @@ export interface WorldState {
   viewport?: ViewportState;
   blockers?: VisibilityBlocker[];
   [key: string]: unknown;
-}
-
-export interface Token {
-  id: number;
-  world_x: number;
-  world_y: number;
-  name?: string;
-  color?: string;
-  type?: string;
-  profile?: string;
-  size?: number;
-  height_mm?: number;
-  [key: string]: unknown;
-}
-
-export interface TokenProfile {
-  size: number;
-  height_mm: number;
-}
-
-export interface ArucoDefault {
-  name: string;
-  type: string;
-  profile?: string;
-  size?: number;
-  height_mm?: number;
-  color?: string;
 }
 
 export interface SystemConfig {

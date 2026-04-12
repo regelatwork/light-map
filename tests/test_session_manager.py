@@ -55,3 +55,36 @@ def test_has_session(clean_session_dir):
 
     assert SessionManager.has_session(map_path) is True
     assert SessionManager.has_session(no_map_path) is False
+
+
+def test_save_load_with_tokens_and_doors(tmp_path):
+    from light_map.core.common_types import Token
+
+    map_path = str(tmp_path / "map.svg")
+    session_dir = str(tmp_path / "sessions")
+
+    tokens = [
+        Token(id=1, world_x=100.0, world_y=200.0, confidence=0.9),
+        Token(id=2, world_x=300.0, world_y=400.0, name="Orc"),
+    ]
+    data = SessionData(
+        map_file=map_path,
+        viewport=ViewportState(zoom=1.5),
+        tokens=tokens,
+        door_states={"door1": True, "door2": False},
+    )
+
+    # Save
+    SessionManager.save_for_map(map_path, data, session_dir=session_dir)
+
+    # Load
+    loaded = SessionManager.load_for_map(map_path, session_dir=session_dir)
+    assert loaded is not None
+    assert len(loaded.tokens) == 2
+    assert loaded.tokens[0].id == 1
+    assert loaded.tokens[0].world_x == 100.0
+    assert loaded.tokens[0].confidence == 0.9
+    assert loaded.tokens[1].id == 2
+    assert loaded.tokens[1].name == "Orc"
+    assert loaded.door_states["door1"] is True
+    assert loaded.door_states["door2"] is False

@@ -30,19 +30,88 @@ export enum NamingStyle {
   FANTASY = "FANTASY",
 }
 
+export interface SizeProfile {
+  size?: number;
+  height_mm?: number;
+}
+
+export interface ArucoDefinition {
+  name: string;
+  type?: string;
+  profile?: string | null;
+  size?: number | null;
+  height_mm?: number | null;
+  color?: string | null;
+}
+
+export interface TokenConfig {
+  token_profiles?: Record<string, SizeProfile>;
+  aruco_defaults?: Record<number, ArucoDefinition>;
+}
+
+export interface ViewportState {
+  x?: number;
+  y?: number;
+  zoom?: number;
+  rotation?: number;
+}
+
+export interface Token {
+  id: number;
+  world_x: number;
+  world_y: number;
+  world_z?: number;
+  marker_x?: number | null;
+  marker_y?: number | null;
+  marker_z?: number;
+  grid_x?: number | null;
+  grid_y?: number | null;
+  screen_x?: number | null;
+  screen_y?: number | null;
+  confidence?: number;
+  is_occluded?: boolean;
+  is_duplicate?: boolean;
+  name?: string | null;
+  color?: string | null;
+  type?: string;
+  profile?: string | null;
+  size?: number | null;
+  height_mm?: number | null;
+}
+
+export interface SessionData {
+  map_file: string;
+  viewport: ViewportState;
+  tokens?: Token[];
+  door_states?: Record<string, boolean>;
+  timestamp?: string;
+}
+
+export interface MapEntry {
+  scale_factor?: number;
+  viewport?: ViewportState;
+  grid_spacing_svg?: number;
+  grid_origin_svg_x?: number;
+  grid_origin_svg_y?: number;
+  physical_unit_inches?: number;
+  scale_factor_1to1?: number;
+  last_seen?: string;
+  aruco_overrides?: Record<number, ArucoDefinition>;
+}
+
 export interface GlobalConfig {
-  projector_ppi: number;
-  flash_intensity: number;
-  pointer_offset_mm: number;
-  enable_hand_masking: boolean;
-  enable_aruco_masking: boolean;
-  aruco_mask_intensity: number;
-  gm_position: GmPosition;
-  use_projector_3d_model: boolean;
-  inspection_linger_duration: number;
-  door_thickness_multiplier: number;
-  detection_algorithm: TokenDetectionAlgorithm;
-  naming_style: NamingStyle;
+  projector_ppi?: number;
+  flash_intensity?: number;
+  pointer_offset_mm?: number;
+  enable_hand_masking?: boolean;
+  enable_aruco_masking?: boolean;
+  aruco_mask_intensity?: number;
+  gm_position?: GmPosition;
+  use_projector_3d_model?: boolean;
+  inspection_linger_duration?: number;
+  door_thickness_multiplier?: number;
+  detection_algorithm?: TokenDetectionAlgorithm;
+  naming_style?: NamingStyle;
   projector_pos_x_override?: number | null;
   projector_pos_y_override?: number | null;
   projector_pos_z_override?: number | null;
@@ -59,7 +128,249 @@ export interface FieldMetadata {
   options?: { label: string; value: string }[];
 }
 
-export const GLOBALCONFIG_METADATA: Record<keyof GlobalConfig, any> = {
+export const SIZEPROFILE_METADATA: Record<keyof SizeProfile, FieldMetadata> = {
+  "size": {
+    "title": "Size",
+    "description": "Size in grid units.",
+    "min": 1,
+    "max": 10,
+    "default": 1
+  },
+  "height_mm": {
+    "title": "Height (mm)",
+    "description": "Physical height of the token in millimeters.",
+    "min": 0.0,
+    "max": 500.0,
+    "default": 50.0
+  }
+};
+
+export const ARUCODEFINITION_METADATA: Record<keyof ArucoDefinition, FieldMetadata> = {
+  "name": {
+    "title": "Name",
+    "description": "Display name for this ArUco marker."
+  },
+  "type": {
+    "title": "Type",
+    "description": "Token type (e.g., PC, NPC, Enemy).",
+    "default": "NPC"
+  },
+  "profile": {
+    "title": "Profile",
+    "description": "Reference to a SizeProfileSchema by name."
+  },
+  "size": {
+    "title": "Custom Size",
+    "description": "Override size in grid units.",
+    "min": 1,
+    "max": 10
+  },
+  "height_mm": {
+    "title": "Custom Height (mm)",
+    "description": "Override physical height in mm.",
+    "min": 0.0,
+    "max": 500.0
+  },
+  "color": {
+    "title": "Color",
+    "description": "CSS color override for the token."
+  }
+};
+
+export const TOKENCONFIG_METADATA: Record<keyof TokenConfig, FieldMetadata> = {
+  "token_profiles": {
+    "title": "Token Profiles",
+    "description": "Named size and height presets."
+  },
+  "aruco_defaults": {
+    "title": "ArUco Defaults",
+    "description": "Global default settings for specific ArUco IDs."
+  }
+};
+
+export const VIEWPORTSTATE_METADATA: Record<keyof ViewportState, FieldMetadata> = {
+  "x": {
+    "title": "X Offset",
+    "description": "Horizontal pan offset in SVG units.",
+    "default": 0.0
+  },
+  "y": {
+    "title": "Y Offset",
+    "description": "Vertical pan offset in SVG units.",
+    "default": 0.0
+  },
+  "zoom": {
+    "title": "Zoom",
+    "description": "Zoom level (1.0 = 100%).",
+    "default": 1.0
+  },
+  "rotation": {
+    "title": "Rotation",
+    "description": "Rotation in degrees.",
+    "default": 0.0
+  }
+};
+
+export const TOKEN_METADATA: Record<keyof Token, FieldMetadata> = {
+  "id": {
+    "title": "ID",
+    "description": "Unique identifier (e.g., ArUco ID)."
+  },
+  "world_x": {
+    "title": "World X",
+    "description": "Horizontal position in world coordinates."
+  },
+  "world_y": {
+    "title": "World Y",
+    "description": "Vertical position in world coordinates."
+  },
+  "world_z": {
+    "title": "World Z",
+    "description": "Height above the map surface.",
+    "default": 0.0
+  },
+  "marker_x": {
+    "title": "Marker X",
+    "description": "Horizontal marker position at its actual height."
+  },
+  "marker_y": {
+    "title": "Marker Y",
+    "description": "Vertical marker position at its actual height."
+  },
+  "marker_z": {
+    "title": "Marker Z",
+    "description": "Physical height of the marker.",
+    "default": 0.0
+  },
+  "grid_x": {
+    "title": "Grid X",
+    "description": "Snapped horizontal grid coordinate."
+  },
+  "grid_y": {
+    "title": "Grid Y",
+    "description": "Snapped vertical grid coordinate."
+  },
+  "screen_x": {
+    "title": "Screen X",
+    "description": "Horizontal projector pixel position."
+  },
+  "screen_y": {
+    "title": "Screen Y",
+    "description": "Vertical projector pixel position."
+  },
+  "confidence": {
+    "title": "Confidence",
+    "description": "Detection confidence (0.0 to 1.0).",
+    "default": 1.0
+  },
+  "is_occluded": {
+    "title": "Is Occluded",
+    "description": "True if the token is currently hidden.",
+    "default": false
+  },
+  "is_duplicate": {
+    "title": "Is Duplicate",
+    "description": "True if this is a ghost detection.",
+    "default": false
+  },
+  "name": {
+    "title": "Name",
+    "description": "Assigned name of the token."
+  },
+  "color": {
+    "title": "Color",
+    "description": "Assigned color for the token ring."
+  },
+  "type": {
+    "title": "Type",
+    "description": "Token type (e.g., PC, NPC).",
+    "default": "NPC"
+  },
+  "profile": {
+    "title": "Profile",
+    "description": "The size profile name used."
+  },
+  "size": {
+    "title": "Size",
+    "description": "Resolved size in grid units."
+  },
+  "height_mm": {
+    "title": "Height (mm)",
+    "description": "Resolved height in mm."
+  }
+};
+
+export const SESSIONDATA_METADATA: Record<keyof SessionData, FieldMetadata> = {
+  "map_file": {
+    "title": "Map File",
+    "description": "Absolute path to the map image."
+  },
+  "viewport": {
+    "title": "Viewport",
+    "description": "Saved pan and zoom state."
+  },
+  "tokens": {
+    "title": "Tokens",
+    "description": "List of active tokens."
+  },
+  "door_states": {
+    "title": "Door States",
+    "description": "Map of door IDs to their open/closed status."
+  },
+  "timestamp": {
+    "title": "Timestamp",
+    "description": "ISO 8601 creation time.",
+    "default": ""
+  }
+};
+
+export const MAPENTRY_METADATA: Record<keyof MapEntry, FieldMetadata> = {
+  "scale_factor": {
+    "title": "Scale Factor",
+    "description": "Global zoom multiplier for this map.",
+    "default": 1.0
+  },
+  "viewport": {
+    "title": "Viewport",
+    "description": "Saved viewport state."
+  },
+  "grid_spacing_svg": {
+    "title": "Grid Spacing",
+    "description": "Size of one grid cell in SVG units.",
+    "default": 0.0
+  },
+  "grid_origin_svg_x": {
+    "title": "Grid Origin X",
+    "description": "Horizontal grid offset.",
+    "default": 0.0
+  },
+  "grid_origin_svg_y": {
+    "title": "Grid Origin Y",
+    "description": "Vertical grid offset.",
+    "default": 0.0
+  },
+  "physical_unit_inches": {
+    "title": "Physical Unit",
+    "description": "Size of one grid cell in inches.",
+    "default": 1.0
+  },
+  "scale_factor_1to1": {
+    "title": "1:1 Scale Factor",
+    "description": "Zoom level required for physical 1:1 scale.",
+    "default": 1.0
+  },
+  "last_seen": {
+    "title": "Last Seen",
+    "description": "ISO 8601 timestamp of last usage.",
+    "default": ""
+  },
+  "aruco_overrides": {
+    "title": "ArUco Overrides",
+    "description": "Map-specific marker definitions."
+  }
+};
+
+export const GLOBALCONFIG_METADATA: Record<keyof GlobalConfig, FieldMetadata> = {
   "projector_ppi": {
     "title": "Projector PPI",
     "description": "Pixels Per Inch of the projector at the projection surface.",

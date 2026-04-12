@@ -6,6 +6,8 @@ if TYPE_CHECKING:
     from light_map.interactive_app import InteractiveApp
     from light_map.core.scene import SceneTransition, WorldState
 from light_map.core.common_types import GridMetadata, SelectionState
+from light_map.core.config_schema import GlobalConfigSchema
+from light_map.core.config_utils import sync_pydantic_to_dataclass
 
 
 ActionHandler = Callable[
@@ -218,98 +220,94 @@ def handle_toggle_fow(
     return None
 
 
+def handle_update_config_generic(
+    app: "InteractiveApp",
+    payload: Dict[str, Any],
+    schema_class: Any,
+    update_func: Callable[[Dict[str, Any]], None],
+    target_state: Any,
+    on_success: Optional[Callable[[Dict[str, Any]], None]] = None,
+) -> bool:
+    """
+    Generic helper to validate payload with Pydantic and update storage and runtime state.
+    Returns True if any changes were applied.
+    """
+    try:
+        # 1. Validate (handles typecasting and range checks)
+        # Using schema_class(**payload) to validate only what's provided
+        validated = schema_class(**payload)
+
+        # 2. Update storage (MapConfigManager)
+        # This also handles persisting to disk via app.map_config.save() inside update_func
+        update_func(payload)
+
+        # 3. Sync to runtime AppConfig
+        sync_pydantic_to_dataclass(validated, target_state)
+
+        # 4. Optional post-sync logic
+        if on_success:
+            on_success(payload)
+
+        return True
+    except Exception as e:
+        logging.error(f"ActionDispatcher: Failed to update config: {e}")
+        return False
+
+
 def handle_update_system_config(
     app: "InteractiveApp", payload: Dict[str, Any], state: Optional["WorldState"] = None
 ) -> Optional["SceneTransition"]:
-    from light_map.core.common_types import GmPosition
+    """Updates global system configuration."""
 
-    gs = app.map_config.data.global_settings
-    changed = False
+    def on_sync_success(validated_payload: Dict[str, Any]):
+        # Handle side effects that aren't pure data sync
+        if "use_projector_3d_model" in validated_payload:
+            if app.config.projector_3d_model:
+                app.config.projector_3d_model.use_3d = app.config.use_projector_3d_model
 
-    if "enable_hand_masking" in payload:
-        gs.enable_hand_masking = payload["enable_hand_masking"]
-        app.config.enable_hand_masking = gs.enable_hand_masking
-        changed = True
+        if "projector_ppi" in validated_payload:
+            app.refresh_base_scale()
 
-    if "enable_aruco_masking" in payload:
-        gs.enable_aruco_masking = payload["enable_aruco_masking"]
-        app.config.enable_aruco_masking = gs.enable_aruco_masking
-        changed = True
+        # Update WorldState Atom for real-time feedback on position overrides
+        pos_fields = {
+            "projector_pos_x_override",
+            "projector_pos_y_override",
+            "projector_pos_z_override",
+        }
+        if state is not None and any(f in validated_payload for f in pos_fields):
+            from light_map.core.common_types import ProjectorPose
 
-    if "aruco_mask_intensity" in payload:
-        gs.aruco_mask_intensity = payload["aruco_mask_intensity"]
-        app.config.aruco_mask_intensity = gs.aruco_mask_intensity
-        changed = True
+            if app.config.projector_3d_model:
+                calibrated_pos = (
+                    app.config.projector_3d_model.calibrated_projector_center
+                )
+                if calibrated_pos is not None:
+                    gs = app.map_config.data.global_settings
+                    new_pose = ProjectorPose(
+                        x=gs.projector_pos_x_override
+                        if gs.projector_pos_x_override is not None
+                        else calibrated_pos[0],
+                        y=gs.projector_pos_y_override
+                        if gs.projector_pos_y_override is not None
+                        else calibrated_pos[1],
+                        z=gs.projector_pos_z_override
+                        if gs.projector_pos_z_override is not None
+                        else calibrated_pos[2],
+                    )
+                    state.projector_pose = new_pose
 
-    if "pointer_offset_mm" in payload:
-        gs.pointer_offset_mm = payload["pointer_offset_mm"]
-        app.config.pointer_offset_mm = gs.pointer_offset_mm
-        changed = True
-
-    if "gm_position" in payload:
-        try:
-            new_pos = GmPosition(payload["gm_position"])
-            gs.gm_position = new_pos
-            app.config.gm_position = new_pos
-            changed = True
-        except ValueError:
-            pass
-
-    if "use_projector_3d_model" in payload:
-        gs.use_projector_3d_model = payload["use_projector_3d_model"]
-        app.config.use_projector_3d_model = gs.use_projector_3d_model
-        if app.config.projector_3d_model:
-            app.config.projector_3d_model.use_3d = gs.use_projector_3d_model
-        changed = True
-
-    # Projector Position Overrides
-    pos_changed = False
-    if "projector_pos_x_override" in payload:
-        gs.projector_pos_x_override = payload["projector_pos_x_override"]
-        app.config.projector_pos_x_override = gs.projector_pos_x_override
-        pos_changed = True
-        changed = True
-    if "projector_pos_y_override" in payload:
-        gs.projector_pos_y_override = payload["projector_pos_y_override"]
-        app.config.projector_pos_y_override = gs.projector_pos_y_override
-        pos_changed = True
-        changed = True
-    if "projector_pos_z_override" in payload:
-        gs.projector_pos_z_override = payload["projector_pos_z_override"]
-        app.config.projector_pos_z_override = gs.projector_pos_z_override
-        pos_changed = True
-        changed = True
-
-    if "projector_ppi" in payload:
-        gs.projector_ppi = payload["projector_ppi"]
-        app.config.projector_ppi = gs.projector_ppi
-        app.refresh_base_scale()
-        changed = True
-
-    if pos_changed and state is not None:
-        # Update WorldState Atom for real-time feedback
-        from light_map.core.common_types import ProjectorPose
-
-        calibrated_pos = app.config.projector_3d_model.calibrated_projector_center
-        if calibrated_pos is not None:
-            new_pose = ProjectorPose(
-                x=gs.projector_pos_x_override
-                if gs.projector_pos_x_override is not None
-                else calibrated_pos[0],
-                y=gs.projector_pos_y_override
-                if gs.projector_pos_y_override is not None
-                else calibrated_pos[1],
-                z=gs.projector_pos_z_override
-                if gs.projector_pos_z_override is not None
-                else calibrated_pos[2],
-            )
-            state.projector_pose = new_pose
-
-    if changed:
         if state is not None:
             state.config_data += 1
-        app.map_config.save()
         app.notifications.add_notification("System Settings Updated")
+
+    handle_update_config_generic(
+        app,
+        payload,
+        GlobalConfigSchema,
+        app.map_config.update_global_settings,
+        app.config,
+        on_success=on_sync_success,
+    )
 
     return None
 

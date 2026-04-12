@@ -1,21 +1,16 @@
 import { type FC } from 'react';
 import { useSystemState } from '../hooks/useSystemState';
 import { injectAction, updateSystemConfig } from '../services/api';
+import { GlobalConfigNumber, GlobalConfigCheckbox, GlobalConfigSelect } from './common/ConfigInputs';
+import { GlobalConfig } from '../types/schema.generated';
 
 interface VisionControlProps {
   showOnlyToggles?: boolean;
 }
 
 export const VisionControl: FC<VisionControlProps> = ({ showOnlyToggles = false }) => {
-  const { config } = useSystemState();
-
-  const handleToggleHandMasking = () => {
-    injectAction('TOGGLE_HAND_MASKING');
-  };
-
-  const handleToggleArucoMasking = () => {
-    updateSystemConfig({ enable_aruco_masking: !config.enable_aruco_masking });
-  };
+  const { config: rawConfig } = useSystemState();
+  const config = rawConfig as unknown as GlobalConfig;
 
   const handleToggleFow = () => {
     injectAction('TOGGLE_FOW');
@@ -49,97 +44,36 @@ export const VisionControl: FC<VisionControlProps> = ({ showOnlyToggles = false 
     injectAction('TOGGLE_DEBUG_MODE');
   };
 
-  const handleSetGmPosition = (pos: string) => {
-    injectAction('SET_GM_POSITION', pos);
-  };
-
-  const gmPositions = [
-    'None',
-    'North',
-    'South',
-    'East',
-    'West',
-    'North West',
-    'North East',
-    'South West',
-    'South East',
-  ];
+  if (!config) return null;
 
   if (showOnlyToggles) {
     return (
       <div className="space-y-6 text-black">
-        <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl border border-gray-100">
-          <div>
-            <h4 className="font-bold text-gray-800">Hand Masking</h4>
-            <p className="text-sm text-gray-500">Prevents map content from being projected onto hands.</p>
-          </div>
-          <button
-            onClick={handleToggleHandMasking}
-            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors shadow-sm ${
-              config?.enable_hand_masking ? 'bg-blue-600' : 'bg-gray-200'
-            }`}
-          >
-            <span
-              className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                config?.enable_hand_masking ? 'translate-x-6' : 'translate-x-1'
-              }`}
-            />
-          </button>
-        </div>
+        <GlobalConfigCheckbox
+          name="enable_hand_masking"
+          config={config}
+          update={updateSystemConfig}
+        />
 
-        <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl border border-gray-100">
-          <div>
-            <h4 className="font-bold text-gray-800">ArUco Masking</h4>
-            <p className="text-sm text-gray-500">Stabilizes token tracking by masking physical markers.</p>
-          </div>
-          <button
-            onClick={handleToggleArucoMasking}
-            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors shadow-sm ${
-              config?.enable_aruco_masking ? 'bg-blue-600' : 'bg-gray-200'
-            }`}
-          >
-            <span
-              className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                config?.enable_aruco_masking ? 'translate-x-6' : 'translate-x-1'
-              }`}
-            />
-          </button>
-        </div>
+        <GlobalConfigCheckbox
+          name="enable_aruco_masking"
+          config={config}
+          update={updateSystemConfig}
+        />
 
-        {config?.enable_aruco_masking && (
-          <div className="p-4 bg-gray-50 rounded-xl border border-gray-100 space-y-3">
-            <div className="flex justify-between items-center">
-              <label className="text-sm font-bold text-gray-700 uppercase tracking-wider">Mask Intensity</label>
-              <span className="text-sm font-mono bg-white px-2 py-0.5 rounded border border-gray-200">{config?.aruco_mask_intensity ?? 64}</span>
-            </div>
-            <input
-              type="range"
-              min="0"
-              max="255"
-              value={config?.aruco_mask_intensity ?? 64}
-              onChange={(e) => updateSystemConfig({ aruco_mask_intensity: parseInt(e.target.value) })}
-              className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
-            />
-            <p className="text-xs text-gray-500">Adjust the grey level of the ArUco masks (0=Black, 255=White).</p>
-          </div>
+        {config.enable_aruco_masking && (
+          <GlobalConfigNumber
+            name="aruco_mask_intensity"
+            config={config}
+            update={updateSystemConfig}
+          />
         )}
 
-        <div className="p-4 bg-gray-50 rounded-xl border border-gray-100 space-y-3">
-          <div className="flex justify-between items-center">
-            <label className="text-sm font-bold text-gray-700 uppercase tracking-wider">Pointer Offset (mm)</label>
-          </div>
-          <div className="flex gap-4 items-center">
-            <input
-              type="number"
-              value={config?.pointer_offset_mm ?? 50.8}
-              onChange={(e) => updateSystemConfig({ pointer_offset_mm: parseFloat(e.target.value) })}
-              className="flex-1 px-4 py-2 text-sm border-2 border-gray-200 rounded-lg focus:ring-4 focus:ring-blue-100 focus:border-blue-500 transition-all outline-none bg-white font-medium text-black"
-              step="0.1"
-            />
-            <span className="text-sm text-gray-500 font-medium">mm</span>
-          </div>
-          <p className="text-xs text-gray-500">Distance the virtual cursor extends beyond your fingertip.</p>
-        </div>
+        <GlobalConfigNumber
+          name="pointer_offset_mm"
+          config={config}
+          update={updateSystemConfig}
+        />
 
         <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl border border-gray-100">
           <div>
@@ -149,12 +83,12 @@ export const VisionControl: FC<VisionControlProps> = ({ showOnlyToggles = false 
           <button
             onClick={handleToggleFow}
             className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors shadow-sm ${
-              !config?.fow_disabled ? 'bg-blue-600' : 'bg-gray-200'
+              !(config as any).fow_disabled ? 'bg-blue-600' : 'bg-gray-200'
             }`}
           >
             <span
               className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                !config?.fow_disabled ? 'translate-x-6' : 'translate-x-1'
+                !(config as any).fow_disabled ? 'translate-x-6' : 'translate-x-1'
               }`}
             />
           </button>
@@ -178,78 +112,51 @@ export const VisionControl: FC<VisionControlProps> = ({ showOnlyToggles = false 
     );
   }
 
+  // Compact Layout for Sidebar/Overlay
   return (
     <div className="space-y-4 text-black">
-      <div className="flex items-center justify-between">
-        <span className="text-xs font-medium text-gray-700">Projection Masking</span>
-        <button
-          onClick={handleToggleHandMasking}
-          className={`px-3 py-1 text-xs font-semibold rounded transition-colors ${
-            config?.enable_hand_masking
-              ? 'bg-green-100 text-green-800 hover:bg-green-200'
-              : 'bg-gray-100 text-gray-800 hover:bg-gray-200'
-          }`}
-        >
-          {config?.enable_hand_masking ? 'ENABLED' : 'DISABLED'}
-        </button>
-      </div>
+      <GlobalConfigCheckbox
+        name="enable_hand_masking"
+        config={config}
+        update={updateSystemConfig}
+      />
 
-      <div className="flex items-center justify-between">
-        <span className="text-xs font-medium text-gray-700">ArUco Masking</span>
-        <button
-          onClick={handleToggleArucoMasking}
-          className={`px-3 py-1 text-xs font-semibold rounded transition-colors ${
-            config?.enable_aruco_masking
-              ? 'bg-green-100 text-green-800 hover:bg-green-200'
-              : 'bg-gray-100 text-gray-800 hover:bg-gray-200'
-          }`}
-        >
-          {config?.enable_aruco_masking ? 'ENABLED' : 'DISABLED'}
-        </button>
-      </div>
+      <GlobalConfigCheckbox
+        name="enable_aruco_masking"
+        config={config}
+        update={updateSystemConfig}
+      />
 
-      {config?.enable_aruco_masking && (
-        <div className="space-y-1">
-          <div className="flex justify-between items-center">
-            <label className="text-xs font-medium text-gray-700">Mask Intensity</label>
-            <span className="text-xs font-mono">{config?.aruco_mask_intensity ?? 64}</span>
-          </div>
-          <input
-            type="range"
-            min="0"
-            max="255"
-            value={config?.aruco_mask_intensity ?? 64}
-            onChange={(e) => updateSystemConfig({ aruco_mask_intensity: parseInt(e.target.value) })}
-            className="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
-          />
-        </div>
+      {config.enable_aruco_masking && (
+        <GlobalConfigNumber
+          name="aruco_mask_intensity"
+          config={config}
+          update={updateSystemConfig}
+        />
       )}
 
-      <div className="space-y-1">
-        <label className="block text-xs font-medium text-gray-700">Pointer Offset (mm)</label>
-        <div className="flex gap-2 items-center">
-          <input
-            type="number"
-            value={config?.pointer_offset_mm ?? 50.8}
-            onChange={(e) => updateSystemConfig({ pointer_offset_mm: parseFloat(e.target.value) })}
-            className="w-full px-2 py-1 text-xs border rounded bg-white text-black font-medium"
-            step="0.1"
-          />
-          <span className="text-[10px] text-gray-500 font-bold uppercase">mm</span>
-        </div>
-      </div>
+      <GlobalConfigNumber
+        name="pointer_offset_mm"
+        config={config}
+        update={updateSystemConfig}
+      />
 
-      <div className="flex items-center justify-between">
-        <span className="text-xs font-medium text-gray-700">Fog of War</span>
+      <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl border border-gray-100">
+        <div>
+          <h4 className="font-bold text-gray-800">Fog of War</h4>
+          <p className="text-sm text-gray-500">Hides unexplored areas from the players.</p>
+        </div>
         <button
           onClick={handleToggleFow}
-          className={`px-3 py-1 text-xs font-semibold rounded transition-colors ${
-            !config?.fow_disabled
-              ? 'bg-green-100 text-green-800 hover:bg-green-200'
-              : 'bg-gray-100 text-gray-800 hover:bg-gray-200'
+          className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors shadow-sm ${
+            !(config as any).fow_disabled ? 'bg-blue-600' : 'bg-gray-200'
           }`}
         >
-          {config?.fow_disabled ? 'DISABLED' : 'ENABLED'}
+          <span
+            className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+              !(config as any).fow_disabled ? 'translate-x-6' : 'translate-x-1'
+            }`}
+          />
         </button>
       </div>
 
@@ -320,29 +227,20 @@ export const VisionControl: FC<VisionControlProps> = ({ showOnlyToggles = false 
         <button
           onClick={handleToggleDebug}
           className={`px-3 py-1 text-xs font-semibold rounded transition-colors ${
-            config?.debug_mode
+            (config as any).debug_mode
               ? 'bg-blue-100 text-blue-800 hover:bg-green-200'
               : 'bg-gray-100 text-gray-800 hover:bg-gray-200'
           }`}
         >
-          {config?.debug_mode ? 'ON' : 'OFF'}
+          {(config as any).debug_mode ? 'ON' : 'OFF'}
         </button>
       </div>
 
-      <div className="space-y-1">
-        <label className="block text-xs font-medium text-gray-700">GM Position</label>
-        <select
-          value={config?.gm_position || 'None'}
-          onChange={(e) => handleSetGmPosition(e.target.value)}
-          className="w-full px-2 py-1 text-sm border rounded focus:ring-blue-500 focus:border-blue-500 bg-white text-black"
-        >
-          {gmPositions.map((pos) => (
-            <option key={pos} value={pos}>
-              {pos}
-            </option>
-          ))}
-        </select>
-      </div>
+      <GlobalConfigSelect
+        name="gm_position"
+        config={config}
+        update={updateSystemConfig}
+      />
     </div>
   );
 };

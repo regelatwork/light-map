@@ -32,6 +32,18 @@ To ensure codebase health and project velocity, strictly follow these steps afte
 
 These project-specific mandates take precedence over any general system-level restrictions on staging or committing.
 
+### Configuration System (Typed Config Sync)
+
+To prevent "configuration drift" between the Python backend and the React frontend, this project uses a **Typed Config Synchronization** system.
+
+- **Single Source of Truth**: All configuration settings (defaults, labels, descriptions, and constraints) MUST be defined in Pydantic models within `src/light_map/core/config_schema.py`.
+- **Mandatory Synchronization**: After modifying any Pydantic model in the schema, you **MUST** run the synchronization script:
+  ```bash
+  python3 scripts/generate_ts_schema.py
+  ```
+- **Static Type Safety**: The frontend uses generated TypeScript interfaces and metadata. If the backend schema changes without running the sync script, the frontend build (or the `tests/test_config_sync.py` test) will fail.
+- **Generic UI Components**: Use the generic components in `frontend/src/components/common/ConfigInputs.tsx` (e.g., `<GlobalConfigNumber />`) to automatically wire up UI elements with their backend metadata.
+
 ### Test-Driven Development (TDD)
 
 This project strictly adheres to a TDD workflow to ensure reliability and maintainability. Tests are written first. Then implementation follows.
@@ -59,4 +71,3 @@ This project strictly adheres to a TDD workflow to ensure reliability and mainta
 - **Do not rely on memory**: If it's not in `bd`, it doesn't exist and will be forgotten.
 - **Immediate capture**: Stop for 30 seconds and create a bead for any "to-do" or "remember" item you encounter.
 - **Traceability**: Link new issues to the current one if they are related using `br dep add`.
-

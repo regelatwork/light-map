@@ -26,6 +26,9 @@ from light_map.core.storage import StorageManager
 from light_map.core.config_store import ConfigStore
 from light_map.core.token_naming import generate_token_name
 
+from light_map.core.config_schema import GlobalConfigSchema
+from light_map.core.config_utils import sync_pydantic_to_dataclass
+
 # Add TYPE_CHECKING to avoid circular import with FogOfWarManager
 from typing import TYPE_CHECKING
 
@@ -148,6 +151,22 @@ class MapConfigManager:
     def version(self, value: int):
         self._version = value
 
+    def update_global_settings(self, payload: Dict[str, Any]) -> None:
+        """
+        Validates the payload against GlobalConfigSchema and updates both
+        the in-memory data and the on-disk storage.
+        """
+        # 1. Validate (handles typecasting and range checks)
+        # Using partial update: we only validate what's in the payload
+        validated = GlobalConfigSchema(**payload)
+
+        # 2. Sync to internal dataclass
+        sync_pydantic_to_dataclass(validated, self.data.global_settings)
+
+        # 3. Persist to disk
+        self.save()
+        self.version = self._get_next_version()
+
     def _get_next_version(self) -> int:
         """Returns a strictly monotonic version number based on time.monotonic_ns()."""
         new_v = time.monotonic_ns()
@@ -187,8 +206,18 @@ class MapConfigManager:
             if not raw and not tokens_raw:
                 return MapConfigData()
 
-            # Deserialize Global Settings
-            global_data = raw.get("global", {})
+            # Deserialize Global Settings using Pydantic for validation and defaults
+            global_raw = raw.get("global", {})
+            try:
+                # We use GlobalConfigSchema to handle defaults and validation
+                validated_global = GlobalConfigSchema(**global_raw)
+                global_settings = GlobalMapConfig()
+                sync_pydantic_to_dataclass(validated_global, global_settings)
+            except Exception as e:
+                logging.warning(
+                    f"MapConfig: Failed to validate global settings: {e}. Using defaults."
+                )
+                global_settings = GlobalMapConfig()
 
             # Load Token Profiles
             raw_profiles = tokens_raw.get("token_profiles", {})
@@ -221,37 +250,10 @@ class MapConfigManager:
                 except ValueError:
                     pass
 
-            global_settings = GlobalMapConfig(
-                projector_ppi=global_data.get("projector_ppi", 96.0),
-                flash_intensity=global_data.get("flash_intensity", 255),
-                last_used_map=global_data.get("last_used_map"),
-                detection_algorithm=TokenDetectionAlgorithm(
-                    global_data.get("detection_algorithm", "FLASH")
-                ),
-                token_profiles=token_profiles,
-                aruco_defaults=aruco_defaults,
-                enable_hand_masking=global_data.get("enable_hand_masking", False),
-                hand_mask_padding=global_data.get("hand_mask_padding", 30),
-                enable_aruco_masking=global_data.get("enable_aruco_masking", True),
-                aruco_mask_padding=global_data.get("aruco_mask_padding", 10),
-                aruco_mask_persistence_s=global_data.get(
-                    "aruco_mask_persistence_s", DEFAULT_ARUCO_MASK_PERSISTENCE_S
-                ),
-                calibration_box_height_mm=global_data.get(
-                    "calibration_box_height_mm", 78.0
-                ),
-                use_projector_3d_model=global_data.get("use_projector_3d_model", False),
-                projector_pos_x_override=global_data.get("projector_pos_x_override"),
-                projector_pos_y_override=global_data.get("projector_pos_y_override"),
-                projector_pos_z_override=global_data.get("projector_pos_z_override"),
-                gm_position=GmPosition(global_data.get("gm_position", GmPosition.NONE)),
-                naming_style=NamingStyle(
-                    global_data.get("naming_style", NamingStyle.SCI_FI)
-                ),
-                door_thickness_multiplier=global_data.get(
-                    "door_thickness_multiplier", 3.0
-                ),
-            )
+            # Sync complex fields to the already validated global_settings
+            global_settings.token_profiles = token_profiles
+            global_settings.aruco_defaults = aruco_defaults
+            global_settings.last_used_map = global_raw.get("last_used_map")
 
             # Deserialize Maps
             maps = {}

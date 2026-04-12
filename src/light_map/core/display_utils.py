@@ -130,20 +130,23 @@ def draw_text_with_background(
     # Draw background with alpha blending
     sub_img = img[bg_rect_y1:bg_rect_y2, bg_rect_x1:bg_rect_x2]
 
-    # Ensure bg_color matches channel count
-    channels = sub_img.shape[2]
+    # Ensure colors match channel count (BGR or BGRA)
+    channels = img.shape[2]
     if channels == 4:
-        # Append alpha=255 to bg_color
-        full_bg_color = tuple(bg_color) + (255,)
+        # If color is 3-tuple, append alpha=255. If already 4-tuple, keep as is.
+        full_bg_color = bg_color if len(bg_color) == 4 else tuple(bg_color) + (255,)
+        full_text_color = color if len(color) == 4 else tuple(color) + (255,)
     else:
-        full_bg_color = bg_color
+        # For 3-channel images, use only the first 3 components of the color
+        full_bg_color = bg_color[:3] if len(bg_color) > 3 else bg_color
+        full_text_color = color[:3] if len(color) > 3 else color
 
     rect = np.full(sub_img.shape, full_bg_color, dtype=np.uint8)
     res = cv2.addWeighted(sub_img, 1 - alpha, rect, alpha, 0)
     img[bg_rect_y1:bg_rect_y2, bg_rect_x1:bg_rect_x2] = res
 
     # Draw text
-    cv2.putText(img, text, (x, y), font, scale, color, thickness)
+    cv2.putText(img, text, (x, y), font, scale, full_text_color, thickness)
 
 
 def setup_logging(level=logging.INFO, log_file: Optional[str] = None):

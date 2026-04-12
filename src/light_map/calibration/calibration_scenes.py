@@ -1,5 +1,4 @@
 from __future__ import annotations
-import time
 import logging
 from enum import Enum, auto
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
@@ -9,7 +8,6 @@ import numpy as np
 import os
 from collections import Counter
 import cv2
-from light_map.core.display_utils import draw_text_with_background
 
 from light_map.core.scene import Scene, SceneTransition
 from light_map.input.map_interaction import MapInteractionController
@@ -43,8 +41,9 @@ SCENE_INSTR_TEXT_COLOR = (255, 255, 255)  # White text on black box
 
 
 class FlashCalibStage(Enum):
-    START = auto()
-    TESTING = auto()
+    IDLE = auto()
+    FLASH = auto()
+    COOLDOWN = auto()
     ANALYZING = auto()
     SHOW_RESULT = auto()
     DONE = auto()
@@ -56,14 +55,14 @@ class FlashCalibrationScene(Scene):
     def __init__(self, context: AppContext):
         super().__init__(context)
         self.token_tracker = TokenTracker()
-        self._stage = FlashCalibStage.START
+        self._stage = FlashCalibStage.IDLE
         self._test_levels = [255, 225, 195, 165, 135, 105, 75, 45]
         self._current_level_idx = 0
         self._results: Dict[int, int] = {}
         self._capture_frame = False
 
     def on_enter(self, payload: dict | None = None) -> None:
-        self._stage = FlashCalibStage.START
+        self._stage = FlashCalibStage.IDLE
         self._current_level_idx = 0
         self._results = {}
         self.token_tracker.debug_mode = self.context.debug_mode
@@ -76,13 +75,48 @@ class FlashCalibrationScene(Scene):
     def _sync_calibration_state(self):
         from light_map.core.common_types import CalibrationState
 
-        self.context.state.calibration = CalibrationState(stage=str(self._stage))
+        # Preserve intensity and text during stage update
+        intensity = (
+            self.context.state.calibration.flash_intensity
+            if self.context.state.calibration
+            else 0
+        )
+        text = (
+            self.context.state.calibration.instruction_text
+            if self.context.state.calibration
+            else ""
+        )
+
+        self.context.state.calibration = CalibrationState(
+            stage=str(self._stage), flash_intensity=intensity, instruction_text=text
+        )
 
     def update(
         self, inputs: List[HandInput], actions: List[Action], current_time: float
     ) -> Optional[SceneTransition]:
-        if self._stage == FlashCalibStage.START:
-            self._change_stage(FlashCalibStage.TESTING, current_time)
+        if self._stage == FlashCalibStage.IDLE:
+            self._change_stage(FlashCalibStage.FLASH, current_time)
+
+        elif self._stage == FlashCalibStage.FLASH:
+            if self._capture_frame and self.context.last_camera_frame is not None:
+                intensity = self.context.state.calibration.flash_intensity
+                tokens = self.token_tracker.detect_tokens(
+                    frame_white=self.context.last_camera_frame,
+                    projector_matrix=self.context.app_config.projector_matrix,
+                    map_system=self.context.map_system,
+                    default_height_mm=0.0,  # Calibrate against table surface
+                )
+                self._results[intensity] = len(tokens)
+                logging.info(
+                    "Calibration: Level %d -> Found %d tokens", intensity, len(tokens)
+                )
+                self._capture_frame = False
+                self._current_level_idx += 1
+
+                if self._current_level_idx >= len(self._test_levels):
+                    self._change_stage(FlashCalibStage.ANALYZING, current_time)
+                else:
+                    self._change_stage(FlashCalibStage.COOLDOWN, current_time)
 
         elif self._stage == FlashCalibStage.ANALYZING:
             self._analyze_results()
@@ -108,50 +142,17 @@ class FlashCalibrationScene(Scene):
         Calibration scenes need standard UI but NOT vision masks,
         as masks interfere with pattern detection and feedback.
         """
+        if self._stage == FlashCalibStage.FLASH:
+            # During the flash, only show the flash layer for maximum intensity
+            return [app.flash_layer]
+
+        # Use calibration layer for instructions and standard UI for overlays
         return [
-            app.scene_layer,
+            app.calibration_layer,
             app.token_layer,
             app.menu_layer,
-            app.notification_layer,
-            app.debug_layer,
-            app.selection_progress_layer,
             app.cursor_layer,
         ]
-
-    def render(self, frame: np.ndarray) -> np.ndarray:
-        if self._stage == FlashCalibStage.TESTING:
-            if self._capture_frame and self.context.last_camera_frame is not None:
-                intensity = self._test_levels[self._current_level_idx]
-                tokens = self.token_tracker.detect_tokens(
-                    frame_white=self.context.last_camera_frame,
-                    projector_matrix=self.context.app_config.projector_matrix,
-                    map_system=self.context.map_system,
-                    default_height_mm=0.0,  # Calibrate against table surface
-                )
-                self._results[intensity] = len(tokens)
-                logging.info(
-                    "Calibration: Level %d -> Found %d tokens", intensity, len(tokens)
-                )
-                self._capture_frame = False
-                self._current_level_idx += 1
-
-                if self._current_level_idx >= len(self._test_levels):
-                    self._change_stage(FlashCalibStage.ANALYZING, time.monotonic())
-                else:
-                    # Next level's settle time is handled by _change_stage
-                    self._change_stage(FlashCalibStage.TESTING, time.monotonic())
-
-            # Display current flash level
-            if self._current_level_idx < len(self._test_levels):
-                intensity = self._test_levels[self._current_level_idx]
-                return np.full_like(frame, intensity, dtype=np.uint8)
-
-        if self._stage == FlashCalibStage.SHOW_RESULT:
-            # The main app loop should handle rendering overlays. For now, this scene
-            # doesn't modify the frame, it just lets the main loop show the map.
-            return frame
-
-        return np.zeros_like(frame, dtype=np.uint8)
 
     def _analyze_results(self):
         non_zero_results = {i: c for i, c in self._results.items() if c > 0}
@@ -170,6 +171,7 @@ class FlashCalibrationScene(Scene):
             optimal_intensity = stable_intensities[len(stable_intensities) // 2]
             msg = f"Optimal intensity found: {optimal_intensity}"
 
+        self._result_msg = msg
         self.context.map_config_manager.set_flash_intensity(optimal_intensity)
         self.context.notifications.add_notification(msg)
         logging.info(msg)
@@ -178,8 +180,11 @@ class FlashCalibrationScene(Scene):
         """Callback for when a calibration stage timer finishes."""
         current_time = self.context.time_provider()
 
-        if self._stage == FlashCalibStage.TESTING:
-            self._capture_frame = True  # Signal render() to process a frame
+        if self._stage == FlashCalibStage.FLASH:
+            self._capture_frame = True  # Signal update() to process a frame
+
+        elif self._stage == FlashCalibStage.COOLDOWN:
+            self._change_stage(FlashCalibStage.FLASH, current_time)
 
         elif self._stage == FlashCalibStage.SHOW_RESULT:
             self._change_stage(FlashCalibStage.DONE, current_time)
@@ -187,12 +192,43 @@ class FlashCalibrationScene(Scene):
     def _change_stage(self, new_stage: FlashCalibStage, current_time: float):
         """Transitions to a new stage and schedules next steps if necessary."""
         self._stage = new_stage
+
+        # Ensure state object exists
+        if not self.context.state.calibration:
+            from light_map.core.common_types import CalibrationState
+
+            self.context.state.calibration = CalibrationState()
+
+        # Update based on stage
+        if self._stage == FlashCalibStage.FLASH:
+            intensity = self._test_levels[self._current_level_idx]
+            self.context.state.calibration.flash_intensity = intensity
+            self.context.state.calibration.instruction_text = (
+                f"Flashing (Level {intensity})..."
+            )
+        elif self._stage in (FlashCalibStage.IDLE, FlashCalibStage.COOLDOWN):
+            self.context.state.calibration.flash_intensity = 0
+            if self._stage == FlashCalibStage.COOLDOWN:
+                self.context.state.calibration.instruction_text = "Cooldown..."
+            else:
+                self.context.state.calibration.instruction_text = "Ready"
+        elif self._stage == FlashCalibStage.ANALYZING:
+            self.context.state.calibration.flash_intensity = 0
+            self.context.state.calibration.instruction_text = "Analyzing..."
+        elif self._stage == FlashCalibStage.SHOW_RESULT:
+            self.context.state.calibration.flash_intensity = 0
+            self.context.state.calibration.instruction_text = getattr(
+                self, "_result_msg", "Calibration complete."
+            )
+
         self._sync_calibration_state()
 
         # Schedule future transitions
         delay = 0.0
-        if self._stage == FlashCalibStage.TESTING:
+        if self._stage == FlashCalibStage.FLASH:
             delay = 1.5
+        elif self._stage == FlashCalibStage.COOLDOWN:
+            delay = 0.5
         elif self._stage == FlashCalibStage.SHOW_RESULT:
             delay = 2.0
 
@@ -224,10 +260,22 @@ class IntrinsicsCalibrationScene(Scene):
     def _sync_calibration_state(self):
         from light_map.core.common_types import CalibrationState
 
+        instr = ""
+        if self._stage == "CAPTURE":
+            instr = f"Capture {len(self._captured_images)}/{self._required_images} images (Fist)"
+        elif self._stage == "PROCESSING":
+            instr = "Processing..."
+        elif self._stage == "DONE":
+            instr = "Calibration Complete! Returning to Menu."
+        elif self._stage == "ERROR":
+            instr = "Calibration Failed! Returning to Menu."
+
         self.context.state.calibration = CalibrationState(
             stage=self._stage,
             captured_count=len(self._captured_images),
             total_required=self._required_images,
+            instruction_text=instr,
+            instruction_pos=(50, 50),
         )
 
     def update(
@@ -297,43 +345,14 @@ class IntrinsicsCalibrationScene(Scene):
 
     def get_active_layers(self, app: InteractiveApp) -> List[Layer]:
         """
-        Calibration scenes need standard UI but NOT vision masks,
-        as masks interfere with pattern detection and feedback.
+        Intrinsics calibration needs instructions and standard UI.
         """
         return [
-            app.scene_layer,
+            app.calibration_layer,
             app.token_layer,
             app.menu_layer,
-            app.notification_layer,
-            app.debug_layer,
-            app.selection_progress_layer,
             app.cursor_layer,
         ]
-
-    def render(self, frame: np.ndarray) -> np.ndarray:
-        # Overlay instructions or status based on stage
-        if self._stage == "CAPTURE":
-            text = f"Capture {len(self._captured_images)}/{self._required_images} images (Fist)"
-            draw_text_with_background(
-                frame, text, (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2
-            )
-        elif self._stage == "PROCESSING":
-            text = "Processing..."
-            draw_text_with_background(
-                frame, text, (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 255), 2
-            )
-        elif self._stage == "DONE":
-            text = "Calibration Complete! Returning to Menu."
-            draw_text_with_background(
-                frame, text, (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2
-            )
-        elif self._stage == "ERROR":
-            text = "Calibration Failed! Returning to Menu."
-            draw_text_with_background(
-                frame, text, (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2
-            )
-
-        return frame
 
 
 class ProjectorCalibrationScene(Scene):
@@ -434,7 +453,24 @@ class ProjectorCalibrationScene(Scene):
     def _sync_calibration_state(self):
         from light_map.core.common_types import CalibrationState
 
-        self.context.state.calibration = CalibrationState(stage=self._stage)
+        instr = ""
+        if self._stage == "DISPLAY_PATTERN":
+            instr = "Projecting pattern..."
+        elif self._stage == "SETTLE":
+            instr = "Settling..."
+        elif self._stage == "CAPTURE":
+            instr = "Capturing..."
+        elif self._stage == "PROCESSING":
+            instr = "Processing..."
+        elif self._stage == "ERROR":
+            instr = "Error occurred."
+
+        self.context.state.calibration = CalibrationState(
+            stage=self._stage,
+            pattern_image=self._pattern_image,
+            instruction_text=instr,
+            instruction_pos=(50, 50),
+        )
 
     def _change_stage(self, new_stage: str, current_time: float):
         """Transitions to a new stage and schedules next steps if necessary."""
@@ -467,20 +503,14 @@ class ProjectorCalibrationScene(Scene):
 
     def get_active_layers(self, app: InteractiveApp) -> List[Layer]:
         """
-        Calibration scenes only need standard scene + UI layers.
-        We exclude notification and debug layers to avoid pattern interference.
+        Calibration scenes use the specialized CalibrationLayer.
         """
         return [
-            app.scene_layer,
+            app.calibration_layer,
             app.token_layer,
             app.menu_layer,
             app.cursor_layer,
         ]
-
-    def render(self, frame: np.ndarray) -> np.ndarray:
-        if self._pattern_image is not None:
-            return self._pattern_image
-        return np.zeros_like(frame)
 
 
 class ExtrinsicsCalibrationScene(Scene):
@@ -569,7 +599,7 @@ class ExtrinsicsCalibrationScene(Scene):
             (w // 2 + 25, h // 2 - 10, 14),  # C (Slightly off-center)
         ]
         self._target_status = ["IDLE"] * len(self._target_zones)
-        self._target_info = [{} for _ in range(len(self._target_zones))]
+        self._target_info = [{"x": tx, "y": ty} for tx, ty, _ in self._target_zones]
         self._animation_start_times = {}
         self.context.notifications.add_notification("Place tokens on target zones.")
         self._sync_calibration_state()
@@ -581,12 +611,31 @@ class ExtrinsicsCalibrationScene(Scene):
         """Updates the central WorldState with transient calibration data."""
         from light_map.core.common_types import CalibrationState
 
+        # Map internal stage names to consistent UI instruction text
+        instr = ""
+        if self._stage == "PLACEMENT":
+            instr = "Place tokens on target zones. Hold Victory to calibrate."
+        elif self._stage == "CAPTURE":
+            instr = "Capturing..."
+        elif self._stage == "VALIDATION":
+            instr = f"Error: {self._reprojection_error:.2f} px. Hold Victory to Accept, Fist to Retry."
+        elif self._stage == "ERROR":
+            instr = "Error occurred."
+        elif self._stage == "DONE":
+            instr = "Calibration complete."
+
         self.context.state.calibration = CalibrationState(
             stage=self._stage,
             target_status=self._target_status.copy(),
             target_info=self._target_info.copy(),
             reprojection_error=self._reprojection_error,
             animation_start_times=self._animation_start_times.copy(),
+            instruction_text=instr,
+            instruction_pos=(50, 50),
+            object_points=self._object_points,
+            image_points=self._image_points,
+            rotation_vector=self._rotation_vector,
+            translation_vector=self._translation_vector,
         )
 
     def _on_retry_triggered(self):
@@ -632,7 +681,7 @@ class ExtrinsicsCalibrationScene(Scene):
 
                 # Reset status, detected IDs, and known targets for this frame
                 self._target_status = ["IDLE"] * len(self._target_zones)
-                self._target_info = [{} for _ in range(len(self._target_zones))]
+                self._target_info = [{"x": tx, "y": ty} for tx, ty, _ in self._target_zones]
                 self._detected_ids = {}
                 self._known_targets = {}
 
@@ -670,7 +719,8 @@ class ExtrinsicsCalibrationScene(Scene):
                                 best_idx = idx
 
                     if best_idx != -1:
-                        info = {"aid": aid}
+                        info = self._target_info[best_idx]
+                        info["aid"] = aid
                         # If ID is unknown, resolve it on the fly
                         if aid not in self._token_heights:
                             resolved = (
@@ -833,234 +883,14 @@ class ExtrinsicsCalibrationScene(Scene):
 
     def get_active_layers(self, app: InteractiveApp) -> List[Layer]:
         """
-        Calibration scenes need standard UI but NOT vision masks,
-        as masks interfere with pattern detection and feedback.
+        Calibration scenes use the specialized CalibrationLayer.
         """
         return [
-            app.scene_layer,
+            app.calibration_layer,
             app.token_layer,
             app.menu_layer,
-            app.notification_layer,
-            app.debug_layer,
-            app.selection_progress_layer,
             app.cursor_layer,
         ]
-
-    def render(self, frame: np.ndarray) -> np.ndarray:
-        h, w = frame.shape[:2]
-        current_time = self._current_time
-        ppi = self._ppi if self._ppi > 0 else 96.0
-
-        # Rendering Parameters for Cache Matching
-        render_params = {
-            "stage": self._stage,
-            "target_status": self._target_status.copy(),
-            "target_info": self._target_info.copy(),
-            "has_reprojection": self._object_points is not None,
-            "ppi": ppi,
-        }
-
-        # Check for cache hit
-        # Note: We ignore animations (expanding circles) for the base cache to avoid
-        # 60fps cache misses. Animations are drawn on top.
-        if (
-            self._cached_canvas is not None
-            and self._cached_canvas.shape[:2] == (h, w)
-            and render_params == self._last_render_params
-        ):
-            canvas = self._cached_canvas.copy()
-        else:
-            # Cache Miss: Redraw everything
-            canvas = np.full(
-                (h, w, 3), SCENE_BG_COLOR, dtype=np.uint8
-            )  # White "Arena" for better camera contrast
-
-            # Draw Target Zones
-            for idx, (tx, ty, tid) in enumerate(self._target_zones):
-                status = self._target_status[idx]
-                info = self._target_info[idx]
-
-                # Default size is 1x1 inch
-                token_size = info.get("size", 1)
-                rect_size = int(token_size * ppi)
-                half_size = rect_size // 2
-
-                # Default IDLE: Dark rectangle
-                color = SCENE_TARGET_IDLE_COLOR
-                thickness = 2
-                label = "Target"
-
-                if status == "VALID":
-                    color = SCENE_TARGET_VALID_COLOR  # Green
-                    thickness = -1  # Filled
-                    label = info.get("name", "Locked")
-
-                    # Metadata
-                    height = info.get("height", 0.0)
-                    draw_text_with_background(
-                        canvas,
-                        f"{label}: {height}mm",
-                        (tx - half_size, ty - half_size - 40),
-                        cv2.FONT_HERSHEY_SIMPLEX,
-                        0.5,
-                        SCENE_SUCCESS_COLOR,
-                        1,
-                    )
-
-                elif status == "UNKNOWN":
-                    color = (150, 150, 150)  # Gray
-                    aid = info.get("aid", "???")
-                    label = f"Unknown ID {aid}"
-                    thickness = 1
-
-                # Draw the main target rectangle
-                cv2.rectangle(
-                    canvas,
-                    (tx - half_size, ty - half_size),
-                    (tx + half_size, ty + half_size),
-                    color,
-                    thickness,
-                )
-
-                # Label below
-                draw_text_with_background(
-                    canvas,
-                    label,
-                    (tx - half_size, ty + half_size + 45),
-                    cv2.FONT_HERSHEY_SIMPLEX,
-                    0.5,
-                    color if thickness > 0 else SCENE_SUCCESS_COLOR,
-                    1 if thickness > 0 else 2,
-                )
-
-            # Verification Overlay: Visual Feedback
-            if (
-                self._stage == "VALIDATION"
-                and self._rotation_vector is not None
-                and self._translation_vector is not None
-                and self._object_points is not None
-            ):
-                # Calculate reprojected points (Camera Space)
-                projected_points, _ = cv2.projectPoints(
-                    self._object_points,
-                    self._rotation_vector,
-                    self._translation_vector,
-                    self.context.app_config.camera_matrix,
-                    self.context.app_config.distortion_coefficients,
-                )
-                projected_points = projected_points.reshape(-1, 2)
-
-                # Transform both sets to Projector Space for rendering
-                image_pts_reshaped = self._image_points.reshape(-1, 1, 2)
-                detected_proj = cv2.perspectiveTransform(
-                    image_pts_reshaped, self.context.app_config.projector_matrix
-                ).reshape(-1, 2)
-
-                reprojected_proj = cv2.perspectiveTransform(
-                    projected_points.reshape(-1, 1, 2),
-                    self.context.app_config.projector_matrix,
-                ).reshape(-1, 2)
-
-                # Draw residuals
-                for i in range(len(detected_proj)):
-                    p_det = detected_proj[i]
-                    p_rep = reprojected_proj[i]
-                    error_px = np.linalg.norm(
-                        self._image_points[i] - projected_points[i]
-                    )
-                    color = (
-                        (0, 255, 0)
-                        if error_px < 2.0
-                        else (0, 255, 255)
-                        if error_px < 5.0
-                        else (0, 0, 255)
-                    )
-                    pt1, pt2 = (
-                        (int(p_det[0]), int(p_det[1])),
-                        (
-                            int(p_rep[0]),
-                            int(p_rep[1]),
-                        ),
-                    )
-                    cv2.line(canvas, pt1, pt2, color, 2)
-                    cv2.line(
-                        canvas,
-                        (pt1[0] - 5, pt1[1]),
-                        (pt1[0] + 5, pt1[1]),
-                        (0, 255, 0),
-                        2,
-                    )
-                    cv2.line(
-                        canvas,
-                        (pt1[0], pt1[1] - 5),
-                        (pt1[0], pt1[1] + 5),
-                        (0, 255, 0),
-                        2,
-                    )
-                    cv2.circle(canvas, pt2, 5, (0, 0, 255), 2)
-
-                # HUD
-                rms = self._reprojection_error
-                status_color = (
-                    (0, 255, 0)
-                    if rms < 2.0
-                    else (0, 255, 255)
-                    if rms < 5.0
-                    else (0, 0, 255)
-                )
-                status_text = "GOOD" if rms < 2.0 else "FAIR" if rms < 5.0 else "POOR"
-                draw_text_with_background(
-                    canvas,
-                    f"Error: {rms:.2f} px ({status_text})",
-                    (w // 2 - 130, 60),
-                    cv2.FONT_HERSHEY_SIMPLEX,
-                    0.8,
-                    status_color,
-                    2,
-                    bg_color=(50, 50, 50),
-                )
-
-            # Update cache
-            self._cached_canvas = canvas.copy()
-            self._last_render_params = render_params
-
-        # Draw Animations on top of (potentially cached) canvas
-        for idx, (tx, ty, tid) in enumerate(self._target_zones):
-            if (
-                self._target_status[idx] == "VALID"
-                and idx in self._animation_start_times
-            ):
-                elapsed = current_time - self._animation_start_times[idx]
-                if elapsed < 0.5:
-                    growth = int(20 * (1.0 - elapsed / 0.5))
-                    token_size = self._target_info[idx].get("size", 1)
-                    rect_size = int(token_size * ppi)
-                    half_size = rect_size // 2
-                    cv2.rectangle(
-                        canvas,
-                        (tx - half_size - growth, ty - half_size - growth),
-                        (tx + half_size + growth, ty + half_size + growth),
-                        (0, 255, 0),
-                        2,
-                    )
-
-        # Instructions (always on top)
-        instr = ""
-        if self._stage == "PLACEMENT":
-            instr = "Victory (hold) or Fist to calibrate (Need 3+ tokens)"
-        elif self._stage == "VALIDATION":
-            instr = "Victory (hold) to Accept, Fist (hold 2s) to Retry"
-        draw_text_with_background(
-            canvas,
-            instr,
-            (50, h - 50),
-            cv2.FONT_HERSHEY_SIMPLEX,
-            0.8,
-            SCENE_INSTR_TEXT_COLOR,
-            2,
-        )
-
-        return canvas
 
 
 class PpiCalibrationScene(Scene):
@@ -1083,17 +913,74 @@ class PpiCalibrationScene(Scene):
     def _sync_calibration_state(self):
         from light_map.core.common_types import CalibrationState
 
+        # Default instructions based on stage
+        w, h = self.context.app_config.width, self.context.app_config.height
+        cx, cy = w // 2, h // 2
+
+        if self._stage == "DETECTING":
+            instr = "Place physical PPI target (100mm) on table."
+            pos = (cx - 280, cy)
+        elif self._stage == "CONFIRMING":
+            instr = f"Detected PPI: {self._candidate_ppi:.2f}. VICTORY to save, PALM to retry"
+            pos = (cx - 250, cy)
+        else:
+            instr = ""
+            pos = (50, 50)
+
         self.context.state.calibration = CalibrationState(
-            stage=self._stage, candidate_ppi=self._candidate_ppi
+            stage=self._stage,
+            candidate_ppi=self._candidate_ppi,
+            instruction_text=instr,
+            instruction_pos=pos,
         )
 
     def update(
         self, inputs: List[HandInput], actions: List[Action], current_time: float
     ) -> Optional[SceneTransition]:
-        # Always sync calibration state in DETECTING stage to show real-time feedback
         if self._stage == "DETECTING":
-            # Note: candidate_ppi might be updated inside render() logic if it uses frame,
-            # but here we ensure the atom is bumped to trigger the render.
+            raw = self.context.raw_aruco
+            flat_ids = []
+            corners = []
+            if raw and raw.get("ids") is not None:
+                ids = raw.get("ids", [])
+                corners = raw.get("corners", [])
+                for item in ids:
+                    if isinstance(item, (list, np.ndarray)):
+                        flat_ids.append(int(item[0]))
+                    else:
+                        flat_ids.append(int(item))
+
+            ppi = None
+            # Fallback to direct detection from frame if worker is slow/missing
+            if (
+                0 not in flat_ids or 1 not in flat_ids
+            ) and self.context.last_camera_frame is not None:
+                ppi = calculate_ppi_from_frame(
+                    self.context.last_camera_frame,
+                    self.context.app_config.projector_matrix,
+                    target_dist_mm=100.0,
+                )
+            elif 0 in flat_ids and 1 in flat_ids:
+                # Re-format corners to (1, 4, 2) as expected by calculate_ppi_from_frame
+                formatted_corners = tuple(np.array(c).reshape(1, 4, 2) for c in corners)
+                formatted_ids = np.array(flat_ids)
+
+                ppi = calculate_ppi_from_frame(
+                    None,
+                    self.context.app_config.projector_matrix,
+                    target_dist_mm=100.0,
+                    aruco_corners=formatted_corners,
+                    aruco_ids=formatted_ids,
+                )
+
+            if ppi:
+                self._candidate_ppi = ppi
+                self._stage = "CONFIRMING"
+                self.context.notifications.add_notification(
+                    f"Detected PPI: {ppi:.2f}. Victory to save."
+                )
+
+            # Always sync calibration state in DETECTING stage to show real-time feedback
             self._sync_calibration_state()
 
         if self._stage == "CONFIRMING" and inputs:
@@ -1122,6 +1009,7 @@ class PpiCalibrationScene(Scene):
                 return SceneTransition(SceneId.MENU)
             elif gesture == GestureType.OPEN_PALM:
                 self._stage = "DETECTING"
+                self._sync_calibration_state()
         return None
 
     @property
@@ -1136,117 +1024,14 @@ class PpiCalibrationScene(Scene):
 
     def get_active_layers(self, app: InteractiveApp) -> List[Layer]:
         """
-        Calibration scenes need standard UI but NOT vision masks,
-        as masks interfere with pattern detection and feedback.
+        Calibration scenes use the specialized CalibrationLayer.
         """
         return [
-            app.scene_layer,
+            app.calibration_layer,
             app.token_layer,
             app.menu_layer,
-            app.notification_layer,
-            app.debug_layer,
-            app.selection_progress_layer,
             app.cursor_layer,
         ]
-
-    def render(self, frame: np.ndarray) -> np.ndarray:
-        h, w = frame.shape[:2]
-        canvas = np.full(
-            (h, w, 3), SCENE_BG_COLOR, dtype=np.uint8
-        )  # White background for better contrast
-
-        cx, cy = w // 2, h // 2
-
-        # Text instructions
-        cv2.putText(
-            canvas,
-            "Place physical PPI target (100mm) on table.",
-            (cx - 280, cy),
-            cv2.FONT_HERSHEY_SIMPLEX,
-            0.8,
-            SCENE_TEXT_COLOR,
-            2,
-        )
-
-        cv2.putText(
-            canvas,
-            "Target contains markers ID 0 and 1.",
-            (cx - 200, cy + 40),
-            cv2.FONT_HERSHEY_SIMPLEX,
-            0.6,
-            SCENE_TEXT_SECONDARY_COLOR,
-            1,
-        )
-
-        if self._stage == "DETECTING":
-            raw = self.context.raw_aruco
-            corners = []
-            ids = []
-
-            if raw and raw.get("ids") is not None and len(raw.get("ids", [])) >= 2:
-                ids = raw.get("ids", [])
-                corners = raw.get("corners", [])
-
-            # Ensure ids are flat integers for robust check
-            flat_ids = []
-            for item in ids:
-                if isinstance(item, (list, np.ndarray)):
-                    flat_ids.append(int(item[0]))
-                else:
-                    flat_ids.append(int(item))
-
-            # Fallback to direct detection from frame if worker is slow/missing
-            if (
-                0 not in flat_ids or 1 not in flat_ids
-            ) and self.context.last_camera_frame is not None:
-                ppi = calculate_ppi_from_frame(
-                    self.context.last_camera_frame,
-                    self.context.app_config.projector_matrix,
-                    target_dist_mm=100.0,
-                )
-            elif 0 in flat_ids and 1 in flat_ids:
-                # Re-format corners to (1, 4, 2) as expected by calculate_ppi_from_frame
-                formatted_corners = tuple(np.array(c).reshape(1, 4, 2) for c in corners)
-                formatted_ids = np.array(flat_ids)
-
-                ppi = calculate_ppi_from_frame(
-                    None,
-                    self.context.app_config.projector_matrix,
-                    target_dist_mm=100.0,
-                    aruco_corners=formatted_corners,
-                    aruco_ids=formatted_ids,
-                )
-            else:
-                ppi = None
-
-            if ppi:
-                self._candidate_ppi = ppi
-                self._stage = "CONFIRMING"
-                self.context.notifications.add_notification(
-                    f"Detected PPI: {ppi:.2f}. Victory to save."
-                )
-
-        elif self._stage == "CONFIRMING":
-            cv2.putText(
-                canvas,
-                f"Detected PPI: {self._candidate_ppi:.2f}",
-                (cx - 150, cy - 80),
-                cv2.FONT_HERSHEY_SIMPLEX,
-                1.0,
-                SCENE_SUCCESS_COLOR,  # Darker green
-                2,
-            )
-            cv2.putText(
-                canvas,
-                "VICTORY to save, PALM to retry",
-                (cx - 200, cy + 120),
-                cv2.FONT_HERSHEY_SIMPLEX,
-                0.8,
-                SCENE_TEXT_COLOR,
-                2,
-            )
-
-        return canvas
 
 
 class GridOverlay:
@@ -1291,7 +1076,6 @@ class MapGridCalibrationScene(Scene):
     def on_enter(self, payload: dict | None = None) -> None:
         self.is_interacting = False
         self._save_triggered = False
-        self._sync_calibration_state()
         self.context.events.cancel(TimerKey.CALIBRATION_STAGE)
 
         map_system = self.context.map_system
@@ -1340,6 +1124,8 @@ class MapGridCalibrationScene(Scene):
             self.grid_overlay.offset_y = self.context.app_config.height / 2
             logging.info("Initialized default grid (centered)")
 
+        self._sync_calibration_state()
+
     def on_exit(self) -> None:
         self.context.events.cancel(TimerKey.CALIBRATION_STAGE)
 
@@ -1347,6 +1133,18 @@ class MapGridCalibrationScene(Scene):
         from light_map.core.common_types import CalibrationState
 
         self.context.state.calibration = CalibrationState(stage="INTERACTING")
+
+        if self.grid_overlay:
+            map_system = self.context.map_system
+            # Push live grid state to WorldState to trigger MapGridLayer rendering
+            self.context.state.grid_spacing_svg = (
+                self.grid_overlay.spacing / map_system.state.zoom
+            )
+            wx, wy = map_system.screen_to_world(
+                self.grid_overlay.offset_x, self.grid_overlay.offset_y
+            )
+            self.context.state.grid_origin_svg_x = wx
+            self.context.state.grid_origin_svg_y = wy
 
     def _on_save_triggered(self):
         """Callback for when the save gesture hold is completed."""
@@ -1481,70 +1279,11 @@ class MapGridCalibrationScene(Scene):
         """
         return [
             app.map_layer,
-            app.scene_layer,
+            app.map_grid_layer,
             app.token_layer,
             app.menu_layer,
-            app.notification_layer,
-            app.debug_layer,
-            app.selection_progress_layer,
             app.cursor_layer,
         ]
-
-    def render(self, frame: np.ndarray) -> np.ndarray:
-        # The main app loop renders the map background.
-        # Here we render the grid overlay using small crosses at intersections.
-
-        if not self.grid_overlay:
-            return frame
-
-        # Overlay parameters
-        spacing = self.grid_overlay.spacing
-        off_x = self.grid_overlay.offset_x
-        off_y = self.grid_overlay.offset_y
-        w, h = self.grid_overlay.width, self.grid_overlay.height
-
-        if spacing <= 0:
-            return frame
-
-        color_green = (0, 255, 0)
-        color_black = (0, 0, 0)
-        cross_size = 10  # Length of each arm in pixels
-
-        # Calculate range of intersection indices
-        start_i = int(math.ceil(-off_x / spacing))
-        end_i = int(math.floor((w - 1 - off_x) / spacing))
-        start_j = int(math.ceil(-off_y / spacing))
-        end_j = int(math.floor((h - 1 - off_y) / spacing))
-
-        for i in range(start_i, end_i + 1):
-            x = int(round(off_x + i * spacing))
-            for j in range(start_j, end_j + 1):
-                y = int(round(off_y + j * spacing))
-
-                # Draw cross with outline
-                # Horizontal segments
-                cv2.line(
-                    frame, (x - cross_size, y), (x + cross_size, y), color_black, 3
-                )
-                cv2.line(
-                    frame, (x - cross_size, y), (x + cross_size, y), color_green, 1
-                )
-
-                # Vertical segments
-                cv2.line(
-                    frame, (x, y - cross_size), (x, y + cross_size), color_black, 3
-                )
-                cv2.line(
-                    frame, (x, y - cross_size), (x, y + cross_size), color_green, 1
-                )
-
-        # Highlight Origin specifically
-        ox, oy = int(round(off_x)), int(round(off_y))
-        if 0 <= ox < w and 0 <= oy < h:
-            cv2.circle(frame, (ox, oy), 8, color_black, -1)
-            cv2.circle(frame, (ox, oy), 5, (0, 255, 0), -1)
-
-        return frame
 
 
 class Projector3DCalibStage(Enum):
@@ -1608,7 +1347,8 @@ class Projector3DCalibrationScene(Scene):
         return [
             self.pattern_layer,
             self.feedback_layer,
-            app.notification_layer,
+            app.token_layer,
+            app.menu_layer,
             app.cursor_layer,
         ]
 

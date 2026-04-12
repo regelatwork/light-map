@@ -40,9 +40,9 @@ def test_ppi_calibration_scene_detecting_to_confirming(mock_app_context):
         "light_map.calibration.calibration_scenes.calculate_ppi_from_frame",
         return_value=100.0,
     ) as mock_calc:
-        frame = np.zeros((100, 100, 3), dtype=np.uint8)
-        scene.render(frame)  # Call render to trigger detection
+        scene.update([], [], current_time=1.0)
         assert mock_calc.called
+
         args, kwargs = mock_calc.call_args
         # args[1] is projector_matrix
         np.testing.assert_array_equal(args[1], mock_app_context.projector_matrix)

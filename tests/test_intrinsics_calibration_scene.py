@@ -145,7 +145,7 @@ def test_intrinsics_calibration_transition_to_menu(intrinsics_calib_scene):
 def test_intrinsics_calibration_isolated_layers(intrinsics_calib_scene):
     """Verify that IntrinsicsCalibrationScene isolates its layers to avoid interference."""
     mock_app = MagicMock()
-    mock_app.scene_layer = "scene"
+    mock_app.calibration_layer = "calibration"
     mock_app.token_layer = "token"
     mock_app.menu_layer = "menu"
     mock_app.notification_layer = "notification"
@@ -157,13 +157,13 @@ def test_intrinsics_calibration_isolated_layers(intrinsics_calib_scene):
 
     layers = intrinsics_calib_scene.get_active_layers(mock_app)
 
-    assert "scene" in layers
+    assert "calibration" in layers
     assert "token" in layers
     assert "menu" in layers
-    assert "notification" in layers
-    assert "debug" in layers
-    assert "selection_progress" in layers
+    assert "notification" not in layers
+    assert "debug" not in layers
+    assert "selection_progress" not in layers
     assert "cursor" in layers
     assert "aruco_mask" not in layers
     assert "hand_mask" not in layers
-    assert len(layers) == 7
+    assert len(layers) == 4

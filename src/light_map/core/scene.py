@@ -99,13 +99,6 @@ class Scene(ABC):
             app.cursor_layer,
         ]
 
-    def get_scene_with_ui_stack(self, app: InteractiveApp) -> List[Layer]:
-        """
-        Returns the scene layer plus standard UI overlay layers.
-        Useful for scenes that show interactive content (e.g., Calibration, Scanning).
-        """
-        return [app.scene_layer] + self.get_standard_ui_stack(app)
-
     def on_enter(self, payload: Any = None) -> None:
         """Called once when the scene becomes active."""
         pass
@@ -121,7 +114,10 @@ class Scene(ABC):
         """Processes input and returns a transition request if any."""
         raise NotImplementedError
 
-    @abstractmethod
     def render(self, frame: np.ndarray) -> np.ndarray:
-        """Renders the scene's visual output. Returns the modified frame."""
-        raise NotImplementedError
+        """
+        Renders the scene's visual output. Returns the modified frame.
+        Default implementation returns the frame unchanged, supporting
+        pure controller scenes that use atomic layers for rendering.
+        """
+        return frame

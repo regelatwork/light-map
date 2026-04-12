@@ -82,7 +82,6 @@ class ExclusiveVisionScene(BaseMapScene):
 
         stack.extend(
             [
-                lm.scene_layer,
                 lm.aruco_mask_layer,
                 lm.hand_mask_layer,
                 lm.token_layer,

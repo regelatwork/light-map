@@ -75,7 +75,6 @@ class InteractiveApp:
         self.events = events or TemporalEventManager(time_provider=time_provider)
         self.last_fps_time = 0.0
         self.fps = 0.0
-        self.last_scene_version = -1
 
         # State management
         self.state = WorldState()
@@ -216,10 +215,6 @@ class InteractiveApp:
     @property
     def visibility_layer(self):
         return self.layer_manager.visibility_layer
-
-    @property
-    def scene_layer(self):
-        return self.layer_manager.scene_layer
 
     @property
     def hand_mask_layer(self):
@@ -575,7 +570,6 @@ class InteractiveApp:
             logging.debug("Switching scene to: %s", target_id)
             self.current_scene.on_exit()
             self.current_scene = self.scenes[target_id]
-            self.last_scene_version = -1  # Reset version tracking for new scene
             self.current_scene.on_enter(transition.payload)
             self.state._scene_atom.update(self.current_scene.__class__.__name__)
         else:
@@ -709,12 +703,6 @@ class InteractiveApp:
                     filepath=self.current_map_path,
                 )
 
-            # 2. Update SceneLayer bridge
-            self.layer_manager.scene_layer.scene = self.current_scene
-            # Synchronize last seen scene version
-            if self.current_scene.version != self.last_scene_version:
-                self.last_scene_version = self.current_scene.version
-
             # 3. Perform Composite Render
             with track_wait("renderer_composite", self.instrument):
                 final_frame = self.renderer.render(
@@ -843,7 +831,6 @@ class InteractiveApp:
             if self.current_scene != target_scene:
                 self.current_scene.on_exit()
                 self.current_scene = target_scene
-                self.last_scene_version = -1
                 self.current_scene.on_enter()
 
     def load_map(self, filename: str, load_session: bool = False):

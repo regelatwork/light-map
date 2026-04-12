@@ -1,84 +1,148 @@
-# Plan: Fully Migrate Legacy Scenes to the Atomic Layer System
+# Plan: Fully Migrate Legacy Scenes to the Atomic Layer System (Junior-Ready)
 
 This plan describes the final phase of the rendering refactor: eliminating the `SceneLayer` / `LegacySceneLayer` bridge and replacing it with specialized, data-driven `Layer` implementations for each scene type.
 
 ## Objective
 
 1.  **Eliminate the `SceneLayer` bridge:** Remove the pattern where a generic layer delegates rendering to a monolithic `Scene.render()` method.
-2.  **Scene-Specific Layers:** Implement dedicated layers (e.g., `CalibrationLayer`, `FlashLayer`) that consume granular `WorldState` atoms and return `ImagePatch`es directly.
+2.  **Scene-Specific Layers:** Implement dedicated layers (`CalibrationLayer`, `FlashLayer`, `MapGridLayer`) that consume granular `WorldState` atoms and return `ImagePatch`es directly.
 3.  **Refactor Scenes to Controllers:** Transition existing `Scene` objects to be pure "Controllers" that handle logic and update `WorldState`, with no rendering responsibility.
 4.  **Granular Versioning:** Ensure that only the necessary parts of the screen are re-rendered when a scene's state changes.
 
-## Core Problem
+## Architectural Direction
 
-Currently, `SceneLayer` acts as a "black box" bridge. When any part of a scene's state changes, the entire scene is typically re-rendered into a full-screen buffer, which is then converted to BGRA and composited. This is inefficient and bypasses the benefits of the layered system, such as partial-screen updates and independent caching.
+All rendering logic must move from `Scene.render()` (OpenCV-heavy) to `Layer._generate_patches()`.
+- **Scenes** (e.g., `ExtrinsicsCalibrationScene`) now only manage state transitions, gesture handling, and updating `self.context.state.calibration`.
+- **Layers** (e.g., `CalibrationLayer`) observe `state.calibration_version` and draw based on the current `stage`, `target_status`, etc.
 
-## Detailed Changes
+## Detailed Interfaces & File Locations
 
-### 1. `src/light_map/state/world_state.py`
+### 1. `src/light_map/state/world_state.py` (Atoms)
 
--   **Refine Calibration Atoms:** Instead of a single `_calibration_atom`, introduce more granular atoms if needed (e.g., `_calibration_target_pos`, `_calibration_progress`).
--   **Flash Atoms:** Add atoms for the `FlashCalibrationScene` (e.g., `active_pulse_index`, `pulse_brightness`).
--   **Map Grid Atoms:** Add atoms for `MapGridCalibrationScene` (e.g., `grid_lines`, `active_handle`).
+Update the `CalibrationState` dataclass in `src/light_map/core/common_types.py` to include:
+```python
+@dataclass
+class CalibrationState:
+    stage: str = ""
+    target_status: List[str] = field(default_factory=list)
+    target_info: List[Dict[str, Any]] = field(default_factory=list)
+    reprojection_error: float = 0.0
+    animation_start_times: Dict[int, float] = field(default_factory=dict)
+    last_camera_frame_ts: int = 0
+    captured_count: int = 0
+    total_required: int = 0
+    candidate_ppi: float = 0.0
+    step_index: int = 0
+    # ADDED FOR MIGRATION:
+    flash_intensity: int = 0
+    instruction_text: str = ""
+    instruction_pos: Tuple[int, int] = (50, 50)
+    pattern_image: Optional[np.ndarray] = None  # Homography pattern
+    # For Extrinsics residuals:
+    object_points: Optional[np.ndarray] = None
+    image_points: Optional[np.ndarray] = None
+    rotation_vector: Optional[np.ndarray] = None
+    translation_vector: Optional[np.ndarray] = None
+```
 
 ### 2. New Layer Implementations
 
-Create specialized layers in `src/light_map/rendering/layers/`:
+#### `FlashLayer` in `src/light_map/rendering/layers/flash_layer.py`
+```python
+class FlashLayer(Layer):
+    def __init__(self, state: WorldState, width: int, height: int):
+        super().__init__(state=state, is_static=True, layer_mode=LayerMode.BLOCKING)
+        self.width = width
+        self.height = height
 
--   **`CalibrationLayer(Layer)`**:
-    -   Handles rendering of calibration targets, text instructions, and progress bars.
-    -   Reads from `calibration_atom` and `scene_state_atom`.
--   **`FlashLayer(Layer)`**:
-    -   Handles rendering of light pulses for structured light detection.
-    -   Reads from new flash-specific atoms.
--   **`MapGridLayer(Layer)`**:
-    -   Handles rendering of the interactive calibration grid.
-    -   Reads from `grid_metadata_atom`.
+    def get_current_version(self) -> int:
+        return self.state.calibration_version
 
-### 3. Refactor `src/light_map/calibration/calibration_scenes.py`
+    def _generate_patches(self, current_time: float) -> List[ImagePatch]:
+        intensity = self.state.calibration.flash_intensity
+        img = np.full((self.height, self.width, 3), intensity, dtype=np.uint8)
+        return [ImagePatch(0, 0, self.width, self.height, img)]
+```
 
--   **Remove `render()` methods:** Move all drawing logic (OpenCV calls) into the new `Layer` classes.
--   **Update `update()` methods:** Ensure all state transitions (e.g., changing stages, updating cursor positions) are reflected in `WorldState` atoms.
--   **Scene Payload:** Scenes should continue to return transitions, but they no longer provide pixels.
+#### `MapGridLayer` in `src/light_map/rendering/layers/map_grid_layer.py`
+```python
+class MapGridLayer(Layer):
+    def __init__(self, state: WorldState, width: int, height: int):
+        super().__init__(state=state, is_static=False, layer_mode=LayerMode.NORMAL)
+        self.width = width
+        self.height = height
 
-### 4. `src/light_map/core/layer_stack_manager.py`
+    def get_current_version(self) -> int:
+        return self.state.grid_metadata_version
 
--   **Dynamic Layer Injection:** Update the `LayerStackManager` to include the appropriate specialized layers in the stack based on the current active scene.
--   **Remove `SceneLayer`:** Once all scenes are migrated, remove the `SceneLayer` from the default stack.
+    def _generate_patches(self, current_time: float) -> List[ImagePatch]:
+        # Logic: Move MapGridCalibrationScene.render crosses logic here.
+        # Use self.state.grid_metadata.spacing_svg * current_zoom for spacing.
+        # Draw crosses at (origin_x + i*spacing, origin_y + j*spacing).
+```
 
-### 5. `src/light_map/interactive_app.py`
+#### `CalibrationLayer` in `src/light_map/rendering/layers/calibration_layer.py`
+```python
+class CalibrationLayer(Layer):
+    def __init__(self, state: WorldState, width: int, height: int):
+        super().__init__(state=state, is_static=False, layer_mode=LayerMode.BLOCKING)
+        self.width = width
+        self.height = height
 
--   **Simplify Main Loop:** Remove the "Update SceneLayer bridge" step.
--   **Unified State Sync:** Ensure the `InteractiveApp` only coordinates state; the layers will react to the state changes automatically.
+    def get_current_version(self) -> int:
+        return max(self.state.calibration_version, self.state.system_time_version)
 
-## Phase-by-Phase Execution
+    def _generate_patches(self, current_time: float) -> List[ImagePatch]:
+        cal = self.state.calibration
+        # 1. Start with pattern_image if present, else SCENE_BG_COLOR.
+        # 2. Draw Target Zones (rects/labels) from target_status.
+        # 3. Draw Reprojection Residuals if stage == "VALIDATION".
+        # 4. Draw expanding circle animations using current_time vs animation_start_times.
+        # 5. Draw instruction_text at instruction_pos.
+```
 
-### Phase 1: Infrastructure & Simple Scenes
--   Implement `MapGridLayer`.
--   Migrate `MapGridCalibrationScene` (move its grid rendering to the new layer).
--   Verify that the grid still renders correctly via the new layer.
+## Phase 1 Checklist: Infrastructure & Map Grid (Junior-Friendly)
 
-### Phase 2: Calibration & Flash
--   Implement `CalibrationLayer` and `FlashLayer`.
--   Migrate `IntrinsicsCalibrationScene`, `ProjectorCalibrationScene`, and `FlashCalibrationScene`.
--   These scenes are highly visual but follow predictable patterns.
+- [ ] **Task 1: Update State Model.** In `src/light_map/core/common_types.py`, add the new fields to `CalibrationState` (flash_intensity, instruction_text, etc.).
+- [ ] **Task 2: Define FlashLayer.** Create `src/light_map/rendering/layers/flash_layer.py` and implement the `FlashLayer` class as specified above.
+- [ ] **Task 3: Define MapGridLayer.** Create `src/light_map/rendering/layers/map_grid_layer.py`. Port the cross-drawing logic from `MapGridCalibrationScene.render` into `_generate_patches`.
+- [ ] **Task 4: Register Layers.** In `src/light_map/core/layer_stack_manager.py`, import the new layers and initialize `self.flash_layer`, `self.map_grid_layer`, and `self.calibration_layer` in `__init__`.
+- [ ] **Task 5: Refactor MapGrid Scene (Logic).** In `src/light_map/calibration/calibration_scenes.py`, remove the `render()` method from `MapGridCalibrationScene`.
+- [ ] **Task 6: Refactor MapGrid Scene (State).** Ensure `MapGridCalibrationScene.update` pushes the current grid overlay coordinates into `self.context.state.grid_metadata` (this triggers the layer to re-render).
+- [ ] **Task 7: Update Layer Stack Selection.** Update `MapGridCalibrationScene.get_active_layers` to return `[app.map_layer, app.map_grid_layer, app.token_layer, ...]`. Note the replacement of `app.scene_layer` with `app.map_grid_layer`.
+- [ ] **Task 8: Verify Map Grid.** Run the app, enter Map Grid Calibration, and ensure the grid crosses appear and move correctly as you pan/zoom.
+- [ ] **Task 9: Fix Imports.** Run `ruff check src/light_map/` to ensure no circular imports were introduced (especially when adding types to `WorldState`).
+- [ ] **Task 10: Unit Test.** Create `tests/test_map_grid_layer.py` and verify it generates the expected number of patches.
 
-### Phase 3: The "Big One" (Extrinsics)
--   Refactor `ExtrinsicsCalibrationScene` (the largest file).
--   This will involve breaking down its complex `render()` method into modular rendering logic within `CalibrationLayer`.
+## Phase 2 Checklist: Calibration & Flash
 
-### Phase 4: Cleanup
--   Deprecate and remove `SceneLayer` and `LegacySceneLayer`.
--   Clean up any remaining legacy `render()` methods in the `Scene` base class.
+- [ ] **Task 1: Define CalibrationLayer.** Create `src/light_map/rendering/layers/calibration_layer.py`. Port the instructions and target drawing logic from `ExtrinsicsCalibrationScene.render`.
+- [ ] **Task 2: Migrate Flash Calibration.**
+    - Remove `FlashCalibrationScene.render`.
+    - Update `FlashCalibrationScene._change_stage` to set `state.calibration.flash_intensity`.
+    - Update `FlashCalibrationScene.get_active_layers` to use `app.flash_layer`.
+- [ ] **Task 3: Migrate PPI Calibration.** Update `PpiCalibrationScene` to use `CalibrationLayer` for its text feedback.
+- [ ] **Task 4: Migrate Intrinsics & Projector.** Update these scenes to use `CalibrationLayer`.
+
+## Phase 3: The "Big One" (Extrinsics)
+- Refactor `ExtrinsicsCalibrationScene` to be a pure controller.
+- Move its complex residual drawing and animation logic into `CalibrationLayer`.
+- Ensure `state.calibration.object_points` etc. are populated after `calibrate_extrinsics` succeeds.
+
+## Phase 4: Cleanup
+- [ ] Remove `src/light_map/rendering/layers/legacy_scene_layer.py`.
+- [ ] Remove `src/light_map/rendering/layers/scene_layer.py`.
+- [ ] Update `LayerStackManager` to remove these layers from the default stack.
+- [ ] Final check: Ensure no class in `src/light_map/calibration/` has a `render()` method.
 
 ## Verification Plan
 
 ### Automated Tests
--   Create unit tests for each new Layer type (e.g., `tests/test_calibration_layer.py`).
--   Verify that `get_current_version()` correctly triggers re-renders only when relevant atoms change.
--   Regression test: `pytest tests/test_interactive_app_layered.py`.
+- `pytest tests/test_map_grid_layer.py`
+- `pytest tests/test_calibration_layer.py`
+- `pytest tests/test_interactive_app_layered.py`
 
 ### Manual Verification
--   Run the full calibration suite.
--   Observe the `total_render_logic` metrics in the debug overlay; it should remain low or decrease due to more efficient patch-based rendering.
--   Verify that transparency and "blocking" behavior remain correct for all scenes.
+- Run "Step 1: Flash Intensity" and verify the screen flashes correctly.
+- Run "Step 5: Extrinsics" and verify targets turn green and animations play when tokens are detected.
+- Observe `total_render_logic` in debug overlay (F3).

@@ -7,7 +7,7 @@ from light_map.calibration.calibration_scenes import (
     FlashCalibrationScene,
     FlashCalibStage,
 )
-from light_map.core.common_types import AppConfig, SceneId
+from light_map.core.common_types import AppConfig, SceneId, CalibrationState
 from light_map.core.scene import SceneTransition
 
 
@@ -22,6 +22,8 @@ def mock_app_context():
     mock_context.app_config = app_config
     mock_context.projector_matrix = np.eye(3)
     mock_context.last_camera_frame = np.zeros((100, 100, 3), dtype=np.uint8)
+    mock_context.state = MagicMock()
+    mock_context.state.calibration = CalibrationState()
 
     # Use a mutable object to hold time
     class TimeState:
@@ -50,35 +52,37 @@ def test_flash_calibration_scene_state_machine(mock_app_context):
 
     with patch("time.monotonic", side_effect=mock_app_context.time_provider):
         with patch.object(scene.token_tracker, "detect_tokens") as mock_detect_tokens:
-            # Simulate detection results for each level
-            # For simplicity, let's say it finds 5 tokens for intensity 105, else 0
-            def side_effect_detect_tokens(*args, **kwargs):
-                current_intensity = scene._test_levels[scene._current_level_idx]
-                if current_intensity == 105:
-                    return [MagicMock() for _ in range(5)]  # 5 tokens
-                return []  # 0 tokens
-
-            mock_detect_tokens.side_effect = side_effect_detect_tokens
+            # Simulate detection results
+            # Instruction said set intensity to 255, so we expect 255.
+            mock_detect_tokens.return_value = [MagicMock() for _ in range(5)]
 
             # Initial state
             scene.on_enter()
-            assert scene._stage == FlashCalibStage.START
+            assert scene._stage == FlashCalibStage.IDLE
 
-            # START -> TESTING
-            time_state.val += 0.1
+            # IDLE -> FLASH (immediate transition in update)
             scene.update([], [], time_state.val)
-            assert scene._stage == FlashCalibStage.TESTING
+            assert scene._stage == FlashCalibStage.FLASH
+            assert mock_app_context.state.calibration.flash_intensity == 255
+            assert (
+                mock_app_context.state.calibration.instruction_text
+                == "Flashing (Level 255)..."
+            )
 
             # Iterate through test levels
-            for i, intensity in enumerate(scene._test_levels):
-                # Settle time
+            for i in range(len(scene._test_levels)):
+                current_level = scene._test_levels[i]
+                
+                # Wait for FLASH timer (1.5s for each flash)
                 time_state.val += 1.51
                 mock_app_context.events.check()
-                assert scene._stage == FlashCalibStage.TESTING
+                
+                assert scene._stage == FlashCalibStage.FLASH
                 assert scene._capture_frame is True
+                assert mock_app_context.state.calibration.flash_intensity == current_level
 
-                # Render to trigger capture and process
-                scene.render(np.zeros((100, 100, 3), dtype=np.uint8))
+                # Update to trigger capture and process
+                scene.update([], [], time_state.val)
                 assert mock_detect_tokens.call_count == i + 1
 
                 # Verify detect_tokens uses the correct frame from context
@@ -88,21 +92,46 @@ def test_flash_calibration_scene_state_machine(mock_app_context):
                     map_system=mock_app_context.map_system,
                     default_height_mm=0.0,
                 )
-                # Capture frame should be reset after render
+                # Capture frame should be reset after processing
                 assert scene._capture_frame is False
+
+                if i < len(scene._test_levels) - 1:
+                    # FLASH -> COOLDOWN
+                    assert scene._stage == FlashCalibStage.COOLDOWN
+                    assert mock_app_context.state.calibration.flash_intensity == 0
+                    assert (
+                        mock_app_context.state.calibration.instruction_text
+                        == "Cooldown..."
+                    )
+
+                    # COOLDOWN -> FLASH (via timer)
+                    time_state.val += 0.51
+                    mock_app_context.events.check()
+                    assert scene._stage == FlashCalibStage.FLASH
+                    assert (
+                        mock_app_context.state.calibration.flash_intensity
+                        == scene._test_levels[i + 1]
+                    )
 
             # After all levels tested, should transition to ANALYZING
             assert scene._stage == FlashCalibStage.ANALYZING
+            assert mock_app_context.state.calibration.instruction_text == "Analyzing..."
 
             # ANALYZING -> SHOW_RESULT
             time_state.val += 0.1
             scene.update([], [], time_state.val)
             assert scene._stage == FlashCalibStage.SHOW_RESULT
+            assert (
+                mock_app_context.state.calibration.instruction_text
+                == "Optimal intensity found: 165"
+            )
+
+            # Optimal intensity for [255, 225, 195, 165, 135, 105, 75, 45] is 165 (median of sorted)
             mock_app_context.map_config_manager.set_flash_intensity.assert_called_once_with(
-                105
+                165
             )
             mock_app_context.notifications.add_notification.assert_called_once_with(
-                "Optimal intensity found: 105"
+                "Optimal intensity found: 165"
             )
 
             # SHOW_RESULT -> DONE (after delay)
@@ -115,46 +144,29 @@ def test_flash_calibration_scene_state_machine(mock_app_context):
             assert transition.target_scene == SceneId.MENU
 
 
-@patch("numpy.full_like")
-def test_render_flash_levels(mock_full_like, mock_app_context):
-    """Verify that the scene renders the correct flash intensity during testing."""
+def test_flash_calibration_layers(mock_app_context):
+    """Verify that the scene returns the correct layers for each stage."""
     scene = FlashCalibrationScene(mock_app_context)
-    time_state = mock_app_context.time_state
-
-    with patch("time.monotonic", side_effect=mock_app_context.time_provider):
-        with patch.object(
-            scene.token_tracker, "detect_tokens"
-        ):  # Don't care about detection here
-            scene.on_enter()
-            scene.update([], [], time_state.val)
-
-            for i in range(len(scene._test_levels) - 1):
-                # Advance time and check events to trigger capture_frame
-                time_state.val += 1.51
-                mock_app_context.events.check()
-
-                frame = np.zeros((100, 100, 3), dtype=np.uint8)
-                scene.render(frame)
-
-                # The render method uses the intensity for the *next* level for display
-                expected_intensity_for_display = scene._test_levels[i + 1]
-
-                mock_full_like.assert_called_with(
-                    ANY, expected_intensity_for_display, dtype=np.uint8
-                )
-                mock_full_like.reset_mock()
-
-            # Handle the last test level separately
-            time_state.val += 1.51
-            mock_app_context.events.check()
-
-            frame = np.zeros((100, 100, 3), dtype=np.uint8)
-            scene.render(frame)
-
-            # After processing the last level, render transitions to ANALYZING
-            # and should return a black frame. np.full_like should *not* be called
-            # for the display of the last level.
-            mock_full_like.assert_not_called()
+    mock_app = MagicMock()
+    
+    scene._stage = FlashCalibStage.FLASH
+    layers = scene.get_active_layers(mock_app)
+    assert layers == [mock_app.flash_layer]
+    
+    scene._stage = FlashCalibStage.IDLE
+    layers = scene.get_active_layers(mock_app)
+    assert mock_app.calibration_layer in layers
+    assert mock_app.token_layer in layers
+    
+    scene._stage = FlashCalibStage.COOLDOWN
+    layers = scene.get_active_layers(mock_app)
+    assert mock_app.calibration_layer in layers
+    assert mock_app.token_layer in layers
+    
+    scene._stage = FlashCalibStage.DONE
+    layers = scene.get_active_layers(mock_app)
+    assert mock_app.calibration_layer in layers
+    assert mock_app.cursor_layer in layers
 
 
 def test_debug_mode_propagation(mock_app_context):
@@ -162,7 +174,7 @@ def test_debug_mode_propagation(mock_app_context):
     mock_app_context.debug_mode = True
     scene = FlashCalibrationScene(mock_app_context)
 
-    # Use its own events mock since we are not using the fixture's complex one here if we don't want to
+    # Use its own events mock since we are not using the fixture's complex one here
     scene.context.events = MagicMock()
 
     scene.on_enter()

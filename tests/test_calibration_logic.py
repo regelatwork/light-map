@@ -51,6 +51,11 @@ def test_run_calibration_sequence_success(
     mock_gen, mock_compute = mock_projector_utils
     mock_win = mock_projector_window.return_value
 
+    # Mock ArUco detector return values
+    mock_detector = MagicMock()
+    mock_detector.detectMarkers.return_value = ([], None, [])
+    mock_cv2.aruco.ArucoDetector.return_value = mock_detector
+
     # Run
     result = run_calibration_sequence(
         mock_camera, projector_width=1920, projector_height=1080

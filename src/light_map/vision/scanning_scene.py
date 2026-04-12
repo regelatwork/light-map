@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import time
 import logging
 import os
 from enum import Enum, auto
@@ -114,57 +113,16 @@ class ScanningScene(Scene):
         return None
 
     def render(self, frame: np.ndarray) -> np.ndarray:
-        """Renders the flash, or processes the frame for tokens."""
-        algorithm = self.context.map_config_manager.get_detection_algorithm()
-
-        # --- Render Logic ---
-        if self._stage == ScanStage.FLASH or self._stage == ScanStage.CAPTURE_FLASH:
-            intensity = self.context.map_config_manager.get_flash_intensity()
-            return np.full_like(frame, intensity, dtype=np.uint8)
-
-        if self._stage in [
-            ScanStage.PREPARE_DARK,
-            ScanStage.WAIT_DARK,
-            ScanStage.CAPTURE_DARK,
-        ]:
-            return np.zeros_like(frame, dtype=np.uint8)
-
-        if self._stage in [
-            ScanStage.PREPARE_PATTERN,
-            ScanStage.WAIT_PATTERN,
-            ScanStage.CAPTURE_PATTERN,
-        ]:
-            if self._pattern_image is not None:
-                return self._pattern_image
-            return np.zeros_like(frame, dtype=np.uint8)
-
-        # --- Processing Logic ---
-        if self._stage == ScanStage.PROCESS:
-            frame_to_process = self.context.last_camera_frame
-
-            if algorithm == TokenDetectionAlgorithm.STRUCTURED_LIGHT:
-                # We already captured frames
-                frame_to_process = self._pattern_frame
-
-            if frame_to_process is not None:
-                self._detect_and_save_tokens(frame_to_process)
-            else:
-                logging.warning("No camera frame available for token detection.")
-
-            # Immediately transition avoiding re-process
-            self._change_stage(ScanStage.SHOW_RESULT, time.monotonic())
-            # Fall through
-
+        """
+        The scene now uses atomic layers (FlashLayer, CalibrationLayer) for rendering
+        during capture stages. This method is kept for backward compatibility and
+        to show results, but most logic is moved to state updates.
+        """
         if self._stage == ScanStage.SHOW_RESULT:
-            # Just return frame (likely map or last buffer).
-            # Actually render returns what is projected.
-            # We should probably project nothing (black) or the map?
-            # If we return frame passed in, it assumes it's the underlying map.
-            # The existing code returned 'frame' which is passed from InteractiveApp.render
-            # usually containing the Map rendering.
             return frame
 
-        return np.zeros_like(frame, dtype=np.uint8)
+        # Default to returning the frame (which may be processed by layers)
+        return frame
 
     def _detect_and_save_tokens(self, frame_white: np.ndarray):
         """Performs the actual token detection and session saving."""
@@ -273,14 +231,25 @@ class ScanningScene(Scene):
     def _change_stage(self, new_stage: ScanStage, current_time: float):
         """Transitions to a new stage and schedules next steps if necessary."""
         self._stage = new_stage
+        cal = self.context.state.calibration
 
         # A. Trigger immediate processing for some stages
-        if self._stage == ScanStage.CAPTURE_FLASH:
-            # Flash capture: we could grab frame here or in PROCESS.
-            # For simplicity and consistency, transition to process.
+        if self._stage == ScanStage.FLASH:
+            cal.flash_intensity = self.context.map_config_manager.get_flash_intensity()
+            cal.stage = "FLASH"
+            self.context.state.calibration = cal
+
+        elif self._stage == ScanStage.CAPTURE_FLASH:
+            cal.flash_intensity = 0
+            self.context.state.calibration = cal
+            # Transition to process
             self._change_stage(ScanStage.PROCESS, current_time)
 
         elif self._stage == ScanStage.PREPARE_DARK:
+            cal.flash_intensity = 0
+            cal.pattern_image = None
+            cal.stage = "DARK"
+            self.context.state.calibration = cal
             self._change_stage(ScanStage.WAIT_DARK, current_time)
 
         elif self._stage == ScanStage.CAPTURE_DARK:
@@ -302,12 +271,27 @@ class ScanningScene(Scene):
                     self.token_tracker.get_scan_pattern(width, height, ppi)
                 )
 
+            cal.pattern_image = self._pattern_image
+            cal.stage = "PATTERN"
+            self.context.state.calibration = cal
             self._change_stage(ScanStage.WAIT_PATTERN, current_time)
 
         elif self._stage == ScanStage.CAPTURE_PATTERN:
             if self.context.last_camera_frame is not None:
                 self._pattern_frame = self.context.last_camera_frame.copy()
+            cal.pattern_image = None
+            self.context.state.calibration = cal
             self._change_stage(ScanStage.PROCESS, current_time)
+
+        elif self._stage == ScanStage.SHOW_RESULT:
+            cal.stage = "RESULT"
+            self.context.state.calibration = cal
+
+        elif self._stage == ScanStage.DONE:
+            cal.stage = ""
+            cal.pattern_image = None
+            cal.flash_intensity = 0
+            self.context.state.calibration = cal
 
         # B. Schedule future transitions for 'WAIT' or 'SHOW' stages
         delay = 0.0
@@ -341,7 +325,14 @@ class ScanningScene(Scene):
         but needs the map background to show results at the end.
         """
         if self._stage in [ScanStage.SHOW_RESULT, ScanStage.DONE]:
-            return app.layer_stack
+            return [lyr for lyr in app.layer_stack if lyr != app.notification_layer]
 
-        # During capture: only show the scene layer (projector pattern/flash) + overlays
-        return self.get_scene_with_ui_stack(app)
+        # During capture: only show the capture layers + overlays
+        return [
+            app.flash_layer,
+            app.calibration_layer,
+            app.aruco_mask_layer,
+            app.hand_mask_layer,
+            app.debug_layer,
+            app.cursor_layer,
+        ]

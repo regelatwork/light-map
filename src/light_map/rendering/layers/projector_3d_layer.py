@@ -190,7 +190,7 @@ class Projector3DFeedbackLayer(Layer):
                 self.instruction_pos,
                 scale=1.0,
                 thickness=2,
-                color=(255, 255, 255, 255),
+                color=(255, 255, 255),
                 bg_color=(0, 0, 128),
                 alpha=0.9,
             )

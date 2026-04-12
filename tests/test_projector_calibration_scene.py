@@ -102,41 +102,27 @@ def test_projector_calibration_no_camera_error(mock_app_context):
         )
 
 
-def test_projector_calibration_render(mock_app_context):
-    """Verify render output during pattern display."""
-    scene = ProjectorCalibrationScene(mock_app_context)
-    scene.on_enter()  # Sets stage to DISPLAY_PATTERN
-
-    frame = np.zeros((100, 100, 3), dtype=np.uint8)
-    output = scene.render(frame)
-
-    # Should NOT be all white (pattern has black squares)
-    assert not np.all(output == 255)
-    # Should NOT be all black
-    assert not np.all(output == 0)
-    # Background should be white (255)
-    assert output[0, 0, 0] == 255
-
-
 def test_projector_calibration_isolated_layers(mock_app_context):
     """Verify that ProjectorCalibrationScene isolates its layers to avoid interference."""
     scene = ProjectorCalibrationScene(mock_app_context)
     mock_app = MagicMock()
-    mock_app.scene_layer = "scene"
+    mock_app.calibration_layer = "calibration"
     mock_app.token_layer = "token"
     mock_app.menu_layer = "menu"
     mock_app.notification_layer = "notification"
     mock_app.debug_layer = "debug"
+    mock_app.selection_progress_layer = "selection_progress"
     mock_app.cursor_layer = "cursor"
 
     layers = scene.get_active_layers(mock_app)
 
-    assert "scene" in layers
+    assert "calibration" in layers
     assert "token" in layers
     assert "menu" in layers
     assert "cursor" in layers
 
-    # Notification and Debug layers are excluded to avoid pattern interference
+    # Notification, Debug, and Selection Progress layers are excluded to avoid pattern interference
     assert "notification" not in layers
     assert "debug" not in layers
+    assert "selection_progress" not in layers
     assert len(layers) == 4

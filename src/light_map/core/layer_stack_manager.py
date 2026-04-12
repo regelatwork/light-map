@@ -4,7 +4,6 @@ from typing import List, TYPE_CHECKING, Any
 from light_map.rendering.layers.map_layer import MapLayer
 from light_map.rendering.layers.door_layer import DoorLayer
 from light_map.rendering.layers.menu_layer import MenuLayer
-from light_map.rendering.layers.scene_layer import SceneLayer
 from light_map.rendering.layers.hand_mask_layer import HandMaskLayer
 from light_map.rendering.layers.aruco_mask_layer import ArucoMaskLayer
 from light_map.rendering.layers.overlay_layer import (
@@ -19,6 +18,9 @@ from light_map.rendering.layers.visibility_layer import (
 )
 from light_map.rendering.layers.cursor_layer import CursorLayer
 from light_map.rendering.layers.selection_progress_layer import SelectionProgressLayer
+from light_map.rendering.layers.flash_layer import FlashLayer
+from light_map.rendering.layers.map_grid_layer import MapGridLayer
+from light_map.rendering.layers.calibration_layer import CalibrationLayer
 
 if TYPE_CHECKING:
     from light_map.core.app_context import AppContext
@@ -34,7 +36,8 @@ class LayerStackManager:
     def __init__(self, context: AppContext, state: WorldState):
         self.context = context
         self.state = state
-        config = context.app_config
+        self.config = context.app_config
+        config = self.config
 
         # Core Layers
         self.map_layer = MapLayer(
@@ -46,9 +49,6 @@ class LayerStackManager:
             config.width,
             config.height,
             thickness_multiplier=config.door_thickness_multiplier,
-        )
-        self.scene_layer = SceneLayer(
-            state, None, config.width, config.height, is_static=False
         )
         self.hand_mask_layer = HandMaskLayer(
             state, config, projection_service=context.projection_service
@@ -62,6 +62,11 @@ class LayerStackManager:
         self.debug_layer = DebugLayer(state, context)
         self.selection_progress_layer = SelectionProgressLayer(state, context)
         self.cursor_layer = CursorLayer(state, context)
+
+        # Calibration-related Layers
+        self.flash_layer = FlashLayer(state, config.width, config.height)
+        self.map_grid_layer = MapGridLayer(state, config.width, config.height)
+        self.calibration_layer = CalibrationLayer(state, self.config)
 
         # Visibility and FoW Layers (initialized as placeholders until map loads)
         self.fow_layer = FogOfWarLayer(
@@ -102,7 +107,6 @@ class LayerStackManager:
             self.door_layer,
             self.fow_layer,
             self.visibility_layer,
-            self.scene_layer,
             self.hand_mask_layer,
             self.token_layer,
             self.menu_layer,
@@ -180,7 +184,6 @@ class LayerStackManager:
         layers = [
             self.map_layer,
             self.door_layer,
-            self.scene_layer,
             self.aruco_mask_layer,
             self.hand_mask_layer,
             self.menu_layer,
@@ -189,6 +192,9 @@ class LayerStackManager:
             self.debug_layer,
             self.selection_progress_layer,
             self.cursor_layer,
+            self.flash_layer,
+            self.map_grid_layer,
+            self.calibration_layer,
         ]
         if self.fow_layer:
             layers.append(self.fow_layer)

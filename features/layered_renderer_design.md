@@ -36,7 +36,7 @@ An abstract base class for all visual layers.
 1. **`MapLayer`**: Renders the background map (SVG/Image).
 1. **`FogOfWarLayer`**: Renders the explored/unexplored mask.
 1. **`VisibilityLayer`**: Renders real-time line-of-sight highlights.
-1. **`SceneLayer` / `LegacySceneLayer`**: Renders the active scene's content (e.g., calibration patterns).
+1. **`CalibrationLayer` / `FlashLayer` / `MapGridLayer`**: Renders active scene content using granular `WorldState` atoms.
 1. **`HandMaskLayer`**: Renders the "digital shadow" to protect hand tracking.
 1. **`MenuLayer`**: Renders the interactive menu system.
 1. **`TokenLayer`**: Renders ghost tokens and labels.

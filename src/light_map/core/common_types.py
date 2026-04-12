@@ -57,6 +57,14 @@ class CalibrationState:
     total_required: int = 0
     candidate_ppi: float = 0.0
     step_index: int = 0
+    flash_intensity: int = 0
+    instruction_text: str = ""
+    instruction_pos: Tuple[int, int] = (50, 50)
+    pattern_image: Optional[np.ndarray] = None
+    object_points: Optional[np.ndarray] = None
+    image_points: Optional[np.ndarray] = None
+    rotation_vector: Optional[np.ndarray] = None
+    translation_vector: Optional[np.ndarray] = None
 
 
 class Layer(ABC):

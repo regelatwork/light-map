@@ -34,8 +34,9 @@ def test_interactive_app_layered_init(mock_config, monkeypatch):
 
     assert hasattr(app, "layer_stack")
     assert (
-        len(app.layer_stack) == 13
-    )  # Map, Door, FoW, Visibility, Scene, ArucoMask, Hand, Token, Menu, Notif, Debug, SelectionProgress, Cursor
+        len(app.layer_stack) == 12
+    )  # Map, Door, FoW, Visibility, ArucoMask, Hand, Token, Menu, Notif, Debug, SelectionProgress, Cursor
+
     assert app.renderer.output_buffer.shape == (100, 100, 3)
 
 

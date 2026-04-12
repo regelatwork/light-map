@@ -66,7 +66,7 @@ export const TokenPropertiesEditor: React.FC<TokenPropertiesEditorProps> = ({
     tokenSize = profileDef.size;
   } else if ((token.size as number) !== undefined) {
     tokenSize = token.size as number;
-  } else if (arucoDefault?.size !== undefined) {
+  } else if (arucoDefault?.size !== undefined && arucoDefault.size !== null) {
     tokenSize = arucoDefault.size;
   }
 
@@ -77,7 +77,7 @@ export const TokenPropertiesEditor: React.FC<TokenPropertiesEditorProps> = ({
     tokenHeightMm = profileDef.height_mm;
   } else if ((token.height_mm as number) !== undefined) {
     tokenHeightMm = token.height_mm as number;
-  } else if (arucoDefault?.height_mm !== undefined) {
+  } else if (arucoDefault?.height_mm !== undefined && arucoDefault.height_mm !== null) {
     tokenHeightMm = arucoDefault.height_mm;
   }
 

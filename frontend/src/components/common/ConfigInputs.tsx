@@ -1,5 +1,5 @@
-import React from 'react';
-import { GlobalConfig, GLOBALCONFIG_METADATA, FieldMetadata } from '../../types/schema.generated';
+import { GLOBALCONFIG_METADATA } from '../../types/schema.generated';
+import type { GlobalConfig, FieldMetadata } from '../../types/schema.generated';
 
 interface BaseProps<T> {
   name: keyof T;

@@ -1,4 +1,4 @@
-import { GlobalConfig } from '../types/schema.generated';
+import type { GlobalConfig } from '../types/schema.generated';
 
 export const injectAction = async (action: string, payload?: string) => {
   const host = import.meta.env.DEV ? 'http://localhost:8000' : window.location.origin;

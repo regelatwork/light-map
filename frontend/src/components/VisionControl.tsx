@@ -2,7 +2,7 @@ import { type FC } from 'react';
 import { useSystemState } from '../hooks/useSystemState';
 import { injectAction, updateSystemConfig } from '../services/api';
 import { GlobalConfigNumber, GlobalConfigCheckbox, GlobalConfigSelect } from './common/ConfigInputs';
-import { GlobalConfig } from '../types/schema.generated';
+import type { GlobalConfig } from '../types/schema.generated';
 
 interface VisionControlProps {
   showOnlyToggles?: boolean;

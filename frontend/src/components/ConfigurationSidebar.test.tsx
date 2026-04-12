@@ -90,7 +90,7 @@ describe('ConfigurationSidebar', () => {
 
     vi.mocked(useSystemStateHook.useSystemState).mockReturnValue({
       ...useSystemStateHook.INITIAL_STATE,
-      tokens: [mockToken],
+      tokens: [mockToken as any],
       world: { scene: 'VIEWING', fps: 60, blockers: [] },
       grid_origin_svg_x: 0,
       grid_origin_svg_y: 0,
@@ -158,7 +158,7 @@ describe('ConfigurationSidebar', () => {
 
     vi.mocked(useSystemStateHook.useSystemState).mockReturnValue({
       ...useSystemStateHook.INITIAL_STATE,
-      tokens: [mockToken],
+      tokens: [mockToken as any],
       world: { scene: 'VIEWING', fps: 60, blockers: [] },
       grid_origin_svg_x: 0,
       grid_origin_svg_y: 0,
@@ -225,7 +225,7 @@ describe('ConfigurationSidebar', () => {
 
     vi.mocked(useSystemStateHook.useSystemState).mockReturnValue({
       ...useSystemStateHook.INITIAL_STATE,
-      tokens: [mockToken],
+      tokens: [mockToken as any],
       world: { scene: 'VIEWING', fps: 60, blockers: [] },
       grid_origin_svg_x: 0,
       grid_origin_svg_y: 0,
@@ -367,7 +367,7 @@ describe('ConfigurationSidebar', () => {
 
     const systemState = {
       ...useSystemStateHook.INITIAL_STATE,
-      tokens: [mockToken],
+      tokens: [mockToken as any],
       world: { scene: 'VIEWING', fps: 60, blockers: [mockDoor] },
       config: {
         ...useSystemStateHook.INITIAL_STATE.config,

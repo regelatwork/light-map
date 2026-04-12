@@ -8,16 +8,18 @@
 
 import {
   GmPosition,
+  TokenDetectionAlgorithm,
+  NamingStyle,
+} from './schema.generated';
+import type {
   ViewportState,
   Token,
   SizeProfile as TokenProfile,
   ArucoDefinition as ArucoDefault,
-  TokenDetectionAlgorithm,
-  NamingStyle,
 } from './schema.generated';
 
-export { GmPosition, ViewportState, Token, TokenDetectionAlgorithm, NamingStyle };
-export type { TokenProfile, ArucoDefault };
+export { GmPosition, TokenDetectionAlgorithm, NamingStyle };
+export type { ViewportState, Token, TokenProfile, ArucoDefault };
 
 export enum VisibilityType {
   WALL = 'wall',

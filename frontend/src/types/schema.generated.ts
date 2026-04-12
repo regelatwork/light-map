@@ -31,13 +31,13 @@ export enum NamingStyle {
 }
 
 export interface SizeProfile {
-  size?: number;
-  height_mm?: number;
+  size: number;
+  height_mm: number;
 }
 
 export interface ArucoDefinition {
   name: string;
-  type?: string;
+  type: string;
   profile?: string | null;
   size?: number | null;
   height_mm?: number | null;
@@ -45,35 +45,35 @@ export interface ArucoDefinition {
 }
 
 export interface TokenConfig {
-  token_profiles?: Record<string, SizeProfile>;
-  aruco_defaults?: Record<number, ArucoDefinition>;
+  token_profiles: Record<string, SizeProfile>;
+  aruco_defaults: Record<number, ArucoDefinition>;
 }
 
 export interface ViewportState {
-  x?: number;
-  y?: number;
-  zoom?: number;
-  rotation?: number;
+  x: number;
+  y: number;
+  zoom: number;
+  rotation: number;
 }
 
 export interface Token {
   id: number;
   world_x: number;
   world_y: number;
-  world_z?: number;
+  world_z: number;
   marker_x?: number | null;
   marker_y?: number | null;
-  marker_z?: number;
+  marker_z: number;
   grid_x?: number | null;
   grid_y?: number | null;
   screen_x?: number | null;
   screen_y?: number | null;
-  confidence?: number;
-  is_occluded?: boolean;
-  is_duplicate?: boolean;
+  confidence: number;
+  is_occluded: boolean;
+  is_duplicate: boolean;
   name?: string | null;
   color?: string | null;
-  type?: string;
+  type: string;
   profile?: string | null;
   size?: number | null;
   height_mm?: number | null;
@@ -82,36 +82,36 @@ export interface Token {
 export interface SessionData {
   map_file: string;
   viewport: ViewportState;
-  tokens?: Token[];
-  door_states?: Record<string, boolean>;
-  timestamp?: string;
+  tokens: Token[];
+  door_states: Record<string, boolean>;
+  timestamp: string;
 }
 
 export interface MapEntry {
-  scale_factor?: number;
-  viewport?: ViewportState;
-  grid_spacing_svg?: number;
-  grid_origin_svg_x?: number;
-  grid_origin_svg_y?: number;
-  physical_unit_inches?: number;
-  scale_factor_1to1?: number;
-  last_seen?: string;
-  aruco_overrides?: Record<number, ArucoDefinition>;
+  scale_factor: number;
+  viewport: ViewportState;
+  grid_spacing_svg: number;
+  grid_origin_svg_x: number;
+  grid_origin_svg_y: number;
+  physical_unit_inches: number;
+  scale_factor_1to1: number;
+  last_seen: string;
+  aruco_overrides: Record<number, ArucoDefinition>;
 }
 
 export interface GlobalConfig {
-  projector_ppi?: number;
-  flash_intensity?: number;
-  pointer_offset_mm?: number;
-  enable_hand_masking?: boolean;
-  enable_aruco_masking?: boolean;
-  aruco_mask_intensity?: number;
-  gm_position?: GmPosition;
-  use_projector_3d_model?: boolean;
-  inspection_linger_duration?: number;
-  door_thickness_multiplier?: number;
-  detection_algorithm?: TokenDetectionAlgorithm;
-  naming_style?: NamingStyle;
+  projector_ppi: number;
+  flash_intensity: number;
+  pointer_offset_mm: number;
+  enable_hand_masking: boolean;
+  enable_aruco_masking: boolean;
+  aruco_mask_intensity: number;
+  gm_position: GmPosition;
+  use_projector_3d_model: boolean;
+  inspection_linger_duration: number;
+  door_thickness_multiplier: number;
+  detection_algorithm: TokenDetectionAlgorithm;
+  naming_style: NamingStyle;
   projector_pos_x_override?: number | null;
   projector_pos_y_override?: number | null;
   projector_pos_z_override?: number | null;

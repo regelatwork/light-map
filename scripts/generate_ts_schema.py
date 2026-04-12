@@ -73,15 +73,12 @@ def generate_ts_interface(model_name: str, model: Type[BaseModel]) -> str:
     lines = [f"export interface {model_name} {{"]
     for field_name, field in model.model_fields.items():
         ts_type = python_type_to_ts(field.annotation)
-        # Use optional marker if field can be None OR has a default value
+        # Use optional marker only if field can be None
         origin = get_origin(field.annotation)
         args = get_args(field.annotation)
         is_optional_type = origin is Union and type(None) in args
-        has_default = (
-            field.default is not PydanticUndefined or field.default_factory is not None
-        )
 
-        optional = "?" if is_optional_type or has_default else ""
+        optional = "?" if is_optional_type else ""
         lines.append(f"  {field_name}{optional}: {ts_type};")
     lines.append("}\n")
     return "\n".join(lines)

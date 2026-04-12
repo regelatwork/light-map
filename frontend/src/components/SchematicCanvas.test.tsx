@@ -11,8 +11,8 @@ let mockSystemState: SystemState = {
   isConnected: true,
   world: { scene: 'MAP', fps: 60, blockers: [] },
   tokens: [
-    { id: 1, world_x: 100, world_y: 100 },
-    { id: 2, world_x: 200, world_y: 200 },
+    { id: 1, world_x: 100, world_y: 100 } as any,
+    { id: 2, world_x: 200, world_y: 200 } as any,
   ],
   config: {
     ...INITIAL_STATE.config,
@@ -41,8 +41,8 @@ describe('SchematicCanvas', () => {
       isConnected: true,
       world: { scene: 'MAP', fps: 60, blockers: [] },
       tokens: [
-        { id: 1, world_x: 100, world_y: 100 },
-        { id: 2, world_x: 200, world_y: 200 },
+        { id: 1, world_x: 100, world_y: 100 } as any,
+        { id: 2, world_x: 200, world_y: 200 } as any,
       ],
       config: {
         ...INITIAL_STATE.config,

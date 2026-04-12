@@ -72,14 +72,16 @@ def test_flash_calibration_scene_state_machine(mock_app_context):
             # Iterate through test levels
             for i in range(len(scene._test_levels)):
                 current_level = scene._test_levels[i]
-                
+
                 # Wait for FLASH timer (1.5s for each flash)
                 time_state.val += 1.51
                 mock_app_context.events.check()
-                
+
                 assert scene._stage == FlashCalibStage.FLASH
                 assert scene._capture_frame is True
-                assert mock_app_context.state.calibration.flash_intensity == current_level
+                assert (
+                    mock_app_context.state.calibration.flash_intensity == current_level
+                )
 
                 # Update to trigger capture and process
                 scene.update([], [], time_state.val)
@@ -148,21 +150,21 @@ def test_flash_calibration_layers(mock_app_context):
     """Verify that the scene returns the correct layers for each stage."""
     scene = FlashCalibrationScene(mock_app_context)
     mock_app = MagicMock()
-    
+
     scene._stage = FlashCalibStage.FLASH
     layers = scene.get_active_layers(mock_app)
     assert layers == [mock_app.flash_layer]
-    
+
     scene._stage = FlashCalibStage.IDLE
     layers = scene.get_active_layers(mock_app)
     assert mock_app.calibration_layer in layers
     assert mock_app.token_layer in layers
-    
+
     scene._stage = FlashCalibStage.COOLDOWN
     layers = scene.get_active_layers(mock_app)
     assert mock_app.calibration_layer in layers
     assert mock_app.token_layer in layers
-    
+
     scene._stage = FlashCalibStage.DONE
     layers = scene.get_active_layers(mock_app)
     assert mock_app.calibration_layer in layers

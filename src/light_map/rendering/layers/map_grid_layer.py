@@ -40,7 +40,7 @@ class MapGridLayer(Layer):
 
         # spacing = spacing_svg * zoom
         spacing = grid.spacing_svg * vp.zoom
-        if spacing <= 1.0: # Prevent infinite loop or too many crosses
+        if spacing <= 1.0:  # Prevent infinite loop or too many crosses
             return []
 
         # Transform origin (Accounting for map rotation)
@@ -77,11 +77,11 @@ class MapGridLayer(Layer):
         # We find the screen corners in grid-relative space
         inv_cos = math.cos(-angle_rad)
         inv_sin = math.sin(-angle_rad)
-        
+
         corners = [(0, 0), (self.width, 0), (0, self.height), (self.width, self.height)]
-        min_i, max_i = float('inf'), float('-inf')
-        min_j, max_j = float('inf'), float('-inf')
-        
+        min_i, max_i = float("inf"), float("-inf")
+        min_j, max_j = float("inf"), float("-inf")
+
         for cx_s, cy_s in corners:
             # Shift back by viewport translation and pivot
             cdx = cx_s - vp.x - cx
@@ -92,11 +92,11 @@ class MapGridLayer(Layer):
             # Shift back to scaled world
             wx_c = crx + cx
             wy_c = cry + cy
-            
+
             # Distance from grid origin in grid units
             i = (wx_c - wx_scaled) / spacing
             j = (wy_c - wy_scaled) / spacing
-            
+
             min_i, max_i = min(min_i, i), max(max_i, i)
             min_j, max_j = min(min_j, j), max(max_j, j)
 

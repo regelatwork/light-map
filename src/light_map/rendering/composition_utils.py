@@ -3,12 +3,13 @@ import numpy as np
 from light_map.core.common_types import LayerMode, ImagePatch
 from light_map.core.constants import ALPHA_OPAQUE
 
+
 def composite_patch(
     buffer: np.ndarray,
     patch: ImagePatch,
     mode: LayerMode,
     screen_width: int,
-    screen_height: int
+    screen_height: int,
 ):
     """
     Blends a patch onto a buffer using optimized methods based on the layer mode.
@@ -74,9 +75,13 @@ def composite_patch(
                 alpha_f = float(first_alpha) / 255.0
                 if alpha_f == 1.0:
                     # Treat as blocking if fully opaque
-                    buffer[buffer_y1:buffer_y2, buffer_x1:buffer_x2, :3] = patch_slice[:, :, :3]
+                    buffer[buffer_y1:buffer_y2, buffer_x1:buffer_x2, :3] = patch_slice[
+                        :, :, :3
+                    ]
                     if buffer.shape[2] == 4:
-                        buffer[buffer_y1:buffer_y2, buffer_x1:buffer_x2, 3] = ALPHA_OPAQUE
+                        buffer[buffer_y1:buffer_y2, buffer_x1:buffer_x2, 3] = (
+                            ALPHA_OPAQUE
+                        )
                     return
                 elif alpha_f == 0.0:
                     return
@@ -92,15 +97,17 @@ def composite_patch(
                 )
                 if buffer.shape[2] == 4:
                     # Composite alpha (simplified blend)
-                    dst_alpha = buffer[buffer_y1:buffer_y2, buffer_x1:buffer_x2, 3].astype(np.uint16)
+                    dst_alpha = buffer[
+                        buffer_y1:buffer_y2, buffer_x1:buffer_x2, 3
+                    ].astype(np.uint16)
                     src_alpha = alpha_channel.astype(np.uint16)
                     blended_alpha = (
                         src_alpha
-                        + dst_alpha
-                        * (ALPHA_OPAQUE - src_alpha)
-                        // ALPHA_OPAQUE
+                        + dst_alpha * (ALPHA_OPAQUE - src_alpha) // ALPHA_OPAQUE
                     )
-                    buffer[buffer_y1:buffer_y2, buffer_x1:buffer_x2, 3] = blended_alpha.astype(np.uint8)
+                    buffer[buffer_y1:buffer_y2, buffer_x1:buffer_x2, 3] = (
+                        blended_alpha.astype(np.uint8)
+                    )
                 return
 
             # Standard alpha blending for variable alpha
@@ -109,15 +116,23 @@ def composite_patch(
             patch_bgr = patch_slice[:, :, :3].astype(np.uint16)
 
             blended = (patch_bgr * alpha + roi * (ALPHA_OPAQUE - alpha)) // ALPHA_OPAQUE
-            buffer[buffer_y1:buffer_y2, buffer_x1:buffer_x2, :3] = blended.astype(np.uint8)
+            buffer[buffer_y1:buffer_y2, buffer_x1:buffer_x2, :3] = blended.astype(
+                np.uint8
+            )
 
             if buffer.shape[2] == 4:
-                dst_alpha = buffer[buffer_y1:buffer_y2, buffer_x1:buffer_x2, 3].astype(np.uint16)
-                blended_alpha = (
-                    alpha_channel.astype(np.uint16) +
-                    dst_alpha * (ALPHA_OPAQUE - alpha_channel.astype(np.uint16)) // ALPHA_OPAQUE
+                dst_alpha = buffer[buffer_y1:buffer_y2, buffer_x1:buffer_x2, 3].astype(
+                    np.uint16
                 )
-                buffer[buffer_y1:buffer_y2, buffer_x1:buffer_x2, 3] = blended_alpha.astype(np.uint8)
+                blended_alpha = (
+                    alpha_channel.astype(np.uint16)
+                    + dst_alpha
+                    * (ALPHA_OPAQUE - alpha_channel.astype(np.uint16))
+                    // ALPHA_OPAQUE
+                )
+                buffer[buffer_y1:buffer_y2, buffer_x1:buffer_x2, 3] = (
+                    blended_alpha.astype(np.uint8)
+                )
         else:
             # No alpha channel, treat as blocking
             buffer[buffer_y1:buffer_y2, buffer_x1:buffer_x2, :3] = patch_slice[:, :, :3]

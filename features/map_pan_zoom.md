@@ -5,9 +5,9 @@ This document outlines the design for the **Map Pan and Zoom Editor**, a visual 
 ## Goals
 
 1. **Visual Calibration**: Provide a clear visual representation of the projector's "window" (viewport) on the map.
-2. **Precise Panning**: Enable grid-aligned panning to ensure the map aligns perfectly with the physical projector bounds.
-3. **Intuitive Zooming**: Allow zooming by dragging the viewport edges, pinning the opposite side to maintain context.
-4. **Mutual Exclusion**: Ensure the interface remains clean by toggling between Grid and Viewport calibration modes.
+1. **Precise Panning**: Enable grid-aligned panning to ensure the map aligns perfectly with the physical projector bounds.
+1. **Intuitive Zooming**: Allow zooming by dragging the viewport edges, pinning the opposite side to maintain context.
+1. **Mutual Exclusion**: Ensure the interface remains clean by toggling between Grid and Viewport calibration modes.
 
 ## Core Concepts
 
@@ -21,15 +21,15 @@ This document outlines the design for the **Map Pan and Zoom Editor**, a visual 
 ### Interaction Model: Viewport Calibration
 
 1. **Toggle Mode**: In the "Entity Properties" sidebar, the user can toggle between **Visual Grid Editor** and **Map Pan & Zoom**. Only one mode can be active at a time.
-2. **Pan (Center Handle)**:
-    - A green handle at the center of the viewport rectangle allows for panning.
-    - Dragging the handle moves the entire viewport.
-    - Movement snaps to the nearest grid intersection.
-3. **Zoom (Side Handles)**:
-    - Handles at the midpoints of the Top, Bottom, Left, and Right edges allow for resizing.
-    - Dragging a handle scales the rectangle while keeping the opposite side's midpoint fixed.
-    - The aspect ratio is strictly maintained during resizing.
-4. **Reset Zoom**: A "Reset to 1:1" button in the sidebar immediately sets the zoom factor to 1.0.
+1. **Pan (Center Handle)**:
+   - A green handle at the center of the viewport rectangle allows for panning.
+   - Dragging the handle moves the entire viewport.
+   - Movement snaps to the nearest grid intersection.
+1. **Zoom (Side Handles)**:
+   - Handles at the midpoints of the Top, Bottom, Left, and Right edges allow for resizing.
+   - Dragging a handle scales the rectangle while keeping the opposite side's midpoint fixed.
+   - The aspect ratio is strictly maintained during resizing.
+1. **Reset Zoom**: A "Reset to 1:1" button in the sidebar immediately sets the zoom factor to 1.0.
 
 ### Visual Feedback
 

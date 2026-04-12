@@ -2,7 +2,6 @@ import pytest
 import numpy as np
 from light_map.rendering.layers.door_layer import DoorLayer
 from light_map.state.world_state import WorldState
-from light_map.visibility.visibility_engine import VisibilityEngine
 from light_map.visibility.visibility_types import VisibilityBlocker, VisibilityType
 
 

@@ -4,14 +4,15 @@ This plan describes the final phase of the rendering refactor: eliminating the `
 
 ## Objective
 
-1.  **Eliminate the `SceneLayer` bridge:** Remove the pattern where a generic layer delegates rendering to a monolithic `Scene.render()` method.
-2.  **Scene-Specific Layers:** Implement dedicated layers (`CalibrationLayer`, `FlashLayer`, `MapGridLayer`) that consume granular `WorldState` atoms and return `ImagePatch`es directly.
-3.  **Refactor Scenes to Controllers:** Transition existing `Scene` objects to be pure "Controllers" that handle logic and update `WorldState`, with no rendering responsibility.
-4.  **Granular Versioning:** Ensure that only the necessary parts of the screen are re-rendered when a scene's state changes.
+1. **Eliminate the `SceneLayer` bridge:** Remove the pattern where a generic layer delegates rendering to a monolithic `Scene.render()` method.
+1. **Scene-Specific Layers:** Implement dedicated layers (`CalibrationLayer`, `FlashLayer`, `MapGridLayer`) that consume granular `WorldState` atoms and return `ImagePatch`es directly.
+1. **Refactor Scenes to Controllers:** Transition existing `Scene` objects to be pure "Controllers" that handle logic and update `WorldState`, with no rendering responsibility.
+1. **Granular Versioning:** Ensure that only the necessary parts of the screen are re-rendered when a scene's state changes.
 
 ## Architectural Direction
 
 All rendering logic must move from `Scene.render()` (OpenCV-heavy) to `Layer._generate_patches()`.
+
 - **Scenes** (e.g., `ExtrinsicsCalibrationScene`) now only manage state transitions, gesture handling, and updating `self.context.state.calibration`.
 - **Layers** (e.g., `CalibrationLayer`) observe `state.calibration_version` and draw based on the current `stage`, `target_status`, etc.
 
@@ -20,6 +21,7 @@ All rendering logic must move from `Scene.render()` (OpenCV-heavy) to `Layer._ge
 ### 1. `src/light_map/state/world_state.py` (Atoms)
 
 Update the `CalibrationState` dataclass in `src/light_map/core/common_types.py` to include:
+
 ```python
 @dataclass
 class CalibrationState:
@@ -48,6 +50,7 @@ class CalibrationState:
 ### 2. New Layer Implementations
 
 #### `FlashLayer` in `src/light_map/rendering/layers/flash_layer.py`
+
 ```python
 class FlashLayer(Layer):
     def __init__(self, state: WorldState, width: int, height: int):
@@ -65,6 +68,7 @@ class FlashLayer(Layer):
 ```
 
 #### `MapGridLayer` in `src/light_map/rendering/layers/map_grid_layer.py`
+
 ```python
 class MapGridLayer(Layer):
     def __init__(self, state: WorldState, width: int, height: int):
@@ -82,6 +86,7 @@ class MapGridLayer(Layer):
 ```
 
 #### `CalibrationLayer` in `src/light_map/rendering/layers/calibration_layer.py`
+
 ```python
 class CalibrationLayer(Layer):
     def __init__(self, state: WorldState, width: int, height: int):
@@ -118,18 +123,20 @@ class CalibrationLayer(Layer):
 
 - [ ] **Task 1: Define CalibrationLayer.** Create `src/light_map/rendering/layers/calibration_layer.py`. Port the instructions and target drawing logic from `ExtrinsicsCalibrationScene.render`.
 - [ ] **Task 2: Migrate Flash Calibration.**
-    - Remove `FlashCalibrationScene.render`.
-    - Update `FlashCalibrationScene._change_stage` to set `state.calibration.flash_intensity`.
-    - Update `FlashCalibrationScene.get_active_layers` to use `app.flash_layer`.
+  - Remove `FlashCalibrationScene.render`.
+  - Update `FlashCalibrationScene._change_stage` to set `state.calibration.flash_intensity`.
+  - Update `FlashCalibrationScene.get_active_layers` to use `app.flash_layer`.
 - [ ] **Task 3: Migrate PPI Calibration.** Update `PpiCalibrationScene` to use `CalibrationLayer` for its text feedback.
 - [ ] **Task 4: Migrate Intrinsics & Projector.** Update these scenes to use `CalibrationLayer`.
 
 ## Phase 3: The "Big One" (Extrinsics)
+
 - Refactor `ExtrinsicsCalibrationScene` to be a pure controller.
 - Move its complex residual drawing and animation logic into `CalibrationLayer`.
 - Ensure `state.calibration.object_points` etc. are populated after `calibrate_extrinsics` succeeds.
 
 ## Phase 4: Cleanup
+
 - [ ] Remove `src/light_map/rendering/layers/legacy_scene_layer.py`.
 - [ ] Remove `src/light_map/rendering/layers/scene_layer.py`.
 - [ ] Update `LayerStackManager` to remove these layers from the default stack.
@@ -138,11 +145,13 @@ class CalibrationLayer(Layer):
 ## Verification Plan
 
 ### Automated Tests
+
 - `pytest tests/test_map_grid_layer.py`
 - `pytest tests/test_calibration_layer.py`
 - `pytest tests/test_interactive_app_layered.py`
 
 ### Manual Verification
+
 - Run "Step 1: Flash Intensity" and verify the screen flashes correctly.
 - Run "Step 5: Extrinsics" and verify targets turn green and animations play when tokens are detected.
 - Observe `total_render_logic` in debug overlay (F3).

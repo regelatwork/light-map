@@ -2,7 +2,7 @@ import cv2
 import numpy as np
 import math
 import svgelements
-from typing import List, Tuple
+from typing import List
 from light_map.core.common_types import Layer, ImagePatch
 from light_map.state.world_state import WorldState
 from light_map.core.constants import (

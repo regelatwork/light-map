@@ -242,9 +242,11 @@ def test_aruco_mask_layer_version_with_persistence(mock_state, mock_config):
     # 1. Initial detection (marker 42 present in mock_state)
     layer._generate_patches(100.0)
     v_base = layer.get_current_version()
-    
+
     # Update system time - should NOT affect version because no lingering yet
-    mock_state._system_time_atom.update(101.0, force_timestamp=mock_state.raw_aruco_version + 1000)
+    mock_state._system_time_atom.update(
+        101.0, force_timestamp=mock_state.raw_aruco_version + 1000
+    )
     v1 = layer.get_current_version()
     assert v1 == v_base  # Still based on raw_aruco_version
 
@@ -252,9 +254,11 @@ def test_aruco_mask_layer_version_with_persistence(mock_state, mock_config):
     mock_state.raw_aruco = {"corners": [], "ids": []}
     # Important: raw_aruco_version will increment because we changed the value
     v_after_lost = layer.get_current_version()
-    
+
     # system_time_version should now trigger every-frame updates
-    mock_state._system_time_atom.update(102.0, force_timestamp=mock_state.raw_aruco_version + 2000)
+    mock_state._system_time_atom.update(
+        102.0, force_timestamp=mock_state.raw_aruco_version + 2000
+    )
     v2 = layer.get_current_version()
     assert v2 > v_after_lost
 
@@ -262,7 +266,7 @@ def test_aruco_mask_layer_version_with_persistence(mock_state, mock_config):
     layer._generate_patches(105.0)  # This will clear last_seen
     v3 = layer.get_current_version()
     # Now it should be back to just base versioning
-    
+
     # Update system time again - should NOT affect version
     mock_state._system_time_atom.update(106.0, force_timestamp=v3 + 1000)
     v4 = layer.get_current_version()

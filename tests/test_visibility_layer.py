@@ -25,6 +25,7 @@ def test_visibility_layer_render():
 
     # Set grid metadata so transformation works
     from light_map.core.common_types import GridMetadata
+
     ws.grid_metadata = GridMetadata(spacing_svg=16.0)
 
     patches = layer.render()[0]

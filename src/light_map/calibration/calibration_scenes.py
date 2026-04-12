@@ -681,7 +681,9 @@ class ExtrinsicsCalibrationScene(Scene):
 
                 # Reset status, detected IDs, and known targets for this frame
                 self._target_status = ["IDLE"] * len(self._target_zones)
-                self._target_info = [{"x": tx, "y": ty} for tx, ty, _ in self._target_zones]
+                self._target_info = [
+                    {"x": tx, "y": ty} for tx, ty, _ in self._target_zones
+                ]
                 self._detected_ids = {}
                 self._known_targets = {}
 

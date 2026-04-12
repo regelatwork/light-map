@@ -1,11 +1,9 @@
-import logging
 from typing import Any, List, Optional, TYPE_CHECKING
 
 import numpy as np
 
-from light_map.core.common_types import ImagePatch, Layer, LayerMode, AppConfig
+from light_map.core.common_types import Layer, AppConfig
 from light_map.core.analytics import LatencyInstrument, track_wait
-from light_map.core.constants import ALPHA_OPAQUE
 
 if TYPE_CHECKING:
     from light_map.rendering.projection import Projector3DModel

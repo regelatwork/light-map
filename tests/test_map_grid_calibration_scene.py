@@ -201,12 +201,12 @@ def test_grid_overlay_logic():
     assert overlay.offset_y == 20.0
 
 
-def test_map_grid_calibration_render(map_grid_calib_scene, mock_app_context):
+def test_overlay_render(map_grid_calib_scene, mock_projector):
     """Verify render draws crosses and highlighted origin."""
     map_grid_calib_scene.on_enter()
-    frame = np.zeros((100, 100, 3), dtype=np.uint8)
 
     # Configure overlay to draw one intersection at (50, 50)
+
     map_grid_calib_scene.grid_overlay.spacing = 100.0
     map_grid_calib_scene.grid_overlay.offset_x = 50.0
     map_grid_calib_scene.grid_overlay.offset_y = 50.0

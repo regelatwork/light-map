@@ -4,18 +4,20 @@
 
 **Goal:** Correctly center the map on the grid origin (accounting for rotation) or fallback to the map center if no origin is set. Fix the trigger logic to prevent premature centering before map data is available.
 
-**Architecture:** 
+**Architecture:**
+
 1. Update `resetView` in `SchematicCanvas.tsx` to include a fallback mechanism: Grid Origin -> Map Center -> Projection Center.
-2. Replace the boolean `initialCentered` ref with a more specific `lastCenteredMapPath` ref to trigger centering only when a map is actually loaded.
-3. Verify with the existing Playwright E2E test `frontend/e2e/map-centering.spec.ts`.
+1. Replace the boolean `initialCentered` ref with a more specific `lastCenteredMapPath` ref to trigger centering only when a map is actually loaded.
+1. Verify with the existing Playwright E2E test `frontend/e2e/map-centering.spec.ts`.
 
 **Tech Stack:** React (TypeScript), Playwright.
 
----
+______________________________________________________________________
 
 ### Task 1: Update `resetView` and trigger logic in `SchematicCanvas.tsx`
 
 **Files:**
+
 - Modify: `frontend/src/components/SchematicCanvas.tsx`
 
 **Step 1: Implement fallback and better trigger logic**
@@ -83,6 +85,7 @@ git commit -m "fix(frontend): improve map centering trigger and add fallback to 
 ### Task 2: Verify with Playwright E2E Test
 
 **Files:**
+
 - Test: `frontend/e2e/map-centering.spec.ts`
 
 **Step 1: Run the E2E tests**

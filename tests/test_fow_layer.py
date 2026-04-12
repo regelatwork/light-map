@@ -1,6 +1,5 @@
 import numpy as np
 from light_map.rendering.layers.fow_layer import FogOfWarLayer
-from light_map.visibility.fow_manager import FogOfWarManager
 
 
 from light_map.state.world_state import WorldState
@@ -24,6 +23,7 @@ def test_fow_render_two_states():
 
     # Set grid metadata so transformation works
     from light_map.core.common_types import GridMetadata
+
     ws.grid_metadata = GridMetadata(spacing_svg=16.0)
 
     patches = layer.render()[0]
@@ -58,7 +58,10 @@ def test_fow_rendering_with_non_zero_origin():
 
     # Set grid metadata so transformation works
     from light_map.core.common_types import GridMetadata
-    ws.grid_metadata = GridMetadata(spacing_svg=spacing, origin_svg_x=100.0, origin_svg_y=100.0)
+
+    ws.grid_metadata = GridMetadata(
+        spacing_svg=spacing, origin_svg_x=100.0, origin_svg_y=100.0
+    )
 
     # Viewport at zoom=1.0, no offset
     from light_map.core.common_types import ViewportState

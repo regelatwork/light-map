@@ -137,6 +137,7 @@ def test_projector_3d_calibration_scene_layers(mock_app, mock_context):
     assert mock_app.selection_progress_layer not in layers
     assert mock_app.cursor_layer in layers
 
+
 def test_scanning_scene_layers(mock_app, mock_context):
     scene = ScanningScene(mock_context)
     # Default stage is START, which is NOT SHOW_RESULT or DONE
@@ -174,8 +175,6 @@ def test_exclusive_vision_scene_layers(mock_app, mock_context):
     assert mock_app.door_layer in layers
     assert mock_app.fow_layer in layers
     assert mock_app.visibility_layer in layers
-    assert (
-        mock_app.notification_layer in layers
-    )  # INCLUDED in ExclusiveVisionScene
+    assert mock_app.notification_layer in layers  # INCLUDED in ExclusiveVisionScene
     assert mock_app.debug_layer in layers
     assert mock_app.cursor_layer in layers

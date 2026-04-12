@@ -5,6 +5,7 @@ from light_map.core.common_types import Layer, LayerMode, ImagePatch, AppConfig
 from light_map.state.world_state import WorldState
 from light_map.core.display_utils import draw_text_with_background
 
+
 class CalibrationLayer(Layer):
     """
     Renders calibration-related UI elements based on CalibrationState.
@@ -127,8 +128,14 @@ class CalibrationLayer(Layer):
                         growth = int(20 * (1.0 - elapsed / 0.5))
                         cv2.rectangle(
                             canvas,
-                            (int(tx - half_size - growth), int(ty - half_size - growth)),
-                            (int(tx + half_size + growth), int(ty + half_size + growth)),
+                            (
+                                int(tx - half_size - growth),
+                                int(ty - half_size - growth),
+                            ),
+                            (
+                                int(tx + half_size + growth),
+                                int(ty + half_size + growth),
+                            ),
                             (0, 255, 0, 255),
                             2,
                         )
@@ -137,7 +144,11 @@ class CalibrationLayer(Layer):
         if cal.reprojection_error > 0:
             rms = cal.reprojection_error
             status_color = (
-                (0, 255, 0) if rms < 2.0 else (0, 255, 255) if rms < 5.0 else (0, 0, 255)
+                (0, 255, 0)
+                if rms < 2.0
+                else (0, 255, 255)
+                if rms < 5.0
+                else (0, 0, 255)
             )
             status_text = "GOOD" if rms < 2.0 else "FAIR" if rms < 5.0 else "POOR"
             draw_text_with_background(
@@ -156,7 +167,7 @@ class CalibrationLayer(Layer):
             stage_text = f"STAGE: {cal.stage.upper()}"
             if cal.total_required > 0:
                 stage_text += f" ({cal.captured_count}/{cal.total_required})"
-            
+
             draw_text_with_background(
                 canvas,
                 stage_text,
@@ -165,7 +176,7 @@ class CalibrationLayer(Layer):
                 0.7,
                 (0, 255, 255),  # Yellow
                 2,
-                bg_color=(40, 40, 40)
+                bg_color=(40, 40, 40),
             )
 
         if cal.instruction_text:

@@ -24,7 +24,7 @@ export function ConfigNumberInput<T>({ name, config, update, metadata }: BasePro
           min={meta.min}
           max={meta.max}
           step={meta.step ?? (meta.min !== undefined && meta.min % 1 !== 0 ? "0.1" : "1")}
-          onChange={(e) => update({ [name]: parseFloat(e.target.value) } as any)}
+          onChange={(e) => update({ [name]: parseFloat(e.target.value) } as unknown as Partial<T>)}
           className="flex-1 px-4 py-2 text-sm border-2 border-gray-200 rounded-lg focus:ring-4 focus:ring-blue-100 focus:border-blue-500 transition-all outline-none bg-white font-medium text-black"
         />
         {meta.title.includes('(mm)') && <span className="text-sm text-gray-500 font-medium">mm</span>}
@@ -45,7 +45,7 @@ export function ConfigCheckbox<T>({ name, config, update, metadata }: BaseProps<
         {meta.description && <p className="text-sm text-gray-500">{meta.description}</p>}
       </div>
       <button
-        onClick={() => update({ [name]: !checked } as any)}
+        onClick={() => update({ [name]: !checked } as unknown as Partial<T>)}
         className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
           checked ? 'bg-blue-600' : 'bg-gray-200'
         }`}
@@ -71,7 +71,7 @@ export function ConfigSelect<T>({ name, config, update, metadata }: BaseProps<T>
       </div>
       <select
         value={value}
-        onChange={(e) => update({ [name]: e.target.value } as any)}
+        onChange={(e) => update({ [name]: e.target.value } as unknown as Partial<T>)}
         className="w-full px-4 py-2 text-sm border-2 border-gray-200 rounded-lg focus:ring-4 focus:ring-blue-100 focus:border-blue-500 transition-all outline-none bg-white font-medium text-black"
       >
         {meta.options?.map((opt) => (

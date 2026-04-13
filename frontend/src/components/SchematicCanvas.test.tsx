@@ -4,15 +4,15 @@ import { SchematicCanvas } from './SchematicCanvas';
 import { SystemStateProvider } from '../hooks/useSystemState';
 import { SelectionProvider } from './SelectionContext';
 import { CalibrationProvider } from './CalibrationContext';
-import { type SystemState, INITIAL_STATE } from '../types/system';
+import { type SystemState, INITIAL_STATE, type Token } from '../types/system';
 
 let mockSystemState: SystemState = {
   ...INITIAL_STATE,
   isConnected: true,
   world: { scene: 'MAP', fps: 60, blockers: [] },
   tokens: [
-    { id: 1, world_x: 100, world_y: 100 } as any,
-    { id: 2, world_x: 200, world_y: 200 } as any,
+    { id: 1, world_x: 100, world_y: 100 } as unknown as Token,
+    { id: 2, world_x: 200, world_y: 200 } as unknown as Token,
   ],
   config: {
     ...INITIAL_STATE.config,
@@ -41,8 +41,8 @@ describe('SchematicCanvas', () => {
       isConnected: true,
       world: { scene: 'MAP', fps: 60, blockers: [] },
       tokens: [
-        { id: 1, world_x: 100, world_y: 100 } as any,
-        { id: 2, world_x: 200, world_y: 200 } as any,
+        { id: 1, world_x: 100, world_y: 100 } as unknown as Token,
+        { id: 2, world_x: 200, world_y: 200 } as unknown as Token,
       ],
       config: {
         ...INITIAL_STATE.config,

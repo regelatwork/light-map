@@ -4,7 +4,7 @@ import { ConfigurationSidebar } from './ConfigurationSidebar';
 import * as useSystemStateHook from '../hooks/useSystemState';
 import * as useSelectionHook from './SelectionContext';
 import * as useCalibrationHook from './CalibrationContext';
-import { SelectionType, GmPosition, VisibilityType } from '../types/system';
+import { SelectionType, GmPosition, VisibilityType, Token } from '../types/system';
 import { updateToken } from '../services/api';
 
 // Mock the services/api to avoid actual network requests
@@ -90,7 +90,7 @@ describe('ConfigurationSidebar', () => {
 
     vi.mocked(useSystemStateHook.useSystemState).mockReturnValue({
       ...useSystemStateHook.INITIAL_STATE,
-      tokens: [mockToken as any],
+      tokens: [mockToken as unknown as Token],
       world: { scene: 'VIEWING', fps: 60, blockers: [] },
       grid_origin_svg_x: 0,
       grid_origin_svg_y: 0,
@@ -158,7 +158,7 @@ describe('ConfigurationSidebar', () => {
 
     vi.mocked(useSystemStateHook.useSystemState).mockReturnValue({
       ...useSystemStateHook.INITIAL_STATE,
-      tokens: [mockToken as any],
+      tokens: [mockToken as unknown as Token],
       world: { scene: 'VIEWING', fps: 60, blockers: [] },
       grid_origin_svg_x: 0,
       grid_origin_svg_y: 0,
@@ -225,7 +225,7 @@ describe('ConfigurationSidebar', () => {
 
     vi.mocked(useSystemStateHook.useSystemState).mockReturnValue({
       ...useSystemStateHook.INITIAL_STATE,
-      tokens: [mockToken as any],
+      tokens: [mockToken as unknown as Token],
       world: { scene: 'VIEWING', fps: 60, blockers: [] },
       grid_origin_svg_x: 0,
       grid_origin_svg_y: 0,
@@ -367,7 +367,7 @@ describe('ConfigurationSidebar', () => {
 
     const systemState = {
       ...useSystemStateHook.INITIAL_STATE,
-      tokens: [mockToken as any],
+      tokens: [mockToken as unknown as Token],
       world: { scene: 'VIEWING', fps: 60, blockers: [mockDoor] },
       config: {
         ...useSystemStateHook.INITIAL_STATE.config,

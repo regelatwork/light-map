@@ -48,8 +48,8 @@ describe('TokenLayer', () => {
       ...INITIAL_STATE,
       isConnected: true,
       tokens: [
-        { id: 1, world_x: 100, world_y: 100, type: 'NPC', name: 'Goblin' } as any,
-        { id: 2, world_x: 200, world_y: 200, type: 'PC', name: 'Hero' } as any,
+        { id: 1, world_x: 100, world_y: 100, type: 'NPC', name: 'Goblin' } as unknown as Token,
+        { id: 2, world_x: 200, world_y: 200, type: 'PC', name: 'Hero' } as unknown as Token,
       ],
       world: { scene: 'VIEWING', fps: 60, blockers: [] },
       grid_spacing_svg: 50,

@@ -9,8 +9,8 @@ interface VisionControlProps {
 }
 
 export const VisionControl: FC<VisionControlProps> = ({ showOnlyToggles = false }) => {
-  const { config: rawConfig } = useSystemState();
-  const config = rawConfig as unknown as GlobalConfig;
+  const { config } = useSystemState();
+  const globalConfig = config as unknown as GlobalConfig;
 
   const handleToggleFow = () => {
     injectAction('TOGGLE_FOW');
@@ -51,27 +51,28 @@ export const VisionControl: FC<VisionControlProps> = ({ showOnlyToggles = false 
       <div className="space-y-6 text-black">
         <GlobalConfigCheckbox
           name="enable_hand_masking"
-          config={config}
+          config={globalConfig}
           update={updateSystemConfig}
         />
 
         <GlobalConfigCheckbox
           name="enable_aruco_masking"
-          config={config}
+          config={globalConfig}
           update={updateSystemConfig}
         />
 
         {config.enable_aruco_masking && (
           <GlobalConfigNumber
             name="aruco_mask_intensity"
-            config={config}
+            config={globalConfig}
             update={updateSystemConfig}
           />
+
         )}
 
         <GlobalConfigNumber
           name="pointer_offset_mm"
-          config={config}
+          config={globalConfig}
           update={updateSystemConfig}
         />
 
@@ -83,12 +84,12 @@ export const VisionControl: FC<VisionControlProps> = ({ showOnlyToggles = false 
           <button
             onClick={handleToggleFow}
             className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors shadow-sm ${
-              !(config as any).fow_disabled ? 'bg-blue-600' : 'bg-gray-200'
+              !config.fow_disabled ? 'bg-blue-600' : 'bg-gray-200'
             }`}
           >
             <span
               className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                !(config as any).fow_disabled ? 'translate-x-6' : 'translate-x-1'
+                !config.fow_disabled ? 'translate-x-6' : 'translate-x-1'
               }`}
             />
           </button>
@@ -117,27 +118,28 @@ export const VisionControl: FC<VisionControlProps> = ({ showOnlyToggles = false 
     <div className="space-y-4 text-black">
       <GlobalConfigCheckbox
         name="enable_hand_masking"
-        config={config}
+        config={globalConfig}
         update={updateSystemConfig}
       />
 
       <GlobalConfigCheckbox
         name="enable_aruco_masking"
-        config={config}
+        config={globalConfig}
         update={updateSystemConfig}
       />
 
       {config.enable_aruco_masking && (
         <GlobalConfigNumber
           name="aruco_mask_intensity"
-          config={config}
+          config={globalConfig}
           update={updateSystemConfig}
         />
+
       )}
 
       <GlobalConfigNumber
         name="pointer_offset_mm"
-        config={config}
+        config={globalConfig}
         update={updateSystemConfig}
       />
 
@@ -149,12 +151,12 @@ export const VisionControl: FC<VisionControlProps> = ({ showOnlyToggles = false 
         <button
           onClick={handleToggleFow}
           className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors shadow-sm ${
-            !(config as any).fow_disabled ? 'bg-blue-600' : 'bg-gray-200'
+            !config.fow_disabled ? 'bg-blue-600' : 'bg-gray-200'
           }`}
         >
           <span
             className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-              !(config as any).fow_disabled ? 'translate-x-6' : 'translate-x-1'
+              !config.fow_disabled ? 'translate-x-6' : 'translate-x-1'
             }`}
           />
         </button>
@@ -227,18 +229,18 @@ export const VisionControl: FC<VisionControlProps> = ({ showOnlyToggles = false 
         <button
           onClick={handleToggleDebug}
           className={`px-3 py-1 text-xs font-semibold rounded transition-colors ${
-            (config as any).debug_mode
+            config.debug_mode
               ? 'bg-blue-100 text-blue-800 hover:bg-green-200'
               : 'bg-gray-100 text-gray-800 hover:bg-gray-200'
           }`}
         >
-          {(config as any).debug_mode ? 'ON' : 'OFF'}
+          {config.debug_mode ? 'ON' : 'OFF'}
         </button>
       </div>
 
       <GlobalConfigSelect
         name="gm_position"
-        config={config}
+        config={globalConfig}
         update={updateSystemConfig}
       />
     </div>

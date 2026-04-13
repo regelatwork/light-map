@@ -5,9 +5,134 @@ from collections import deque
 from typing import List, Tuple, Dict, Optional, TYPE_CHECKING
 from light_map.visibility.visibility_types import VisibilityType, VisibilityBlocker
 
+# Optional Numba support
+try:
+    from numba import njit, prange
+    HAS_NUMBA = True
+except ImportError:
+    HAS_NUMBA = False
+
 if TYPE_CHECKING:
     from light_map.core.common_types import Token
     from light_map.map.map_config import MapConfigManager
+
+
+if HAS_NUMBA:
+    @njit(cache=True)
+    def _numba_is_line_obstructed(
+        x1: int, y1: int, x2: int, y2: int, blocker_mask: np.ndarray
+    ) -> bool:
+        """Numba-optimized line obstruction check."""
+        h, w = blocker_mask.shape
+        dx = abs(x2 - x1)
+        dy = abs(y2 - y1)
+        num_steps = dx if dx > dy else dy
+
+        if num_steps == 0:
+            if 0 <= x1 < w and 0 <= y1 < h:
+                return blocker_mask[y1, x1] > 0
+            return False
+
+        for i in range(num_steps + 1):
+            # Line interpolation
+            t = i / num_steps
+            px = int(round(x1 + t * (x2 - x1)))
+            py = int(round(y1 + t * (y2 - y1)))
+
+            # Safety clip
+            if px < 0: px = 0
+            elif px >= w: px = w - 1
+            if py < 0: py = 0
+            elif py >= h: py = h - 1
+
+            if blocker_mask[py, px] > 0:
+                return True
+        return False
+
+    @njit(cache=True)
+    def _numba_bfs_flood_fill(
+        blocker_mask: np.ndarray,
+        vis_mask: np.ndarray,
+        visited: np.ndarray,
+        border_xs: np.ndarray,
+        border_ys: np.ndarray,
+        vision_range_px: int,
+        cx: float,
+        cy: float
+    ) -> np.ndarray:
+        """Numba-optimized BFS visibility propagation."""
+        h, w = blocker_mask.shape
+        range_sq = vision_range_px**2
+
+        # Source hints (storing indices into border arrays)
+        hint_indices = np.full((h, w), -1, dtype=np.int32)
+        
+        # Initialize queue (using a simple array-based queue for Numba)
+        # Max possible queue size is w * h
+        queue_x = np.empty(w * h, dtype=np.int32)
+        queue_y = np.empty(w * h, dtype=np.int32)
+        head = 0
+        tail = 0
+
+        # Seed the queue with border points
+        for i in range(len(border_xs)):
+            bx, by = border_xs[i], border_ys[i]
+            queue_x[tail] = bx
+            queue_y[tail] = by
+            tail += 1
+            hint_indices[by, bx] = i
+
+        while head < tail:
+            x = queue_x[head]
+            y = queue_y[head]
+            head += 1
+
+            parent_hint_idx = hint_indices[y, x]
+
+            # 4-connected neighbors
+            for dx, dy in [(0, 1), (0, -1), (1, 0), (-1, 0)]:
+                nx, ny = x + dx, y + dy
+
+                if nx < 0 or nx >= w or ny < 0 or ny >= h:
+                    continue
+                
+                if visited[ny, nx] or blocker_mask[ny, nx] > 0:
+                    continue
+
+                # Circular range check
+                if (nx - cx) ** 2 + (ny - cy) ** 2 > range_sq:
+                    continue
+
+                # LOS Check
+                found_hint = -1
+                
+                # 1. Check parent hint first
+                if parent_hint_idx != -1:
+                    sx = border_xs[parent_hint_idx]
+                    sy = border_ys[parent_hint_idx]
+                    if not _numba_is_line_obstructed(sx, sy, nx, ny, blocker_mask):
+                        found_hint = parent_hint_idx
+
+                # 2. Check other border points if hint fails
+                if found_hint == -1:
+                    for i in range(len(border_xs)):
+                        if i == parent_hint_idx:
+                            continue
+                        sx = border_xs[i]
+                        sy = border_ys[i]
+                        if not _numba_is_line_obstructed(sx, sy, nx, ny, blocker_mask):
+                            found_hint = i
+                            break
+
+                if found_hint != -1:
+                    vis_mask[ny, nx] = 255
+                    visited[ny, nx] = True
+                    hint_indices[ny, nx] = found_hint
+                    queue_x[tail] = nx
+                    queue_y[tail] = ny
+                    tail += 1
+
+        return vis_mask
 
 
 class VisibilityEngine:
@@ -165,6 +290,10 @@ class VisibilityEngine:
 
         x1, y1 = p1
         x2, y2 = p2
+
+        if HAS_NUMBA:
+            return _numba_is_line_obstructed(x1, y1, x2, y2, self.blocker_mask)
+
         h, w = self.blocker_mask.shape
 
         # Use maximum distance to ensure we sample every pixel along the path
@@ -243,6 +372,20 @@ class VisibilityEngine:
         if not border_points:
             return vis_mask
 
+        # Find footprint center for global range limiting
+        coords = np.where(footprint > 0)
+        cx = np.mean(coords[1])
+        cy = np.mean(coords[0])
+
+        if HAS_NUMBA:
+            border_xs = np.array([p[0] for p in border_points], dtype=np.int32)
+            border_ys = np.array([p[1] for p in border_points], dtype=np.int32)
+            return _numba_bfs_flood_fill(
+                self.blocker_mask, vis_mask, visited,
+                border_xs, border_ys,
+                vision_range_px, cx, cy
+            )
+
         # 3. Queue for BFS: (x, y)
         queue = deque(border_points)
 
@@ -254,10 +397,6 @@ class VisibilityEngine:
             hint_xs[y, x] = x
             hint_ys[y, x] = y
 
-        # Find footprint center for global range limiting
-        coords = np.where(footprint > 0)
-        cx = np.mean(coords[1])
-        cy = np.mean(coords[0])
         range_sq = vision_range_px**2
 
         while queue:

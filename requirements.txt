@@ -7,3 +7,4 @@ mdformat
 svgelements
 Pillow
 websockets
+numba

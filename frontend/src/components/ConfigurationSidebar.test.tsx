@@ -4,7 +4,7 @@ import { ConfigurationSidebar } from './ConfigurationSidebar';
 import * as useSystemStateHook from '../hooks/useSystemState';
 import * as useSelectionHook from './SelectionContext';
 import * as useCalibrationHook from './CalibrationContext';
-import { SelectionType, GmPosition, VisibilityType, Token } from '../types/system';
+import { SelectionType, GmPosition, VisibilityType, type Token } from '../types/system';
 import { updateToken } from '../services/api';
 
 // Mock the services/api to avoid actual network requests

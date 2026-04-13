@@ -48,6 +48,12 @@ class NamingStyle(StrEnum):
     FANTASY = "FANTASY"
 
 
+class GridType(StrEnum):
+    SQUARE = "SQUARE"
+    HEX_POINTY = "HEX_POINTY"
+    HEX_FLAT = "HEX_FLAT"
+
+
 class SizeProfileSchema(BaseModel):
     size: int = Field(
         default=1, ge=1, le=10, title="Size", description="Size in grid units."
@@ -234,6 +240,9 @@ class MapEntrySchema(BaseModel):
     )
     grid_origin_svg_y: float = Field(
         default=0.0, title="Grid Origin Y", description="Vertical grid offset."
+    )
+    grid_type: GridType = Field(
+        default=GridType.SQUARE, title="Grid Type", description="Grid geometry (Square or Hex)."
     )
     physical_unit_inches: float = Field(
         default=1.0,

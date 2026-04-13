@@ -10,6 +10,7 @@ import {
   GmPosition,
   TokenDetectionAlgorithm,
   NamingStyle,
+  GridType,
 } from './schema.generated';
 import type {
   ViewportState,
@@ -18,7 +19,7 @@ import type {
   ArucoDefinition as ArucoDefault,
 } from './schema.generated';
 
-export { GmPosition, TokenDetectionAlgorithm, NamingStyle };
+export { GmPosition, TokenDetectionAlgorithm, NamingStyle, GridType };
 export type { ViewportState, Token, TokenProfile, ArucoDefault };
 
 export enum VisibilityType {
@@ -116,6 +117,7 @@ export interface WorldState {
   fps: number;
   viewport?: ViewportState;
   blockers?: VisibilityBlocker[];
+  grid_type?: GridType;
   [key: string]: unknown;
 }
 
@@ -164,6 +166,7 @@ export interface SystemState {
   grid_spacing_svg: number;
   grid_origin_svg_x: number;
   grid_origin_svg_y: number;
+  grid_type: GridType;
   map_timestamp: number;
   menu_timestamp: number;
   tokens_timestamp: number;
@@ -197,6 +200,7 @@ export const INITIAL_STATE: SystemState = {
   grid_spacing_svg: 0,
   grid_origin_svg_x: 0,
   grid_origin_svg_y: 0,
+  grid_type: GridType.SQUARE,
   map_timestamp: 0,
   menu_timestamp: 0,
   tokens_timestamp: 0,

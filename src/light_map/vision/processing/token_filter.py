@@ -1,6 +1,7 @@
 import math
 from typing import Dict, List, Optional, Tuple
-from light_map.core.common_types import Token
+from light_map.core.common_types import Token, GridType
+from light_map.core.geometry import PointyTopHex, FlatTopHex
 
 
 class TokenFilter:
@@ -23,6 +24,7 @@ class TokenFilter:
         grid_origin_y: float = 0.0,
         token_configs: Dict[int, Dict] = None,
         map_bounds: Optional[Tuple[float, float, float, float]] = None,
+        grid_type: GridType = GridType.SQUARE,
     ) -> List[Token]:
         """
         Updates the filter with new detections and returns the filtered tokens.
@@ -106,6 +108,7 @@ class TokenFilter:
                     grid_origin_x,
                     grid_origin_y,
                     token_configs,
+                    grid_type,
                 )
 
                 active_tokens.append(final_token)
@@ -126,10 +129,28 @@ class TokenFilter:
         grid_origin_x: float,
         grid_origin_y: float,
         token_configs: Dict[int, Dict] = None,
+        grid_type: GridType = GridType.SQUARE,
     ) -> Token:
         if grid_spacing <= 0:
             return token
 
+        if grid_type == GridType.SQUARE:
+            return self._apply_square_snapping(
+                token, grid_spacing, grid_origin_x, grid_origin_y, token_configs
+            )
+        else:
+            return self._apply_hex_snapping(
+                token, grid_spacing, grid_origin_x, grid_origin_y, token_configs, grid_type
+            )
+
+    def _apply_square_snapping(
+        self,
+        token: Token,
+        grid_spacing: float,
+        grid_origin_x: float,
+        grid_origin_y: float,
+        token_configs: Dict[int, Dict] = None,
+    ) -> Token:
         # Get token size from config
         token_size = 1
         if token_configs and token.id in token_configs:
@@ -144,20 +165,6 @@ class TokenFilter:
         grid_y_raw = (token.world_y - grid_origin_y) / grid_spacing
 
         if token_size % 2 == 1:
-            # Odd: round to nearest integer (center is i + 0.5, but we use i for cell ID)
-            # Actually if world_x = ox + (gx + 0.5) * spacing
-            # Then gx = floor((world_x - ox) / spacing)
-            # Wait, if we want to SNAP to the center of cell gx:
-            # snapped_x = ox + (round(gx_raw - 0.5) + 0.5) * spacing? No.
-            # snapped_x = ox + (floor(gx_raw) + 0.5) * spacing.
-
-            # Offset for larger odd sizes (e.g. size 3 center is at cell gx+1)
-            # If size=1, center is cell gx.
-            # If size=3, center is cell gx. (occupies gx-1, gx, gx+1)
-            # Wait, if centroid is at gx_raw.
-            # Snapped centroid for size 1 should be floor(gx_raw) + 0.5.
-            # Snapped centroid for size 3 should be floor(gx_raw) + 0.5.
-
             snapped_grid_x = math.floor(grid_x_raw)
             snapped_grid_y = math.floor(grid_y_raw)
 
@@ -165,9 +172,7 @@ class TokenFilter:
             token.world_y = grid_origin_y + (snapped_grid_y + 0.5) * grid_spacing
             token.grid_x = int(snapped_grid_x)
             token.grid_y = int(snapped_grid_y)
-
         else:
-            # Even: round to nearest intersection (integer gx_raw)
             snapped_grid_x = round(grid_x_raw)
             snapped_grid_y = round(grid_y_raw)
 
@@ -175,5 +180,33 @@ class TokenFilter:
             token.world_y = grid_origin_y + snapped_grid_y * grid_spacing
             token.grid_x = int(snapped_grid_x)
             token.grid_y = int(snapped_grid_y)
+
+        return token
+
+    def _apply_hex_snapping(
+        self,
+        token: Token,
+        grid_spacing: float,
+        grid_origin_x: float,
+        grid_origin_y: float,
+        token_configs: Dict[int, Dict] = None,
+        grid_type: GridType = GridType.HEX_POINTY,
+    ) -> Token:
+        hex_geo = PointyTopHex(grid_spacing) if grid_type == GridType.HEX_POINTY else FlatTopHex(grid_spacing)
+
+        # 1. Transform world to hex-space
+        rel_x = token.world_x - grid_origin_x
+        rel_y = token.world_y - grid_origin_y
+        q, r = hex_geo.from_pixel(rel_x, rel_y)
+
+        # 2. Round to nearest hex center
+        rq, rr = hex_geo.round(q, r)
+
+        # 3. Transform back to world space
+        snap_rel_x, snap_rel_y = hex_geo.to_pixel(rq, rr)
+        token.world_x = grid_origin_x + snap_rel_x
+        token.world_y = grid_origin_y + snap_rel_y
+        token.grid_x = int(rq)
+        token.grid_y = int(rr)
 
         return token

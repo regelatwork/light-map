@@ -8,6 +8,7 @@ from light_map.core.config_schema import (
     GmPosition,
     TokenDetectionAlgorithm,
     NamingStyle,
+    GridType,
     SizeProfileSchema,
     ArucoDefinitionSchema,
     TokenConfigSchema,
@@ -160,6 +161,7 @@ def main():
     sections.append(generate_ts_enum(GmPosition))
     sections.append(generate_ts_enum(TokenDetectionAlgorithm))
     sections.append(generate_ts_enum(NamingStyle))
+    sections.append(generate_ts_enum(GridType))
 
     # All schemas to generate
     schemas = [

@@ -1,9 +1,11 @@
 from __future__ import annotations
 import cv2
 import numpy as np
+import math
 from collections import deque
 from typing import List, Tuple, Dict, Optional, TYPE_CHECKING, Set
 from light_map.visibility.visibility_types import VisibilityType, VisibilityBlocker
+from light_map.core.common_types import Token, GridType
 
 # Optional Numba support
 try:
@@ -47,10 +49,14 @@ if HAS_NUMBA:
             px = int(round(x1 + t * (x2 - x1)))
             py = int(round(y1 + t * (y2 - y1)))
 
-            if px < 0: px = 0
-            elif px >= w: px = w - 1
-            if py < 0: py = 0
-            elif py >= h: py = h - 1
+            if px < 0:
+                px = 0
+            elif px >= w:
+                px = w - 1
+            if py < 0:
+                py = 0
+            elif py >= h:
+                py = h - 1
 
             val = blocker_mask[py, px]
             if val == 255 or val == 200: # WALL or DOOR_CLOSED
@@ -73,6 +79,7 @@ if HAS_NUMBA:
         """
         Numba-optimized BFS visibility propagation.
         Tracks which blocker IDs were 'discovered' during the fill.
+        Supports grid-cell boundaries via cell_planes.
         """
         h, w = blocker_mask.shape
         range_sq = vision_range_px**2
@@ -231,24 +238,75 @@ class VisibilityEngine:
                         cv2.circle(self.blocker_id_map, p1, 1, idx, -1)
                         cv2.circle(self.blocker_id_map, p2, 1, idx, -1)
 
-    def _calculate_token_footprint(
-        self, cx_mask: int, cy_mask: int, size: int
-    ) -> np.ndarray:
+    def _calculate_token_footprint_with_planes(
+        self,
+        cx_mask: int,
+        cy_mask: int,
+        size: int,
+        grid_type: GridType = GridType.SQUARE,
+    ) -> Tuple[np.ndarray, np.ndarray]:
         """
         Calculates the token's 'light source' footprint.
-        Uses BFS to find pixels within (size/2 * 16 + 1) that are not blocked by walls.
+        Uses BFS constrained by grid cell boundaries (square or hex).
+        Returns (footprint_mask, cell_planes).
         """
         if self.blocker_mask is None:
-            return np.zeros((1, 1), dtype=np.uint8)
+            return np.zeros((1, 1), dtype=np.uint8), np.empty((0, 3), dtype=np.float32)
 
         h, w = self.blocker_mask.shape
         footprint = np.zeros((h, w), dtype=np.uint8)
 
         if not (0 <= cx_mask < w and 0 <= cy_mask < h):
-            return footprint
+            return footprint, np.empty((0, 3), dtype=np.float32)
 
-        range_limit = (size * 16 // 2) + 1
+        # 1. Determine cell boundaries (Planes ax + by + c <= 0)
+        cell_planes_list = []
+        if grid_type == GridType.SQUARE:
+            # Radius in mask space (16 units per grid cell)
+            r = (size * 16) // 2
+            # 4 Planes: x <= cx+r, x >= cx-r, y <= cy+r, y >= cy-r
+            cell_planes_list = [
+                [1.0, 0.0, -(cx_mask + r)],
+                [-1.0, 0.0, (cx_mask - r)],
+                [0.0, 1.0, -(cy_mask + r)],
+                [0.0, -1.0, (cy_mask - r)],
+            ]
+        else:
+            # Hex Geometry (Radius in mask space is 16 / sqrt(3) * size)
+            spacing = 16.0 * size
+            apothem = spacing / 2.0
 
+            if grid_type == GridType.HEX_POINTY:
+                # Normals for Pointy Top: (±1, 0), (±0.5, ±sqrt(3)/2)
+                s32 = math.sqrt(3) / 2.0
+                normals = [
+                    (1.0, 0.0),
+                    (-1.0, 0.0),
+                    (0.5, s32),
+                    (0.5, -s32),
+                    (-0.5, s32),
+                    (-0.5, -s32),
+                ]
+            else:
+                # Normals for Flat Top: (0, ±1), (±sqrt(3)/2, ±0.5)
+                s32 = math.sqrt(3) / 2.0
+                normals = [
+                    (0.0, 1.0),
+                    (0.0, -1.0),
+                    (s32, 0.5),
+                    (s32, -0.5),
+                    (-s32, 0.5),
+                    (-s32, -0.5),
+                ]
+
+            for nx, ny in normals:
+                # c = -(nx*cx + ny*cy) - apothem
+                c = -(nx * cx_mask + ny * cy_mask) - apothem
+                cell_planes_list.append([nx, ny, c])
+
+        cell_planes = np.array(cell_planes_list, dtype=np.float32)
+
+        # 2. BFS Flood Fill within boundaries
         queue = deque([(cy_mask, cx_mask)])
         footprint[cy_mask, cx_mask] = 255
 
@@ -260,15 +318,25 @@ class VisibilityEngine:
 
                 if 0 <= nx < w and 0 <= ny < h:
                     if footprint[ny, nx] == 0:
-                        if (
-                            abs(nx - cx_mask) <= range_limit
-                            and abs(ny - cy_mask) <= range_limit
-                        ):
+                        # Check Plane boundaries
+                        is_inside = True
+                        for i in range(cell_planes.shape[0]):
+                            if (
+                                cell_planes[i, 0] * nx
+                                + cell_planes[i, 1] * ny
+                                + cell_planes[i, 2]
+                                > 0
+                            ):
+                                is_inside = False
+                                break
+
+                        if is_inside:
+                            # Standard blocker check for abutting walls
                             if self.blocker_mask[ny, nx] == 0:
                                 footprint[ny, nx] = 255
                                 queue.append((ny, nx))
 
-        return footprint
+        return footprint, cell_planes
 
     def _get_footprint_border_points(self, footprint: np.ndarray) -> List[Tuple[int, int]]:
         """
@@ -423,13 +491,14 @@ class VisibilityEngine:
         vision_range_grid: float,
         mask_width: int,
         mask_height: int,
+        grid_type: GridType = GridType.SQUARE,
     ) -> Tuple[np.ndarray, Set[str]]:
         """
         Calculates a unioned LOS mask and discovered door IDs.
         """
         gx = int((origin_x - self.grid_origin[0]) // self.grid_spacing_svg)
         gy = int((origin_y - self.grid_origin[1]) // self.grid_spacing_svg)
-        mask_cache_key = (token_id, gx, gy, size)
+        mask_cache_key = (token_id, gx, gy, size, grid_type)
 
         if mask_cache_key in self.mask_cache:
             return self.mask_cache[mask_cache_key]
@@ -438,7 +507,7 @@ class VisibilityEngine:
         cy_mask = int(origin_y * self.svg_to_mask_scale)
         vision_range_px = int(vision_range_grid * 16)
 
-        footprint = self._calculate_token_footprint(cx_mask, cy_mask, size)
+        footprint, cell_planes = self._calculate_token_footprint_with_planes(cx_mask, cy_mask, size, grid_type)
         result = self._calculate_visibility(
             footprint, vision_range_px, mask_width, mask_height
         )
@@ -453,6 +522,7 @@ class VisibilityEngine:
         mask_width: int,
         mask_height: int,
         vision_range_grid: float = 25.0,
+        grid_type: GridType = GridType.SQUARE,
     ) -> Tuple[Optional[np.ndarray], Set[str]]:
         """
         Calculates combined vision mask and set of discovered door IDs for all PC tokens.
@@ -473,6 +543,7 @@ class VisibilityEngine:
                 vision_range_grid=vision_range_grid,
                 mask_width=mask_width,
                 mask_height=mask_height,
+                grid_type=grid_type,
             )
             if combined_pc_mask is None:
                 combined_pc_mask = token_mask.copy()

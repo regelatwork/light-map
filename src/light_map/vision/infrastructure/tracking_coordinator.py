@@ -3,7 +3,7 @@ import numpy as np
 import logging
 from typing import TYPE_CHECKING, Optional
 
-from light_map.core.common_types import TokenDetectionAlgorithm
+from light_map.core.common_types import TokenDetectionAlgorithm, GridType
 from light_map.vision.processing.token_filter import TokenFilter
 from light_map.vision.processing.token_tracker import TokenTracker
 
@@ -80,6 +80,7 @@ class TrackingCoordinator:
         grid_spacing = 0.0
         grid_origin_x = 0.0
         grid_origin_y = 0.0
+        grid_type = GridType.SQUARE
         map_bounds = None
 
         if map_filename:
@@ -88,6 +89,7 @@ class TrackingCoordinator:
                 grid_spacing = map_entry.grid_spacing_svg
                 grid_origin_x = map_entry.grid_origin_svg_x
                 grid_origin_y = map_entry.grid_origin_svg_y
+                grid_type = map_entry.grid_type
 
             if map_system.svg_loader and map_system.svg_loader.svg:
                 try:
@@ -118,6 +120,7 @@ class TrackingCoordinator:
             grid_spacing=0.0,
             token_configs=token_configs,
             map_bounds=map_bounds,
+            grid_type=grid_type,
         )
 
         # 4. Generate the two versions from the base filtered list
@@ -138,6 +141,7 @@ class TrackingCoordinator:
                 grid_origin_x,
                 grid_origin_y,
                 token_configs,
+                grid_type,
             )
             snapped_tokens.append(snapped_token)
 
@@ -225,6 +229,7 @@ class TrackingCoordinator:
                 grid_spacing = map_entry.grid_spacing_svg
                 grid_origin_x = map_entry.grid_origin_svg_x
                 grid_origin_y = map_entry.grid_origin_svg_y
+                grid_type = map_entry.grid_type
 
             # Calculate map bounds from SVG document
             if map_system.svg_loader and map_system.svg_loader.svg:
@@ -257,6 +262,7 @@ class TrackingCoordinator:
             grid_origin_y=grid_origin_y,
             token_configs=token_configs,
             map_bounds=map_bounds,
+            grid_type=grid_type,
         )
 
         # 3. Update map system

@@ -1,4 +1,5 @@
 import type { GlobalConfig } from '../types/schema.generated';
+import { GridType } from '../types/system';
 
 export const injectAction = async (action: string, payload?: string) => {
   const host = import.meta.env.DEV ? 'http://localhost:8000' : window.location.origin;
@@ -47,14 +48,19 @@ export const loadMap = async (path: string, loadSession: boolean = true) => {
   return response.json();
 };
 
-export const saveGridConfig = async (offset_x: number, offset_y: number, spacing?: number) => {
+export const saveGridConfig = async (
+  offset_x: number,
+  offset_y: number,
+  spacing?: number,
+  grid_type?: GridType
+) => {
   const host = import.meta.env.DEV ? 'http://localhost:8000' : window.location.origin;
   const response = await fetch(`${host}/config/grid`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({ offset_x, offset_y, spacing }),
+    body: JSON.stringify({ offset_x, offset_y, spacing, grid_type }),
   });
 
   if (!response.ok) {

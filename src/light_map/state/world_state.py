@@ -12,6 +12,7 @@ from light_map.core.common_types import (
     MapRenderState,
     CalibrationState,
     ProjectorPose,
+    GridType,
 )
 from light_map.menu.menu_system import MenuState
 from light_map.core.scene import HandInput
@@ -352,6 +353,22 @@ class WorldState:
         self._grid_metadata_atom.update(value)
 
     @property
+    def grid_type(self) -> GridType:
+        return self._grid_metadata_atom.value.type
+
+    @grid_type.setter
+    def grid_type(self, value: GridType):
+        current = self._grid_metadata_atom.value
+        self._grid_metadata_atom.update(
+            GridMetadata(
+                spacing_svg=current.spacing_svg,
+                origin_svg_x=current.origin_svg_x,
+                origin_svg_y=current.origin_svg_y,
+                type=value,
+            )
+        )
+
+    @property
     def calibration(self) -> Any:
         return self._calibration_atom.value
 
@@ -371,6 +388,7 @@ class WorldState:
                 spacing_svg=value,
                 origin_svg_x=current.origin_svg_x,
                 origin_svg_y=current.origin_svg_y,
+                type=current.type,
             )
         )
 
@@ -386,6 +404,7 @@ class WorldState:
                 spacing_svg=current.spacing_svg,
                 origin_svg_x=value,
                 origin_svg_y=current.origin_svg_y,
+                type=current.type,
             )
         )
 
@@ -401,6 +420,7 @@ class WorldState:
                 spacing_svg=current.spacing_svg,
                 origin_svg_x=current.origin_svg_x,
                 origin_svg_y=value,
+                type=current.type,
             )
         )
 
@@ -722,6 +742,7 @@ class WorldState:
             "grid_spacing_svg": self.grid_spacing_svg,
             "grid_origin_svg_x": self.grid_origin_svg_x,
             "grid_origin_svg_y": self.grid_origin_svg_y,
+            "grid_type": str(self.grid_type),
             "map_version": self.map_version,
             "menu_version": self.menu_version,
             "tokens_version": self.tokens_version,

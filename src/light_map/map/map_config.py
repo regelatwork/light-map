@@ -13,6 +13,7 @@ from light_map.core.common_types import (
     TokenDetectionAlgorithm,
     GmPosition,
     NamingStyle,
+    GridType,
 )
 from light_map.core.constants import (
     DEFAULT_TOKEN_HEIGHT_MM,
@@ -77,6 +78,7 @@ class MapEntry:
     grid_spacing_svg: float = 0.0  # Default to 0.0 (Unknown)
     grid_origin_svg_x: float = 0.0
     grid_origin_svg_y: float = 0.0
+    grid_type: GridType = GridType.SQUARE
     physical_unit_inches: float = 1.0  # e.g. 1.0 for 1 inch
     scale_factor_1to1: float = 1.0  # Calculated zoom level for 1:1 scale
     last_seen: str = ""  # ISO 8601 timestamp
@@ -379,6 +381,7 @@ class MapConfigManager:
         grid_origin_svg_y: float,
         physical_unit_inches: float,
         scale_factor_1to1: float,
+        grid_type: GridType = GridType.SQUARE,
     ):
         map_name = os.path.abspath(map_name)
         if map_name not in self.data.maps:
@@ -388,6 +391,7 @@ class MapConfigManager:
         entry.grid_spacing_svg = grid_spacing_svg
         entry.grid_origin_svg_x = grid_origin_svg_x
         entry.grid_origin_svg_y = grid_origin_svg_y
+        entry.grid_type = grid_type
         entry.physical_unit_inches = physical_unit_inches
         entry.scale_factor_1to1 = scale_factor_1to1
         self.save()

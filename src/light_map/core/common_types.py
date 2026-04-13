@@ -272,6 +272,12 @@ class SelectionType(StrEnum):
     TOKEN = "TOKEN"
 
 
+class GridType(StrEnum):
+    SQUARE = "SQUARE"
+    HEX_POINTY = "HEX_POINTY"
+    HEX_FLAT = "HEX_FLAT"
+
+
 class TimerKey(StrEnum):
     INSPECTION_LINGER = "inspection_linger"
     SUMMON_MENU = "summon_menu"
@@ -305,6 +311,7 @@ class GridMetadata:
     spacing_svg: float = 0.0
     origin_svg_x: float = 0.0
     origin_svg_y: float = 0.0
+    type: GridType = GridType.SQUARE
 
 
 class ResultType(StrEnum):

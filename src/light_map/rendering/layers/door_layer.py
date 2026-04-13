@@ -38,7 +38,8 @@ class DoorLayer(Layer):
 
     def _generate_patches(self, current_time: float) -> List[ImagePatch]:
         image = np.zeros((self.height, self.width, 4), dtype=np.uint8)
-        if not self.state or not self.state.viewport: return []
+        if not self.state or not self.state.viewport:
+            return []
 
         vp = self.state.viewport
         grid = self.state.grid_metadata
@@ -66,10 +67,12 @@ class DoorLayer(Layer):
         discovered_ids = self.state.discovered_door_ids
 
         for blocker in self.state.blockers:
-            if blocker.type != VisibilityType.DOOR: continue
+            if blocker.type != VisibilityType.DOOR:
+                continue
             
             # Object-Based Discovery Check
-            if blocker.id not in discovered_ids: continue
+            if blocker.id not in discovered_ids:
+                continue
 
             # Transform points
             transformed_points = []
@@ -77,7 +80,8 @@ class DoorLayer(Layer):
                 p = m_svg_to_screen.point_in_matrix_space((sx, sy))
                 transformed_points.append((int(p.x), int(p.y)))
 
-            if len(transformed_points) < 2: continue
+            if len(transformed_points) < 2:
+                continue
 
             if blocker.is_open:
                 # Render endpoints as circles

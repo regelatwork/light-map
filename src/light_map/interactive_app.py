@@ -4,7 +4,7 @@ import time
 import os
 import sys
 import logging
-from typing import List, Tuple, Any, Dict, Optional, TYPE_CHECKING, Callable, Set
+from typing import List, Tuple, Any, Dict, Optional, TYPE_CHECKING, Callable
 
 from light_map.core.common_types import (
     AppConfig,
@@ -710,6 +710,7 @@ class InteractiveApp:
                 self.fow_manager.width,
                 self.fow_manager.height,
                 vision_range_grid=25.0,
+                grid_type=state.grid_type,
             )
 
             if combined_pc_mask is not None:
@@ -750,6 +751,7 @@ class InteractiveApp:
             spacing_svg=spacing,
             origin_svg_x=entry.grid_origin_svg_x,
             origin_svg_y=entry.grid_origin_svg_y,
+            type=entry.grid_type,
         )
 
         # Re-initialize blockers with new visibility engine parameters

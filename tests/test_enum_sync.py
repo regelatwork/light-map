@@ -7,6 +7,7 @@ from light_map.core.common_types import (
     SelectionType,
     MenuActions,
     GmPosition,
+    GridType,
 )
 from light_map.visibility.visibility_types import VisibilityType
 
@@ -41,10 +42,16 @@ def test_enums_sync():
     """
     root_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     ts_file = os.path.join(root_dir, "frontend", "src", "types", "system.ts")
+    schema_file = os.path.join(root_dir, "frontend", "src", "types", "schema.generated.ts")
 
     assert os.path.exists(ts_file), f"Frontend types file not found at {ts_file}"
+    assert os.path.exists(schema_file), f"Frontend schema file not found at {schema_file}"
 
     ts_enums = parse_ts_enums(ts_file)
+    schema_enums = parse_ts_enums(schema_file)
+    
+    # Merge enums
+    all_ts_enums = {**schema_enums, **ts_enums}
 
     # List of enums to check (Frontend Name, Python Enum Class)
     checks = [
@@ -55,12 +62,13 @@ def test_enums_sync():
         ("SelectionType", SelectionType),
         ("MenuActions", MenuActions),
         ("GmPosition", GmPosition),
+        ("GridType", GridType),
     ]
 
     for ts_name, py_enum in checks:
-        assert ts_name in ts_enums, f"Enum {ts_name} missing from frontend types"
+        assert ts_name in all_ts_enums, f"Enum {ts_name} missing from frontend types"
 
-        ts_values = ts_enums[ts_name]
+        ts_values = all_ts_enums[ts_name]
         py_values = {e.name: e.value for e in py_enum}
 
         # Check that all Python values exist in TypeScript and match

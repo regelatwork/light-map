@@ -60,15 +60,15 @@ def test_size_3_token_corner_peeking():
 def test_size_3_token_footprint_bounds():
     engine = VisibilityEngine(grid_spacing_svg=100.0)
     # 100 svg = 16 px.
-    # Size 3 = 48px wide. Radius = 24px. Overhang +1px = 25px radius.
+    # Size 3 = 48px wide. Radius = 24px.
     engine.blocker_mask = np.zeros((100, 100), dtype=np.uint8)
 
     # Center (50, 50).
-    # Footprint should reach (50-25, 50-25) to (50+25, 50+25) = (25, 25) to (75, 75)
-    footprint = engine._calculate_token_footprint(50, 50, size=3)
+    # Footprint should reach (50-24, 50-24) to (50+24, 50+24) = (26, 26) to (74, 74)
+    footprint, _ = engine._calculate_token_footprint_with_planes(50, 50, size=3)
 
     coords = np.where(footprint > 0)
-    assert np.min(coords[1]) == 25
-    assert np.max(coords[1]) == 75
-    assert np.min(coords[0]) == 25
-    assert np.max(coords[0]) == 75
+    assert np.min(coords[1]) == 26
+    assert np.max(coords[1]) == 74
+    assert np.min(coords[0]) == 26
+    assert np.max(coords[0]) == 74

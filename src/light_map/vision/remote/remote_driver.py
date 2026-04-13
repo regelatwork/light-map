@@ -18,7 +18,7 @@ from pydantic import BaseModel
 from typing import List, Dict, Any, Optional
 from multiprocessing import Queue, Event
 
-from light_map.core.common_types import DetectionResult, ResultType, Token, GestureType
+from light_map.core.common_types import DetectionResult, ResultType, Token, GestureType, GridType
 from light_map.core.scene import HandInput
 
 
@@ -88,6 +88,7 @@ class GridConfig(BaseModel):
     offset_x: float
     offset_y: float
     spacing: Optional[float] = None
+    grid_type: Optional[GridType] = None
 
 
 class SystemConfigUpdate(BaseModel):
@@ -173,6 +174,7 @@ def create_app(
                 "grid_spacing_svg",
                 "grid_origin_svg_x",
                 "grid_origin_svg_y",
+                "grid_type",
                 "map_version",
                 "menu_version",
                 "tokens_version",
@@ -589,6 +591,7 @@ def create_app(
                 "offset_x": config.offset_x,
                 "offset_y": config.offset_y,
                 "spacing": config.spacing,
+                "grid_type": config.grid_type,
             },
         )
         results_queue.put(res)

@@ -30,6 +30,12 @@ export enum NamingStyle {
   FANTASY = "FANTASY",
 }
 
+export enum GridType {
+  SQUARE = "SQUARE",
+  HEX_POINTY = "HEX_POINTY",
+  HEX_FLAT = "HEX_FLAT",
+}
+
 export interface SizeProfile {
   size: number;
   height_mm: number;
@@ -93,6 +99,7 @@ export interface MapEntry {
   grid_spacing_svg: number;
   grid_origin_svg_x: number;
   grid_origin_svg_y: number;
+  grid_type: GridType;
   physical_unit_inches: number;
   scale_factor_1to1: number;
   last_seen: string;
@@ -348,6 +355,25 @@ export const MAPENTRY_METADATA: Record<keyof MapEntry, FieldMetadata> = {
     "title": "Grid Origin Y",
     "description": "Vertical grid offset.",
     "default": 0.0
+  },
+  "grid_type": {
+    "title": "Grid Type",
+    "description": "Grid geometry (Square or Hex).",
+    "default": "SQUARE",
+    "options": [
+      {
+        "label": "Square",
+        "value": "SQUARE"
+      },
+      {
+        "label": "Hex Pointy",
+        "value": "HEX_POINTY"
+      },
+      {
+        "label": "Hex Flat",
+        "value": "HEX_FLAT"
+      }
+    ]
   },
   "physical_unit_inches": {
     "title": "Physical Unit",

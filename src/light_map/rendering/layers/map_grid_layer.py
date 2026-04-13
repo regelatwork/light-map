@@ -2,8 +2,9 @@ import cv2
 import numpy as np
 import math
 from typing import List
-from light_map.core.common_types import Layer, LayerMode, ImagePatch
+from light_map.core.common_types import Layer, LayerMode, ImagePatch, GridType
 from light_map.state.world_state import WorldState
+from light_map.core.geometry import PointyTopHex, FlatTopHex
 
 
 class MapGridLayer(Layer):
@@ -109,36 +110,74 @@ class MapGridLayer(Layer):
         if (end_i - start_i + 1) * (end_j - start_j + 1) > 10000:
             return []
 
-        for i in range(start_i, end_i + 1):
-            rel_x = i * spacing
-            for j in range(start_j, end_j + 1):
-                rel_y = j * spacing
+        if grid.type == GridType.SQUARE:
+            for i in range(start_i, end_i + 1):
+                rel_x = i * spacing
+                for j in range(start_j, end_j + 1):
+                    rel_y = j * spacing
 
-                # Rotate relative vector
-                rot_rel_x = rel_x * cos_a - rel_y * sin_a
-                rot_rel_y = rel_x * sin_a + rel_y * cos_a
+                    # Rotate relative vector
+                    rot_rel_x = rel_x * cos_a - rel_y * sin_a
+                    rot_rel_y = rel_x * sin_a + rel_y * cos_a
 
-                # Final screen position
-                x = int(round(off_x + rot_rel_x))
-                y = int(round(off_y + rot_rel_y))
+                    # Final screen position
+                    x = int(round(off_x + rot_rel_x))
+                    y = int(round(off_y + rot_rel_y))
 
-                if not (0 <= x < self.width and 0 <= y < self.height):
-                    continue
+                    if not (0 <= x < self.width and 0 <= y < self.height):
+                        continue
 
-                # Draw cross with outline
-                cv2.line(
-                    buffer, (x - cross_size, y), (x + cross_size, y), color_black, 3
-                )
-                cv2.line(
-                    buffer, (x - cross_size, y), (x + cross_size, y), color_green, 1
-                )
+                    # Draw cross with outline
+                    cv2.line(
+                        buffer, (x - cross_size, y), (x + cross_size, y), color_black, 3
+                    )
+                    cv2.line(
+                        buffer, (x - cross_size, y), (x + cross_size, y), color_green, 1
+                    )
 
-                cv2.line(
-                    buffer, (x, y - cross_size), (x, y + cross_size), color_black, 3
-                )
-                cv2.line(
-                    buffer, (x, y - cross_size), (x, y + cross_size), color_green, 1
-                )
+                    cv2.line(
+                        buffer, (x, y - cross_size), (x, y + cross_size), color_black, 3
+                    )
+                    cv2.line(
+                        buffer, (x, y - cross_size), (x, y + cross_size), color_green, 1
+                    )
+        else:
+            # Hex Grid
+            hex_geo = PointyTopHex(spacing) if grid.type == GridType.HEX_POINTY else FlatTopHex(spacing)
+            
+            # Offset center for vertices
+            v_offsets = []
+            for i in range(6):
+                angle_deg = 60 * i + (30 if grid.type == GridType.HEX_POINTY else 0)
+                angle_rad = math.radians(angle_deg)
+                v_offsets.append((hex_geo.size * math.cos(angle_rad), hex_geo.size * math.sin(angle_rad)))
+
+            for i in range(start_i, end_i + 1):
+                for j in range(start_j, end_j + 1):
+                    # Bounding box coordinates from start_i/end_i are for square grid,
+                    # but they cover the screen area sufficiently for axial coords too.
+                    rel_x, rel_y = hex_geo.to_pixel(i, j)
+
+                    # Rotate center
+                    rot_rel_x = rel_x * cos_a - rel_y * sin_a
+                    rot_rel_y = rel_x * sin_a + rel_y * cos_a
+                    cx_s = off_x + rot_rel_x
+                    cy_s = off_y + rot_rel_y
+
+                    # Skip if too far from screen
+                    if not (-spacing <= cx_s < self.width + spacing and -spacing <= cy_s < self.height + spacing):
+                        continue
+
+                    # Draw Hexagon
+                    pts = []
+                    for vx, vy in v_offsets:
+                        # Rotate vertex offset
+                        rvx = vx * cos_a - vy * sin_a
+                        rvy = vx * sin_a + vy * cos_a
+                        pts.append([int(round(cx_s + rvx)), int(round(cy_s + rvy))])
+                    
+                    cv2.polylines(buffer, [np.array(pts)], True, color_black, 3)
+                    cv2.polylines(buffer, [np.array(pts)], True, color_green, 1)
 
         # Highlight Origin specifically
         ox, oy = int(round(off_x)), int(round(off_y))

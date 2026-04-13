@@ -144,12 +144,22 @@ def handle_update_grid(
                 entry.grid_spacing_svg = spacing
                 app.refresh_base_scale()
 
+            grid_type_val = payload.get("grid_type")
+            if grid_type_val:
+                from light_map.core.common_types import GridType
+
+                try:
+                    entry.grid_type = GridType(grid_type_val)
+                except (ValueError, KeyError):
+                    pass
+
             app.map_config.save()
 
             app.state.grid_metadata = GridMetadata(
                 spacing_svg=entry.grid_spacing_svg,
                 origin_svg_x=entry.grid_origin_svg_x,
                 origin_svg_y=entry.grid_origin_svg_y,
+                type=entry.grid_type,
             )
 
             app._rebuild_visibility_stack(entry)

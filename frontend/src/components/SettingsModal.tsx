@@ -4,6 +4,7 @@ import { useCalibration, CalibrationMode } from './CalibrationContext';
 import { VisionControl } from './VisionControl';
 import { saveGridConfig, injectAction } from '../services/api';
 import { HardwareAlignment } from './HardwareAlignment';
+import { GridType } from '../types/system';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -13,9 +14,10 @@ interface SettingsModalProps {
 type Tab = 'grid' | 'vision' | 'hardware' | 'system';
 
 export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
-  const { config, grid_origin_svg_x, grid_origin_svg_y } = useSystemState();
+  const { config, grid_origin_svg_x, grid_origin_svg_y, world } = useSystemState();
   const { activeMode, setMode } = useCalibration();
   const isGridEditMode = activeMode === CalibrationMode.GRID;
+  const gridType = world.grid_type || GridType.SQUARE;
   const [activeTab, setActiveTab] = useState<Tab>('grid');
 
   const [localGridX, setLocalGridX] = useState<number | null>(null);
@@ -31,6 +33,14 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
       setLocalGridY(null);
     } catch (e) {
       console.error(e);
+    }
+  };
+
+  const handleGridTypeChange = async (type: GridType) => {
+    try {
+      await saveGridConfig(gridX, gridY, undefined, type);
+    } catch (err) {
+      console.error('Failed to update grid type:', err);
     }
   };
 
@@ -118,6 +128,19 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                       }`}
                     />
                   </button>
+                </div>
+
+                <div className="flex flex-col gap-2 p-4 bg-gray-50 rounded-xl border border-gray-100">
+                  <label className="text-xs font-bold text-gray-400 uppercase tracking-wider">Grid Type</label>
+                  <select
+                    value={gridType}
+                    onChange={(e) => handleGridTypeChange(e.target.value as GridType)}
+                    className="w-full px-4 py-2 bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                  >
+                    <option value={GridType.SQUARE}>Square</option>
+                    <option value={GridType.HEX_POINTY}>Hex (Pointy Top)</option>
+                    <option value={GridType.HEX_FLAT}>Hex (Flat Top)</option>
+                  </select>
                 </div>
 
                 {isGridEditMode && (

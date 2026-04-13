@@ -3,6 +3,7 @@ import { useSystemState } from '../hooks/useSystemState';
 import { useCanvas } from './CanvasContext';
 import { useCalibration, CalibrationMode } from './CalibrationContext';
 import { saveGridConfig } from '../services/api';
+import { GridType } from '../types/system';
 
 type InteractionMode = 'IDLE' | 'MOVING_ORIGIN' | 'SCALING';
 
@@ -44,6 +45,7 @@ export const GridLayer: React.FC = () => {
   const effectiveSpacing = grid_spacing_svg > 0 ? grid_spacing_svg : isCalibrating ? 50 : 0;
   const effectiveOriginX = grid_spacing_svg > 0 ? grid_origin_svg_x : isCalibrating ? 0 : 0;
   const effectiveOriginY = grid_spacing_svg > 0 ? grid_origin_svg_y : isCalibrating ? 0 : 0;
+  const gridType = world.grid_type || GridType.SQUARE;
 
   // Local state for dragging
   const [interactionMode, setInteractionMode] = useState<InteractionMode>('IDLE');
@@ -133,47 +135,96 @@ export const GridLayer: React.FC = () => {
     return null;
   }
 
-  const lines: React.ReactNode[] = [];
-  const numLines = 100; // Increased for better coverage on large maps
-  const half = Math.floor(numLines / 2);
+  const gridElements: React.ReactNode[] = [];
 
-  // Vertical lines
-  for (let i = -half; i <= half; i++) {
-    const x = displayedOrigin.x + i * displayedSpacing;
-    lines.push(
-      <line
-        key={`v-${i}`}
-        x1={x}
-        y1={displayedOrigin.y - half * displayedSpacing}
-        x2={x}
-        y2={displayedOrigin.y + half * displayedSpacing}
+  if (gridType === GridType.SQUARE) {
+    const numLines = 100; // Increased for better coverage on large maps
+    const half = Math.floor(numLines / 2);
+
+    // Vertical lines
+    for (let i = -half; i <= half; i++) {
+      const x = displayedOrigin.x + i * displayedSpacing;
+      gridElements.push(
+        <line
+          key={`v-${i}`}
+          x1={x}
+          y1={displayedOrigin.y - half * displayedSpacing}
+          x2={x}
+          y2={displayedOrigin.y + half * displayedSpacing}
+          stroke="#3b82f6"
+          strokeOpacity={0.3}
+          strokeWidth="1"
+        />
+      );
+    }
+
+    // Horizontal lines
+    for (let i = -half; i <= half; i++) {
+      const y = displayedOrigin.y + i * displayedSpacing;
+      gridElements.push(
+        <line
+          key={`h-${i}`}
+          x1={displayedOrigin.x - half * displayedSpacing}
+          y1={y}
+          x2={displayedOrigin.x + half * displayedSpacing}
+          y2={y}
+          stroke="#3b82f6"
+          strokeOpacity={0.3}
+          strokeWidth="1"
+        />
+      );
+    }
+  } else {
+    // Hex Grid - Optimized with a single path
+    const hexSize = displayedSpacing / Math.sqrt(3);
+    const isPointy = gridType === GridType.HEX_POINTY;
+    
+    // Draw 3 segments per hex to create a mesh without duplicates
+    // Standard axial coordinate system
+    const numHex = 25;
+    const pathSegments: string[] = [];
+
+    for (let q = -numHex; q <= numHex; q++) {
+      for (let r = -numHex; r <= numHex; r++) {
+        let cx, cy;
+        if (isPointy) {
+          cx = hexSize * Math.sqrt(3) * (q + r/2);
+          cy = hexSize * 1.5 * r;
+        } else {
+          cx = hexSize * 1.5 * q;
+          cy = hexSize * Math.sqrt(3) * (r + q/2);
+        }
+
+        const wx = displayedOrigin.x + cx;
+        const wy = displayedOrigin.y + cy;
+
+        // Draw segments (first 3 segments of each hex to avoid overlaps)
+        for (let i = 0; i < 3; i++) {
+          const angle1 = (60 * i + (isPointy ? 30 : 0)) * Math.PI / 180;
+          const angle2 = (60 * (i + 1) + (isPointy ? 30 : 0)) * Math.PI / 180;
+          const x1 = wx + hexSize * Math.cos(angle1);
+          const y1 = wy + hexSize * Math.sin(angle1);
+          const x2 = wx + hexSize * Math.cos(angle2);
+          const y2 = wy + hexSize * Math.sin(angle2);
+          pathSegments.push(`M ${x1} ${y1} L ${x2} ${y2}`);
+        }
+      }
+    }
+    gridElements.push(
+      <path
+        key="hex-mesh"
+        d={pathSegments.join(' ')}
         stroke="#3b82f6"
         strokeOpacity={0.3}
         strokeWidth="1"
-      />
-    );
-  }
-
-  // Horizontal lines
-  for (let i = -half; i <= half; i++) {
-    const y = displayedOrigin.y + i * displayedSpacing;
-    lines.push(
-      <line
-        key={`h-${i}`}
-        x1={displayedOrigin.x - half * displayedSpacing}
-        y1={y}
-        x2={displayedOrigin.x + half * displayedSpacing}
-        y2={y}
-        stroke="#3b82f6"
-        strokeOpacity={0.3}
-        strokeWidth="1"
+        fill="none"
       />
     );
   }
 
   return (
     <g ref={groupRef}>
-      {lines}
+      {gridElements}
 
       {/* Handles only visible in edit mode */}
       {isGridEditMode && (

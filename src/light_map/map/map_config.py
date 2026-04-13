@@ -521,8 +521,19 @@ class MapConfigManager:
             except Exception as e:
                 logging.error("Error loading LOS: %s", e)
 
+        # 3. Load Discovered Door IDs
+        door_path = os.path.join(storage_dir, "discovered_doors.json")
+        if os.path.exists(door_path):
+            try:
+                with open(door_path, "r") as f:
+                    data = json.load(f)
+                    if isinstance(data, list):
+                        fow_manager.discovered_door_ids = set(data)
+            except Exception as e:
+                logging.error(f"Error loading discovered doors: {e}")
+
     def save_fow_masks(self, map_path: str, fow_manager: "FogOfWarManager"):
-        """Saves both masks to stable storage."""
+        """Saves masks and discovered doors to stable storage."""
         storage_dir = self.get_fow_dir(map_path)
         try:
             os.makedirs(storage_dir, exist_ok=True)
@@ -530,8 +541,13 @@ class MapConfigManager:
             cv2.imwrite(os.path.join(storage_dir, "fow.png"), fow_manager.explored_mask)
             # Save Visible Mask (LOS)
             cv2.imwrite(os.path.join(storage_dir, "los.png"), fow_manager.visible_mask)
+            
+            # Save Discovered Door IDs
+            door_path = os.path.join(storage_dir, "discovered_doors.json")
+            with open(door_path, "w") as f:
+                json.dump(list(fow_manager.discovered_door_ids), f)
         except Exception as e:
-            logging.error("Error saving FoW/LOS to %s: %s", storage_dir, e)
+            logging.error("Error saving FoW/LOS/Doors to %s: %s", storage_dir, e)
 
     # --- New ArUco / Profile Methods ---
 

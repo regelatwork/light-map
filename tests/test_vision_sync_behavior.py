@@ -7,27 +7,44 @@ from light_map.core.common_types import AppConfig, Token
 
 @pytest.fixture
 def mock_app():
-    config = AppConfig(width=100, height=100, projector_matrix=np.eye(3))
+    # Setup AppConfig with necessary mocks
+    config = MagicMock(spec=AppConfig)
+    config.width = 100
+    config.height = 100
+    config.camera_resolution = (100, 100)
+    config.projector_matrix_resolution = (100, 100)
+    config.projector_3d_model.calibrated_projector_center = None
+    config.storage_manager.get_data_dir.return_value = "/tmp"
+    config.map_search_patterns = []
+
     # Mock systems that InteractiveApp initializes
     with (
         patch("light_map.interactive_app.Renderer"),
         patch("light_map.interactive_app.MapSystem"),
         patch("light_map.interactive_app.MapConfigManager"),
         patch("light_map.interactive_app.TrackingCoordinator"),
-        patch(
-            "light_map.interactive_app.InteractiveApp._load_camera_calibration"
-        ) as mock_cal,
+        patch("light_map.interactive_app.NotificationManager"),
+        patch("light_map.interactive_app.AnalyticsManager"),
+        patch("light_map.interactive_app.TemporalEventManager") as mock_events_class,
+        patch("light_map.interactive_app.ArucoTokenDetector"),
+        patch("light_map.interactive_app.InteractiveApp._load_camera_calibration") as mock_cal,
         patch("light_map.interactive_app.VisibilityEngine") as mock_ve_class,
     ):
         mock_cal.return_value = (np.eye(3), np.zeros(5), np.zeros(3), np.zeros(3))
+        
+        # Setup mock events
+        mock_events = mock_events_class.return_value
+        mock_events.has_event.return_value = False
+        mock_events.get_remaining_time.return_value = 0.0
 
         # Setup mock visibility engine
         mock_ve = mock_ve_class.return_value
         # Return a simple 10x10 mask where (0,0) is visible
         mask = np.zeros((10, 10), dtype=np.uint8)
         mask[0, 0] = 255
-        mock_ve.get_token_vision_mask.return_value = mask
-        mock_ve.get_aggregate_vision_mask.return_value = mask
+        discovered_ids = set()
+        mock_ve.get_token_vision_mask.return_value = (mask, discovered_ids)
+        mock_ve.get_aggregate_vision_mask.return_value = (mask, discovered_ids)
 
         app = InteractiveApp(config)
         # Manually inject a loaded map state
@@ -37,6 +54,7 @@ def mock_app():
         app.fow_manager.width = 10
         app.fow_manager.height = 10
         app.fow_manager.visible_mask = np.zeros((10, 10), dtype=np.uint8)
+        app.fow_manager.discovered_door_ids = set()
 
         return app
 

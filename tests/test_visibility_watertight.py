@@ -19,7 +19,7 @@ def test_watertight_blocking():
     engine.update_blockers(blockers, mask_width=mask_w, mask_height=mask_h)
 
     # Token at (100, 50) svg. Well above the wall at y=100.
-    mask = engine.get_token_vision_mask(
+    mask, _ = engine.get_token_vision_mask(
         token_id=1,
         origin_x=100.0,
         origin_y=50.0,
@@ -55,7 +55,7 @@ def test_corner_peeking():
 
     # Token near the corner but slightly above/left
     # (90, 90) svg. Footprint should reach the corner (100, 100)
-    mask = engine.get_token_vision_mask(
+    mask, _ = engine.get_token_vision_mask(
         token_id=1,
         origin_x=90.0,
         origin_y=90.0,

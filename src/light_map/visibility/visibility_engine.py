@@ -2,15 +2,21 @@ from __future__ import annotations
 import cv2
 import numpy as np
 from collections import deque
-from typing import List, Tuple, Dict, Optional, TYPE_CHECKING
+from typing import List, Tuple, Dict, Optional, TYPE_CHECKING, Set
 from light_map.visibility.visibility_types import VisibilityType, VisibilityBlocker
 
 # Optional Numba support
 try:
-    from numba import njit, prange
+    from numba import njit
     HAS_NUMBA = True
 except ImportError:
     HAS_NUMBA = False
+
+# Blocker Mask Constants
+MASK_VALUE_NONE = 0
+MASK_VALUE_WALL = 255
+MASK_VALUE_DOOR_CLOSED = 200
+MASK_VALUE_DOOR_OPEN = 150
 
 if TYPE_CHECKING:
     from light_map.core.common_types import Token
@@ -22,59 +28,64 @@ if HAS_NUMBA:
     def _numba_is_line_obstructed(
         x1: int, y1: int, x2: int, y2: int, blocker_mask: np.ndarray
     ) -> bool:
-        """Numba-optimized line obstruction check."""
+        """
+        Numba-optimized line obstruction check.
+        Checks ALL pixels on the line EXCEPT the target point (x2, y2).
+        This allows us to 'see' the blocker itself without being blocked by it.
+        Only walls and CLOSED doors block vision.
+        """
         h, w = blocker_mask.shape
         dx = abs(x2 - x1)
         dy = abs(y2 - y1)
         num_steps = dx if dx > dy else dy
 
         if num_steps == 0:
-            if 0 <= x1 < w and 0 <= y1 < h:
-                return blocker_mask[y1, x1] > 0
             return False
 
-        for i in range(num_steps + 1):
-            # Line interpolation
+        for i in range(num_steps):
             t = i / num_steps
             px = int(round(x1 + t * (x2 - x1)))
             py = int(round(y1 + t * (y2 - y1)))
 
-            # Safety clip
             if px < 0: px = 0
             elif px >= w: px = w - 1
             if py < 0: py = 0
             elif py >= h: py = h - 1
 
-            if blocker_mask[py, px] > 0:
+            val = blocker_mask[py, px]
+            if val == 255 or val == 200: # WALL or DOOR_CLOSED
                 return True
         return False
 
     @njit(cache=True)
     def _numba_bfs_flood_fill(
         blocker_mask: np.ndarray,
+        blocker_id_map: np.ndarray,
         vis_mask: np.ndarray,
         visited: np.ndarray,
         border_xs: np.ndarray,
         border_ys: np.ndarray,
         vision_range_px: int,
         cx: float,
-        cy: float
-    ) -> np.ndarray:
-        """Numba-optimized BFS visibility propagation."""
+        cy: float,
+        num_blockers: int
+    ) -> Tuple[np.ndarray, np.ndarray]:
+        """
+        Numba-optimized BFS visibility propagation.
+        Tracks which blocker IDs were 'discovered' during the fill.
+        """
         h, w = blocker_mask.shape
         range_sq = vision_range_px**2
-
-        # Source hints (storing indices into border arrays)
-        hint_indices = np.full((h, w), -1, dtype=np.int32)
         
-        # Initialize queue (using a simple array-based queue for Numba)
-        # Max possible queue size is w * h
+        # Track discovered blocker indices
+        discovered_indices = np.zeros(num_blockers, dtype=np.uint8)
+        
+        hint_indices = np.full((h, w), -1, dtype=np.int32)
         queue_x = np.empty(w * h, dtype=np.int32)
         queue_y = np.empty(w * h, dtype=np.int32)
         head = 0
         tail = 0
 
-        # Seed the queue with border points
         for i in range(len(border_xs)):
             bx, by = border_xs[i], border_ys[i]
             queue_x[tail] = bx
@@ -89,31 +100,27 @@ if HAS_NUMBA:
 
             parent_hint_idx = hint_indices[y, x]
 
-            # 4-connected neighbors
             for dx, dy in [(0, 1), (0, -1), (1, 0), (-1, 0)]:
                 nx, ny = x + dx, y + dy
 
                 if nx < 0 or nx >= w or ny < 0 or ny >= h:
                     continue
                 
-                if visited[ny, nx] or blocker_mask[ny, nx] > 0:
+                if visited[ny, nx]:
                     continue
 
-                # Circular range check
                 if (nx - cx) ** 2 + (ny - cy) ** 2 > range_sq:
                     continue
 
-                # LOS Check
+                val = blocker_mask[ny, nx]
                 found_hint = -1
                 
-                # 1. Check parent hint first
                 if parent_hint_idx != -1:
                     sx = border_xs[parent_hint_idx]
                     sy = border_ys[parent_hint_idx]
                     if not _numba_is_line_obstructed(sx, sy, nx, ny, blocker_mask):
                         found_hint = parent_hint_idx
 
-                # 2. Check other border points if hint fails
                 if found_hint == -1:
                     for i in range(len(border_xs)):
                         if i == parent_hint_idx:
@@ -125,20 +132,28 @@ if HAS_NUMBA:
                             break
 
                 if found_hint != -1:
+                    visited[ny, nx] = True 
                     vis_mask[ny, nx] = 255
-                    visited[ny, nx] = True
-                    hint_indices[ny, nx] = found_hint
-                    queue_x[tail] = nx
-                    queue_y[tail] = ny
-                    tail += 1
+                    
+                    if val > 0: # We hit a blocker (Wall or Door)
+                        bid = blocker_id_map[ny, nx]
+                        if bid >= 0:
+                            discovered_indices[bid] = 1
+                        # Do NOT add blocker to queue; vision stops here
+                    else:
+                        # Continue flooding floor space
+                        hint_indices[ny, nx] = found_hint
+                        queue_x[tail] = nx
+                        queue_y[tail] = ny
+                        tail += 1
 
-        return vis_mask
+        return vis_mask, discovered_indices
 
 
 class VisibilityEngine:
     """
     Calculates visibility masks based on high-resolution blocker grids.
-    Ensures watertight walls and supports corner peeking.
+    Ensures watertight walls and supports object-based discovery.
     """
 
     def __init__(
@@ -148,24 +163,22 @@ class VisibilityEngine:
         self.grid_origin = grid_origin
         self.blockers: List[VisibilityBlocker] = []
 
-        # Mask Cache: (token_id, grid_x, grid_y, size) -> np.ndarray
-        self.mask_cache: Dict[Tuple[int, int, int, int], np.ndarray] = {}
+        # Mask Cache: (token_id, grid_x, grid_y, size) -> (vis_mask, discovered_ids)
+        self.mask_cache: Dict[Tuple[int, int, int, int], Tuple[np.ndarray, Set[str]]] = {}
 
         self.blocker_mask: Optional[np.ndarray] = None
+        self.blocker_id_map: Optional[np.ndarray] = None
         self.svg_to_mask_scale = 16.0 / grid_spacing_svg
 
     @property
     def width(self) -> int:
-        """Returns the width of the visibility mask in pixels."""
         return self.blocker_mask.shape[1] if self.blocker_mask is not None else 0
 
     @property
     def height(self) -> int:
-        """Returns the height of the visibility mask in pixels."""
         return self.blocker_mask.shape[0] if self.blocker_mask is not None else 0
 
     def calculate_mask_dimensions(self, svg_w: float, svg_h: float) -> Tuple[int, int]:
-        """Calculates mask dimensions (1/16th inch per pixel) for a given SVG size."""
         return int(svg_w * self.svg_to_mask_scale), int(svg_h * self.svg_to_mask_scale)
 
     def update_blockers(
@@ -175,39 +188,48 @@ class VisibilityEngine:
         mask_height: int = 0,
     ):
         """
-        Renders a high-resolution blocker mask from SVG blockers.
+        Renders a high-resolution blocker mask and an ID map for discovery.
         """
         self.blockers = blockers
         self.mask_cache = {}
 
         if mask_width > 0 and mask_height > 0:
             self.blocker_mask = np.zeros((mask_height, mask_width), dtype=np.uint8)
+            self.blocker_id_map = np.full((mask_height, mask_width), -1, dtype=np.int32)
 
-        for blocker in blockers:
-            # Convert flattened segments into pairs of points
+        for idx, blocker in enumerate(blockers):
             points = blocker.points
             if len(points) < 2:
                 continue
 
-            # Render blocker mask if dimensions provided
             if self.blocker_mask is not None:
                 # Windows are transparent to vision
                 if blocker.type != VisibilityType.WINDOW:
-                    # Doors only block when NOT open
-                    if blocker.type != VisibilityType.DOOR or not blocker.is_open:
-                        mask_points = []
-                        for px, py in points:
-                            mx = int(px * self.svg_to_mask_scale)
-                            my = int(py * self.svg_to_mask_scale)
-                            mask_points.append((mx, my))
+                    mask_points = []
+                    for px, py in points:
+                        mx = int(px * self.svg_to_mask_scale)
+                        my = int(py * self.svg_to_mask_scale)
+                        mask_points.append((mx, my))
 
-                        for i in range(len(mask_points) - 1):
-                            p1 = mask_points[i]
-                            p2 = mask_points[i + 1]
-                            # 2px width + Round Caps
-                            cv2.line(self.blocker_mask, p1, p2, 255, thickness=2)
-                            cv2.circle(self.blocker_mask, p1, 1, 255, -1)
-                            cv2.circle(self.blocker_mask, p2, 1, 255, -1)
+                    for i in range(len(mask_points) - 1):
+                        p1 = mask_points[i]
+                        p2 = mask_points[i + 1]
+
+                        # Choose pixel value based on blocker type and state
+                        if blocker.type == VisibilityType.DOOR:
+                            px_val = MASK_VALUE_DOOR_OPEN if blocker.is_open else MASK_VALUE_DOOR_CLOSED
+                        else:
+                            px_val = MASK_VALUE_WALL
+
+                        # Render collision grid
+                        cv2.line(self.blocker_mask, p1, p2, px_val, thickness=2)
+                        cv2.circle(self.blocker_mask, p1, 1, px_val, -1)
+                        cv2.circle(self.blocker_mask, p2, 1, px_val, -1)
+
+                        # Render ID map
+                        cv2.line(self.blocker_id_map, p1, p2, idx, thickness=2)
+                        cv2.circle(self.blocker_id_map, p1, 1, idx, -1)
+                        cv2.circle(self.blocker_id_map, p2, 1, idx, -1)
 
     def _calculate_token_footprint(
         self, cx_mask: int, cy_mask: int, size: int
@@ -217,7 +239,6 @@ class VisibilityEngine:
         Uses BFS to find pixels within (size/2 * 16 + 1) that are not blocked by walls.
         """
         if self.blocker_mask is None:
-            # Fallback if no map loaded or blockers not updated
             return np.zeros((1, 1), dtype=np.uint8)
 
         h, w = self.blocker_mask.shape
@@ -226,30 +247,23 @@ class VisibilityEngine:
         if not (0 <= cx_mask < w and 0 <= cy_mask < h):
             return footprint
 
-        # Range limit: half-size in pixels + 1px overhang
-        # size 1 -> 16px wide -> 8px radius + 1px = 9px
         range_limit = (size * 16 // 2) + 1
 
-        queue = [(cy_mask, cx_mask)]
+        queue = deque([(cy_mask, cx_mask)])
         footprint[cy_mask, cx_mask] = 255
-        idx = 0
 
-        while idx < len(queue):
-            y, x = queue[idx]
-            idx += 1
+        while queue:
+            y, x = queue.popleft()
 
             for dy, dx in [(0, 1), (0, -1), (1, 0), (-1, 0)]:
                 ny, nx = y + dy, x + dx
 
                 if 0 <= nx < w and 0 <= ny < h:
                     if footprint[ny, nx] == 0:
-                        # Check distance constraint (Manhattan or Chebyshev is faster,
-                        # but L-infinity/square is what we want for grid cells)
                         if (
                             abs(nx - cx_mask) <= range_limit
                             and abs(ny - cy_mask) <= range_limit
                         ):
-                            # Check if not a wall
                             if self.blocker_mask[ny, nx] == 0:
                                 footprint[ny, nx] = 255
                                 queue.append((ny, nx))
@@ -263,27 +277,16 @@ class VisibilityEngine:
         if footprint is None or not np.any(footprint > 0):
             return []
 
-        # 1. Create a 3x3 connectivity kernel
         kernel = np.ones((3, 3), np.uint8)
-
-        # 2. Erode the footprint by 1 pixel.
-        # This removes the outermost layer of pixels.
         eroded = cv2.erode(footprint, kernel, iterations=1)
-
-        # 3. Subtract the eroded version from the original.
-        # The result is only the pixels that were on the boundary.
         border_mask = cv2.subtract(footprint, eroded)
-
-        # 4. Extract coordinates.
         y_coords, x_coords = np.where(border_mask > 0)
-
-        # 5. Return as a list of (x, y) tuples
         return list(zip(x_coords.tolist(), y_coords.tolist()))
 
     def _is_line_obstructed(self, p1: Tuple[int, int], p2: Tuple[int, int]) -> bool:
         """
         Checks if any pixel on the line between p1 and p2 is a blocker.
-        Returns True if a blocker is found at p1, p2, or any point in between.
+        Returns True if a blocker is found at p1 or any point in between EXCEPT p2.
         """
         if self.blocker_mask is None:
             return False
@@ -295,35 +298,25 @@ class VisibilityEngine:
             return _numba_is_line_obstructed(x1, y1, x2, y2, self.blocker_mask)
 
         h, w = self.blocker_mask.shape
-
-        # Use maximum distance to ensure we sample every pixel along the path
-        num_steps = max(abs(x2 - x1), abs(y2 - y1))
+        dx = abs(x2 - x1)
+        dy = abs(y2 - y1)
+        num_steps = dx if dx > dy else dy
 
         if num_steps == 0:
-            if 0 <= x1 < w and 0 <= y1 < h:
-                return self.blocker_mask[y1, x1] > 0
             return False
 
-        # Generate integer coordinates along the line
-        xs = np.linspace(x1, x2, num_steps + 1).round().astype(int)
-        ys = np.linspace(y1, y2, num_steps + 1).round().astype(int)
+        for i in range(num_steps):
+            t = i / num_steps
+            px = int(round(x1 + t * (x2 - x1)))
+            py = int(round(y1 + t * (y2 - y1)))
 
-        # Safety clip to mask boundaries
-        xs = np.clip(xs, 0, w - 1)
-        ys = np.clip(ys, 0, h - 1)
+            px = max(0, min(px, w - 1))
+            py = max(0, min(py, h - 1))
 
-        # Check for any non-zero (blocker) values in the mask
-        return np.any(self.blocker_mask[ys, xs] > 0)
-
-    def _get_neighbors(self, p: Tuple[int, int], mask_w: int, mask_h: int) -> List[Tuple[int, int]]:
-        """Returns valid 4-connected neighbors within mask bounds."""
-        x, y = p
-        neighbors = []
-        for dx, dy in [(0, 1), (0, -1), (1, 0), (-1, 0)]:
-            nx, ny = x + dx, y + dy
-            if 0 <= nx < mask_w and 0 <= ny < mask_h:
-                neighbors.append((nx, ny))
-        return neighbors
+            val = self.blocker_mask[py, px]
+            if val == MASK_VALUE_WALL or val == MASK_VALUE_DOOR_CLOSED:
+                return True
+        return False
 
     def _find_visible_source(
         self,
@@ -333,14 +326,12 @@ class VisibilityEngine:
     ) -> Optional[Tuple[int, int]]:
         """
         Finds a point in border_points that has LOS to target_p.
-        Checks the hint_source first for optimization (temporal/spatial locality).
+        Checks the hint_source first for optimization.
         """
-        # 1. Check the hint first (most likely to succeed in a flood fill)
         if hint_source is not None:
             if not self._is_line_obstructed(hint_source, target_p):
                 return hint_source
 
-        # 2. Check the rest of the border points
         for source_p in border_points:
             if source_p == hint_source:
                 continue
@@ -349,30 +340,27 @@ class VisibilityEngine:
 
         return None
 
-    def _calculate_visibility_mask(
+    def _calculate_visibility(
         self,
         footprint: np.ndarray,
         vision_range_px: int,
         mask_w: int,
         mask_h: int,
-    ) -> np.ndarray:
+    ) -> Tuple[np.ndarray, Set[str]]:
         """
-        Calculates visibility using a BFS (flood fill) constrained by Line-of-Sight.
-        Every pixel reached must have LOS to at least one point on the footprint border.
+        Calculates visibility using a BFS constrained by Line-of-Sight.
+        Returns (vision_mask, discovered_door_ids).
         """
         if self.blocker_mask is None:
-            return np.zeros((mask_h, mask_w), dtype=np.uint8)
+            return np.zeros((mask_h, mask_w), dtype=np.uint8), set()
 
-        # 1. Initialize visibility mask and visited tracker
         vis_mask = footprint.copy()
         visited = footprint > 0
 
-        # 2. Get the starting frontier (border of the footprint)
         border_points = self._get_footprint_border_points(footprint)
         if not border_points:
-            return vis_mask
+            return vis_mask, set()
 
-        # Find footprint center for global range limiting
         coords = np.where(footprint > 0)
         cx = np.mean(coords[1])
         cy = np.mean(coords[0])
@@ -380,52 +368,51 @@ class VisibilityEngine:
         if HAS_NUMBA:
             border_xs = np.array([p[0] for p in border_points], dtype=np.int32)
             border_ys = np.array([p[1] for p in border_points], dtype=np.int32)
-            return _numba_bfs_flood_fill(
-                self.blocker_mask, vis_mask, visited,
+            v_mask, disc_indices = _numba_bfs_flood_fill(
+                self.blocker_mask, self.blocker_id_map, vis_mask, visited,
                 border_xs, border_ys,
-                vision_range_px, cx, cy
+                vision_range_px, cx, cy, len(self.blockers)
             )
+            # Map indices back to IDs for doors
+            discovered_ids = {
+                self.blockers[i].id 
+                for i in np.where(disc_indices > 0)[0] 
+                if self.blockers[i].type == VisibilityType.DOOR
+            }
+            return v_mask, discovered_ids
 
-        # 3. Queue for BFS: (x, y)
+        # Python Fallback (Simplified propagation for brevity)
+        discovered_ids = set()
         queue = deque(border_points)
-
-        # 4. Source hints for optimization (which border point saw which pixel)
-        # Using -1 to indicate no hint
         hint_xs = np.full((mask_h, mask_w), -1, dtype=np.int16)
         hint_ys = np.full((mask_h, mask_w), -1, dtype=np.int16)
         for x, y in border_points:
-            hint_xs[y, x] = x
-            hint_ys[y, x] = y
+            hint_xs[y, x], hint_ys[y, x] = x, y
 
         range_sq = vision_range_px**2
 
         while queue:
             x, y = queue.popleft()
-
-            # Current source point hint
             hx, hy = hint_xs[y, x], hint_ys[y, x]
             hint = (int(hx), int(hy)) if hx != -1 else None
 
-            # Explore neighbors
-            for nx, ny in self._get_neighbors((x, y), mask_w, mask_h):
-                if visited[ny, nx] or self.blocker_mask[ny, nx] > 0:
-                    continue
+            for nx, ny in [(x, y+1), (x, y-1), (x+1, y), (x-1, y)]:
+                if 0 <= nx < mask_w and 0 <= ny < mask_h and not visited[ny, nx]:
+                    if (nx - cx) ** 2 + (ny - cy) ** 2 <= range_sq:
+                        found_source = self._find_visible_source((nx, ny), border_points, hint)
+                        if found_source:
+                            visited[ny, nx] = True
+                            vis_mask[ny, nx] = 255
+                            val = self.blocker_mask[ny, nx]
+                            if val > 0: # Blocker
+                                bid = self.blocker_id_map[ny, nx]
+                                if bid >= 0 and self.blockers[bid].type == VisibilityType.DOOR:
+                                    discovered_ids.add(self.blockers[bid].id)
+                            else:
+                                hint_xs[ny, nx], hint_ys[ny, nx] = found_source
+                                queue.append((nx, ny))
 
-                # Circular range check
-                if (nx - cx) ** 2 + (ny - cy) ** 2 > range_sq:
-                    continue
-
-                # Line-of-Sight check against ANY point on the border
-                # (Optimized by checking the parent's hint first)
-                found_source = self._find_visible_source((nx, ny), border_points, hint)
-
-                if found_source:
-                    vis_mask[ny, nx] = 255
-                    visited[ny, nx] = True
-                    hint_xs[ny, nx], hint_ys[ny, nx] = found_source
-                    queue.append((nx, ny))
-
-        return vis_mask
+        return vis_mask, discovered_ids
 
     def get_token_vision_mask(
         self,
@@ -436,37 +423,28 @@ class VisibilityEngine:
         vision_range_grid: float,
         mask_width: int,
         mask_height: int,
-    ) -> np.ndarray:
+    ) -> Tuple[np.ndarray, Set[str]]:
         """
-        Calculates a unioned LOS mask from the token's center and corners.
-        Returns a uint8 mask (0=hidden, 255=visible).
+        Calculates a unioned LOS mask and discovered door IDs.
         """
-        # 1. Check Mask Cache
         gx = int((origin_x - self.grid_origin[0]) // self.grid_spacing_svg)
         gy = int((origin_y - self.grid_origin[1]) // self.grid_spacing_svg)
         mask_cache_key = (token_id, gx, gy, size)
 
         if mask_cache_key in self.mask_cache:
-            mask = self.mask_cache[mask_cache_key]
-            if mask.shape == (mask_height, mask_width):
-                return mask
+            return self.mask_cache[mask_cache_key]
 
-        # 2. Coordinate Conversion
         cx_mask = int(origin_x * self.svg_to_mask_scale)
         cy_mask = int(origin_y * self.svg_to_mask_scale)
-        vision_range_px = int(vision_range_grid * 16)  # 16px per grid unit
+        vision_range_px = int(vision_range_grid * 16)
 
-        # 3. Calculate Token Footprint (Corner Peeking)
         footprint = self._calculate_token_footprint(cx_mask, cy_mask, size)
-
-        # 4. Calculate Visibility Mask using Flood Fill
-        mask = self._calculate_visibility_mask(
+        result = self._calculate_visibility(
             footprint, vision_range_px, mask_width, mask_height
         )
 
-        # 5. Update Cache
-        self.mask_cache[mask_cache_key] = mask
-        return mask
+        self.mask_cache[mask_cache_key] = result
+        return result
 
     def get_aggregate_vision_mask(
         self,
@@ -475,19 +453,19 @@ class VisibilityEngine:
         mask_width: int,
         mask_height: int,
         vision_range_grid: float = 25.0,
-    ) -> Optional[np.ndarray]:
+    ) -> Tuple[Optional[np.ndarray], Set[str]]:
         """
-        Calculates a combined vision mask for all PC tokens.
-        Useful for 'Sync Vision' actions.
+        Calculates combined vision mask and set of discovered door IDs for all PC tokens.
         """
         combined_pc_mask = None
+        all_discovered_ids = set()
 
         pc_tokens = [
             t for t in tokens if map_config.resolve_token_profile(t.id).type == "PC"
         ]
 
         for token in pc_tokens:
-            token_mask = self.get_token_vision_mask(
+            token_mask, discovered_ids = self.get_token_vision_mask(
                 token.id,
                 token.world_x,
                 token.world_y,
@@ -500,5 +478,7 @@ class VisibilityEngine:
                 combined_pc_mask = token_mask.copy()
             else:
                 cv2.bitwise_or(combined_pc_mask, token_mask, combined_pc_mask)
+            
+            all_discovered_ids.update(discovered_ids)
 
-        return combined_pc_mask
+        return combined_pc_mask, all_discovered_ids

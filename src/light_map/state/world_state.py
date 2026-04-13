@@ -1,7 +1,7 @@
 import time
 from contextlib import contextmanager
 import numpy as np
-from typing import List, Optional, Callable, Any, Dict
+from typing import List, Optional, Callable, Any, Dict, Set
 from light_map.core.common_types import (
     Token,
     DetectionResult,
@@ -33,12 +33,6 @@ class WorldState:
     """
     Central Data Repository (The "Source of Truth") for the MainProcess.
     Manages background frames, vision results, and granular versioning for caching.
-
-    Versioning Invariant:
-    All version properties (e.g., scene_version, tokens_version) are READ-ONLY from external
-    classes. Versioning is an internal invariant managed by VersionedAtom. External entities
-    must NEVER manipulate these versions directly or use invalidation methods. A version update
-    must ONLY occur as a natural side-effect of a meaningful data change in the underlying atom.
     """
 
     def __init__(
@@ -77,6 +71,7 @@ class WorldState:
         self._fow_mask_atom = VersionedAtom(
             None, "fow_mask", equality_fn=np.array_equal
         )
+        self._discovered_door_ids_atom = VersionedAtom(set(), "discovered_door_ids")
         self._fow_disabled_atom = VersionedAtom(False, "fow_disabled")
         self._calibration_atom = VersionedAtom(
             CalibrationState(), "calibration", equality_fn=self._calibration_equal
@@ -229,6 +224,14 @@ class WorldState:
         self._fow_mask_atom.update(value)
 
     @property
+    def discovered_door_ids(self) -> Set[str]:
+        return self._discovered_door_ids_atom.value
+
+    @discovered_door_ids.setter
+    def discovered_door_ids(self, value: Set[str]):
+        self._discovered_door_ids_atom.update(value)
+
+    @property
     def fow_disabled(self) -> bool:
         return self._fow_disabled_atom.value
 
@@ -246,12 +249,15 @@ class WorldState:
 
     @property
     def map_version(self) -> int:
-
         return self._map_render_state_atom.timestamp
 
     @property
     def fow_version(self) -> int:
-        return max(self._fow_mask_atom.timestamp, self._fow_disabled_atom.timestamp)
+        return max(
+            self._fow_mask_atom.timestamp,
+            self._discovered_door_ids_atom.timestamp,
+            self._fow_disabled_atom.timestamp,
+        )
 
     @property
     def fow_disabled_version(self) -> int:
@@ -540,10 +546,6 @@ class WorldState:
                     and len(result.data) > 0
                     and hasattr(result.data[0], "gesture")
                 ):
-                    # Standardized HandInput objects (likely from Remote Driver)
-                    # BUG-FIX: Even if inputs didn't change, we MUST increment hands_version
-                    # because scenes need to process time-based events (dwell, linger)
-                    # every frame that hands are present.
                     tx.update(self._inputs_atom, result.data, force=True)
                     self.last_hand_timestamp = current_time
                 else:
@@ -627,8 +629,6 @@ class WorldState:
             return False
         if len(h1) == 0:
             return True
-        # MediaPipe landmarks are often slightly different every frame.
-        # Assume different if not both empty to trigger updates.
         return False
 
     def _tokens_equal(self, list1: List[Token], list2: List[Token]) -> bool:
@@ -667,14 +667,7 @@ class WorldState:
         if len(b1) != len(b2):
             return False
 
-        # Check for reference equality first (Optimization)
         if b1 is b2:
-            # We must assume it might have changed if the list is identical
-            # because we often mutate blockers in-place.
-            # But wait, if we always assign a NEW list (copy), then reference
-            # equality will only happen if we assign exactly the same list.
-            # However, standard VersionedAtom behavior is to NOT update if equality_fn returns True.
-            # If we want to detect in-place mutation, we'd need to compare values.
             return False
 
         for blocker1, blocker2 in zip(b1, b2):

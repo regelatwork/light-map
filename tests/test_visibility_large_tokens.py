@@ -34,7 +34,7 @@ def test_size_3_token_corner_peeking():
     # Wall is at x=64, y=64.
     # So the token is completely contained in the top-left quadrant.
 
-    mask = engine.get_token_vision_mask(
+    mask, _ = engine.get_token_vision_mask(
         token_id=50,
         origin_x=200.0,
         origin_y=200.0,

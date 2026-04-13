@@ -75,8 +75,15 @@ class LayerStackManager:
         )
 
         # Background Composite (Optimized for performance)
+        # DoorLayer is now visibility-aware and placed ABOVE FoW/Visibility highlight 
+        # so it's not dimmed by the shroud but still obeys LOS discovery.
         self.background_composite = CompositeLayer(
-            [self.map_layer, self.door_layer, self.fow_layer, self.visibility_layer]
+            [
+                self.map_layer,
+                self.fow_layer,
+                self.visibility_layer,
+                self.door_layer,
+            ]
         )
 
     @property

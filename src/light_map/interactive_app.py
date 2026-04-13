@@ -4,7 +4,7 @@ import time
 import os
 import sys
 import logging
-from typing import List, Tuple, Any, Dict, Optional, TYPE_CHECKING, Callable
+from typing import List, Tuple, Any, Dict, Optional, TYPE_CHECKING, Callable, Set
 
 from light_map.core.common_types import (
     AppConfig,
@@ -16,7 +16,7 @@ from light_map.core.common_types import (
 )
 from light_map.rendering.renderer import Renderer
 from light_map.map.map_system import MapSystem
-from light_map.rendering.svg import SVGLoader
+from light_map.rendering.svg.loader import SVGLoader
 from light_map.map.map_config import MapConfigManager
 from light_map.map.session_manager import SessionManager
 from light_map.visibility.fow_manager import FogOfWarManager
@@ -154,13 +154,6 @@ class InteractiveApp:
         # Layer Management
         self.layer_manager = LayerStackManager(self.app_context, self.state)
         self.app_context.layer_manager = self.layer_manager
-        self.layer_manager.update_visibility_stack(
-            self.fow_manager,
-            config.width,
-            config.height,
-            spacing=10.0,
-            origin=(0.0, 0.0),
-        )
 
         # Scene Management
         self.scenes = self._initialize_scenes()
@@ -539,26 +532,6 @@ class InteractiveApp:
 
         # Re-initialize Layer Management
         self.layer_manager = LayerStackManager(self.app_context, self.state)
-        # Use current visibility params if map is loaded, else default
-        if self.current_map_path:
-            entry = self.map_config.data.maps.get(self.current_map_path)
-            if entry:
-                self.layer_manager.update_visibility_stack(
-                    self.fow_manager,
-                    self.fow_manager.width if self.fow_manager else self.config.width,
-                    self.fow_manager.height if self.fow_manager else self.config.height,
-                    spacing=entry.grid_spacing_svg,
-                    origin=(entry.grid_origin_svg_x, entry.grid_origin_svg_y),
-                )
-        else:
-            self.layer_manager.update_visibility_stack(
-                self.fow_manager,
-                self.config.width,
-                self.config.height,
-                spacing=10.0,
-                origin=(0.0, 0.0),
-            )
-
         self.scenes = self._initialize_scenes()
         self.current_scene = self.scenes[SceneId.MENU]
         self.current_scene.on_enter()
@@ -731,7 +704,7 @@ class InteractiveApp:
             and state is not None
         ):
             # Calculate latest vision mask on-demand
-            combined_pc_mask = self.visibility_engine.get_aggregate_vision_mask(
+            combined_pc_mask, disc_ids = self.visibility_engine.get_aggregate_vision_mask(
                 state.tokens,
                 self.map_config,
                 self.fow_manager.width,
@@ -741,7 +714,7 @@ class InteractiveApp:
 
             if combined_pc_mask is not None:
                 # 1. Update Persistent Fog of War (Explore new areas)
-                self.fow_manager.reveal_area(combined_pc_mask)
+                self.fow_manager.reveal_area(combined_pc_mask, disc_ids)
 
                 # 2. Update Visible Line-of-Sight (the 'clear holes')
                 self.fow_manager.set_visible_mask(combined_pc_mask)
@@ -756,8 +729,10 @@ class InteractiveApp:
 
                 # 5. Invalidate Layer Caches
                 state.fow_mask = self.fow_manager.explored_mask.copy()
+                state.discovered_door_ids = set(self.fow_manager.discovered_door_ids)
                 if state is not self.state:
                     self.state.fow_mask = self.fow_manager.explored_mask.copy()
+                    self.state.discovered_door_ids = set(self.fow_manager.discovered_door_ids)
 
     def _rebuild_visibility_stack(self, entry: Any):
         """Re-initializes visibility engine and layers based on map configuration."""
@@ -794,15 +769,6 @@ class InteractiveApp:
             self.fow_manager = FogOfWarManager(mask_w, mask_h)
             if self.current_map_path:
                 self.map_config.load_fow_masks(self.current_map_path, self.fow_manager)
-
-        # Update layers via manager
-        self.layer_manager.update_visibility_stack(
-            self.fow_manager,
-            mask_w,
-            mask_h,
-            spacing,
-            origin,
-        )
 
         # Sync blockers to state
         self._sync_blockers_to_state()
@@ -881,10 +847,12 @@ class InteractiveApp:
         # setup Visibility Engine and layers
         self._rebuild_visibility_stack(entry)
 
-        # Restore Visibility Highlight in state if loaded from persistence
-        if np.any(self.fow_manager.visible_mask):
-            self.state.visibility_mask = self.fow_manager.visible_mask.copy()
+        # Restore persistent states
+        if self.fow_manager:
+            if np.any(self.fow_manager.visible_mask):
+                self.state.visibility_mask = self.fow_manager.visible_mask.copy()
             self.state.fow_mask = self.fow_manager.explored_mask.copy()
+            self.state.discovered_door_ids = set(self.fow_manager.discovered_door_ids)
 
         # Calculate and set base scale (1:1 zoom level)
         self.refresh_base_scale()

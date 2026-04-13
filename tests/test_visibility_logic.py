@@ -11,7 +11,7 @@ def test_visibility_empty_room():
 
     # Token at (100, 100) svg -> (16, 16) pixels
     # Vision range 5 grids = 80 px
-    mask = engine.get_token_vision_mask(
+    mask, door_ids = engine.get_token_vision_mask(
         token_id=1,
         origin_x=100.0,
         origin_y=100.0,
@@ -27,6 +27,9 @@ def test_visibility_empty_room():
     assert mask[56, 56] > 0
     # Check point outside: (16+90, 16) = (106, 16)
     assert mask[16, 106] == 0
+    
+    # No doors in empty room
+    assert len(door_ids) == 0
 
 
 def test_visibility_blocked_by_wall():
@@ -40,7 +43,7 @@ def test_visibility_blocked_by_wall():
 
     # Token at (100, 100) svg -> (16, 16) pixels
     # Wall is at x=24.
-    mask = engine.get_token_vision_mask(
+    mask, door_ids = engine.get_token_vision_mask(
         token_id=1,
         origin_x=100.0,
         origin_y=100.0,
@@ -54,11 +57,15 @@ def test_visibility_blocked_by_wall():
     assert mask[16, 20] > 0
     # Point after wall: (28, 16) -> (175 svg, 100 svg)
     assert mask[16, 28] == 0
+    
+    # Walls are not doors
+    assert len(door_ids) == 0
 
 
 def test_visibility_door_toggle():
     engine = VisibilityEngine(grid_spacing_svg=100.0)
     door = VisibilityBlocker(
+        id="door1",
         points=[(150, 0), (150, 200)],
         type=VisibilityType.DOOR,
         layer_name="Doors",
@@ -69,16 +76,21 @@ def test_visibility_door_toggle():
 
     # Token at (100, 100)
     # Door closed: blocked
-    mask_closed = engine.get_token_vision_mask(1, 100, 100, 1, 10, mask_w, mask_h)
+    mask_closed, door_ids_closed = engine.get_token_vision_mask(1, 100, 100, 1, 10, mask_w, mask_h)
     assert mask_closed[16, 28] == 0
+    
+    # The door itself should be discovered
+    assert "door1" in door_ids_closed
 
     # Open door
     door.is_open = True
     # Re-update blockers to rebuild mask
     engine.update_blockers([door], mask_width=mask_w, mask_height=mask_h)
 
-    mask_open = engine.get_token_vision_mask(1, 100, 100, 1, 10, mask_w, mask_h)
+    mask_open, door_ids_open = engine.get_token_vision_mask(1, 100, 100, 1, 10, mask_w, mask_h)
     assert mask_open[16, 28] > 0
+    # Open door is transparent to vision but still identified
+    assert "door1" in door_ids_open
 
 
 def test_visibility_cache_hysteresis():
@@ -89,7 +101,7 @@ def test_visibility_cache_hysteresis():
     token_id = 1
     # Both in Grid (1, 1) assuming grid spacing is 100
     origin1 = (120, 120)
-    mask1 = engine.get_token_vision_mask(
+    res1 = engine.get_token_vision_mask(
         token_id, origin1[0], origin1[1], 1, 5, mask_w, mask_h
     )
 
@@ -97,18 +109,19 @@ def test_visibility_cache_hysteresis():
 
     # Move slightly within the same grid cell
     origin2 = (140, 140)
-    mask2 = engine.get_token_vision_mask(
+    res2 = engine.get_token_vision_mask(
         token_id, origin2[0], origin2[1], 1, 5, mask_w, mask_h
     )
 
     # Should be identical from cache
-    assert np.array_equal(mask1, mask2)
+    assert np.array_equal(res1[0], res2[0])
+    assert res1[1] == res2[1]
     assert len(engine.mask_cache) == 1
 
     # Move to next cell
     origin3 = (220, 120)  # Grid (2, 1)
-    mask3 = engine.get_token_vision_mask(
+    res3 = engine.get_token_vision_mask(
         token_id, origin3[0], origin3[1], 1, 5, mask_w, mask_h
     )
-    assert not np.array_equal(mask1, mask3)
+    assert not np.array_equal(res1[0], res3[0])
     assert len(engine.mask_cache) == 2

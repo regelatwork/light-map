@@ -1,6 +1,7 @@
 from __future__ import annotations
 import cv2
 import numpy as np
+from collections import deque
 from typing import List, Tuple, Dict, Optional, TYPE_CHECKING
 from light_map.visibility.visibility_types import VisibilityType, VisibilityBlocker
 
@@ -130,81 +131,162 @@ class VisibilityEngine:
 
         return footprint
 
+    def _get_footprint_border_points(self, footprint: np.ndarray) -> List[Tuple[int, int]]:
+        """
+        Extracts the (x, y) coordinates of all pixels on the inner perimeter of the footprint.
+        """
+        if footprint is None or not np.any(footprint > 0):
+            return []
+
+        # 1. Create a 3x3 connectivity kernel
+        kernel = np.ones((3, 3), np.uint8)
+
+        # 2. Erode the footprint by 1 pixel.
+        # This removes the outermost layer of pixels.
+        eroded = cv2.erode(footprint, kernel, iterations=1)
+
+        # 3. Subtract the eroded version from the original.
+        # The result is only the pixels that were on the boundary.
+        border_mask = cv2.subtract(footprint, eroded)
+
+        # 4. Extract coordinates.
+        y_coords, x_coords = np.where(border_mask > 0)
+
+        # 5. Return as a list of (x, y) tuples
+        return list(zip(x_coords.tolist(), y_coords.tolist()))
+
+    def _is_line_obstructed(self, p1: Tuple[int, int], p2: Tuple[int, int]) -> bool:
+        """
+        Checks if any pixel on the line between p1 and p2 is a blocker.
+        Returns True if a blocker is found at p1, p2, or any point in between.
+        """
+        if self.blocker_mask is None:
+            return False
+
+        x1, y1 = p1
+        x2, y2 = p2
+        h, w = self.blocker_mask.shape
+
+        # Use maximum distance to ensure we sample every pixel along the path
+        num_steps = max(abs(x2 - x1), abs(y2 - y1))
+
+        if num_steps == 0:
+            if 0 <= x1 < w and 0 <= y1 < h:
+                return self.blocker_mask[y1, x1] > 0
+            return False
+
+        # Generate integer coordinates along the line
+        xs = np.linspace(x1, x2, num_steps + 1).round().astype(int)
+        ys = np.linspace(y1, y2, num_steps + 1).round().astype(int)
+
+        # Safety clip to mask boundaries
+        xs = np.clip(xs, 0, w - 1)
+        ys = np.clip(ys, 0, h - 1)
+
+        # Check for any non-zero (blocker) values in the mask
+        return np.any(self.blocker_mask[ys, xs] > 0)
+
+    def _get_neighbors(self, p: Tuple[int, int], mask_w: int, mask_h: int) -> List[Tuple[int, int]]:
+        """Returns valid 4-connected neighbors within mask bounds."""
+        x, y = p
+        neighbors = []
+        for dx, dy in [(0, 1), (0, -1), (1, 0), (-1, 0)]:
+            nx, ny = x + dx, y + dy
+            if 0 <= nx < mask_w and 0 <= ny < mask_h:
+                neighbors.append((nx, ny))
+        return neighbors
+
+    def _find_visible_source(
+        self,
+        target_p: Tuple[int, int],
+        border_points: List[Tuple[int, int]],
+        hint_source: Optional[Tuple[int, int]] = None,
+    ) -> Optional[Tuple[int, int]]:
+        """
+        Finds a point in border_points that has LOS to target_p.
+        Checks the hint_source first for optimization (temporal/spatial locality).
+        """
+        # 1. Check the hint first (most likely to succeed in a flood fill)
+        if hint_source is not None:
+            if not self._is_line_obstructed(hint_source, target_p):
+                return hint_source
+
+        # 2. Check the rest of the border points
+        for source_p in border_points:
+            if source_p == hint_source:
+                continue
+            if not self._is_line_obstructed(source_p, target_p):
+                return source_p
+
+        return None
+
     def _calculate_visibility_mask(
         self,
-        source_points: List[Tuple[int, int]],
+        footprint: np.ndarray,
         vision_range_px: int,
         mask_w: int,
         mask_h: int,
     ) -> np.ndarray:
         """
-        Calculates a unioned visibility mask from multiple source points.
-        Uses a polar shadow-casting approach for performance and watertightness.
+        Calculates visibility using a BFS (flood fill) constrained by Line-of-Sight.
+        Every pixel reached must have LOS to at least one point on the footprint border.
         """
         if self.blocker_mask is None:
             return np.zeros((mask_h, mask_w), dtype=np.uint8)
 
-        combined_mask = np.zeros((mask_h, mask_w), dtype=np.uint8)
+        # 1. Initialize visibility mask and visited tracker
+        vis_mask = footprint.copy()
+        visited = footprint > 0
 
-        # Optimization: Only process unique points and points within mask bounds
-        unique_sources = set()
-        for x, y in source_points:
-            if 0 <= x < mask_w and 0 <= y < mask_h:
-                unique_sources.add((x, y))
+        # 2. Get the starting frontier (border of the footprint)
+        border_points = self._get_footprint_border_points(footprint)
+        if not border_points:
+            return vis_mask
 
-        for sx, sy in unique_sources:
-            # 1. Create a local coordinate system around the source
-            # We only need to process up to vision_range_px
-            r = vision_range_px
-            # Polar warp parameters
-            # rows = number of angles, cols = distance
-            # 1440 rows for 0.25 degree resolution
-            polar_rows = 1440
-            polar_cols = r
+        # 3. Queue for BFS: (x, y)
+        queue = deque(border_points)
 
-            # Warp the blocker mask to polar coordinates
-            # Use INTER_NEAREST to avoid blurring walls
-            polar_blockers = cv2.warpPolar(
-                self.blocker_mask,
-                (polar_cols, polar_rows),
-                (float(sx), float(sy)),
-                float(r),
-                cv2.WARP_FILL_OUTLIERS + cv2.INTER_NEAREST,
-            )
+        # 4. Source hints for optimization (which border point saw which pixel)
+        # Using -1 to indicate no hint
+        hint_xs = np.full((mask_h, mask_w), -1, dtype=np.int16)
+        hint_ys = np.full((mask_h, mask_w), -1, dtype=np.int16)
+        for x, y in border_points:
+            hint_xs[y, x] = x
+            hint_ys[y, x] = y
 
-            # 2. In polar space, find the "shadow" of each blocker
-            # For each angle (row), find the first non-zero pixel (wall)
-            # Everything after that pixel is in shadow.
+        # Find footprint center for global range limiting
+        coords = np.where(footprint > 0)
+        cx = np.mean(coords[1])
+        cy = np.mean(coords[0])
+        range_sq = vision_range_px**2
 
-            # Use argmax to find the first 255 (wall) in each row
-            # If no 255 found, it returns 0, but we need to know if it actually found one.
-            # So we check if the row has any non-zero pixels.
-            has_wall = np.any(polar_blockers > 0, axis=1)
-            first_wall = np.argmax(polar_blockers > 0, axis=1)
+        while queue:
+            x, y = queue.popleft()
 
-            # Create a visibility mask in polar space
-            # 255 for visible, 0 for shadow
-            polar_vision = np.zeros((polar_rows, polar_cols), dtype=np.uint8)
-            for row in range(polar_rows):
-                if has_wall[row]:
-                    polar_vision[row, : first_wall[row]] = 255
-                else:
-                    polar_vision[row, :] = 255
+            # Current source point hint
+            hx, hy = hint_xs[y, x], hint_ys[y, x]
+            hint = (int(hx), int(hy)) if hx != -1 else None
 
-            # 3. Warp back to Cartesian coordinates
-            # Use INTER_NEAREST to avoid blurred edges (light leaks)
-            source_vision = cv2.warpPolar(
-                polar_vision,
-                (mask_w, mask_h),
-                (float(sx), float(sy)),
-                float(r),
-                cv2.WARP_FILL_OUTLIERS + cv2.WARP_INVERSE_MAP + cv2.INTER_NEAREST,
-            )
+            # Explore neighbors
+            for nx, ny in self._get_neighbors((x, y), mask_w, mask_h):
+                if visited[ny, nx] or self.blocker_mask[ny, nx] > 0:
+                    continue
 
-            # 4. Union with combined mask
-            cv2.bitwise_or(combined_mask, source_vision, combined_mask)
+                # Circular range check
+                if (nx - cx) ** 2 + (ny - cy) ** 2 > range_sq:
+                    continue
 
-        return combined_mask
+                # Line-of-Sight check against ANY point on the border
+                # (Optimized by checking the parent's hint first)
+                found_source = self._find_visible_source((nx, ny), border_points, hint)
+
+                if found_source:
+                    vis_mask[ny, nx] = 255
+                    visited[ny, nx] = True
+                    hint_xs[ny, nx], hint_ys[ny, nx] = found_source
+                    queue.append((nx, ny))
+
+        return vis_mask
 
     def get_token_vision_mask(
         self,
@@ -238,40 +320,12 @@ class VisibilityEngine:
         # 3. Calculate Token Footprint (Corner Peeking)
         footprint = self._calculate_token_footprint(cx_mask, cy_mask, size)
 
-        # 4. Extract Source Points (Area Light Sources)
-        # We use a set of points from the footprint boundary.
-        # Find points on the edge of the footprint.
-        source_points = []
-        if np.any(footprint > 0):
-            # For efficiency, we use a subset of points:
-            # - Token Center
-            source_points.append((cx_mask, cy_mask))
-
-            # - Corners and Midpoints of the footprint's bounding box
-            coords = np.where(footprint > 0)
-            min_y, max_y = np.min(coords[0]), np.max(coords[0])
-            min_x, max_x = np.min(coords[1]), np.max(coords[1])
-            mid_y, mid_x = (min_y + max_y) // 2, (min_x + max_x) // 2
-
-            source_points.extend(
-                [
-                    (min_x, min_y),
-                    (max_x, min_y),
-                    (min_x, max_y),
-                    (max_x, max_y),  # Corners
-                    (mid_x, min_y),
-                    (mid_x, max_y),
-                    (min_x, mid_y),
-                    (max_x, mid_y),  # Midpoints
-                ]
-            )
-
-        # 5. Calculate and Union Polygons (Pixel-based)
+        # 4. Calculate Visibility Mask using Flood Fill
         mask = self._calculate_visibility_mask(
-            source_points, vision_range_px, mask_width, mask_height
+            footprint, vision_range_px, mask_width, mask_height
         )
 
-        # 6. Update Cache
+        # 5. Update Cache
         self.mask_cache[mask_cache_key] = mask
         return mask
 

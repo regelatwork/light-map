@@ -117,8 +117,24 @@ def apply_fill(
     all_subpaths: List[np.ndarray],
     element_opacity: float,
     svg: svgelements.SVG,
+    final_vp_matrix: svgelements.Matrix,
 ):
     """Applies fill styling to subpaths."""
+    fill_val = element.values.get("fill")
+    if fill_val and fill_val.startswith("url(#"):
+        gradient_id = fill_val[5:-1]
+        gradient_elem = svg.get_element_by_id(gradient_id)
+        if gradient_elem and gradient_elem.values.get("tag") == "radialGradient":
+            render_radial_gradient(
+                image,
+                all_subpaths,
+                gradient_elem,
+                svg,
+                final_vp_matrix,
+                element_opacity,
+            )
+            return
+
     if element.fill is None or element.fill.value is None:
         return
     c = element.fill
@@ -247,6 +263,156 @@ def apply_stroke(
         overlay = image.copy()
         draw_all(overlay, stroke_opacity)
         cv2.addWeighted(overlay, stroke_opacity, image, 1.0 - stroke_opacity, 0, image)
+
+
+def get_gradient_stops(gradient_elem: svgelements.Group, svg: svgelements.SVG):
+    """Resolves stops for a gradient, including xlink:href references."""
+    stops = []
+
+    # Check for xlink:href
+    href = gradient_elem.values.get("xlink:href") or gradient_elem.values.get(
+        "{http://www.w3.org/1999/xlink}href"
+    )
+    if href and href.startswith("#"):
+        ref_id = href[1:]
+        ref_elem = svg.get_element_by_id(ref_id)
+        if ref_elem and isinstance(ref_elem, svgelements.Group):
+            stops.extend(get_gradient_stops(ref_elem, svg))
+
+    # Add current stops
+    for child in gradient_elem:
+        if child.values.get("tag") == "stop":
+            offset_str = str(child.values.get("offset", "0"))
+            if offset_str.endswith("%"):
+                offset = float(offset_str[:-1]) / 100.0
+            else:
+                offset = float(offset_str)
+
+            style = child.values.get("style", "")
+            stop_color = child.values.get("stop-color", "black")
+            stop_opacity = float(child.values.get("stop-opacity", 1.0))
+
+            if style:
+                for part in style.split(";"):
+                    if ":" in part:
+                        k, v = part.split(":", 1)
+                        if k.strip() == "stop-color":
+                            stop_color = v.strip()
+                        elif k.strip() == "stop-opacity":
+                            try:
+                                stop_opacity = float(v.strip())
+                            except ValueError:
+                                pass
+
+            color = svgelements.Color(stop_color)
+            stops.append(
+                (
+                    offset,
+                    np.array(
+                        [color.blue, color.green, color.red, int(stop_opacity * 255)],
+                        dtype=np.float32,
+                    ),
+                )
+            )
+
+    stops.sort(key=lambda x: x[0])
+    return stops
+
+
+def render_radial_gradient(
+    image: np.ndarray,
+    all_subpaths: List[np.ndarray],
+    gradient_elem: svgelements.Group,
+    svg: svgelements.SVG,
+    final_vp_matrix: svgelements.Matrix,
+    element_opacity: float,
+):
+    """Renders a radial gradient into the shape defined by all_subpaths."""
+    stops = get_gradient_stops(gradient_elem, svg)
+    if not stops:
+        return
+
+    # Gradient parameters
+    try:
+        cx = (
+            float(str(gradient_elem.values.get("cx", "50%")).strip("%")) / 100.0
+            if "%" in str(gradient_elem.values.get("cx", "50%"))
+            else float(gradient_elem.values.get("cx", "0"))
+        )
+        cy = (
+            float(str(gradient_elem.values.get("cy", "50%")).strip("%")) / 100.0
+            if "%" in str(gradient_elem.values.get("cy", "50%"))
+            else float(gradient_elem.values.get("cy", "0"))
+        )
+        r = (
+            float(str(gradient_elem.values.get("r", "50%")).strip("%")) / 100.0
+            if "%" in str(gradient_elem.values.get("r", "50%"))
+            else float(gradient_elem.values.get("r", "0"))
+        )
+        fx = (
+            float(str(gradient_elem.values.get("fx", str(cx))).strip("%")) / 100.0
+            if "%" in str(gradient_elem.values.get("fx", str(cx)))
+            else float(gradient_elem.values.get("fx", str(cx)))
+        )
+        fy = (
+            float(str(gradient_elem.values.get("fy", str(cy))).strip("%")) / 100.0
+            if "%" in str(gradient_elem.values.get("fy", str(cy)))
+            else float(gradient_elem.values.get("fy", str(cy)))
+        )
+    except (ValueError, TypeError):
+        return
+
+    # Gradient Transform
+    g_transform = svgelements.Matrix(gradient_elem.values.get("gradientTransform", ""))
+
+    # Combined inverse matrix: From screen to gradient space
+    try:
+        inv_matrix = ~(final_vp_matrix * g_transform)
+    except Exception:
+        return
+
+    # Shape mask
+    mask = np.zeros(image.shape[:2], dtype=np.uint8)
+    cv2.fillPoly(mask, all_subpaths, 255)
+
+    y_idx, x_idx = np.where(mask > 0)
+    if len(x_idx) == 0:
+        return
+
+    pts = np.stack((x_idx, y_idx), axis=-1).astype(float)
+    # Transform points to gradient space
+    gx = pts[:, 0] * inv_matrix.a + pts[:, 1] * inv_matrix.c + inv_matrix.e
+    gy = pts[:, 0] * inv_matrix.b + pts[:, 1] * inv_matrix.d + inv_matrix.f
+
+    # Simple radial gradient: distance from (cx, cy)
+    dist = np.sqrt((gx - cx) ** 2 + (gy - cy) ** 2)
+    t = np.clip(dist / r, 0, 1)
+
+    # Interpolate colors
+    final_colors = np.zeros((len(t), 4), dtype=np.float32)
+    if len(stops) == 1:
+        final_colors[:] = stops[0][1]
+    else:
+        for i in range(len(stops) - 1):
+            t0, c0 = stops[i]
+            t1, c1 = stops[i + 1]
+            mask_range = (t >= t0) & (t <= t1)
+            if np.any(mask_range):
+                interp_t = (t[mask_range] - t0) / (t1 - t0)
+                final_colors[mask_range] = c0 + interp_t[:, np.newaxis] * (c1 - c0)
+        # Handle values outside range
+        final_colors[t < stops[0][0]] = stops[0][1]
+        final_colors[t > stops[-1][0]] = stops[-1][1]
+
+    # Apply element opacity
+    final_colors[:, 3] *= element_opacity
+
+    # Alpha blending
+    alpha = final_colors[:, 3:4] / 255.0
+    fg = final_colors[:, :3]
+    bg = image[y_idx, x_idx].astype(np.float32)
+
+    image[y_idx, x_idx] = (fg * alpha + bg * (1.0 - alpha)).astype(np.uint8)
 
 
 def render_shape_element(

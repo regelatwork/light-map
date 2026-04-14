@@ -9,6 +9,36 @@ from light_map.rendering.svg.utils import get_element_opacity
 from light_map.rendering.svg.geometry import convert_path_to_points
 
 
+def blend_bgra(dst: np.ndarray, src_bgra: np.ndarray):
+    """Blends a BGRA image onto a BGR or BGRA target."""
+    src_rgb = src_bgra[:, :, :3].astype(float)
+    src_a = src_bgra[:, :, 3].astype(float) / 255.0
+    src_a_3 = src_a[:, :, np.newaxis]
+
+    if dst.shape[2] == 3:
+        dst[:] = (src_rgb * src_a_3 + dst.astype(float) * (1.0 - src_a_3)).astype(
+            np.uint8
+        )
+    else:
+        # Full BGRA compositing
+        dst_rgb = dst[:, :, :3].astype(float)
+        dst_a = dst[:, :, 3].astype(float) / 255.0
+
+        out_a = src_a + dst_a * (1.0 - src_a)
+        # Avoid division by zero
+        safe_out_a = np.where(out_a > 0, out_a, 1.0)
+
+        for c in range(3):
+            dst[:, :, c] = (
+                (
+                    src_rgb[:, :, c] * src_a
+                    + dst_rgb[:, :, c] * dst_a * (1.0 - src_a)
+                )
+                / safe_out_a
+            ).astype(np.uint8)
+        dst[:, :, 3] = (out_a * 255.0).astype(np.uint8)
+
+
 def render_image_element(
     element: svgelements.Image,
     image: np.ndarray,
@@ -17,7 +47,7 @@ def render_image_element(
     render_h: int,
     svg: svgelements.SVG,
 ):
-    """Renders a raster image element into the BGR buffer."""
+    """Renders a raster image element into the BGR or BGRA buffer."""
     pil_img = element.image
 
     if pil_img is None:
@@ -61,18 +91,18 @@ def render_image_element(
         # warpAffine handles 4 channels (BGRA) correctly
         warped_bgra = cv2.warpAffine(src_img, M, (render_w, render_h))
 
-        # Separate BGR and Alpha
-        warped_bgr = warped_bgra[:, :, :3]
-        warped_alpha = warped_bgra[:, :, 3]
-
-        # Standard alpha blending
-        # Normalize alpha to 0.0 - 1.0
-        alpha_f = warped_alpha.astype(float) / 255.0
-        alpha_f = alpha_f[:, :, np.newaxis]  # Broad-castable to BGR
-
-        # Blend: dst = src * alpha + dst * (1 - alpha)
-        # Note: image is the BGR buffer we are rendering into
-        image[:] = (warped_bgr.astype(float) * alpha_f + image.astype(float) * (1.0 - alpha_f)).astype(np.uint8)
+        if image.shape[2] == 3:
+            # Separate BGR and Alpha
+            warped_bgr = warped_bgra[:, :, :3]
+            warped_alpha = warped_bgra[:, :, 3]
+            alpha_f = warped_alpha.astype(float) / 255.0
+            alpha_f = alpha_f[:, :, np.newaxis]
+            image[:] = (
+                warped_bgr.astype(float) * alpha_f
+                + image.astype(float) * (1.0 - alpha_f)
+            ).astype(np.uint8)
+        else:
+            blend_bgra(image, warped_bgra)
 
 
 def render_text_element(
@@ -81,7 +111,7 @@ def render_text_element(
     final_vp_matrix: svgelements.Matrix,
     svg: svgelements.SVG,
 ):
-    """Renders a text element into the BGR buffer."""
+    """Renders a text element into the BGR or BGRA buffer."""
     text_str = element.text
     if not text_str:
         return
@@ -99,16 +129,30 @@ def render_text_element(
     avg_scale = (abs(final_vp_matrix.a) + abs(final_vp_matrix.d)) / 2
     cv_scale = (svg_font_size * avg_scale) / 25.0
 
-    cv2.putText(
-        image,
-        text_str,
-        (render_x, render_y),
-        cv2.FONT_HERSHEY_SIMPLEX,
-        cv_scale,
-        color,
-        thickness=max(1, int(avg_scale)),
-        lineType=cv2.LINE_AA,
-    )
+    if image.shape[2] == 4:
+        opacity = get_element_opacity(element)
+        color_alpha = (color[0], color[1], color[2], int(opacity * 255))
+        cv2.putText(
+            image,
+            text_str,
+            (render_x, render_y),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            cv_scale,
+            color_alpha,
+            thickness=max(1, int(avg_scale)),
+            lineType=cv2.LINE_AA,
+        )
+    else:
+        cv2.putText(
+            image,
+            text_str,
+            (render_x, render_y),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            cv_scale,
+            color,
+            thickness=max(1, int(avg_scale)),
+            lineType=cv2.LINE_AA,
+        )
 
 
 def apply_fill(
@@ -124,16 +168,28 @@ def apply_fill(
     if fill_val and fill_val.startswith("url(#"):
         gradient_id = fill_val[5:-1]
         gradient_elem = svg.get_element_by_id(gradient_id)
-        if gradient_elem and gradient_elem.values.get("tag") == "radialGradient":
-            render_radial_gradient(
-                image,
-                all_subpaths,
-                gradient_elem,
-                svg,
-                final_vp_matrix,
-                element_opacity,
-            )
-            return
+        if gradient_elem:
+            tag = gradient_elem.values.get("tag")
+            if tag == "radialGradient":
+                render_radial_gradient(
+                    image,
+                    all_subpaths,
+                    gradient_elem,
+                    svg,
+                    final_vp_matrix,
+                    element_opacity,
+                )
+                return
+            elif tag == "linearGradient":
+                render_linear_gradient(
+                    image,
+                    all_subpaths,
+                    gradient_elem,
+                    svg,
+                    final_vp_matrix,
+                    element_opacity,
+                )
+                return
 
     if element.fill is None or element.fill.value is None:
         return
@@ -142,16 +198,18 @@ def apply_fill(
     fill_opacity = element_opacity * float(getattr(c, "opacity", 1.0) or 1.0)
 
     if image.shape[2] == 4:
-        # Handle 4-channel buffer (BGRA)
-        color_alpha = (fill_color[0], fill_color[1], fill_color[2], int(fill_opacity * 255))
+        color_alpha = (
+            fill_color[0],
+            fill_color[1],
+            fill_color[2],
+            int(fill_opacity * 255),
+        )
         if fill_opacity >= 0.99:
             cv2.fillPoly(image, all_subpaths, color_alpha)
         else:
-            overlay = image.copy()
+            overlay = np.zeros_like(image)
             cv2.fillPoly(overlay, all_subpaths, color_alpha)
-            # Alpha blending for 4-channel is more complex, but for our usage
-            # we usually start with an empty buffer, so we can just blend.
-            cv2.addWeighted(overlay, fill_opacity, image, 1.0 - fill_opacity, 0, image)
+            blend_bgra(image, overlay)
     else:
         if fill_opacity >= 0.99:
             cv2.fillPoly(image, all_subpaths, fill_color)
@@ -254,30 +312,169 @@ def apply_stroke(
             dash_array = []
 
     if image.shape[2] == 4:
-        color = (color[0], color[1], color[2], int(stroke_opacity * 255))
+        color_alpha = (color[0], color[1], color[2], int(stroke_opacity * 255))
+        if stroke_opacity >= 0.99:
+            for sub in closed_subpaths:
+                cv2.polylines(image, [sub], True, color_alpha, thickness)
+            for sub in open_subpaths:
+                cv2.polylines(image, [sub], False, color_alpha, thickness)
+        else:
+            overlay = np.zeros_like(image)
+            for sub in closed_subpaths:
+                cv2.polylines(overlay, [sub], True, color_alpha, thickness)
+            for sub in open_subpaths:
+                cv2.polylines(overlay, [sub], False, color_alpha, thickness)
+            blend_bgra(image, overlay)
+    else:
 
-    def draw_all(img_target, alpha):
-        for sub in closed_subpaths:
-            if dash_array:
-                draw_dashed_polyline(
-                    img_target, sub, color, thickness, dash_array, is_closed=True
-                )
-            else:
-                cv2.polylines(img_target, [sub], True, color, thickness)
-        for sub in open_subpaths:
-            if dash_array:
-                draw_dashed_polyline(
-                    img_target, sub, color, thickness, dash_array, is_closed=False
-                )
-            else:
-                cv2.polylines(img_target, [sub], False, color, thickness)
+        def draw_all(img_target, alpha):
+            for sub in closed_subpaths:
+                if dash_array:
+                    draw_dashed_polyline(
+                        img_target, sub, color, thickness, dash_array, is_closed=True
+                    )
+                else:
+                    cv2.polylines(img_target, [sub], True, color, thickness)
+            for sub in open_subpaths:
+                if dash_array:
+                    draw_dashed_polyline(
+                        img_target, sub, color, thickness, dash_array, is_closed=False
+                    )
+                else:
+                    cv2.polylines(img_target, [sub], False, color, thickness)
 
-    if stroke_opacity >= 0.99:
-        draw_all(image, 1.0)
-    elif stroke_opacity > 0:
-        overlay = image.copy()
-        draw_all(overlay, stroke_opacity)
-        cv2.addWeighted(overlay, stroke_opacity, image, 1.0 - stroke_opacity, 0, image)
+        if stroke_opacity >= 0.99:
+            draw_all(image, 1.0)
+        elif stroke_opacity > 0:
+            overlay = image.copy()
+            draw_all(overlay, stroke_opacity)
+            cv2.addWeighted(
+                overlay, stroke_opacity, image, 1.0 - stroke_opacity, 0, image
+            )
+
+
+def render_linear_gradient(
+    image: np.ndarray,
+    all_subpaths: List[np.ndarray],
+    gradient_elem: svgelements.Group,
+    svg: svgelements.SVG,
+    final_vp_matrix: svgelements.Matrix,
+    element_opacity: float,
+):
+    """Renders a linear gradient into the shape defined by all_subpaths."""
+    stops = get_gradient_stops(gradient_elem, svg)
+    if not stops:
+        return
+
+    # Gradient parameters
+    try:
+        x1 = (
+            float(str(gradient_elem.values.get("x1", "0%")).strip("%")) / 100.0
+            if "%" in str(gradient_elem.values.get("x1", "0%"))
+            else float(gradient_elem.values.get("x1", "0"))
+        )
+        y1 = (
+            float(str(gradient_elem.values.get("y1", "0%")).strip("%")) / 100.0
+            if "%" in str(gradient_elem.values.get("y1", "0%"))
+            else float(gradient_elem.values.get("y1", "0"))
+        )
+        x2 = (
+            float(str(gradient_elem.values.get("x2", "100%")).strip("%")) / 100.0
+            if "%" in str(gradient_elem.values.get("x2", "100%"))
+            else float(gradient_elem.values.get("x2", "1"))
+        )
+        y2 = (
+            float(str(gradient_elem.values.get("y2", "0%")).strip("%")) / 100.0
+            if "%" in str(gradient_elem.values.get("y2", "0%"))
+            else float(gradient_elem.values.get("y2", "0"))
+        )
+    except (ValueError, TypeError):
+        return
+
+    # Gradient Transform
+    g_transform = svgelements.Matrix(gradient_elem.values.get("gradientTransform", ""))
+    # Include any inherited transform (e.g. from root SVG or defs)
+    inherited_transform = svgelements.Matrix(gradient_elem.values.get("transform", ""))
+    g_transform = inherited_transform * g_transform
+
+    # Combined inverse matrix: From screen to gradient space
+    try:
+        inv_matrix = ~(g_transform * final_vp_matrix)
+    except Exception:
+        return
+
+    # Shape mask
+    mask = np.zeros(image.shape[:2], dtype=np.uint8)
+    cv2.fillPoly(mask, all_subpaths, 255)
+
+    y_idx, x_idx = np.where(mask > 0)
+    if len(x_idx) == 0:
+        return
+
+    pts = np.stack((x_idx, y_idx), axis=-1).astype(float)
+    # Transform points to gradient space
+    gx = pts[:, 0] * inv_matrix.a + pts[:, 1] * inv_matrix.c + inv_matrix.e
+    gy = pts[:, 0] * inv_matrix.b + pts[:, 1] * inv_matrix.d + inv_matrix.f
+
+    # Project onto line (x1,y1) to (x2,y2)
+    # Vector from (x1,y1) to (gx,gy)
+    v_gx = gx - x1
+    v_gy = gy - y1
+    # Vector from (x1,y1) to (x2,y2)
+    v_dx = x2 - x1
+    v_dy = y2 - y1
+    v_d_mag2 = v_dx**2 + v_dy**2
+
+    if v_d_mag2 < 1e-6:
+        t = np.zeros_like(gx)
+    else:
+        # Projection: t = (v_g dot v_d) / |v_d|^2
+        t = (v_gx * v_dx + v_gy * v_dy) / v_d_mag2
+
+    t = np.clip(t, 0, 1)
+
+    # Interpolate colors
+    final_colors = np.zeros((len(t), 4), dtype=np.float32)
+    if len(stops) == 1:
+        final_colors[:] = stops[0][1]
+    else:
+        for i in range(len(stops) - 1):
+            t0, c0 = stops[i]
+            t1, c1 = stops[i + 1]
+            mask_range = (t >= t0) & (t <= t1)
+            if np.any(mask_range):
+                interp_t = (t[mask_range] - t0) / (t1 - t0)
+                final_colors[mask_range] = c0 + interp_t[:, np.newaxis] * (c1 - c0)
+        # Handle values outside range
+        final_colors[t < stops[0][0]] = stops[0][1]
+        final_colors[t > stops[-1][0]] = stops[-1][1]
+
+    # Apply element opacity
+    final_colors[:, 3] *= element_opacity
+
+    # Alpha blending
+    if image.shape[2] == 3:
+        alpha = final_colors[:, 3:4] / 255.0
+        fg = final_colors[:, :3]
+        bg = image[y_idx, x_idx].astype(np.float32)
+        image[y_idx, x_idx] = (fg * alpha + bg * (1.0 - alpha)).astype(np.uint8)
+    else:
+        # Full BGRA blend onto subset of pixels
+        src_rgb = final_colors[:, :3]
+        src_a = final_colors[:, 3] / 255.0
+
+        dst_rgb = image[y_idx, x_idx, :3].astype(float)
+        dst_a = image[y_idx, x_idx, 3].astype(float) / 255.0
+
+        out_a = src_a + dst_a * (1.0 - src_a)
+        safe_out_a = np.where(out_a > 0, out_a, 1.0)
+
+        for c in range(3):
+            image[y_idx, x_idx, c] = (
+                (src_rgb[:, c] * src_a + dst_rgb[:, c] * dst_a * (1.0 - src_a))
+                / safe_out_a
+            ).astype(np.uint8)
+        image[y_idx, x_idx, 3] = (out_a * 255.0).astype(np.uint8)
 
 
 def get_gradient_stops(gradient_elem: svgelements.Group, svg: svgelements.SVG):
@@ -379,10 +576,13 @@ def render_radial_gradient(
 
     # Gradient Transform
     g_transform = svgelements.Matrix(gradient_elem.values.get("gradientTransform", ""))
+    # Include any inherited transform (e.g. from root SVG or defs)
+    inherited_transform = svgelements.Matrix(gradient_elem.values.get("transform", ""))
+    g_transform = inherited_transform * g_transform
 
     # Combined inverse matrix: From screen to gradient space
     try:
-        inv_matrix = ~(final_vp_matrix * g_transform)
+        inv_matrix = ~(g_transform * final_vp_matrix)
     except Exception:
         return
 
@@ -423,11 +623,28 @@ def render_radial_gradient(
     final_colors[:, 3] *= element_opacity
 
     # Alpha blending
-    alpha = final_colors[:, 3:4] / 255.0
-    fg = final_colors[:, :3]
-    bg = image[y_idx, x_idx].astype(np.float32)
+    if image.shape[2] == 3:
+        alpha = final_colors[:, 3:4] / 255.0
+        fg = final_colors[:, :3]
+        bg = image[y_idx, x_idx].astype(np.float32)
+        image[y_idx, x_idx] = (fg * alpha + bg * (1.0 - alpha)).astype(np.uint8)
+    else:
+        # Full BGRA blend onto subset of pixels
+        src_rgb = final_colors[:, :3]
+        src_a = final_colors[:, 3] / 255.0
 
-    image[y_idx, x_idx] = (fg * alpha + bg * (1.0 - alpha)).astype(np.uint8)
+        dst_rgb = image[y_idx, x_idx, :3].astype(float)
+        dst_a = image[y_idx, x_idx, 3].astype(float) / 255.0
+
+        out_a = src_a + dst_a * (1.0 - src_a)
+        safe_out_a = np.where(out_a > 0, out_a, 1.0)
+
+        for c in range(3):
+            image[y_idx, x_idx, c] = (
+                (src_rgb[:, c] * src_a + dst_rgb[:, c] * dst_a * (1.0 - src_a))
+                / safe_out_a
+            ).astype(np.uint8)
+        image[y_idx, x_idx, 3] = (out_a * 255.0).astype(np.uint8)
 
 
 def render_shape_element(
@@ -438,7 +655,7 @@ def render_shape_element(
     quality: float,
     svg: svgelements.SVG,
 ):
-    """Renders a shape element (Path, Rect, etc.) into the BGR buffer."""
+    """Renders a shape element (Path, Rect, etc.) into the BGR or BGRA buffer."""
     # Elements that are intrinsically closed
     element_naturally_closed = isinstance(
         element,
@@ -463,7 +680,7 @@ def render_shape_element(
         return
 
     opacity = get_element_opacity(element)
-    apply_fill(element, image, all_subpaths, opacity, svg)
+    apply_fill(element, image, all_subpaths, opacity, svg, final_vp_matrix)
     apply_stroke(element, image, closed, open_paths, final_vp_matrix, opacity, svg)
 
 

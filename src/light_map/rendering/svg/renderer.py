@@ -34,9 +34,11 @@ def render_image_element(
                 pass
 
     if pil_img:
-        pil_img = pil_img.convert("RGB")
+        # Keep alpha if present
+        pil_img = pil_img.convert("RGBA")
         src_img = np.array(pil_img)
-        src_img = cv2.cvtColor(src_img, cv2.COLOR_RGB2BGR)
+        # Convert RGBA to BGRA
+        src_img = cv2.cvtColor(src_img, cv2.COLOR_RGBA2BGRA)
 
         img_h, img_w = src_img.shape[:2]
         target_w = element.width or img_w
@@ -55,20 +57,21 @@ def render_image_element(
         M = np.float32(
             [[final_m.a, final_m.c, final_m.e], [final_m.b, final_m.d, final_m.f]]
         )
-        warped = cv2.warpAffine(src_img, M, (render_w, render_h))
+        # warpAffine handles 4 channels (BGRA) correctly
+        warped_bgra = cv2.warpAffine(src_img, M, (render_w, render_h))
 
-        # Create a mask for the actual warped image area (not just non-zero pixels)
-        # to ensure black pixels in the source image are correctly rendered.
-        corners = np.float32([[0, 0], [img_w, 0], [img_w, img_h], [0, img_h]]).reshape(
-            -1, 1, 2
-        )
-        warped_corners = cv2.transform(corners, M)
-        
-        mask = np.zeros((render_h, render_w), dtype=np.uint8)
-        cv2.fillConvexPoly(mask, warped_corners.astype(int), 255)
+        # Separate BGR and Alpha
+        warped_bgr = warped_bgra[:, :, :3]
+        warped_alpha = warped_bgra[:, :, 3]
 
-        image[:] = cv2.bitwise_and(image, image, mask=cv2.bitwise_not(mask))
-        image[:] = cv2.add(image, warped)
+        # Standard alpha blending
+        # Normalize alpha to 0.0 - 1.0
+        alpha_f = warped_alpha.astype(float) / 255.0
+        alpha_f = alpha_f[:, :, np.newaxis]  # Broad-castable to BGR
+
+        # Blend: dst = src * alpha + dst * (1 - alpha)
+        # Note: image is the BGR buffer we are rendering into
+        image[:] = (warped_bgr.astype(float) * alpha_f + image.astype(float) * (1.0 - alpha_f)).astype(np.uint8)
 
 
 def render_text_element(

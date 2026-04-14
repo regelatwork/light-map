@@ -226,6 +226,14 @@ def handle_toggle_fow(
         app.fow_manager.is_disabled = not app.fow_manager.is_disabled
         if app.state.fow_mask is not None:
             app.state.fow_mask = app.fow_manager.explored_mask.copy()
+
+        # Persist to map config
+        if app.current_map_path:
+            entry = app.map_config.data.maps.get(app.current_map_path)
+            if entry:
+                entry.fow_disabled = app.fow_manager.is_disabled
+                app.map_config.save()
+
         state_str = "OFF" if app.fow_manager.is_disabled else "ON"
         app.notifications.add_notification(f"GM: Fog of War {state_str}")
     return None

@@ -769,6 +769,7 @@ class InteractiveApp:
             or self.fow_manager.height != mask_h
         ):
             self.fow_manager = FogOfWarManager(mask_w, mask_h)
+            self.fow_manager.is_disabled = entry.fow_disabled
             if self.current_map_path:
                 self.map_config.load_fow_masks(self.current_map_path, self.fow_manager)
 
@@ -848,6 +849,7 @@ class InteractiveApp:
 
         # setup Visibility Engine and layers
         self._rebuild_visibility_stack(entry)
+        self.state.fow_disabled = entry.fow_disabled
 
         # Restore persistent states
         if self.fow_manager:

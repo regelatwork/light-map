@@ -83,6 +83,7 @@ class MapEntry:
     scale_factor_1to1: float = 1.0  # Calculated zoom level for 1:1 scale
     last_seen: str = ""  # ISO 8601 timestamp
     aruco_overrides: Dict[int, ArucoDefinition] = field(default_factory=dict)
+    fow_disabled: bool = False
 
 
 @dataclass

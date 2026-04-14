@@ -262,6 +262,11 @@ class MapEntrySchema(BaseModel):
         title="ArUco Overrides",
         description="Map-specific marker definitions.",
     )
+    fow_disabled: bool = Field(
+        default=False,
+        title="Disable Fog of War",
+        description="If true, the entire map is always visible.",
+    )
 
 
 class GlobalConfigSchema(BaseModel):

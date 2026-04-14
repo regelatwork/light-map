@@ -104,6 +104,7 @@ export interface MapEntry {
   scale_factor_1to1: number;
   last_seen: string;
   aruco_overrides: Record<number, ArucoDefinition>;
+  fow_disabled: boolean;
 }
 
 export interface GlobalConfig {
@@ -393,6 +394,11 @@ export const MAPENTRY_METADATA: Record<keyof MapEntry, FieldMetadata> = {
   "aruco_overrides": {
     "title": "ArUco Overrides",
     "description": "Map-specific marker definitions."
+  },
+  "fow_disabled": {
+    "title": "Disable Fog of War",
+    "description": "If true, the entire map is always visible.",
+    "default": false
   }
 };
 

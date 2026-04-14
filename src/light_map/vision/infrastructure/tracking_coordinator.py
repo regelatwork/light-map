@@ -93,22 +93,13 @@ class TrackingCoordinator:
 
             if map_system.svg_loader and map_system.svg_loader.svg:
                 try:
-                    svg_doc = map_system.svg_loader.svg
-                    if hasattr(svg_doc, "viewbox") and svg_doc.viewbox:
-                        viewbox = svg_doc.viewbox
-                        map_bounds = (
-                            float(viewbox.x),
-                            float(viewbox.y),
-                            float(viewbox.x + viewbox.width),
-                            float(viewbox.y + viewbox.height),
-                        )
-                    else:
-                        map_bounds = (
-                            0.0,
-                            0.0,
-                            float(svg_doc.width),
-                            float(svg_doc.height),
-                        )
+                    # SVGLoader.width/height already handle conversion to pixels
+                    map_bounds = (
+                        0.0,
+                        0.0,
+                        float(map_system.svg_loader.width),
+                        float(map_system.svg_loader.height),
+                    )
                 except (TypeError, ValueError, AttributeError):
                     pass
 
@@ -231,25 +222,16 @@ class TrackingCoordinator:
                 grid_origin_y = map_entry.grid_origin_svg_y
                 grid_type = map_entry.grid_type
 
-            # Calculate map bounds from SVG document
+            # Calculate map bounds from SVG document in pixels (world units)
             if map_system.svg_loader and map_system.svg_loader.svg:
                 try:
-                    svg_doc = map_system.svg_loader.svg
-                    if hasattr(svg_doc, "viewbox") and svg_doc.viewbox:
-                        viewbox = svg_doc.viewbox
-                        map_bounds = (
-                            float(viewbox.x),
-                            float(viewbox.y),
-                            float(viewbox.x + viewbox.width),
-                            float(viewbox.y + viewbox.height),
-                        )
-                    else:
-                        map_bounds = (
-                            0.0,
-                            0.0,
-                            float(svg_doc.width),
-                            float(svg_doc.height),
-                        )
+                    # SVGLoader.width/height already handle conversion to pixels
+                    map_bounds = (
+                        0.0,
+                        0.0,
+                        float(map_system.svg_loader.width),
+                        float(map_system.svg_loader.height),
+                    )
                 except (TypeError, ValueError, AttributeError):
                     pass
 

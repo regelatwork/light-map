@@ -12,6 +12,7 @@ def mock_context():
     context.app_config.width = 1920
     context.app_config.height = 1080
     context.map_config_manager.get_ppi.return_value = 100.0  # Use 100 PPI for easy math
+    context.app_config.projector_ppi = 100.0
 
     # Mock global settings and resolve_token_profile
     context.map_config_manager.data.global_settings.aruco_defaults = {
@@ -108,17 +109,26 @@ def test_extrinsics_scene_passes_known_targets(
 @patch("cv2.rectangle")
 def test_extrinsics_scene_renders_rectangles(mock_rect, mock_context):
     """
-    Verifies that the scene renders rectangular target zones.
+    Verifies that the scene renders rectangular target zones via CalibrationLayer.
     """
+    from light_map.rendering.layers.calibration_layer import CalibrationLayer
+    from light_map.state.world_state import WorldState
+    
+    # We need a real WorldState to hold the calibration state
+    state = WorldState()
+    mock_context.state = state
+    
     scene = ExtrinsicsCalibrationScene(mock_context)
     scene.on_enter()
 
     # Simulate some detected markers to change status to VALID
     scene._target_status[0] = "VALID"
-    scene._target_info[0] = {"aid": 10, "height": 25.0, "size": 1, "name": "Token 10"}
+    scene._target_info[0] = {"x": 220, "y": 180, "aid": 10, "height": 25.0, "size": 1, "name": "Token 10"}
+    scene._sync_calibration_state()
 
-    frame = np.zeros((1080, 1920, 3), dtype=np.uint8)
-    scene.render(frame)
+    # Create the layer and render
+    layer = CalibrationLayer(state, mock_context.app_config)
+    layer.render(0.0)
 
     # PPI is 100, size is 1 -> rect_size = 100, half_size = 50
     # Target 0 is at (220, 180)
@@ -127,9 +137,11 @@ def test_extrinsics_scene_renders_rectangles(mock_rect, mock_context):
     found_expected = False
     for call in mock_rect.call_args_list:
         args, kwargs = call
-        pt1, pt2 = args[1], args[2]
-        if pt1 == (170, 130) and pt2 == (270, 230):
-            found_expected = True
-            break
+        # args[0] is canvas, args[1] is pt1, args[2] is pt2
+        if len(args) >= 3:
+            pt1, pt2 = args[1], args[2]
+            if pt1 == (170, 130) and pt2 == (270, 230):
+                found_expected = True
+                break
 
     assert found_expected, "Target rectangle not rendered with correct coordinates"

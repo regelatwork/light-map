@@ -1350,7 +1350,7 @@ class Projector3DCalibrationScene(Scene):
             self.pattern_layer,
             self.feedback_layer,
             app.token_layer,
-            app.menu_layer,
+            app.notification_layer,
             app.cursor_layer,
         ]
 

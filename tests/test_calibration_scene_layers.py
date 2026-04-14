@@ -132,8 +132,9 @@ def test_projector_3d_calibration_scene_layers(mock_app, mock_context):
     assert scene.pattern_layer in layers
     assert scene.feedback_layer in layers
     assert mock_app.calibration_layer not in layers
-    assert mock_app.notification_layer not in layers
-    assert mock_app.debug_layer not in layers
+    assert mock_app.notification_layer in layers
+    assert mock_app.cursor_layer in layers
+
     assert mock_app.selection_progress_layer not in layers
     assert mock_app.cursor_layer in layers
 

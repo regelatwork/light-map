@@ -80,9 +80,10 @@ def test_scanning_scene_state_machine(mock_app_context):
             scene._stage == ScanStage.PROCESS
         )  # CAPTURE_FLASH immediately transitions to PROCESS
 
-        # PROCESS -> SHOW_RESULT (happens within render)
+        # PROCESS -> SHOW_RESULT (happens within _change_stage for PROCESS)
         with patch.object(scene, "_detect_and_save_tokens") as mock_detect:
-            scene.render(np.zeros((100, 100, 3), dtype=np.uint8))
+            # Manually trigger process stage update
+            scene._change_stage(ScanStage.PROCESS, time_state.val)
             mock_detect.assert_called_once_with(mock_app_context.last_camera_frame)
         assert scene._stage == ScanStage.SHOW_RESULT
 
@@ -97,15 +98,17 @@ def test_scanning_scene_state_machine(mock_app_context):
 
 
 def test_render_flash(mock_app_context):
-    """Verify that the scene renders a white frame during the FLASH stage."""
+    """Verify that the scene includes FlashLayer during the FLASH stage."""
     scene = ScanningScene(mock_app_context)
     mock_time = 0.0
     with patch("time.monotonic", return_value=mock_time):
         scene.on_enter()
         scene.update([], [], mock_time)  # Move to FLASH stage
-        frame = np.zeros((100, 100, 3), dtype=np.uint8)
-        rendered_frame = scene.render(frame)
-        assert np.all(rendered_frame == 255)
+        
+        mock_app = MagicMock()
+        mock_app.flash_layer = MagicMock()
+        layers = scene.get_active_layers(mock_app)
+        assert mock_app.flash_layer in layers
 
 
 def test_debug_mode_propagation(mock_app_context):

@@ -194,7 +194,8 @@ class InputProcessor:
             if gesture == GestureType.POINTING:
                 ppi = getattr(self.config, "projector_ppi", 96.0)
                 # 1 inch = 25.4 mm
-                offset_mm = getattr(self.config, "pointer_offset_mm", 50.8)
+                extension_inches = getattr(self.config, "pointer_extension_inches", 2.0)
+                offset_mm = extension_inches * 25.4
                 cursor_x = int(projector_x + unit_x * (ppi / 25.4) * offset_mm)
                 cursor_y = int(projector_y + unit_y * (ppi / 25.4) * offset_mm)
                 cursor_pos = (cursor_x, cursor_y)

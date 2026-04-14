@@ -201,18 +201,3 @@ def test_grid_overlay_logic():
     assert overlay.offset_y == 20.0
 
 
-def test_overlay_render(map_grid_calib_scene, mock_projector):
-    """Verify render draws crosses and highlighted origin."""
-    map_grid_calib_scene.on_enter()
-
-    # Configure overlay to draw one intersection at (50, 50)
-
-    map_grid_calib_scene.grid_overlay.spacing = 100.0
-    map_grid_calib_scene.grid_overlay.offset_x = 50.0
-    map_grid_calib_scene.grid_overlay.offset_y = 50.0
-    # Width and height are now properties fetching from context.app_config
-    mock_app_context.app_config.width = 100
-    mock_app_context.app_config.height = 100
-
-    # All interactions are handled by update() and layers
-    pass

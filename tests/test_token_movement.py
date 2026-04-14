@@ -25,11 +25,9 @@ def test_token_movement_propagation():
     # Mock SVG loader to avoid file system dependency
     map_system.svg_loader = MagicMock()
     map_system.svg_loader.filename = "test.svg"
+    map_system.svg_loader.width = 1000.0
+    map_system.svg_loader.height = 1000.0
     map_system.svg_loader.svg = MagicMock()
-    map_system.svg_loader.svg.width = 1000.0
-    map_system.svg_loader.svg.height = 1000.0
-    # Ensure it doesn't have viewbox attribute to trigger width/height fallback
-    del map_system.svg_loader.svg.viewbox
 
     map_config = MapConfigManager(
         filename=":memory:"

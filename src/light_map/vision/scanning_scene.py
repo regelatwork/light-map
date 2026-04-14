@@ -283,6 +283,12 @@ class ScanningScene(Scene):
             self.context.state.calibration = cal
             self._change_stage(ScanStage.PROCESS, current_time)
 
+        elif self._stage == ScanStage.PROCESS:
+            # Perform detection and save
+            self._detect_and_save_tokens(self.context.last_camera_frame)
+            # Transition to show result
+            self._change_stage(ScanStage.SHOW_RESULT, current_time)
+
         elif self._stage == ScanStage.SHOW_RESULT:
             cal.stage = "RESULT"
             self.context.state.calibration = cal

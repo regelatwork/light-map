@@ -98,8 +98,10 @@ class TestProjector3DCalibrationScene(unittest.TestCase):
     def test_get_active_layers(self):
         scene = Projector3DCalibrationScene(self.mock_context)
         mock_app = MagicMock()
-        mock_app.notification_layer = MagicMock()
-        mock_app.cursor_layer = MagicMock()
+        mock_app.notification_layer = MagicMock(name="notification_layer")
+        mock_app.cursor_layer = MagicMock(name="cursor_layer")
+        mock_app.menu_layer = MagicMock(name="menu_layer")
+        mock_app.token_layer = MagicMock(name="token_layer")
 
         layers = scene.get_active_layers(mock_app)
         self.assertIn(scene.pattern_layer, layers)

@@ -4,6 +4,8 @@ from light_map.rendering.renderer import Renderer
 from light_map.core.common_types import ImagePatch, LayerMode, AppConfig
 
 
+from light_map.rendering.composition_utils import composite_patch
+
 def test_renderer_correctness():
     config = AppConfig(width=100, height=100, projector_matrix=np.eye(3))
     renderer = Renderer(config)
@@ -22,7 +24,7 @@ def test_renderer_correctness():
     patch = ImagePatch(x=25, y=25, width=50, height=50, data=patch_data)
 
     # Render
-    renderer._composite_patch(renderer.output_buffer, patch, LayerMode.NORMAL)
+    composite_patch(renderer.output_buffer, patch, LayerMode.NORMAL, 100, 100)
 
     # Check a pixel that was white (255, 255, 255)
     # Expected: (255, 0, 0) * 0.5 + (255, 255, 255) * 0.5 = (255, 127, 127)
@@ -55,7 +57,7 @@ def test_renderer_binary_mask_optimization():
 
     patch = ImagePatch(x=25, y=25, width=50, height=50, data=patch_data)
 
-    renderer._composite_patch(renderer.output_buffer, patch, LayerMode.NORMAL)
+    composite_patch(renderer.output_buffer, patch, LayerMode.NORMAL, 100, 100)
 
     assert np.all(renderer.output_buffer[30, 30] == [255, 0, 0])
 
@@ -77,7 +79,7 @@ def benchmark_renderer():
     start = time.perf_counter()
     for _ in range(100):
         for patch in patches:
-            renderer._composite_patch(renderer.output_buffer, patch, LayerMode.NORMAL)
+            composite_patch(renderer.output_buffer, patch, LayerMode.NORMAL, width, height)
     end = time.perf_counter()
 
     print(f"Time for 1000 patches: {end - start:.4f}s")

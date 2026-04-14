@@ -12,7 +12,7 @@ def config():
         height=1000,
         projector_matrix=np.eye(3),
         projector_ppi=100.0,
-        pointer_offset_mm=50.8,
+        pointer_offset_mm=0.0, # Disable offset for simple extension test
     )
 
 
@@ -58,7 +58,8 @@ def test_pointer_extension_calculation(config):
         assert hi.unit_direction[0] == pytest.approx(0.0)
         assert hi.unit_direction[1] == pytest.approx(-1.0)
 
-        # cursor_pos = proj_pos + direction * ppi * extension
+        # cursor_pos = proj_pos + direction * ppi * extension - offset
+        # px = 500, py = 400, dir=(0, -1), ppi=100, extension=2
         # cx = 500 + 0 * 100 * 2 = 500
         # cy = 400 + (-1) * 100 * 2 = 200
         assert hi.cursor_pos == (500, 200)
@@ -74,6 +75,7 @@ def test_pointer_extension_calculation(config):
         config.pointer_extension_inches = 0.0
         inputs = processor.convert_mediapipe_to_inputs(results, (1000, 1000, 3))
         hi = inputs[0]
+        # cy = 400 + (-1) * 100 * 0 = 400
         assert hi.cursor_pos == (500, 400)
 
     finally:

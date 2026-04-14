@@ -15,6 +15,7 @@ def render_image_element(
     final_vp_matrix: svgelements.Matrix,
     render_w: int,
     render_h: int,
+    svg: svgelements.SVG,
 ):
     """Renders a raster image element into the BGR buffer."""
     pil_img = element.image
@@ -78,6 +79,7 @@ def render_text_element(
     element: svgelements.Text,
     image: np.ndarray,
     final_vp_matrix: svgelements.Matrix,
+    svg: svgelements.SVG,
 ):
     """Renders a text element into the BGR buffer."""
     text_str = element.text
@@ -114,6 +116,7 @@ def apply_fill(
     image: np.ndarray,
     all_subpaths: List[np.ndarray],
     element_opacity: float,
+    svg: svgelements.SVG,
 ):
     """Applies fill styling to subpaths."""
     if element.fill is None or element.fill.value is None:
@@ -192,6 +195,7 @@ def apply_stroke(
     open_subpaths: List[np.ndarray],
     final_vp_matrix: svgelements.Matrix,
     element_opacity: float,
+    svg: svgelements.SVG,
 ):
     """Applies stroke styling to subpaths."""
     if element.stroke is None or element.stroke.value is None:
@@ -251,6 +255,7 @@ def render_shape_element(
     final_vp_matrix: svgelements.Matrix,
     scale_factor: float,
     quality: float,
+    svg: svgelements.SVG,
 ):
     """Renders a shape element (Path, Rect, etc.) into the BGR buffer."""
     # Elements that are intrinsically closed
@@ -277,8 +282,8 @@ def render_shape_element(
         return
 
     opacity = get_element_opacity(element)
-    apply_fill(element, image, all_subpaths, opacity)
-    apply_stroke(element, image, closed, open_paths, final_vp_matrix, opacity)
+    apply_fill(element, image, all_subpaths, opacity, svg)
+    apply_stroke(element, image, closed, open_paths, final_vp_matrix, opacity, svg)
 
 
 def detect_grid_spacing_raster(svg: svgelements.SVG, render_func) -> float:

@@ -178,13 +178,13 @@ class SVGLoader:
             try:
                 if isinstance(elem, svgelements.Image):
                     render_image_element(
-                        elem, image, final_vp_matrix, render_w, render_h
+                        elem, image, final_vp_matrix, render_w, render_h, self.svg
                     )
                 elif isinstance(elem, svgelements.Text):
-                    render_text_element(elem, image, final_vp_matrix)
+                    render_text_element(elem, image, final_vp_matrix, self.svg)
                 elif isinstance(elem, svgelements.Shape):
                     render_shape_element(
-                        elem, image, final_vp_matrix, scale_factor, quality
+                        elem, image, final_vp_matrix, scale_factor, quality, self.svg
                     )
             except Exception:
                 pass

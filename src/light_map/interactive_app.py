@@ -853,8 +853,7 @@ class InteractiveApp:
 
         # Restore persistent states
         if self.fow_manager:
-            if np.any(self.fow_manager.visible_mask):
-                self.state.visibility_mask = self.fow_manager.visible_mask.copy()
+            self.state.visibility_mask = self.fow_manager.visible_mask.copy()
             self.state.fow_mask = self.fow_manager.explored_mask.copy()
             self.state.discovered_door_ids = set(self.fow_manager.discovered_door_ids)
 

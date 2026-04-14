@@ -57,7 +57,16 @@ def render_image_element(
         )
         warped = cv2.warpAffine(src_img, M, (render_w, render_h))
 
-        mask = (warped > 0).any(axis=2).astype(np.uint8) * 255
+        # Create a mask for the actual warped image area (not just non-zero pixels)
+        # to ensure black pixels in the source image are correctly rendered.
+        corners = np.float32([[0, 0], [img_w, 0], [img_w, img_h], [0, img_h]]).reshape(
+            -1, 1, 2
+        )
+        warped_corners = cv2.transform(corners, M)
+        
+        mask = np.zeros((render_h, render_w), dtype=np.uint8)
+        cv2.fillConvexPoly(mask, warped_corners.astype(int), 255)
+
         image[:] = cv2.bitwise_and(image, image, mask=cv2.bitwise_not(mask))
         image[:] = cv2.add(image, warped)
 

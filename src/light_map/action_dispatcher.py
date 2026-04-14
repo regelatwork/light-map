@@ -224,8 +224,10 @@ def handle_toggle_fow(
 ) -> Optional["SceneTransition"]:
     if app.fow_manager:
         app.fow_manager.is_disabled = not app.fow_manager.is_disabled
-        if app.state.fow_mask is not None:
-            app.state.fow_mask = app.fow_manager.explored_mask.copy()
+        if state is not None:
+            state.fow_disabled = app.fow_manager.is_disabled
+            if state.fow_mask is not None:
+                state.fow_mask = app.fow_manager.explored_mask.copy()
 
         # Persist to map config
         if app.current_map_path:

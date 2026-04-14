@@ -87,14 +87,27 @@ def composite_patch(
                     return
 
                 dst_view = buffer[buffer_y1:buffer_y2, buffer_x1:buffer_x2, :3]
-                cv2.addWeighted(
-                    patch_slice[:, :, :3],
-                    alpha_f,
-                    dst_view,
-                    1.0 - alpha_f,
-                    0,
-                    dst_view,
-                )
+                src_bgr = np.ascontiguousarray(patch_slice[:, :, :3])
+                
+                if dst_view.flags.c_contiguous:
+                    cv2.addWeighted(
+                        src_bgr,
+                        alpha_f,
+                        dst_view,
+                        1.0 - alpha_f,
+                        0,
+                        dst_view,
+                    )
+                else:
+                    # Fallback for non-contiguous dst: blend into temporary contiguous array
+                    tmp_dst = cv2.addWeighted(
+                        src_bgr,
+                        alpha_f,
+                        np.ascontiguousarray(dst_view),
+                        1.0 - alpha_f,
+                        0,
+                    )
+                    buffer[buffer_y1:buffer_y2, buffer_x1:buffer_x2, :3] = tmp_dst
                 if buffer.shape[2] == 4:
                     # Composite alpha (simplified blend)
                     dst_alpha = buffer[
@@ -112,13 +125,12 @@ def composite_patch(
 
             # Standard alpha blending for variable alpha
             alpha = alpha_channel[:, :, np.newaxis].astype(np.uint16)
-            roi = buffer[buffer_y1:buffer_y2, buffer_x1:buffer_x2, :3].astype(np.uint16)
+            dst_view = buffer[buffer_y1:buffer_y2, buffer_x1:buffer_x2, :3]
+            roi = dst_view.astype(np.uint16)
             patch_bgr = patch_slice[:, :, :3].astype(np.uint16)
 
             blended = (patch_bgr * alpha + roi * (ALPHA_OPAQUE - alpha)) // ALPHA_OPAQUE
-            buffer[buffer_y1:buffer_y2, buffer_x1:buffer_x2, :3] = blended.astype(
-                np.uint8
-            )
+            dst_view[:] = blended.astype(np.uint8)
 
             if buffer.shape[2] == 4:
                 dst_alpha = buffer[buffer_y1:buffer_y2, buffer_x1:buffer_x2, 3].astype(

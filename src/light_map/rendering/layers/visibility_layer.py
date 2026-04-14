@@ -23,7 +23,7 @@ class VisibilityLayer(VisibilityBaseLayer):
         )
 
     def _generate_patches(self, current_time: float) -> List[ImagePatch]:
-        if self.state is None or self.state.visibility_mask is None:
+        if self.state is None or self.state.fow_disabled or self.state.visibility_mask is None:
             return []
 
         return self._render_mask_to_patches(self.state.visibility_mask)

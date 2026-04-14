@@ -141,12 +141,24 @@ def apply_fill(
     fill_color = (c.blue, c.green, c.red)
     fill_opacity = element_opacity * float(getattr(c, "opacity", 1.0) or 1.0)
 
-    if fill_opacity >= 0.99:
-        cv2.fillPoly(image, all_subpaths, fill_color)
-    elif fill_opacity > 0:
-        overlay = image.copy()
-        cv2.fillPoly(overlay, all_subpaths, fill_color)
-        cv2.addWeighted(overlay, fill_opacity, image, 1.0 - fill_opacity, 0, image)
+    if image.shape[2] == 4:
+        # Handle 4-channel buffer (BGRA)
+        color_alpha = (fill_color[0], fill_color[1], fill_color[2], int(fill_opacity * 255))
+        if fill_opacity >= 0.99:
+            cv2.fillPoly(image, all_subpaths, color_alpha)
+        else:
+            overlay = image.copy()
+            cv2.fillPoly(overlay, all_subpaths, color_alpha)
+            # Alpha blending for 4-channel is more complex, but for our usage
+            # we usually start with an empty buffer, so we can just blend.
+            cv2.addWeighted(overlay, fill_opacity, image, 1.0 - fill_opacity, 0, image)
+    else:
+        if fill_opacity >= 0.99:
+            cv2.fillPoly(image, all_subpaths, fill_color)
+        elif fill_opacity > 0:
+            overlay = image.copy()
+            cv2.fillPoly(overlay, all_subpaths, fill_color)
+            cv2.addWeighted(overlay, fill_opacity, image, 1.0 - fill_opacity, 0, image)
 
 
 def draw_dashed_polyline(
@@ -240,6 +252,9 @@ def apply_stroke(
                 dash_array.extend(dash_array)
         except (ValueError, TypeError):
             dash_array = []
+
+    if image.shape[2] == 4:
+        color = (color[0], color[1], color[2], int(stroke_opacity * 255))
 
     def draw_all(img_target, alpha):
         for sub in closed_subpaths:

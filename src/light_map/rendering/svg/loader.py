@@ -134,6 +134,49 @@ class SVGLoader:
             width, height, q_scale, q_offset_x, q_offset_y, q_rot, q_quality
         )
 
+    def _render_mask(
+        self, mask_id, final_vp_matrix, render_w, render_h, scale_factor, quality
+    ):
+        """Renders an SVG mask into a grayscale buffer."""
+        mask_elem = self.svg.get_element_by_id(mask_id)
+        if not mask_elem or not isinstance(mask_elem, svgelements.Group):
+            return None
+
+        temp_buffer = np.zeros((render_h, render_w, 3), dtype=np.uint8)
+
+        def traverse_mask(elem):
+            tag = elem.values.get("tag")
+            if tag in ("symbol", "defs"):
+                return
+
+            try:
+                if isinstance(elem, svgelements.Image):
+                    render_image_element(
+                        elem, temp_buffer, final_vp_matrix, render_w, render_h, self.svg
+                    )
+                elif isinstance(elem, svgelements.Text):
+                    render_text_element(elem, temp_buffer, final_vp_matrix, self.svg)
+                elif isinstance(elem, svgelements.Shape):
+                    render_shape_element(
+                        elem,
+                        temp_buffer,
+                        final_vp_matrix,
+                        scale_factor,
+                        quality,
+                        self.svg,
+                    )
+            except Exception:
+                pass
+
+            if isinstance(elem, list):
+                for child in elem:
+                    traverse_mask(child)
+
+        for child in mask_elem:
+            traverse_mask(child)
+
+        return cv2.cvtColor(temp_buffer, cv2.COLOR_BGR2GRAY)
+
     @functools.lru_cache(maxsize=32)
     def _render_internal(
         self,
@@ -167,27 +210,81 @@ class SVGLoader:
         )
         door_element_ids = self._find_door_ids()
 
+        def render_to_buffer(elem, buffer):
+            try:
+                if isinstance(elem, svgelements.Image):
+                    render_image_element(
+                        elem,
+                        buffer,
+                        final_vp_matrix,
+                        render_w,
+                        render_h,
+                        self.svg,
+                    )
+                elif isinstance(elem, svgelements.Text):
+                    render_text_element(elem, buffer, final_vp_matrix, self.svg)
+                elif isinstance(elem, svgelements.Shape):
+                    render_shape_element(
+                        elem,
+                        buffer,
+                        final_vp_matrix,
+                        scale_factor,
+                        quality,
+                        self.svg,
+                    )
+            except Exception:
+                pass
+
         def traverse(elem):
             tag = elem.values.get("tag")
-            if tag in ("symbol", "defs"):
+            if tag in ("symbol", "defs", "mask", "radialGradient", "linearGradient"):
                 return
 
             if id(elem) in door_element_ids:
                 return
 
-            try:
-                if isinstance(elem, svgelements.Image):
-                    render_image_element(
-                        elem, image, final_vp_matrix, render_w, render_h, self.svg
+            # Check for mask
+            mask_val = elem.values.get("mask")
+            if mask_val and mask_val.startswith("url(#"):
+                mask_id = mask_val[5:-1]
+                mask_gray = self._render_mask(
+                    mask_id,
+                    final_vp_matrix,
+                    render_w,
+                    render_h,
+                    scale_factor,
+                    quality,
+                )
+                if mask_gray is not None:
+                    # Render element (and children if it's a group) into a 4-channel buffer
+                    elem_buffer = np.zeros((render_h, render_w, 4), dtype=np.uint8)
+
+                    def render_subtree(e):
+                        render_to_buffer(e, elem_buffer)
+                        if isinstance(e, list):
+                            for child in e:
+                                render_subtree(child)
+
+                    render_subtree(elem)
+
+                    # Apply mask to alpha channel
+                    # Use float multiplication for better quality
+                    alpha_final = elem_buffer[:, :, 3].astype(float) * (
+                        mask_gray.astype(float) / 255.0
                     )
-                elif isinstance(elem, svgelements.Text):
-                    render_text_element(elem, image, final_vp_matrix, self.svg)
-                elif isinstance(elem, svgelements.Shape):
-                    render_shape_element(
-                        elem, image, final_vp_matrix, scale_factor, quality, self.svg
-                    )
-            except Exception:
-                pass
+                    elem_buffer[:, :, 3] = alpha_final.astype(np.uint8)
+
+                    # Blend back to main image
+                    alpha_f = elem_buffer[:, :, 3].astype(float) / 255.0
+                    alpha_f = alpha_f[:, :, np.newaxis]
+                    warped_bgr = elem_buffer[:, :, :3]
+                    image[:] = (
+                        warped_bgr.astype(float) * alpha_f
+                        + image.astype(float) * (1.0 - alpha_f)
+                    ).astype(np.uint8)
+                    return
+
+            render_to_buffer(elem, image)
 
             if isinstance(elem, list):
                 for child in elem:

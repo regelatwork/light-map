@@ -26,9 +26,16 @@ class SVGLoader:
         self.filename = os.path.abspath(filename)
         try:
             self.svg = svgelements.SVG.parse(self.filename)
+            # Build an id_map for faster and more reliable retrieval
+            self.id_map = {}
+            if self.svg:
+                for e in self.svg.elements():
+                    if hasattr(e, "id") and e.id:
+                        self.id_map[str(e.id)] = e
         except Exception as e:
             logging.error("Error loading SVG: %s", e)
             self.svg = None
+            self.id_map = {}
 
     @property
     def width(self) -> float:
@@ -164,6 +171,8 @@ class SVGLoader:
                         scale_factor,
                         quality,
                         self.svg,
+                        root_matrix=final_vp_matrix,
+                        id_map=self.id_map,
                     )
             except Exception:
                 pass
@@ -210,27 +219,29 @@ class SVGLoader:
         )
         door_element_ids = self._find_door_ids()
 
-        def render_to_buffer(elem, buffer):
+        def render_to_buffer(elem, buffer, current_matrix):
             try:
                 if isinstance(elem, svgelements.Image):
                     render_image_element(
                         elem,
                         buffer,
-                        final_vp_matrix,
+                        current_matrix,
                         render_w,
                         render_h,
                         self.svg,
                     )
                 elif isinstance(elem, svgelements.Text):
-                    render_text_element(elem, buffer, final_vp_matrix, self.svg)
+                    render_text_element(elem, buffer, current_matrix, self.svg)
                 elif isinstance(elem, svgelements.Shape):
                     render_shape_element(
                         elem,
                         buffer,
-                        final_vp_matrix,
+                        current_matrix,
                         scale_factor,
                         quality,
                         self.svg,
+                        root_matrix=final_vp_matrix,
+                        id_map=self.id_map,
                     )
             except Exception:
                 pass
@@ -247,6 +258,7 @@ class SVGLoader:
             mask_val = elem.values.get("mask")
             if mask_val and mask_val.startswith("url(#"):
                 mask_id = mask_val[5:-1]
+                # Masks with userSpaceOnUse are relative to root units
                 mask_gray = self._render_mask(
                     mask_id,
                     final_vp_matrix,
@@ -260,7 +272,7 @@ class SVGLoader:
                     elem_buffer = np.zeros((render_h, render_w, 4), dtype=np.uint8)
 
                     def render_subtree(e):
-                        render_to_buffer(e, elem_buffer)
+                        render_to_buffer(e, elem_buffer, final_vp_matrix)
                         if isinstance(e, list):
                             for child in e:
                                 render_subtree(child)
@@ -268,13 +280,12 @@ class SVGLoader:
                     render_subtree(elem)
 
                     # Apply mask to alpha channel
-                    # Use float multiplication for better quality
                     alpha_final = elem_buffer[:, :, 3].astype(float) * (
                         mask_gray.astype(float) / 255.0
                     )
                     elem_buffer[:, :, 3] = alpha_final.astype(np.uint8)
 
-                    # Blend back to main image
+                    # Alpha-blend back to main image
                     alpha_f = elem_buffer[:, :, 3].astype(float) / 255.0
                     alpha_f = alpha_f[:, :, np.newaxis]
                     warped_bgr = elem_buffer[:, :, :3]
@@ -284,7 +295,7 @@ class SVGLoader:
                     ).astype(np.uint8)
                     return
 
-            render_to_buffer(elem, image)
+            render_to_buffer(elem, image, final_vp_matrix)
 
             if isinstance(elem, list):
                 for child in elem:

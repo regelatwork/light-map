@@ -91,6 +91,13 @@ def render_image_element(
         # warpAffine handles 4 channels (BGRA) correctly
         warped_bgra = cv2.warpAffine(src_img, M, (render_w, render_h))
 
+        # Apply element opacity
+        opacity = get_element_opacity(element)
+        if opacity < 1.0:
+            warped_bgra[:, :, 3] = (warped_bgra[:, :, 3].astype(float) * opacity).astype(
+                np.uint8
+            )
+
         if image.shape[2] == 3:
             # Separate BGR and Alpha
             warped_bgr = warped_bgra[:, :, :3]
@@ -108,7 +115,7 @@ def render_image_element(
 def render_text_element(
     element: svgelements.Text,
     image: np.ndarray,
-    final_vp_matrix: svgelements.Matrix,
+    current_matrix: svgelements.Matrix,
     svg: svgelements.SVG,
 ):
     """Renders a text element into the BGR or BGRA buffer."""
@@ -117,7 +124,8 @@ def render_text_element(
         return
 
     tx, ty = element.x or 0, element.y or 0
-    p = final_vp_matrix.point_in_matrix_space((tx, ty))
+    m = svgelements.Matrix(element.transform) * current_matrix
+    p = m.point_in_matrix_space((tx, ty))
     render_x, render_y = int(p.x), int(p.y)
 
     color = (255, 255, 255)
@@ -126,7 +134,7 @@ def render_text_element(
         color = (c.blue, c.green, c.red)
 
     svg_font_size = element.font_size or 12
-    avg_scale = (abs(final_vp_matrix.a) + abs(final_vp_matrix.d)) / 2
+    avg_scale = (abs(m.a) + abs(m.d)) / 2
     cv_scale = (svg_font_size * avg_scale) / 25.0
 
     if image.shape[2] == 4:
@@ -161,23 +169,28 @@ def apply_fill(
     all_subpaths: List[np.ndarray],
     element_opacity: float,
     svg: svgelements.SVG,
-    final_vp_matrix: svgelements.Matrix,
+    current_matrix: svgelements.Matrix,
+    root_matrix: svgelements.Matrix,
+    id_map: dict = None,
 ):
     """Applies fill styling to subpaths."""
     fill_val = element.values.get("fill")
     if fill_val and fill_val.startswith("url(#"):
         gradient_id = fill_val[5:-1]
-        gradient_elem = svg.get_element_by_id(gradient_id)
-        if gradient_elem:
-            tag = gradient_elem.values.get("tag")
+        gradient_elem = (
+            id_map.get(gradient_id) if id_map else svg.get_element_by_id(gradient_id)
+        )
+        if gradient_elem is not None:
+            tag = str(gradient_elem.values.get("tag", ""))
             if tag == "radialGradient":
                 render_radial_gradient(
                     image,
                     all_subpaths,
                     gradient_elem,
                     svg,
-                    final_vp_matrix,
+                    root_matrix,
                     element_opacity,
+                    element=element,
                 )
                 return
             elif tag == "linearGradient":
@@ -186,8 +199,9 @@ def apply_fill(
                     all_subpaths,
                     gradient_elem,
                     svg,
-                    final_vp_matrix,
+                    root_matrix,
                     element_opacity,
+                    element=element,
                 )
                 return
 
@@ -279,7 +293,7 @@ def apply_stroke(
     image: np.ndarray,
     closed_subpaths: List[np.ndarray],
     open_subpaths: List[np.ndarray],
-    final_vp_matrix: svgelements.Matrix,
+    current_matrix: svgelements.Matrix,
     element_opacity: float,
     svg: svgelements.SVG,
 ):
@@ -293,7 +307,7 @@ def apply_stroke(
 
     stroke_opacity = element_opacity * float(getattr(c, "opacity", 1.0) or 1.0)
     thickness = 1
-    avg_scale = (abs(final_vp_matrix.a) + abs(final_vp_matrix.d)) / 2
+    avg_scale = (abs(current_matrix.a) + abs(current_matrix.d)) / 2
     if element.stroke_width is not None:
         thickness = max(1, int(element.stroke_width * avg_scale))
 
@@ -353,6 +367,22 @@ def apply_stroke(
             )
 
 
+def resolve_gradient_coord(val_str, total_val, default_val):
+    """Resolves a gradient coordinate string (e.g. '50%') to a float."""
+    if val_str is None:
+        return default_val
+    val_str = str(val_str).strip()
+    if val_str.endswith("%"):
+        try:
+            return (float(val_str[:-1]) / 100.0) * total_val
+        except ValueError:
+            return default_val
+    try:
+        return float(val_str)
+    except ValueError:
+        return default_val
+
+
 def render_linear_gradient(
     image: np.ndarray,
     all_subpaths: List[np.ndarray],
@@ -360,48 +390,42 @@ def render_linear_gradient(
     svg: svgelements.SVG,
     final_vp_matrix: svgelements.Matrix,
     element_opacity: float,
+    element: svgelements.Shape = None,
 ):
     """Renders a linear gradient into the shape defined by all_subpaths."""
     stops = get_gradient_stops(gradient_elem, svg)
     if not stops:
         return
 
-    # Gradient parameters
-    try:
-        x1 = (
-            float(str(gradient_elem.values.get("x1", "0%")).strip("%")) / 100.0
-            if "%" in str(gradient_elem.values.get("x1", "0%"))
-            else float(gradient_elem.values.get("x1", "0"))
-        )
-        y1 = (
-            float(str(gradient_elem.values.get("y1", "0%")).strip("%")) / 100.0
-            if "%" in str(gradient_elem.values.get("y1", "0%"))
-            else float(gradient_elem.values.get("y1", "0"))
-        )
-        x2 = (
-            float(str(gradient_elem.values.get("x2", "100%")).strip("%")) / 100.0
-            if "%" in str(gradient_elem.values.get("x2", "100%"))
-            else float(gradient_elem.values.get("x2", "1"))
-        )
-        y2 = (
-            float(str(gradient_elem.values.get("y2", "0%")).strip("%")) / 100.0
-            if "%" in str(gradient_elem.values.get("y2", "0%"))
-            else float(gradient_elem.values.get("y2", "0"))
-        )
-    except (ValueError, TypeError):
-        return
+    units = gradient_elem.values.get("gradientUnits", "objectBoundingBox")
+    bbox = element.bbox() if element else (0, 0, svg.width, svg.height)
+    xmin, ymin, xmax, ymax = bbox
+    bw = max(1e-6, xmax - xmin)
+    bh = max(1e-6, ymax - ymin)
 
-    # Gradient Transform
-    g_transform = svgelements.Matrix(gradient_elem.values.get("gradientTransform", ""))
-    # Include any inherited transform (e.g. from root SVG or defs)
-    inherited_transform = svgelements.Matrix(gradient_elem.values.get("transform", ""))
-    g_transform = inherited_transform * g_transform
+    # Resolve coordinates
+    if units == "objectBoundingBox":
+        # Percentages are relative to 1.0 here (then we map gx to 0..1)
+        x1 = resolve_gradient_coord(gradient_elem.values.get("x1"), 1.0, 0.0)
+        y1 = resolve_gradient_coord(gradient_elem.values.get("y1"), 1.0, 0.0)
+        x2 = resolve_gradient_coord(gradient_elem.values.get("x2"), 1.0, 1.0)
+        y2 = resolve_gradient_coord(gradient_elem.values.get("y2"), 1.0, 0.0)
+    else:
+        # userSpaceOnUse: Percentages are relative to viewport
+        x1 = resolve_gradient_coord(gradient_elem.values.get("x1"), svg.width, 0.0)
+        y1 = resolve_gradient_coord(gradient_elem.values.get("y1"), svg.height, 0.0)
+        x2 = resolve_gradient_coord(gradient_elem.values.get("x2"), svg.width, svg.width)
+        y2 = resolve_gradient_coord(gradient_elem.values.get("y2"), svg.height, 0.0)
+
+    # Gradient Transform attribute
+    explicit_transform = svgelements.Matrix(gradient_elem.values.get("gradientTransform", ""))
+    # Include any inherited transform (svgelements populates .transform during parsing)
+    g_transform = explicit_transform
+    if hasattr(gradient_elem, "transform") and gradient_elem.transform is not None:
+        g_transform = explicit_transform * gradient_elem.transform
 
     # Combined inverse matrix: From screen to gradient space
-    try:
-        inv_matrix = ~(g_transform * final_vp_matrix)
-    except Exception:
-        return
+    inv_matrix = ~(g_transform * final_vp_matrix)
 
     # Shape mask
     mask = np.zeros(image.shape[:2], dtype=np.uint8)
@@ -412,15 +436,18 @@ def render_linear_gradient(
         return
 
     pts = np.stack((x_idx, y_idx), axis=-1).astype(float)
-    # Transform points to gradient space
+    # Transform points to root SVG space (gx, gy)
     gx = pts[:, 0] * inv_matrix.a + pts[:, 1] * inv_matrix.c + inv_matrix.e
     gy = pts[:, 0] * inv_matrix.b + pts[:, 1] * inv_matrix.d + inv_matrix.f
 
+    if units == "objectBoundingBox":
+        # Map gx, gy from root SVG space to 0..1 bounding box space
+        gx = (gx - xmin) / bw
+        gy = (gy - ymin) / bh
+
     # Project onto line (x1,y1) to (x2,y2)
-    # Vector from (x1,y1) to (gx,gy)
     v_gx = gx - x1
     v_gy = gy - y1
-    # Vector from (x1,y1) to (x2,y2)
     v_dx = x2 - x1
     v_dy = y2 - y1
     v_d_mag2 = v_dx**2 + v_dy**2
@@ -488,7 +515,7 @@ def get_gradient_stops(gradient_elem: svgelements.Group, svg: svgelements.SVG):
     if href and href.startswith("#"):
         ref_id = href[1:]
         ref_elem = svg.get_element_by_id(ref_id)
-        if ref_elem and isinstance(ref_elem, svgelements.Group):
+        if ref_elem:
             stops.extend(get_gradient_stops(ref_elem, svg))
 
     # Add current stops
@@ -538,53 +565,44 @@ def render_radial_gradient(
     svg: svgelements.SVG,
     final_vp_matrix: svgelements.Matrix,
     element_opacity: float,
+    element: svgelements.Shape = None,
 ):
     """Renders a radial gradient into the shape defined by all_subpaths."""
     stops = get_gradient_stops(gradient_elem, svg)
     if not stops:
         return
 
-    # Gradient parameters
-    try:
-        cx = (
-            float(str(gradient_elem.values.get("cx", "50%")).strip("%")) / 100.0
-            if "%" in str(gradient_elem.values.get("cx", "50%"))
-            else float(gradient_elem.values.get("cx", "0"))
-        )
-        cy = (
-            float(str(gradient_elem.values.get("cy", "50%")).strip("%")) / 100.0
-            if "%" in str(gradient_elem.values.get("cy", "50%"))
-            else float(gradient_elem.values.get("cy", "0"))
-        )
-        r = (
-            float(str(gradient_elem.values.get("r", "50%")).strip("%")) / 100.0
-            if "%" in str(gradient_elem.values.get("r", "50%"))
-            else float(gradient_elem.values.get("r", "0"))
-        )
-        fx = (
-            float(str(gradient_elem.values.get("fx", str(cx))).strip("%")) / 100.0
-            if "%" in str(gradient_elem.values.get("fx", str(cx)))
-            else float(gradient_elem.values.get("fx", str(cx)))
-        )
-        fy = (
-            float(str(gradient_elem.values.get("fy", str(cy))).strip("%")) / 100.0
-            if "%" in str(gradient_elem.values.get("fy", str(cy)))
-            else float(gradient_elem.values.get("fy", str(cy)))
-        )
-    except (ValueError, TypeError):
-        return
+    units = gradient_elem.values.get("gradientUnits", "objectBoundingBox")
+    bbox = element.bbox() if element else (0, 0, svg.width, svg.height)
+    xmin, ymin, xmax, ymax = bbox
+    bw = max(1e-6, xmax - xmin)
+    bh = max(1e-6, ymax - ymin)
 
-    # Gradient Transform
-    g_transform = svgelements.Matrix(gradient_elem.values.get("gradientTransform", ""))
-    # Include any inherited transform (e.g. from root SVG or defs)
-    inherited_transform = svgelements.Matrix(gradient_elem.values.get("transform", ""))
-    g_transform = inherited_transform * g_transform
+    # Resolve coordinates
+    if units == "objectBoundingBox":
+        cx = resolve_gradient_coord(gradient_elem.values.get("cx"), 1.0, 0.5)
+        cy = resolve_gradient_coord(gradient_elem.values.get("cy"), 1.0, 0.5)
+        r = resolve_gradient_coord(gradient_elem.values.get("r"), 1.0, 0.5)
+        fx = resolve_gradient_coord(gradient_elem.values.get("fx"), 1.0, cx)
+        fy = resolve_gradient_coord(gradient_elem.values.get("fy"), 1.0, cy)
+    else:
+        # userSpaceOnUse: Percentages are relative to viewport (avg for radius)
+        avg_dim = (svg.width + svg.height) / 2.0
+        cx = resolve_gradient_coord(gradient_elem.values.get("cx"), svg.width, 0.0)
+        cy = resolve_gradient_coord(gradient_elem.values.get("cy"), svg.height, 0.0)
+        r = resolve_gradient_coord(gradient_elem.values.get("r"), avg_dim, 0.0)
+        fx = resolve_gradient_coord(gradient_elem.values.get("fx"), svg.width, cx)
+        fy = resolve_gradient_coord(gradient_elem.values.get("fy"), svg.height, cy)
+
+    # Gradient Transform attribute
+    explicit_transform = svgelements.Matrix(gradient_elem.values.get("gradientTransform", ""))
+    # Include any inherited transform (svgelements populates .transform during parsing)
+    g_transform = explicit_transform
+    if hasattr(gradient_elem, "transform") and gradient_elem.transform is not None:
+        g_transform = explicit_transform * gradient_elem.transform
 
     # Combined inverse matrix: From screen to gradient space
-    try:
-        inv_matrix = ~(g_transform * final_vp_matrix)
-    except Exception:
-        return
+    inv_matrix = ~(g_transform * final_vp_matrix)
 
     # Shape mask
     mask = np.zeros(image.shape[:2], dtype=np.uint8)
@@ -595,13 +613,21 @@ def render_radial_gradient(
         return
 
     pts = np.stack((x_idx, y_idx), axis=-1).astype(float)
-    # Transform points to gradient space
+    # Transform points to root SVG space (gx, gy)
     gx = pts[:, 0] * inv_matrix.a + pts[:, 1] * inv_matrix.c + inv_matrix.e
     gy = pts[:, 0] * inv_matrix.b + pts[:, 1] * inv_matrix.d + inv_matrix.f
 
+    if units == "objectBoundingBox":
+        # Map gx, gy from root SVG space to 0..1 bounding box space
+        gx = (gx - xmin) / bw
+        gy = (gy - ymin) / bh
+
     # Simple radial gradient: distance from (cx, cy)
     dist = np.sqrt((gx - cx) ** 2 + (gy - cy) ** 2)
-    t = np.clip(dist / r, 0, 1)
+    if r < 1e-6:
+        t = np.ones_like(gx)
+    else:
+        t = np.clip(dist / r, 0, 1)
 
     # Interpolate colors
     final_colors = np.zeros((len(t), 4), dtype=np.float32)
@@ -650,12 +676,17 @@ def render_radial_gradient(
 def render_shape_element(
     element: svgelements.Shape,
     image: np.ndarray,
-    final_vp_matrix: svgelements.Matrix,
+    current_matrix: svgelements.Matrix,
     scale_factor: float,
     quality: float,
     svg: svgelements.SVG,
+    root_matrix: svgelements.Matrix = None,
+    id_map: dict = None,
 ):
     """Renders a shape element (Path, Rect, etc.) into the BGR or BGRA buffer."""
+    if root_matrix is None:
+        root_matrix = current_matrix
+
     # Elements that are intrinsically closed
     element_naturally_closed = isinstance(
         element,
@@ -669,7 +700,9 @@ def render_shape_element(
 
     ppu = (scale_factor * quality) * 0.5
     path = svgelements.Path(element)
-    transformed_path = path * final_vp_matrix
+    # Compose local transform with parent matrix
+    path.transform *= current_matrix
+    transformed_path = path
     transformed_path.reify()
     closed, open_paths = convert_path_to_points(
         transformed_path, element_naturally_closed, ppu
@@ -680,8 +713,17 @@ def render_shape_element(
         return
 
     opacity = get_element_opacity(element)
-    apply_fill(element, image, all_subpaths, opacity, svg, final_vp_matrix)
-    apply_stroke(element, image, closed, open_paths, final_vp_matrix, opacity, svg)
+    apply_fill(
+        element,
+        image,
+        all_subpaths,
+        opacity,
+        svg,
+        current_matrix,
+        root_matrix,
+        id_map=id_map,
+    )
+    apply_stroke(element, image, closed, open_paths, current_matrix, opacity, svg)
 
 
 def detect_grid_spacing_raster(svg: svgelements.SVG, render_func) -> float:

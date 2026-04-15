@@ -87,6 +87,36 @@ Viewport and calibration data are saved to `map_state.json`.
 }
 ```
 
+## Technical Design & Pitfalls
+
+### 1. Matrix Multiplication Order
+The `svgelements` library follows a specific matrix multiplication convention: `A * B` means **Apply A then B**. 
+To match standard SVG nested transformations (where inner transforms are applied before parent transforms), the matrices must be composed as:
+`TotalTransform = InnerTransform * ParentTransform * RootViewportMatrix`
+
+Failure to follow this order results in incorrect translation offsets and "warped" scaling when elements are nested in groups.
+
+### 2. Transformation Reification
+During parsing (`svgelements.SVG.parse()`), the library behaves inconsistently across element types:
+- **Shapes (Rect, Circle, Path)**: Reified into **absolute root coordinates**. Their `.transform` property is often `Identity` because the transform has already been baked into the path segments.
+- **Images & Text**: Retain **local coordinates** and cumulative `.transform` properties.
+
+**Developer Pitfall**: Manual tree traversal must account for this. If you manually accumulate transforms for shapes, you will likely **double-scale** the elements. The safest approach is to use the reified coordinates and apply only the root-to-screen viewport matrix.
+
+### 3. Gradient Resolution & Chained Hrefs
+Inkscape often chains gradients using `xlink:href` (e.g., a `radialGradient` inheriting stops from a `linearGradient`).
+- **Lookup**: Always use an `id_map` for gradient lookup. `svgelements.get_element_by_id` can be unreliable for elements nested deeply in `<defs>`.
+- **Recursion**: `get_gradient_stops` must recursively resolve `xlink:href` to capture stops from the parent gradient.
+- **Empty Group Bug**: In Python, an `svgelements.Group` (which gradients often are) evaluates to `False` if it has no direct children. Always use `if element is not None` instead of `if element` when checking for retrieved gradients.
+
+### 4. Gradient Units & Coordinates
+- **objectBoundingBox**: Coordinates are 0.0 to 1.0 relative to the element's bounding box.
+- **userSpaceOnUse**: Coordinates are absolute SVG units (often mm in Inkscape, converted to px by the parser).
+- **Percentages**: Must be resolved relative to the correct reference (the element's bbox for `objectBoundingBox` or the SVG viewport for `userSpaceOnUse`).
+
+### 5. Masking pass
+Masks are applied by rendering the mask's subtree into a temporary grayscale buffer. The luminance of this buffer is then multiplied by the alpha channel of the target element's buffer before blending into the final image. Ensure the mask is rendered using the same root viewport matrix as the element to maintain alignment.
+
 ## Implementation Status
 
 - [x] **Phase 1: SVG Loading & Rendering**: Support for paths, fills, and Base64 raster images.

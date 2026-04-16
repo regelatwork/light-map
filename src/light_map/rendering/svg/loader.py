@@ -21,12 +21,12 @@ from light_map.visibility.visibility_types import VisibilityBlocker
 
 
 class SVGLoader:
+    """Loads and renders SVG maps."""
+
     def __init__(self, filename: str):
-        """Initialize the SVG loader."""
-        self.filename = os.path.abspath(filename)
+        self.filename = filename
         try:
-            self.svg = svgelements.SVG.parse(self.filename)
-            # Build an id_map for faster and more reliable retrieval
+            self.svg = svgelements.SVG.parse(filename)
             self.id_map = {}
             if self.svg:
                 for e in self.svg.elements():
@@ -151,38 +151,39 @@ class SVGLoader:
 
         temp_buffer = np.zeros((render_h, render_w, 3), dtype=np.uint8)
 
-        def traverse_mask(elem):
+        def traverse_mask(elem, current_matrix):
             tag = elem.values.get("tag")
             if tag in ("symbol", "defs"):
                 return
 
-            try:
-                if isinstance(elem, svgelements.Image):
-                    render_image_element(
-                        elem, temp_buffer, final_vp_matrix, render_w, render_h, self.svg
-                    )
-                elif isinstance(elem, svgelements.Text):
-                    render_text_element(elem, temp_buffer, final_vp_matrix, self.svg)
-                elif isinstance(elem, svgelements.Shape):
-                    render_shape_element(
-                        elem,
-                        temp_buffer,
-                        final_vp_matrix,
-                        scale_factor,
-                        quality,
-                        self.svg,
-                        root_matrix=final_vp_matrix,
-                        id_map=self.id_map,
-                    )
-            except Exception:
-                pass
+            local_matrix = current_matrix
+            if hasattr(elem, "transform") and elem.transform is not None:
+                local_matrix = svgelements.Matrix(elem.transform) * current_matrix
+
+            if isinstance(elem, svgelements.Image):
+                render_image_element(
+                    elem, temp_buffer, local_matrix, render_w, render_h, self.svg
+                )
+            elif isinstance(elem, svgelements.Text):
+                render_text_element(elem, temp_buffer, local_matrix, self.svg)
+            elif isinstance(elem, svgelements.Shape):
+                render_shape_element(
+                    elem,
+                    temp_buffer,
+                    local_matrix,
+                    scale_factor,
+                    quality,
+                    self.svg,
+                    root_matrix=final_vp_matrix,
+                    id_map=self.id_map,
+                )
 
             if isinstance(elem, list):
                 for child in elem:
-                    traverse_mask(child)
+                    traverse_mask(child, local_matrix)
 
         for child in mask_elem:
-            traverse_mask(child)
+            traverse_mask(child, final_vp_matrix)
 
         return cv2.cvtColor(temp_buffer, cv2.COLOR_BGR2GRAY)
 
@@ -268,8 +269,12 @@ class SVGLoader:
                     quality,
                 )
                 if mask_gray is not None:
-                    # Render element (and children if it's a group) into a 4-channel buffer
+                    # Render element (and children if it's a group/list) into a 4-channel buffer
                     elem_buffer = np.zeros((render_h, render_w, 4), dtype=np.uint8)
+
+                    # Temporarily clear mask to avoid infinite recursion
+                    old_mask = elem.values.get("mask")
+                    elem.values["mask"] = None
 
                     def render_subtree(e):
                         render_to_buffer(e, elem_buffer, final_vp_matrix)
@@ -278,6 +283,9 @@ class SVGLoader:
                                 render_subtree(child)
 
                     render_subtree(elem)
+                    
+                    # Restore mask
+                    elem.values["mask"] = old_mask
 
                     # Apply mask to alpha channel
                     alpha_final = elem_buffer[:, :, 3].astype(float) * (

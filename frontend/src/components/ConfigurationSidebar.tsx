@@ -12,11 +12,12 @@ export const ConfigurationSidebar: React.FC = () => {
     world,
     grid_origin_svg_x,
     grid_origin_svg_y,
-    grid_overlay_visible,
-    grid_overlay_color,
   } = useSystemState();
   const { selection, setSelection } = useSelection();
   const { activeMode, setMode } = useCalibration();
+
+  const grid_overlay_visible = world.grid_overlay_visible ?? false;
+  const grid_overlay_color = world.grid_overlay_color ?? 'rgba(255, 255, 255, 0.5)';
 
   const isGridEditMode = activeMode === CalibrationMode.GRID;
   const isViewportEditMode = activeMode === CalibrationMode.VIEWPORT;

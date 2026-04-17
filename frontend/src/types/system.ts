@@ -120,6 +120,8 @@ export interface WorldState {
   viewport?: ViewportState;
   blockers?: VisibilityBlocker[];
   grid_type?: GridType;
+  grid_overlay_visible?: boolean;
+  grid_overlay_color?: string;
   [key: string]: unknown;
 }
 
@@ -169,8 +171,6 @@ export interface SystemState {
   grid_origin_svg_x: number;
   grid_origin_svg_y: number;
   grid_type: GridType;
-  grid_overlay_visible: boolean;
-  grid_overlay_color: string;
   map_timestamp: number;
   menu_timestamp: number;
   tokens_timestamp: number;
@@ -184,7 +184,12 @@ export interface SystemState {
 }
 
 export const INITIAL_STATE: SystemState = {
-  world: { scene: 'MenuScene', fps: 0 },
+  world: {
+    scene: 'MenuScene',
+    fps: 0,
+    grid_overlay_visible: false,
+    grid_overlay_color: 'rgba(255, 255, 255, 0.5)',
+  },
   tokens: [],
   menu: null,
   config: {
@@ -205,8 +210,6 @@ export const INITIAL_STATE: SystemState = {
   grid_origin_svg_x: 0,
   grid_origin_svg_y: 0,
   grid_type: GridType.SQUARE,
-  grid_overlay_visible: false,
-  grid_overlay_color: 'rgba(255, 255, 255, 0.5)',
   map_timestamp: 0,
   menu_timestamp: 0,
   tokens_timestamp: 0,

@@ -172,24 +172,27 @@ def create_app(
                 "timestamp": time.monotonic(),
             }
             # Hoist grid and version metadata to top level for frontend SystemState compatibility
-            for key in [
-                "grid_spacing_svg",
-                "grid_origin_svg_x",
-                "grid_origin_svg_y",
-                "grid_type",
-                "map_version",
-                "menu_version",
-                "tokens_version",
-                "raw_aruco_version",
-                "hands_version",
-                "scene_version",
-                "notifications_version",
-                "viewport_version",
-                "visibility_version",
-                "fow_version",
-            ]:
-                if key in world:
-                    state[key] = world[key]
+            # Frontend expects _timestamp instead of _version for historical reasons.
+            state_mapping = {
+                "grid_spacing_svg": "grid_spacing_svg",
+                "grid_origin_svg_x": "grid_origin_svg_x",
+                "grid_origin_svg_y": "grid_origin_svg_y",
+                "grid_type": "grid_type",
+                "map_version": "map_timestamp",
+                "menu_version": "menu_timestamp",
+                "tokens_version": "tokens_timestamp",
+                "raw_aruco_version": "raw_aruco_timestamp",
+                "hands_version": "hands_timestamp",
+                "scene_version": "scene_timestamp",
+                "notifications_version": "notifications_timestamp",
+                "viewport_version": "viewport_timestamp",
+                "visibility_version": "visibility_timestamp",
+                "fow_version": "fow_timestamp",
+            }
+
+            for src_key, dest_key in state_mapping.items():
+                if src_key in world:
+                    state[dest_key] = world[src_key]
             return numpy_to_python(state)
         except Exception as e:
             if not stop_event.is_set():

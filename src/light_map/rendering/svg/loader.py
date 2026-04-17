@@ -24,9 +24,9 @@ class SVGLoader:
     """Loads and renders SVG maps."""
 
     def __init__(self, filename: str):
-        self.filename = filename
+        self.filename = os.path.abspath(filename)
         try:
-            self.svg = svgelements.SVG.parse(filename)
+            self.svg = svgelements.SVG.parse(self.filename)
             self.id_map = {}
             if self.svg:
                 for e in self.svg.elements():

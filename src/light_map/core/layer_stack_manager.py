@@ -83,6 +83,7 @@ class LayerStackManager:
                 self.fow_layer,
                 self.visibility_layer,
                 self.door_layer,
+                self.map_grid_layer,  # NEW: Visible Grid Overlay
             ]
         )
 

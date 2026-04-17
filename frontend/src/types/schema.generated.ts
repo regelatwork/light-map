@@ -105,6 +105,8 @@ export interface MapEntry {
   last_seen: string;
   aruco_overrides: Record<number, ArucoDefinition>;
   fow_disabled: boolean;
+  grid_overlay_visible: boolean;
+  grid_overlay_color: string;
 }
 
 export interface GlobalConfig {
@@ -399,6 +401,16 @@ export const MAPENTRY_METADATA: Record<keyof MapEntry, FieldMetadata> = {
     "title": "Disable Fog of War",
     "description": "If true, the entire map is always visible.",
     "default": false
+  },
+  "grid_overlay_visible": {
+    "title": "Grid Overlay Visible",
+    "description": "If true, a grid will be rendered over the map.",
+    "default": false
+  },
+  "grid_overlay_color": {
+    "title": "Grid Overlay Color",
+    "description": "CSS color for the grid lines.",
+    "default": "rgba(255, 255, 255, 0.5)"
   }
 };
 

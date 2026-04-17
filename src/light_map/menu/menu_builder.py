@@ -52,6 +52,7 @@ def build_root_menu(
     selected_door: Optional[str] = None,
     door_is_open: bool = False,
     show_tokens: bool = True,
+    grid_overlay_visible: bool = False,
 ) -> MenuItem:
 
     # Build Maps Submenu
@@ -187,6 +188,11 @@ def build_root_menu(
                     MenuItem(
                         title=f"GM: Tokens {'ON' if show_tokens else 'OFF'}",
                         action_id=MenuActions.TOGGLE_TOKENS,
+                        should_close_on_trigger=False,
+                    ),
+                    MenuItem(
+                        title=f"Visible Grid: {'ON' if grid_overlay_visible else 'OFF'}",
+                        action_id=MenuActions.TOGGLE_GRID,
                         should_close_on_trigger=False,
                     ),
                 ],

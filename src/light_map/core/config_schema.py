@@ -267,6 +267,16 @@ class MapEntrySchema(BaseModel):
         title="Disable Fog of War",
         description="If true, the entire map is always visible.",
     )
+    grid_overlay_visible: bool = Field(
+        default=False,
+        title="Grid Overlay Visible",
+        description="If true, a grid will be rendered over the map.",
+    )
+    grid_overlay_color: str = Field(
+        default="rgba(255, 255, 255, 0.5)",
+        title="Grid Overlay Color",
+        description="CSS color for the grid lines.",
+    )
 
 
 class GlobalConfigSchema(BaseModel):

@@ -1,7 +1,7 @@
 import cv2
 import numpy as np
 import math
-from typing import List
+from typing import List, Tuple
 from light_map.core.common_types import Layer, LayerMode, ImagePatch, GridType
 from light_map.state.world_state import WorldState
 from light_map.core.geometry import PointyTopHex, FlatTopHex
@@ -28,16 +28,27 @@ class MapGridLayer(Layer):
     def _generate_patches(self, current_time: float) -> List[ImagePatch]:
         """
         Logic ported from MapGridCalibrationScene.render.
-        Updated to account for viewport rotation.
+        Updated to account for viewport rotation and visibility/color config.
         """
         if not self.state:
             return []
 
         grid = self.state.grid_metadata
-        vp = self.state.viewport
-
+        # If not explicit calibration mode (which might override), respect visibility
+        # Wait, if we are in calibration scene, we might want it forced ON.
+        # But this layer is general.
+        # Let's check if we should render.
+        # If spacing is 0, we definitely can't render.
         if grid.spacing_svg <= 0:
             return []
+
+        # In normal map operation, we respect overlay_visible.
+        # However, for calibration scenes, we might want to force it.
+        # For now, let's just respect the config.
+        if not grid.overlay_visible:
+            return []
+
+        vp = self.state.viewport
 
         # spacing = spacing_svg * zoom
         spacing = grid.spacing_svg * vp.zoom
@@ -70,7 +81,8 @@ class MapGridLayer(Layer):
         # Create transparent BGRA buffer
         buffer = np.zeros((self.height, self.width, 4), dtype=np.uint8)
 
-        color_green = (0, 255, 0, 255)  # BGRA
+        # Parse color (BGRA)
+        grid_color = self._parse_color(grid.overlay_color)
         color_black = (0, 0, 0, 255)
         cross_size = 10  # Length of each arm in pixels
 
@@ -132,14 +144,14 @@ class MapGridLayer(Layer):
                         buffer, (x - cross_size, y), (x + cross_size, y), color_black, 3
                     )
                     cv2.line(
-                        buffer, (x - cross_size, y), (x + cross_size, y), color_green, 1
+                        buffer, (x - cross_size, y), (x + cross_size, y), grid_color, 1
                     )
 
                     cv2.line(
                         buffer, (x, y - cross_size), (x, y + cross_size), color_black, 3
                     )
                     cv2.line(
-                        buffer, (x, y - cross_size), (x, y + cross_size), color_green, 1
+                        buffer, (x, y - cross_size), (x, y + cross_size), grid_color, 1
                     )
         else:
             # Hex Grid
@@ -149,8 +161,8 @@ class MapGridLayer(Layer):
             v_offsets = []
             for i in range(6):
                 angle_deg = 60 * i + (30 if grid.type == GridType.HEX_POINTY else 0)
-                angle_rad = math.radians(angle_deg)
-                v_offsets.append((hex_geo.size * math.cos(angle_rad), hex_geo.size * math.sin(angle_rad)))
+                angle_rad_v = math.radians(angle_deg)
+                v_offsets.append((hex_geo.size * math.cos(angle_rad_v), hex_geo.size * math.sin(angle_rad_v)))
 
             for i in range(start_i, end_i + 1):
                 for j in range(start_j, end_j + 1):
@@ -177,13 +189,13 @@ class MapGridLayer(Layer):
                         pts.append([int(round(cx_s + rvx)), int(round(cy_s + rvy))])
                     
                     cv2.polylines(buffer, [np.array(pts)], True, color_black, 3)
-                    cv2.polylines(buffer, [np.array(pts)], True, color_green, 1)
+                    cv2.polylines(buffer, [np.array(pts)], True, grid_color, 1)
 
         # Highlight Origin specifically
         ox, oy = int(round(off_x)), int(round(off_y))
         if 0 <= ox < self.width and 0 <= oy < self.height:
             cv2.circle(buffer, (ox, oy), 8, color_black, -1)
-            cv2.circle(buffer, (ox, oy), 5, (0, 255, 0, 255), -1)
+            cv2.circle(buffer, (ox, oy), 5, grid_color, -1)
 
         return [
             ImagePatch(
@@ -194,3 +206,34 @@ class MapGridLayer(Layer):
                 data=buffer,
             )
         ]
+
+    def _parse_color(self, color_str: str) -> Tuple[int, int, int, int]:
+        """Parses CSS-style colors into BGRA tuple."""
+        import re
+
+        # Handle rgba(r, g, b, a)
+        rgba_match = re.match(r"rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\)", color_str)
+        if rgba_match:
+            r, g, b = map(int, rgba_match.groups()[:3])
+            a = float(rgba_match.group(4)) if rgba_match.group(4) else 1.0
+            return (b, g, r, int(a * 255))
+
+        # Handle hex #RRGGBB or #RGB
+        if color_str.startswith("#"):
+            hex_val = color_str.lstrip("#")
+            if len(hex_val) == 3:
+                hex_val = "".join([c * 2 for c in hex_val])
+            if len(hex_val) == 6:
+                r = int(hex_val[0:2], 16)
+                g = int(hex_val[2:4], 16)
+                b = int(hex_val[4:6], 16)
+                return (b, g, r, 255)
+            if len(hex_val) == 8:
+                r = int(hex_val[0:2], 16)
+                g = int(hex_val[2:4], 16)
+                b = int(hex_val[4:6], 16)
+                a = int(hex_val[6:8], 16)
+                return (b, g, r, a)
+
+        # Default to green if parsing fails
+        return (0, 255, 0, 255)

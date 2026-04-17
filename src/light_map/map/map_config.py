@@ -84,6 +84,8 @@ class MapEntry:
     last_seen: str = ""  # ISO 8601 timestamp
     aruco_overrides: Dict[int, ArucoDefinition] = field(default_factory=dict)
     fow_disabled: bool = False
+    grid_overlay_visible: bool = False
+    grid_overlay_color: str = "rgba(255, 255, 255, 0.5)"
 
 
 @dataclass

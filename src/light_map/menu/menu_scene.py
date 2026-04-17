@@ -49,6 +49,7 @@ class MenuScene(Scene):
             selected_door=selected_door,
             door_is_open=door_is_open,
             show_tokens=self.context.show_tokens,
+            grid_overlay_visible=self.context.state.grid_overlay_visible if self.context.state else False,
         )
 
         self.menu_system = MenuSystem(
@@ -84,6 +85,7 @@ class MenuScene(Scene):
             selected_door=selected_door,
             door_is_open=door_is_open,
             show_tokens=self.context.show_tokens,
+            grid_overlay_visible=self.context.state.grid_overlay_visible if self.context.state else False,
         )
         self.menu_system.set_root_menu(new_root)
 
@@ -268,6 +270,22 @@ class MenuScene(Scene):
             state_str = "ON" if self.context.show_tokens else "OFF"
             self.context.notifications.add_notification(f"GM: Tokens {state_str}")
             self.on_enter()  # Rebuild menu to update title
+        elif action == MenuActions.TOGGLE_GRID:
+            if self.context.state:
+                import os
+                self.context.state.grid_overlay_visible = not self.context.state.grid_overlay_visible
+                # Persist to map config if a map is loaded
+                if self.context.map_system.is_map_loaded():
+                    map_path = self.context.map_system.svg_loader.filename
+                    map_path = os.path.abspath(map_path)
+                    entry = self.context.map_config_manager.data.maps.get(map_path)
+                    if entry:
+                        entry.grid_overlay_visible = self.context.state.grid_overlay_visible
+                        self.context.map_config_manager.save()
+                
+                state_str = "ON" if self.context.state.grid_overlay_visible else "OFF"
+                self.context.notifications.add_notification(f"Visible Grid {state_str}")
+                self.on_enter()  # Rebuild menu
         elif action == MenuActions.TOGGLE_DOOR:
             return SceneTransition(
                 SceneId.VIEWING, payload={"action": "TOGGLE_DOOR", "door": payload}

@@ -89,6 +89,8 @@ class GridConfig(BaseModel):
     offset_y: float
     spacing: Optional[float] = None
     grid_type: Optional[GridType] = None
+    visible: Optional[bool] = None
+    color: Optional[str] = None
 
 
 class SystemConfigUpdate(BaseModel):
@@ -592,6 +594,8 @@ def create_app(
                 "offset_y": config.offset_y,
                 "spacing": config.spacing,
                 "grid_type": config.grid_type,
+                "visible": config.visible,
+                "color": config.color,
             },
         )
         results_queue.put(res)

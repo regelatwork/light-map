@@ -12,6 +12,7 @@ def test_map_grid_layer_basic_rendering():
 
     # Set grid metadata
     state.grid_spacing_svg = 100.0
+    state.grid_overlay_visible = True
     state.grid_origin_svg_x = 500.0
     state.grid_origin_svg_y = 375.0
     state.viewport = ViewportState(x=0, y=0, zoom=1.0)
@@ -55,6 +56,7 @@ def test_map_grid_layer_rotation():
     layer = MapGridLayer(state, width, height)
 
     state.grid_spacing_svg = 100.0
+    state.grid_overlay_visible = True
     state.viewport = ViewportState(x=0, y=0, zoom=1.0, rotation=45.0)
 
     patches, _ = layer.render()

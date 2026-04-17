@@ -249,6 +249,8 @@ class MenuActions(StrEnum):
     TOGGLE_FOW = "TOGGLE_FOW"
     TOGGLE_DOOR = "TOGGLE_DOOR"
     TOGGLE_TOKENS = "TOGGLE_TOKENS"
+    TOGGLE_GRID = "TOGGLE_GRID"
+    SET_GRID_COLOR = "SET_GRID_COLOR"
 
 
 class SceneId(StrEnum):
@@ -312,6 +314,8 @@ class GridMetadata:
     origin_svg_x: float = 0.0
     origin_svg_y: float = 0.0
     type: GridType = GridType.SQUARE
+    overlay_visible: bool = False
+    overlay_color: str = "rgba(255, 255, 255, 0.5)"
 
 
 class ResultType(StrEnum):

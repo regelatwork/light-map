@@ -52,7 +52,9 @@ export const saveGridConfig = async (
   offset_x: number,
   offset_y: number,
   spacing?: number,
-  grid_type?: GridType
+  grid_type?: GridType,
+  visible?: boolean,
+  color?: string
 ) => {
   const host = import.meta.env.DEV ? 'http://localhost:8000' : window.location.origin;
   const response = await fetch(`${host}/config/grid`, {
@@ -60,7 +62,7 @@ export const saveGridConfig = async (
     headers: {
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({ offset_x, offset_y, spacing, grid_type }),
+    body: JSON.stringify({ offset_x, offset_y, spacing, grid_type, visible, color }),
   });
 
   if (!response.ok) {

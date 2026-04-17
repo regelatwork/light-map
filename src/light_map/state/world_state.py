@@ -365,6 +365,44 @@ class WorldState:
                 origin_svg_x=current.origin_svg_x,
                 origin_svg_y=current.origin_svg_y,
                 type=value,
+                overlay_visible=current.overlay_visible,
+                overlay_color=current.overlay_color,
+            )
+        )
+
+    @property
+    def grid_overlay_visible(self) -> bool:
+        return self._grid_metadata_atom.value.overlay_visible
+
+    @grid_overlay_visible.setter
+    def grid_overlay_visible(self, value: bool):
+        current = self._grid_metadata_atom.value
+        self._grid_metadata_atom.update(
+            GridMetadata(
+                spacing_svg=current.spacing_svg,
+                origin_svg_x=current.origin_svg_x,
+                origin_svg_y=current.origin_svg_y,
+                type=current.type,
+                overlay_visible=value,
+                overlay_color=current.overlay_color,
+            )
+        )
+
+    @property
+    def grid_overlay_color(self) -> str:
+        return self._grid_metadata_atom.value.overlay_color
+
+    @grid_overlay_color.setter
+    def grid_overlay_color(self, value: str):
+        current = self._grid_metadata_atom.value
+        self._grid_metadata_atom.update(
+            GridMetadata(
+                spacing_svg=current.spacing_svg,
+                origin_svg_x=current.origin_svg_x,
+                origin_svg_y=current.origin_svg_y,
+                type=current.type,
+                overlay_visible=current.overlay_visible,
+                overlay_color=value,
             )
         )
 
@@ -389,6 +427,8 @@ class WorldState:
                 origin_svg_x=current.origin_svg_x,
                 origin_svg_y=current.origin_svg_y,
                 type=current.type,
+                overlay_visible=current.overlay_visible,
+                overlay_color=current.overlay_color,
             )
         )
 
@@ -405,6 +445,8 @@ class WorldState:
                 origin_svg_x=value,
                 origin_svg_y=current.origin_svg_y,
                 type=current.type,
+                overlay_visible=current.overlay_visible,
+                overlay_color=current.overlay_color,
             )
         )
 
@@ -421,6 +463,8 @@ class WorldState:
                 origin_svg_x=current.origin_svg_x,
                 origin_svg_y=value,
                 type=current.type,
+                overlay_visible=current.overlay_visible,
+                overlay_color=current.overlay_color,
             )
         )
 
@@ -743,6 +787,8 @@ class WorldState:
             "grid_origin_svg_x": self.grid_origin_svg_x,
             "grid_origin_svg_y": self.grid_origin_svg_y,
             "grid_type": str(self.grid_type),
+            "grid_overlay_visible": self.grid_overlay_visible,
+            "grid_overlay_color": self.grid_overlay_color,
             "map_version": self.map_version,
             "menu_version": self.menu_version,
             "tokens_version": self.tokens_version,

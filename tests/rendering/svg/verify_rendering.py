@@ -2,7 +2,6 @@ import os
 import subprocess
 import cv2
 import numpy as np
-import sys
 from light_map.rendering.svg.loader import SVGLoader
 
 def capture_reference(svg_path, out_path):

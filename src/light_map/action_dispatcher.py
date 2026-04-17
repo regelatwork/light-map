@@ -65,6 +65,8 @@ class ActionDispatcher:
         self.register("INSPECT_TOKEN", handle_inspect_token)
         self.register("CLEAR_INSPECTION", handle_clear_inspection)
         self.register("TOGGLE_DOOR", handle_toggle_door)
+        self.register("TOGGLE_GRID", handle_toggle_grid)
+        self.register("SET_GRID_COLOR", handle_set_grid_color)
 
         # Remote Driver / System Actions
         self.register("ZOOM", handle_zoom)
@@ -153,6 +155,14 @@ def handle_update_grid(
                 except (ValueError, KeyError):
                     pass
 
+            visible = payload.get("visible")
+            if visible is not None:
+                entry.grid_overlay_visible = bool(visible)
+
+            color = payload.get("color")
+            if color:
+                entry.grid_overlay_color = color
+
             app.map_config.save()
 
             app.state.grid_metadata = GridMetadata(
@@ -160,10 +170,60 @@ def handle_update_grid(
                 origin_svg_x=entry.grid_origin_svg_x,
                 origin_svg_y=entry.grid_origin_svg_y,
                 type=entry.grid_type,
+                overlay_visible=entry.grid_overlay_visible,
+                overlay_color=entry.grid_overlay_color,
             )
 
             app._rebuild_visibility_stack(entry)
             app.notifications.add_notification("Grid Configuration Updated")
+    return None
+
+
+def handle_toggle_grid(
+    app: "InteractiveApp", payload: Dict[str, Any], state: Optional["WorldState"] = None
+) -> Optional["SceneTransition"]:
+    if app.current_map_path:
+        entry = app.map_config.data.maps.get(app.current_map_path)
+        if entry:
+            entry.grid_overlay_visible = not entry.grid_overlay_visible
+            app.map_config.save()
+
+            app.state.grid_metadata = GridMetadata(
+                spacing_svg=entry.grid_spacing_svg,
+                origin_svg_x=entry.grid_origin_svg_x,
+                origin_svg_y=entry.grid_origin_svg_y,
+                type=entry.grid_type,
+                overlay_visible=entry.grid_overlay_visible,
+                overlay_color=entry.grid_overlay_color,
+            )
+
+            state_str = "ON" if entry.grid_overlay_visible else "OFF"
+            app.notifications.add_notification(f"Visible Grid {state_str}")
+    else:
+        app.notifications.add_notification("Load a map to toggle grid.")
+    return None
+
+
+def handle_set_grid_color(
+    app: "InteractiveApp", payload: Dict[str, Any], state: Optional["WorldState"] = None
+) -> Optional["SceneTransition"]:
+    color = payload.get("color") or payload.get("payload")
+    if app.current_map_path and color:
+        entry = app.map_config.data.maps.get(app.current_map_path)
+        if entry:
+            entry.grid_overlay_color = color
+            app.map_config.save()
+
+            app.state.grid_metadata = GridMetadata(
+                spacing_svg=entry.grid_spacing_svg,
+                origin_svg_x=entry.grid_origin_svg_x,
+                origin_svg_y=entry.grid_origin_svg_y,
+                type=entry.grid_type,
+                overlay_visible=entry.grid_overlay_visible,
+                overlay_color=entry.grid_overlay_color,
+            )
+
+            app.notifications.add_notification(f"Grid Color Set: {color}")
     return None
 
 

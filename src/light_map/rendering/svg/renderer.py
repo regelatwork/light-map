@@ -1,4 +1,3 @@
-import os
 import svgelements
 import numpy as np
 import cv2
@@ -386,8 +385,8 @@ def resolve_gradient_coord(val_str, total_val, default_val, viewbox_total=None):
     try:
         # Use svgelements.Length to handle units.
         # Length().amount is the raw value in its original unit (or user units if no unit).
-        l = svgelements.Length(val_str)
-        return l.amount
+        length = svgelements.Length(val_str)
+        return length.amount
     except (ValueError, TypeError):
         try:
             return float(val_str)
@@ -574,8 +573,8 @@ def render_radial_gradient(
         cx = resolve_gradient_coord(gradient_elem.values.get("cx"), 1.0, 0.5)
         cy = resolve_gradient_coord(gradient_elem.values.get("cy"), 1.0, 0.5)
         r = resolve_gradient_coord(gradient_elem.values.get("r"), 1.0, 0.5)
-        fx = resolve_gradient_coord(gradient_elem.values.get("fx"), 1.0, cx)
-        fy = resolve_gradient_coord(gradient_elem.values.get("fy"), 1.0, cy)
+        resolve_gradient_coord(gradient_elem.values.get("fx"), 1.0, cx)
+        resolve_gradient_coord(gradient_elem.values.get("fy"), 1.0, cy)
     else:
         vw = float(svg.viewbox.width) if svg.viewbox else svg.width
         vh = float(svg.viewbox.height) if svg.viewbox else svg.height
@@ -583,8 +582,9 @@ def render_radial_gradient(
         cx = resolve_gradient_coord(gradient_elem.values.get("cx"), vw, 0.0, viewbox_total=vw)
         cy = resolve_gradient_coord(gradient_elem.values.get("cy"), vh, 0.0, viewbox_total=vh)
         r = resolve_gradient_coord(gradient_elem.values.get("r"), avg_v, 0.0, viewbox_total=avg_v)
-        fx = resolve_gradient_coord(gradient_elem.values.get("fx"), vw, cx, viewbox_total=vw)
-        fy = resolve_gradient_coord(gradient_elem.values.get("fy"), vh, cy, viewbox_total=vh)
+        # Note: fx and fy are currently unused but resolve_gradient_coord is called for potential side effects or future use.
+        resolve_gradient_coord(gradient_elem.values.get("fx"), vw, cx, viewbox_total=vw)
+        resolve_gradient_coord(gradient_elem.values.get("fy"), vh, cy, viewbox_total=vh)
 
     explicit_transform = svgelements.Matrix(gradient_elem.values.get("gradientTransform", ""))
     g_transform = explicit_transform

@@ -7,7 +7,14 @@ import { TokenPropertiesEditor } from './TokenPropertiesEditor';
 import { injectAction, saveGridConfig, setViewportConfig } from '../services/api';
 
 export const ConfigurationSidebar: React.FC = () => {
-  const { tokens, world, grid_origin_svg_x, grid_origin_svg_y } = useSystemState();
+  const {
+    tokens,
+    world,
+    grid_origin_svg_x,
+    grid_origin_svg_y,
+    grid_overlay_visible,
+    grid_overlay_color,
+  } = useSystemState();
   const { selection, setSelection } = useSelection();
   const { activeMode, setMode } = useCalibration();
 
@@ -31,6 +38,13 @@ export const ConfigurationSidebar: React.FC = () => {
   const gridX = localGridX !== null ? localGridX : grid_origin_svg_x || 0;
   const gridY = localGridY !== null ? localGridY : grid_origin_svg_y || 0;
 
+  // Local state for grid overlay
+  const [localGridVisible, setLocalGridVisible] = useState<boolean | null>(null);
+  const [localGridColor, setLocalGridColor] = useState<string | null>(null);
+
+  const isGridVisible = localGridVisible !== null ? localGridVisible : grid_overlay_visible;
+  const gridColor = localGridColor !== null ? localGridColor : grid_overlay_color;
+
   // Local state for viewport inputs
   const [localVpX, setLocalVpX] = useState<number | null>(null);
   const [localVpY, setLocalVpY] = useState<number | null>(null);
@@ -43,12 +57,20 @@ export const ConfigurationSidebar: React.FC = () => {
 
   const handleGridSave = async () => {
     try {
-      await saveGridConfig(gridX, gridY);
+      await saveGridConfig(gridX, gridY, undefined, undefined, isGridVisible, gridColor);
       setLocalGridX(null);
       setLocalGridY(null);
+      setLocalGridVisible(null);
+      setLocalGridColor(null);
     } catch (e) {
       console.error(e);
     }
+  };
+
+  const toggleGridOverlay = () => {
+    const nextVisible = !isGridVisible;
+    setLocalGridVisible(nextVisible);
+    saveGridConfig(gridX, gridY, undefined, undefined, nextVisible, gridColor);
   };
 
   const handleViewportSave = async () => {
@@ -150,6 +172,53 @@ export const ConfigurationSidebar: React.FC = () => {
               </div>
               <div className="col-span-2 text-[10px] text-blue-600 bg-blue-100 bg-opacity-30 p-2 rounded flex gap-2">
                 <p>Use <span className="font-bold text-green-700">Green Handle</span> to move origin, <span className="font-bold text-blue-700">Blue Handles</span> for scale.</p>
+              </div>
+            </div>
+          )}
+        </section>
+
+        {/* Grid Overlay Toggle */}
+        <section className="px-4 py-3 border rounded-lg bg-gray-50 border-gray-100 transition-colors">
+          <div className="flex items-center justify-between mb-2">
+            <div>
+              <h4 className="text-xs font-bold uppercase tracking-wider text-gray-500">Grid Overlay</h4>
+              <p className="text-[10px] text-gray-400 font-medium">Visible reference grid</p>
+            </div>
+            <button
+              onClick={toggleGridOverlay}
+              className={`relative inline-flex h-5 w-10 items-center rounded-full transition-colors focus:outline-none shadow-sm ${
+                isGridVisible ? 'bg-green-600' : 'bg-gray-300'
+              }`}
+            >
+              <span
+                className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${
+                  isGridVisible ? 'translate-x-5.5' : 'translate-x-1'
+                }`}
+              />
+            </button>
+          </div>
+          {isGridVisible && (
+            <div className="mt-2 space-y-2 animate-in fade-in slide-in-from-top-1 duration-200">
+              <div className="flex items-center justify-between gap-3">
+                <label className="text-[10px] font-bold text-gray-500 uppercase">Grid Color</label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="color"
+                    value={gridColor.startsWith('rgba') ? '#ffffff' : gridColor}
+                    onChange={(e) => {
+                      setLocalGridColor(e.target.value);
+                      saveGridConfig(gridX, gridY, undefined, undefined, true, e.target.value);
+                    }}
+                    className="w-6 h-6 rounded border-0 p-0 overflow-hidden cursor-pointer"
+                  />
+                  <input
+                    type="text"
+                    value={gridColor}
+                    onChange={(e) => setLocalGridColor(e.target.value)}
+                    onBlur={handleGridSave}
+                    className="w-24 px-2 py-1 text-[10px] border rounded bg-white font-mono"
+                  />
+                </div>
               </div>
             </div>
           )}

@@ -752,6 +752,8 @@ class InteractiveApp:
             origin_svg_x=entry.grid_origin_svg_x,
             origin_svg_y=entry.grid_origin_svg_y,
             type=entry.grid_type,
+            overlay_visible=entry.grid_overlay_visible,
+            overlay_color=entry.grid_overlay_color,
         )
 
         # Re-initialize blockers with new visibility engine parameters

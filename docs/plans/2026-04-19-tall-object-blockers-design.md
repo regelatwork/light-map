@@ -9,36 +9,61 @@ This design introduces "Tall Objects" to the visibility system. Unlike walls, wh
 - Implement "High Ground" logic: tokens standing on a tall object can see down into open space.
 - Handle adjacent tall objects as a continuous elevated area.
 
-## Architecture
+## Technical Specifications
 
-### 1. SVG Extraction
-- **Layer Detection:** Identify layers where the name contains both "tall" and "object" (case-insensitive, any order).
-- **Shape Handling:** Extract all shapes (Paths, Rects, Circles, etc.) as closed polygons.
-- **Type:** Assign `VisibilityType.TALL_OBJECT`.
+### 1. Data Model & Mirroring
+- **Python:** Add `TALL_OBJECT = "tall_object"` to `VisibilityType` in `src/light_map/visibility/visibility_types.py`.
+- **Frontend:** Add `TALL_OBJECT = "tall_object"` to the `VisibilityType` enum in `frontend/src/types/system.ts`.
+- **Sync:** Ensure `tests/test_enum_sync.py` passes.
 
-### 2. Mask Representation
-- **Tall Mask:** A high-resolution bitmask where pixels inside tall object polygons are marked (`MASK_VALUE_TALL`).
-- **Collision Mask:** Tall object boundaries will be rendered into the existing `blocker_mask` to ensure they act as physical boundaries for token footprints when necessary.
+### 2. SVG Extraction & Layer Detection
+- **File:** `src/light_map/rendering/svg/utils.py`
+- **Detection Logic:** Update `get_visibility_type(label: str)` to detect layers containing both "tall" and "object":
+  ```python
+  id_lower = label.lower()
+  if "tall" in id_lower and "object" in id_lower:
+      return VisibilityType.TALL_OBJECT, False
+  ```
+- **Shape Handling:** All shapes in these layers must be extracted as closed polygons. Ensure `extract_visibility_blocker` correctly closes paths if necessary.
 
-### 3. Visibility Algorithm: The "First Exit" Rule
-The line-of-sight (LOS) algorithm (`_numba_is_line_obstructed`) will be updated to track the "First Exit" state:
+### 3. Mask Representation
+- **Constant:** Add `MASK_VALUE_TALL = 100` to `src/light_map/visibility/visibility_engine.py`.
+- **Storage:** Tall objects are rendered into the existing `blocker_mask` (uint8) using `cv2.fillPoly` with the value `100`. This avoids the overhead of a separate mask.
 
-- **State:** `has_exited_initial_tall_zone` (Boolean, starts False).
-- **Initial Check:** If the Viewer's center is in `OPEN` space, `has_exited_initial_tall_zone` is set to True immediately.
-- **Traversal:**
-  - As the line moves from pixel {i}$ to {i+1}$:
-  - If {i} == TALL$ and {i+1} == OPEN$:
-    - If `has_exited_initial_tall_zone` is True: **BLOCK** (This is a second exit or an exit from the ground).
-    - Else: Set `has_exited_initial_tall_zone = True` and **CONTINUE**.
-  - Standard `WALL` and `CLOSED_DOOR` checks remain as absolute blockers.
+### 4. Visibility Algorithm: The "First Exit" Rule
+The line-of-sight (LOS) algorithm (`_numba_is_line_obstructed`) will be updated to handle elevation transitions.
 
-### 4. Component Updates
-- **`VisibilityType`**: Add `TALL_OBJECT`.
-- **`svg/utils.py`**: Add layer-based type detection for tall objects.
+#### Viewer Context
+The `viewer_starts_in_tall` flag is calculated once per calculation using the viewer's center:
+`viewer_starts_in_tall = (blocker_mask[int(cy), int(cx)] == MASK_VALUE_TALL)`
+
+#### Numba-Optimized LOS
+```python
+@njit(cache=True)
+def _numba_is_line_obstructed(x1, y1, x2, y2, blocker_mask, viewer_starts_in_tall):
+    # If viewer starts on ground, they have already 'exited' the tall zone
+    has_exited_initial_tall_zone = not viewer_starts_in_tall
+    
+    # ... step through pixels along line ...
+    val = blocker_mask[py, px]
+    
+    if val == 255 or val == 200: # WALL or DOOR_CLOSED
+        return True
+    
+    if val == 0: # OPEN SPACE
+        has_exited_initial_tall_zone = True
+    elif val == 100: # TALL OBJECT
+        if has_exited_initial_tall_zone:
+            return True # Blocked: Exit from ground or second exit
+            
+    return False
+```
+
+### 5. Component Updates
 - **`visibility_engine.py`**: 
-  - Update `update_blockers` to render the tall object mask.
-  - Update Numba-optimized LOS and BFS functions to implement the "First Exit" rule.
-- **`fow_manager.py`**: Ensure tall objects are correctly marked as "discovered" when seen.
+  - Update `update_blockers` to fill tall object polygons.
+  - Update `_numba_bfs_flood_fill` and `_calculate_visibility` to pass the `viewer_starts_in_tall` flag.
+- **`fow_manager.py`**: Ensure tall objects are correctly marked as "discovered" when visible.
 
 ## Testing Strategy
 - **Unit Tests:** Verify SVG extraction correctly identifies tall object layers and closes shapes.
@@ -47,4 +72,4 @@ The line-of-sight (LOS) algorithm (`_numba_is_line_obstructed`) will be updated 
   - Ground -> Ground behind Plateau (Should be blocked).
   - Plateau -> Ground (Should see ground).
   - Plateau A -> Ground -> Plateau B (Should see Plateau B surface, but not behind it).
-- **Performance:** Ensure the Numba-optimized LOS check remains performant with the extra state bit.
+- **Performance:** Ensure Numba execution remains efficient with the extra conditional.

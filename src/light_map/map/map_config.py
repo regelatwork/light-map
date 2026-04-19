@@ -535,7 +535,7 @@ class MapConfigManager:
                 with open(door_path, "r") as f:
                     data = json.load(f)
                     if isinstance(data, list):
-                        fow_manager.discovered_door_ids = set(data)
+                        fow_manager.discovered_ids = set(data)
             except Exception as e:
                 logging.error(f"Error loading discovered doors: {e}")
 
@@ -552,7 +552,7 @@ class MapConfigManager:
             # Save Discovered Door IDs
             door_path = os.path.join(storage_dir, "discovered_doors.json")
             with open(door_path, "w") as f:
-                json.dump(list(fow_manager.discovered_door_ids), f)
+                json.dump(list(fow_manager.discovered_ids), f)
         except Exception as e:
             logging.error("Error saving FoW/LOS/Doors to %s: %s", storage_dir, e)
 

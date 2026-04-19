@@ -15,8 +15,8 @@ def state():
     ws.grid_metadata = GridMetadata(spacing_svg=10.0)
     # Ensure visibility_mask is set so doors are considered "discovered"
     ws.visibility_mask = np.full((100, 100), 255, dtype=np.uint8)
-    # MUST also explicitly add to discovered_door_ids for the layer to render them
-    ws.discovered_door_ids = {"door1", "door2"}
+    # MUST also explicitly add to discovered_ids for the layer to render them
+    ws.discovered_ids = {"door1", "door2"}
     return ws
 
 

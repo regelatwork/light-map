@@ -20,8 +20,8 @@ class FogOfWarManager:
         # Current LOS mask (ALPHA_OPAQUE = visible, 0 = hidden)
         self.visible_mask = np.zeros((height, width), dtype=np.uint8)
 
-        # Persistent discovered door IDs
-        self.discovered_door_ids: Set[str] = set()
+        # Persistent discovered object IDs (doors, tall objects, etc.)
+        self.discovered_ids: Set[str] = set()
 
         # GM Override: If True, everything is visible
         self.is_disabled = False
@@ -44,8 +44,8 @@ class FogOfWarManager:
                 interpolation=cv2.INTER_NEAREST,
             )
 
-    def reveal_area(self, mask: np.ndarray, door_ids: Optional[Set[str]] = None):
-        """Unions the provided mask into the explored state and updates discovered doors."""
+    def reveal_area(self, mask: np.ndarray, discovered_ids: Optional[Set[str]] = None):
+        """Unions the provided mask into the explored state and updates discovered objects."""
         if mask.shape != self.explored_mask.shape:
             mask = cv2.resize(
                 mask,
@@ -55,8 +55,8 @@ class FogOfWarManager:
 
         cv2.bitwise_or(self.explored_mask, mask, self.explored_mask)
 
-        if door_ids:
-            self.discovered_door_ids.update(door_ids)
+        if discovered_ids:
+            self.discovered_ids.update(discovered_ids)
 
     def set_visible_mask(self, mask: np.ndarray):
         """Updates the current LOS mask."""
@@ -72,4 +72,4 @@ class FogOfWarManager:
         """Clears all exploration."""
         self.explored_mask.fill(0)
         self.visible_mask.fill(0)
-        self.discovered_door_ids.clear()
+        self.discovered_ids.clear()

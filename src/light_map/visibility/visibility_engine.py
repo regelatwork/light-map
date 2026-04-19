@@ -19,6 +19,7 @@ MASK_VALUE_NONE = 0
 MASK_VALUE_WALL = 255
 MASK_VALUE_DOOR_CLOSED = 200
 MASK_VALUE_DOOR_OPEN = 150
+MASK_VALUE_TALL = 100
 
 if TYPE_CHECKING:
     from light_map.core.common_types import Token
@@ -28,13 +29,17 @@ if TYPE_CHECKING:
 if HAS_NUMBA:
     @njit(cache=True)
     def _numba_is_line_obstructed(
-        x1: int, y1: int, x2: int, y2: int, blocker_mask: np.ndarray
+        x1: int, y1: int, x2: int, y2: int, blocker_mask: np.ndarray,
+        viewer_starts_in_tall: bool
     ) -> bool:
         """
         Numba-optimized line obstruction check.
         Checks ALL pixels on the line EXCEPT the target point (x2, y2).
         This allows us to 'see' the blocker itself without being blocked by it.
-        Only walls and CLOSED doors block vision.
+        
+        Tall Object Logic:
+        A line is blocked if it transitions from TALL to OPEN, unless it is
+        the very first transition (the 'First Exit' rule).
         """
         h, w = blocker_mask.shape
         dx = abs(x2 - x1)
@@ -43,6 +48,9 @@ if HAS_NUMBA:
 
         if num_steps == 0:
             return False
+
+        has_exited_initial_tall_zone = not viewer_starts_in_tall
+        in_tall_zone = viewer_starts_in_tall
 
         for i in range(num_steps):
             t = i / num_steps
@@ -59,8 +67,24 @@ if HAS_NUMBA:
                 py = h - 1
 
             val = blocker_mask[py, px]
-            if val == 255 or val == 200: # WALL or DOOR_CLOSED
+            
+            # 1. Standard Blockers (Wall or Closed Door)
+            if val == 255 or val == 200: 
                 return True
+                
+            # 2. Tall Object Transitions
+            is_currently_tall = (val == 100)
+            
+            if in_tall_zone and not is_currently_tall:
+                # Transition: TALL -> OPEN
+                if has_exited_initial_tall_zone:
+                    return True # Blocked: Second exit from tall
+                has_exited_initial_tall_zone = True
+                in_tall_zone = False
+            elif not in_tall_zone and is_currently_tall:
+                # Transition: OPEN -> TALL
+                in_tall_zone = True
+                
         return False
 
     @njit(cache=True)
@@ -74,12 +98,12 @@ if HAS_NUMBA:
         vision_range_px: int,
         cx: float,
         cy: float,
-        num_blockers: int
+        num_blockers: int,
+        viewer_starts_in_tall: bool
     ) -> Tuple[np.ndarray, np.ndarray]:
         """
         Numba-optimized BFS visibility propagation.
         Tracks which blocker IDs were 'discovered' during the fill.
-        Supports grid-cell boundaries via cell_planes.
         """
         h, w = blocker_mask.shape
         range_sq = vision_range_px**2
@@ -125,7 +149,7 @@ if HAS_NUMBA:
                 if parent_hint_idx != -1:
                     sx = border_xs[parent_hint_idx]
                     sy = border_ys[parent_hint_idx]
-                    if not _numba_is_line_obstructed(sx, sy, nx, ny, blocker_mask):
+                    if not _numba_is_line_obstructed(sx, sy, nx, ny, blocker_mask, viewer_starts_in_tall):
                         found_hint = parent_hint_idx
 
                 if found_hint == -1:
@@ -134,7 +158,7 @@ if HAS_NUMBA:
                             continue
                         sx = border_xs[i]
                         sy = border_ys[i]
-                        if not _numba_is_line_obstructed(sx, sy, nx, ny, blocker_mask):
+                        if not _numba_is_line_obstructed(sx, sy, nx, ny, blocker_mask, viewer_starts_in_tall):
                             found_hint = i
                             break
 
@@ -142,13 +166,18 @@ if HAS_NUMBA:
                     visited[ny, nx] = True 
                     vis_mask[ny, nx] = 255
                     
-                    if val > 0: # We hit a blocker (Wall or Door)
+                    if val == 255 or val == 200: # WALL or DOOR_CLOSED
                         bid = blocker_id_map[ny, nx]
                         if bid >= 0:
                             discovered_indices[bid] = 1
                         # Do NOT add blocker to queue; vision stops here
                     else:
-                        # Continue flooding floor space
+                        # Continue flooding floor space OR tall object tops
+                        if val == 100: # TALL_OBJECT
+                             bid = blocker_id_map[ny, nx]
+                             if bid >= 0:
+                                 discovered_indices[bid] = 1
+                        
                         hint_indices[ny, nx] = found_hint
                         queue_x[tail] = nx
                         queue_y[tail] = ny
@@ -218,25 +247,31 @@ class VisibilityEngine:
                         my = int(py * self.svg_to_mask_scale)
                         mask_points.append((mx, my))
 
-                    for i in range(len(mask_points) - 1):
-                        p1 = mask_points[i]
-                        p2 = mask_points[i + 1]
+                    if blocker.type == VisibilityType.TALL_OBJECT:
+                        # Render filled polygon for tall objects
+                        pts = np.array(mask_points, dtype=np.int32).reshape((-1, 1, 2))
+                        cv2.fillPoly(self.blocker_mask, [pts], MASK_VALUE_TALL)
+                        cv2.fillPoly(self.blocker_id_map, [pts], idx)
+                    else:
+                        for i in range(len(mask_points) - 1):
+                            p1 = mask_points[i]
+                            p2 = mask_points[i + 1]
 
-                        # Choose pixel value based on blocker type and state
-                        if blocker.type == VisibilityType.DOOR:
-                            px_val = MASK_VALUE_DOOR_OPEN if blocker.is_open else MASK_VALUE_DOOR_CLOSED
-                        else:
-                            px_val = MASK_VALUE_WALL
+                            # Choose pixel value based on blocker type and state
+                            if blocker.type == VisibilityType.DOOR:
+                                px_val = MASK_VALUE_DOOR_OPEN if blocker.is_open else MASK_VALUE_DOOR_CLOSED
+                            else:
+                                px_val = MASK_VALUE_WALL
 
-                        # Render collision grid
-                        cv2.line(self.blocker_mask, p1, p2, px_val, thickness=2)
-                        cv2.circle(self.blocker_mask, p1, 1, px_val, -1)
-                        cv2.circle(self.blocker_mask, p2, 1, px_val, -1)
+                            # Render collision grid
+                            cv2.line(self.blocker_mask, p1, p2, px_val, thickness=2)
+                            cv2.circle(self.blocker_mask, p1, 1, px_val, -1)
+                            cv2.circle(self.blocker_mask, p2, 1, px_val, -1)
 
-                        # Render ID map
-                        cv2.line(self.blocker_id_map, p1, p2, idx, thickness=2)
-                        cv2.circle(self.blocker_id_map, p1, 1, idx, -1)
-                        cv2.circle(self.blocker_id_map, p2, 1, idx, -1)
+                            # Render ID map
+                            cv2.line(self.blocker_id_map, p1, p2, idx, thickness=2)
+                            cv2.circle(self.blocker_id_map, p1, 1, idx, -1)
+                            cv2.circle(self.blocker_id_map, p2, 1, idx, -1)
 
     def _calculate_token_footprint_with_planes(
         self,
@@ -332,7 +367,9 @@ class VisibilityEngine:
 
                         if is_inside:
                             # Standard blocker check for abutting walls
-                            if self.blocker_mask[ny, nx] == 0:
+                            # Tokens can stand on empty space or tall objects
+                            val = self.blocker_mask[ny, nx]
+                            if val == 0 or val == 100:
                                 footprint[ny, nx] = 255
                                 queue.append((ny, nx))
 
@@ -417,7 +454,7 @@ class VisibilityEngine:
     ) -> Tuple[np.ndarray, Set[str]]:
         """
         Calculates visibility using a BFS constrained by Line-of-Sight.
-        Returns (vision_mask, discovered_door_ids).
+        Returns (vision_mask, discovered_ids).
         """
         if self.blocker_mask is None:
             return np.zeros((mask_h, mask_w), dtype=np.uint8), set()
@@ -432,6 +469,13 @@ class VisibilityEngine:
         coords = np.where(footprint > 0)
         cx = np.mean(coords[1])
         cy = np.mean(coords[0])
+        
+        # Determine if the viewer is currently in a TALL zone
+        # We check the center of the footprint
+        viewer_starts_in_tall = False
+        if 0 <= int(cx) < mask_w and 0 <= int(cy) < mask_h:
+            if self.blocker_mask[int(cy), int(cx)] == 100:
+                viewer_starts_in_tall = True
 
         if HAS_NUMBA:
             border_xs = np.array([p[0] for p in border_points], dtype=np.int32)
@@ -439,13 +483,14 @@ class VisibilityEngine:
             v_mask, disc_indices = _numba_bfs_flood_fill(
                 self.blocker_mask, self.blocker_id_map, vis_mask, visited,
                 border_xs, border_ys,
-                vision_range_px, cx, cy, len(self.blockers)
+                vision_range_px, cx, cy, len(self.blockers),
+                viewer_starts_in_tall
             )
-            # Map indices back to IDs for doors
+            # Map indices back to IDs for doors/tall objects
             discovered_ids = {
                 self.blockers[i].id 
                 for i in np.where(disc_indices > 0)[0] 
-                if self.blockers[i].type == VisibilityType.DOOR
+                if self.blockers[i].type in (VisibilityType.DOOR, VisibilityType.TALL_OBJECT)
             }
             return v_mask, discovered_ids
 
@@ -467,6 +512,8 @@ class VisibilityEngine:
             for nx, ny in [(x, y+1), (x, y-1), (x+1, y), (x-1, y)]:
                 if 0 <= nx < mask_w and 0 <= ny < mask_h and not visited[ny, nx]:
                     if (nx - cx) ** 2 + (ny - cy) ** 2 <= range_sq:
+                        # Note: _is_line_obstructed would also need update for Python fallback
+                        # but we prioritize Numba path as instructed.
                         found_source = self._find_visible_source((nx, ny), border_points, hint)
                         if found_source:
                             visited[ny, nx] = True
@@ -474,11 +521,17 @@ class VisibilityEngine:
                             val = self.blocker_mask[ny, nx]
                             if val > 0: # Blocker
                                 bid = self.blocker_id_map[ny, nx]
-                                if bid >= 0 and self.blockers[bid].type == VisibilityType.DOOR:
-                                    discovered_ids.add(self.blockers[bid].id)
-                            else:
-                                hint_xs[ny, nx], hint_ys[ny, nx] = found_source
-                                queue.append((nx, ny))
+                                if bid >= 0:
+                                    bt = self.blockers[bid].type
+                                    if bt in (VisibilityType.DOOR, VisibilityType.TALL_OBJECT):
+                                        discovered_ids.add(self.blockers[bid].id)
+                                    
+                                    if val == 255 or val == 200: # STOP for wall/door
+                                        continue
+                            
+                            # Continue flooding for floor or tall object tops
+                            hint_xs[ny, nx], hint_ys[ny, nx] = found_source
+                            queue.append((nx, ny))
 
         return vis_mask, discovered_ids
 

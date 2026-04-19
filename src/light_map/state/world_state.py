@@ -72,7 +72,7 @@ class WorldState:
         self._fow_mask_atom = VersionedAtom(
             None, "fow_mask", equality_fn=np.array_equal
         )
-        self._discovered_door_ids_atom = VersionedAtom(set(), "discovered_door_ids")
+        self._discovered_ids_atom = VersionedAtom(set(), "discovered_ids")
         self._fow_disabled_atom = VersionedAtom(False, "fow_disabled")
         self._calibration_atom = VersionedAtom(
             CalibrationState(), "calibration", equality_fn=self._calibration_equal
@@ -225,12 +225,12 @@ class WorldState:
         self._fow_mask_atom.update(value)
 
     @property
-    def discovered_door_ids(self) -> Set[str]:
-        return self._discovered_door_ids_atom.value
+    def discovered_ids(self) -> Set[str]:
+        return self._discovered_ids_atom.value
 
-    @discovered_door_ids.setter
-    def discovered_door_ids(self, value: Set[str]):
-        self._discovered_door_ids_atom.update(value)
+    @discovered_ids.setter
+    def discovered_ids(self, value: Set[str]):
+        self._discovered_ids_atom.update(value)
 
     @property
     def fow_disabled(self) -> bool:
@@ -256,7 +256,7 @@ class WorldState:
     def fow_version(self) -> int:
         return max(
             self._fow_mask_atom.timestamp,
-            self._discovered_door_ids_atom.timestamp,
+            self._discovered_ids_atom.timestamp,
             self._fow_disabled_atom.timestamp,
         )
 

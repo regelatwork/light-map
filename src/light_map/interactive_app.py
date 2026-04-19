@@ -730,10 +730,10 @@ class InteractiveApp:
 
                 # 5. Invalidate Layer Caches
                 state.fow_mask = self.fow_manager.explored_mask.copy()
-                state.discovered_door_ids = set(self.fow_manager.discovered_door_ids)
+                state.discovered_ids = set(self.fow_manager.discovered_ids)
                 if state is not self.state:
                     self.state.fow_mask = self.fow_manager.explored_mask.copy()
-                    self.state.discovered_door_ids = set(self.fow_manager.discovered_door_ids)
+                    self.state.discovered_ids = set(self.fow_manager.discovered_ids)
 
     def _rebuild_visibility_stack(self, entry: Any):
         """Re-initializes visibility engine and layers based on map configuration."""
@@ -857,7 +857,7 @@ class InteractiveApp:
         if self.fow_manager:
             self.state.visibility_mask = self.fow_manager.visible_mask.copy()
             self.state.fow_mask = self.fow_manager.explored_mask.copy()
-            self.state.discovered_door_ids = set(self.fow_manager.discovered_door_ids)
+            self.state.discovered_ids = set(self.fow_manager.discovered_ids)
 
         # Calculate and set base scale (1:1 zoom level)
         self.refresh_base_scale()

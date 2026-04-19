@@ -64,7 +64,7 @@ class DoorLayer(Layer):
         YELLOW = (0, 255, 255, 255)
         BLACK = (0, 0, 0, 255)
 
-        discovered_ids = self.state.discovered_door_ids
+        discovered_ids = self.state.discovered_ids
 
         for blocker in self.state.blockers:
             if blocker.type != VisibilityType.DOOR:

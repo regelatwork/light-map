@@ -54,7 +54,7 @@ def mock_app():
         app.fow_manager.width = 10
         app.fow_manager.height = 10
         app.fow_manager.visible_mask = np.zeros((10, 10), dtype=np.uint8)
-        app.fow_manager.discovered_door_ids = set()
+        app.fow_manager.discovered_ids = set()
 
         return app
 

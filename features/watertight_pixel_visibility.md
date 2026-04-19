@@ -28,7 +28,15 @@ Vision is calculated using a custom Cartesian BFS propagation:
 1. **Straight-Line LOS:** Each candidate pixel must have an unobstructed straight line (verified against the Blocker Mask) to at least one pixel on the token's footprint perimeter.
 1. **Watertightness:** The combination of 2px round-capped walls and pixel-precise LOS checks ensures zero light leakage.
 
-## 3. Technical Specifications
+## 3. Advanced Visibility: Tall Object Blockers (Design Phase)
+
+Tall Objects (e.g., buildings, plateaus) represent a special class of blocker that is visible on top but obscures what lies behind it.
+
+- **Extraction:** Detected via SVG layers named with "tall" and "object".
+- **The "First Exit" Rule:** A Line-of-Sight (LOS) check is blocked if it transitions from a Tall area to an Open area, UNLESS that transition is the very first one in the line's journey (allowing a viewer on high ground to see down).
+- **High Ground:** Tokens standing within a tall object area ignore the "First Exit" block for that specific elevation, enabling natural plateau-to-valley visibility.
+
+## 4. Technical Specifications
 
 ### 3.1 Performance & Workflow
 

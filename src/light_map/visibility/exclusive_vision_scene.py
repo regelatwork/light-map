@@ -187,7 +187,7 @@ class ExclusiveVisionScene(BaseMapScene):
             engine = self.context.visibility_engine
             mask_w, mask_h = engine.width, engine.height
 
-            token_mask = engine.get_token_vision_mask(
+            token_mask, _ = engine.get_token_vision_mask(
                 self.token_id,
                 target_token.world_x,
                 target_token.world_y,

@@ -233,7 +233,22 @@ class VisibilityEngine:
             self.blocker_mask = np.zeros((mask_height, mask_width), dtype=np.uint8)
             self.blocker_id_map = np.full((mask_height, mask_width), -1, dtype=np.int32)
 
-        for idx, blocker in enumerate(blockers):
+        # Priority sorting: TALL_OBJECT (0) -> DOOR (1) -> WALL (2)
+        # Opaque walls MUST be rendered last to ensure they aren't overwritten by tall object surfaces.
+        priority = {
+            VisibilityType.TALL_OBJECT: 0,
+            VisibilityType.DOOR: 1,
+            VisibilityType.WALL: 2,
+        }
+        
+        # Sort indices of blockers based on their priority
+        sorted_indices = sorted(
+            range(len(blockers)),
+            key=lambda i: priority.get(blockers[i].type, 2)
+        )
+
+        for idx in sorted_indices:
+            blocker = blockers[idx]
             points = blocker.points
             if len(points) < 2:
                 continue

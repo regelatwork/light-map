@@ -27,6 +27,7 @@ export enum VisibilityType {
   DOOR = 'door',
   WINDOW = 'window',
   TALL_OBJECT = 'tall_object',
+  LOW_OBJECT = 'low_object',
 }
 
 export enum ResultType {

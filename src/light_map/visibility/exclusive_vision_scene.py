@@ -85,6 +85,7 @@ class ExclusiveVisionScene(BaseMapScene):
                 lm.aruco_mask_layer,
                 lm.hand_mask_layer,
                 lm.token_layer,
+                lm.tactical_overlay_layer,
                 lm.menu_layer,
                 lm.notification_layer,
                 lm.debug_layer,
@@ -197,6 +198,34 @@ class ExclusiveVisionScene(BaseMapScene):
                 mask_height=mask_h,
             )
             self.context.inspected_token_mask = token_mask
+            
+            # --- TACTICAL COVER CALCULATION ---
+            # Calculate bonuses for all visible tokens from the source vantage
+            if self.context.state:
+                # 1. Reset all bonuses first
+                for t in self.context.state.tokens:
+                    t.cover_bonus = 0
+                    t.reflex_bonus = 0
+                
+                # 2. Calculate for visible tokens
+                for t in self.context.state.tokens:
+                    if t.id == self.token_id:
+                        continue
+                    
+                    # Check if token is visible in the mask
+                    tx = int(t.world_x * engine.svg_to_mask_scale)
+                    ty = int(t.world_y * engine.svg_to_mask_scale)
+                    if 0 <= tx < mask_w and 0 <= ty < mask_h:
+                        if token_mask[ty, tx] > 0:
+                            # Calculate bonuses
+                            ac, reflex = engine.calculate_token_cover_bonuses(
+                                target_token, t
+                            )
+                            t.cover_bonus = ac
+                            t.reflex_bonus = reflex
+                
+                # Trigger state update
+                self.context.state.tokens = self.context.state.tokens
 
     def render(self, frame: np.ndarray) -> np.ndarray:
         return frame

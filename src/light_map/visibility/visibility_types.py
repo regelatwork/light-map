@@ -12,6 +12,7 @@ class VisibilityType(StrEnum):
     DOOR = "door"
     WINDOW = "window"
     TALL_OBJECT = "tall_object"
+    LOW_OBJECT = "low_object"
 
 
 @dataclass

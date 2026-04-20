@@ -1,6 +1,4 @@
-import numpy as np
-import pytest
-from light_map.visibility.visibility_engine import VisibilityEngine, MASK_VALUE_TALL, MASK_VALUE_WALL
+from light_map.visibility.visibility_engine import VisibilityEngine, MASK_VALUE_WALL
 from light_map.visibility.visibility_types import VisibilityType, VisibilityBlocker
 
 def test_wall_priority_over_tall_object():

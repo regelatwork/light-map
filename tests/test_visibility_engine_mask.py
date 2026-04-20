@@ -1,6 +1,4 @@
-import numpy as np
-import pytest
-from light_map.visibility.visibility_engine import VisibilityEngine, MASK_VALUE_TALL
+from light_map.visibility.visibility_engine import VisibilityEngine
 from light_map.visibility.visibility_types import VisibilityBlocker, VisibilityType
 
 def test_tall_object_mask_rendering():

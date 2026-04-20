@@ -61,4 +61,6 @@ def get_visibility_type(label: str) -> Tuple[Optional[VisibilityType], bool]:
         return VisibilityType.WINDOW, "unbreakable" in id_lower
     if "tall" in id_lower and "object" in id_lower:
         return VisibilityType.TALL_OBJECT, False
+    if "low" in id_lower and "object" in id_lower:
+        return VisibilityType.LOW_OBJECT, False
     return None, False

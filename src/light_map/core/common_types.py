@@ -518,6 +518,8 @@ class Token:
     profile: Optional[str] = None
     size: Optional[int] = None
     height_mm: Optional[float] = None
+    cover_bonus: int = 0
+    reflex_bonus: int = 0
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -541,6 +543,8 @@ class Token:
             "profile": self.profile,
             "size": self.size,
             "height_mm": self.height_mm,
+            "cover_bonus": self.cover_bonus,
+            "reflex_bonus": self.reflex_bonus,
         }
 
 

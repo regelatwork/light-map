@@ -40,7 +40,7 @@ def extract_visibility_blocker(
         elif isinstance(segment, svgelements.Close) and points:
             points.append((segment.end.x, segment.end.y))
 
-    if v_type == VisibilityType.TALL_OBJECT and points:
+    if v_type in (VisibilityType.TALL_OBJECT, VisibilityType.LOW_OBJECT) and points:
         if points[0] != points[-1]:
             points.append(points[0])
 

@@ -21,6 +21,7 @@ from light_map.rendering.layers.selection_progress_layer import SelectionProgres
 from light_map.rendering.layers.flash_layer import FlashLayer
 from light_map.rendering.layers.map_grid_layer import MapGridLayer
 from light_map.rendering.layers.calibration_layer import CalibrationLayer
+from light_map.rendering.layers.tactical_overlay_layer import TacticalOverlayLayer
 from light_map.core.common_types import Layer, CompositeLayer
 
 if TYPE_CHECKING:
@@ -61,6 +62,7 @@ class LayerStackManager:
         self.debug_layer = DebugLayer(state, context)
         self.selection_progress_layer = SelectionProgressLayer(state, context)
         self.cursor_layer = CursorLayer(state, context)
+        self.tactical_overlay_layer = TacticalOverlayLayer(state)
 
         # Calibration-related Layers
         self.flash_layer = FlashLayer(state, config.width, config.height)
@@ -150,6 +152,7 @@ class LayerStackManager:
             self.debug_layer,
             self.selection_progress_layer,
             self.cursor_layer,
+            self.tactical_overlay_layer,
             self.flash_layer,
             self.map_grid_layer,
             self.calibration_layer,

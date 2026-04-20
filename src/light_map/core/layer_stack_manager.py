@@ -62,7 +62,7 @@ class LayerStackManager:
         self.debug_layer = DebugLayer(state, context)
         self.selection_progress_layer = SelectionProgressLayer(state, context)
         self.cursor_layer = CursorLayer(state, context)
-        self.tactical_overlay_layer = TacticalOverlayLayer(state)
+        self.tactical_overlay_layer = TacticalOverlayLayer(state, context.map_system)
 
         # Calibration-related Layers
         self.flash_layer = FlashLayer(state, config.width, config.height)

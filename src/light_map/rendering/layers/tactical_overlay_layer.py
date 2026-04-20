@@ -5,6 +5,7 @@ from light_map.core.common_types import ImagePatch, Layer, LayerMode
 
 if TYPE_CHECKING:
     from light_map.state.world_state import WorldState
+    from light_map.map.map_system import MapSystem
 
 
 class TacticalOverlayLayer(Layer):
@@ -13,8 +14,9 @@ class TacticalOverlayLayer(Layer):
     Active during Exclusive Vision inspection.
     """
 
-    def __init__(self, state: "WorldState"):
+    def __init__(self, state: "WorldState", map_system: "MapSystem"):
         super().__init__(state=state, is_static=False, layer_mode=LayerMode.NORMAL)
+        self.map_system = map_system
 
     def get_current_version(self) -> int:
         if self.state is None:
@@ -44,13 +46,13 @@ class TacticalOverlayLayer(Layer):
             if token.id == self.state.inspected_token_id:
                 continue
                 
-            if token.screen_x is None or token.screen_y is None:
-                continue
+            # Calculate screen coordinates from world coordinates using MapSystem
+            sx, sy = self.map_system.world_to_screen(token.world_x, token.world_y)
 
             # Skip if no bonus and not Total Cover
             if token.cover_bonus == 0 and token.reflex_bonus == 0:
                 continue
-
+            
             # Determine label text
             if token.cover_bonus == -1:
                 label = "TOTAL COVER"
@@ -84,11 +86,14 @@ class TacticalOverlayLayer(Layer):
                 cv2.LINE_AA,
             )
 
+            patch_w = tw + 10
             patches.append(
                 ImagePatch(
-                    data=text_img[:lh, :tw+10],
-                    x=int(token.screen_x - tw//2),
-                    y=int(token.screen_y + 20), # Offset below token
+                    x=int(sx - patch_w // 2),
+                    y=int(sy + 20), # Offset below token
+                    width=patch_w,
+                    height=lh,
+                    data=text_img[:lh, :patch_w].copy(),
                 )
             )
             

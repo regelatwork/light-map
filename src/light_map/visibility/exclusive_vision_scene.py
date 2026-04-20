@@ -221,6 +221,11 @@ class ExclusiveVisionScene(BaseMapScene):
                             ac, reflex = engine.calculate_token_cover_bonuses(
                                 target_token, t
                             )
+                            if ac != 0 or reflex != 0:
+                                logging.info(
+                                    f"[ExclusiveVision] Cover calculated for token {t.id}: "
+                                    f"AC={ac}, Reflex={reflex}"
+                                )
                             t.cover_bonus = ac
                             t.reflex_bonus = reflex
                 

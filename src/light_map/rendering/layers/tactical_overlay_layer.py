@@ -29,11 +29,12 @@ class TacticalOverlayLayer(Layer):
     def get_current_version(self) -> int:
         if self.state is None:
             return 0
-        # Re-render if tokens or viewport change
+        # Re-render if tokens, viewport, or tactical calculations change
         return max(
             self.state.tokens_version,
             self.state.viewport_version,
             self.state.inspected_token_version,
+            self.state.tactical_version,
         )
 
     def _generate_patches(self, current_time: float) -> List[ImagePatch]:
@@ -47,6 +48,9 @@ class TacticalOverlayLayer(Layer):
         patches = []
         mask = self.state.inspected_token_mask
         mask_h, mask_w = mask.shape[:2]
+        
+        # Access tactical bonuses from dedicated state map
+        bonuses = self.state.tactical_bonuses
         
         # We need the scale to check the mask
         # visibility_engine is already in self
@@ -71,12 +75,15 @@ class TacticalOverlayLayer(Layer):
             if not is_visible:
                 continue
 
+            # Retrieve bonuses for this token
+            ac_bonus, reflex_bonus = bonuses.get(token.id, (0, 0))
+
             # Determine label text and color
-            if token.cover_bonus == -1:
+            if ac_bonus == -1:
                 label = "TOTAL COVER"
                 color = (0, 0, 255) # Red
-            elif token.cover_bonus > 0 or token.reflex_bonus > 0:
-                label = f"+{token.cover_bonus} AC / +{token.reflex_bonus} Reflex"
+            elif ac_bonus > 0 or reflex_bonus > 0:
+                label = f"+{ac_bonus} AC / +{reflex_bonus} Reflex"
                 color = (0, 255, 0) # Green
             else:
                 label = "CLEAR LOS"

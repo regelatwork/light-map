@@ -518,8 +518,6 @@ class Token:
     profile: Optional[str] = None
     size: Optional[int] = None
     height_mm: Optional[float] = None
-    cover_bonus: int = 0
-    reflex_bonus: int = 0
 
     def copy(self) -> "Token":
         return replace(self)

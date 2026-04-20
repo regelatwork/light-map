@@ -1,7 +1,7 @@
 import time
 from contextlib import contextmanager
 import numpy as np
-from typing import List, Optional, Callable, Any, Dict, Set
+from typing import List, Optional, Callable, Any, Dict, Set, Tuple
 from light_map.core.common_types import (
     Token,
     DetectionResult,
@@ -84,11 +84,15 @@ class WorldState:
         self._visibility_mask_atom = VersionedAtom(
             None, "visibility_mask", equality_fn=np.array_equal
         )
+        self._inspected_token_mask_atom = VersionedAtom(
+            None, "inspected_token_mask", equality_fn=np.array_equal
+        )
         self._show_tokens_atom = VersionedAtom(True, "show_tokens")
         self._dwell_state_atom = VersionedAtom({}, "dwell_state")
         self._summon_progress_atom = VersionedAtom(0.0, "summon_progress")
         self._selection_atom = VersionedAtom(SelectionState(), "selection")
         self._inspected_token_id_atom = VersionedAtom(None, "inspected_token_id")
+        self._tactical_bonuses_atom = VersionedAtom({}, "tactical_bonuses")
         self._grid_metadata_atom = VersionedAtom(GridMetadata(), "grid_metadata")
         self._projector_pose_atom = VersionedAtom(
             ProjectorPose(0.0, 0.0, 0.0), "projector_pose"
@@ -266,7 +270,11 @@ class WorldState:
 
     @property
     def visibility_version(self) -> int:
-        return max(self._visibility_mask_atom.timestamp, self._blockers_atom.timestamp)
+        return max(
+            self._visibility_mask_atom.timestamp,
+            self._inspected_token_mask_atom.timestamp,
+            self._blockers_atom.timestamp,
+        )
 
     @property
     def tokens_version(self) -> int:
@@ -283,6 +291,14 @@ class WorldState:
     @visibility_mask.setter
     def visibility_mask(self, value: Optional[np.ndarray]):
         self._visibility_mask_atom.update(value)
+
+    @property
+    def inspected_token_mask(self) -> Optional[np.ndarray]:
+        return self._inspected_token_mask_atom.value
+
+    @inspected_token_mask.setter
+    def inspected_token_mask(self, value: Optional[np.ndarray]):
+        self._inspected_token_mask_atom.update(value)
 
     @property
     def effective_show_tokens(self) -> bool:
@@ -323,6 +339,14 @@ class WorldState:
     @inspected_token_id.setter
     def inspected_token_id(self, value: Optional[int]):
         self._inspected_token_id_atom.update(value)
+
+    @property
+    def tactical_bonuses(self) -> Dict[int, Tuple[int, int]]:
+        return self._tactical_bonuses_atom.value
+
+    @tactical_bonuses.setter
+    def tactical_bonuses(self, value: Dict[int, Tuple[int, int]]):
+        self._tactical_bonuses_atom.update(value)
 
     @property
     def config_version(self) -> int:
@@ -493,6 +517,10 @@ class WorldState:
     @property
     def summon_progress_version(self) -> int:
         return self._summon_progress_atom.timestamp
+
+    @property
+    def tactical_version(self) -> int:
+        return self._tactical_bonuses_atom.timestamp
 
     @property
     def selection_version(self) -> int:
@@ -787,6 +815,7 @@ class WorldState:
             ],
             "dwell_state": self.dwell_state,
             "summon_progress": self.summon_progress,
+            "tactical_bonuses": self.tactical_bonuses,
             "grid_spacing_svg": self.grid_spacing_svg,
             "grid_origin_svg_x": self.grid_origin_svg_x,
             "grid_origin_svg_y": self.grid_origin_svg_y,

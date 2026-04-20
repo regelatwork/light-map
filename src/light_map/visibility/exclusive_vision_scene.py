@@ -57,6 +57,7 @@ class ExclusiveVisionScene(BaseMapScene):
         self.context.inspected_token_mask = None
         if self.context.state:
             self.context.state.inspected_token_id = None
+            self.context.state.inspected_token_mask = None
         self.context.events.cancel(TimerKey.INSPECTION_LINGER)
         logging.info("Exited ExclusiveVisionScene")
 
@@ -197,17 +198,17 @@ class ExclusiveVisionScene(BaseMapScene):
                 mask_width=mask_w,
                 mask_height=mask_h,
             )
+            
+            if self.context.state:
+                self.context.state.inspected_token_mask = token_mask
+            
             self.context.inspected_token_mask = token_mask
             
             # --- TACTICAL COVER CALCULATION ---
             # Calculate bonuses for all visible tokens from the source vantage
             if self.context.state:
-                # 1. Reset all bonuses first
-                for t in self.context.state.tokens:
-                    t.cover_bonus = 0
-                    t.reflex_bonus = 0
+                new_bonuses = {}
                 
-                # 2. Calculate for visible tokens
                 for t in self.context.state.tokens:
                     if t.id == self.token_id:
                         continue
@@ -226,11 +227,13 @@ class ExclusiveVisionScene(BaseMapScene):
                                     f"[ExclusiveVision] Cover calculated for token {t.id}: "
                                     f"AC={ac}, Reflex={reflex}"
                                 )
-                            t.cover_bonus = ac
-                            t.reflex_bonus = reflex
+                            elif ac == 0 and reflex == 0:
+                                logging.info(f"[ExclusiveVision] Clear LOS for token {t.id}")
+                                
+                            new_bonuses[t.id] = (ac, reflex)
                 
-                # Trigger state update
-                self.context.state.tokens = self.context.state.tokens
+                # Update state atom; VersionedAtom will handle equality check
+                self.context.state.tactical_bonuses = new_bonuses
 
     def render(self, frame: np.ndarray) -> np.ndarray:
         return frame

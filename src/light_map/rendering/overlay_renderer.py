@@ -59,7 +59,8 @@ class OverlayRenderer:
             if w <= 0 or h <= 0:
                 continue
 
-            token_buffer = np.zeros((h, w, 3), dtype=np.uint8)
+            # --- CHANGE: USE 4 CHANNELS ---
+            token_buffer = np.zeros((h, w, 4), dtype=np.uint8)
             # Local coordinates
             lsx, lsy = int(sx) - x1, int(sy) - y1
 
@@ -82,30 +83,31 @@ class OverlayRenderer:
                 alpha_pulse = 0.2 + 0.8 * pulse
                 color = tuple(int(c * alpha_pulse) for c in color)
 
+            # Draw token circle
             if t.is_duplicate:
-                draw_dashed_circle(token_buffer, (lsx, lsy), radius, color, 2)
+                draw_dashed_circle(token_buffer, (lsx, lsy), radius, (*color, 255), 2)
                 draw_text_with_background(
                     token_buffer,
                     "DUPLICATE",
                     (lsx - radius, lsy + radius + 20),
                     cv2.FONT_HERSHEY_SIMPLEX,
                     0.5,
-                    color,
+                    (*color, 255),
                     1,
                 )
             elif not resolved.is_known:
-                draw_dashed_circle(token_buffer, (lsx, lsy), radius, color, 2)
+                draw_dashed_circle(token_buffer, (lsx, lsy), radius, (*color, 255), 2)
                 cv2.putText(
                     token_buffer,
                     "?",
                     (lsx - 8, lsy + 10),
                     cv2.FONT_HERSHEY_SIMPLEX,
                     0.8,
-                    color,
+                    (*color, 255),
                     2,
                 )
             else:
-                cv2.circle(token_buffer, (lsx, lsy), radius, color, 2)
+                cv2.circle(token_buffer, (lsx, lsy), radius, (*color, 255), 2)
 
             draw_text_with_background(
                 token_buffer,
@@ -113,13 +115,13 @@ class OverlayRenderer:
                 (lsx - radius, lsy + radius + 25),
                 cv2.FONT_HERSHEY_SIMPLEX,
                 0.5,
-                color,
+                (*color, 255),
                 1,
                 bg_color=(0, 0, 0),
                 alpha=0.8,
             )
 
-            patches.append(self._create_patch_from_buffer(token_buffer, x1, y1))
+            patches.append(ImagePatch(x=x1, y=y1, width=w, height=h, data=token_buffer))
 
         return patches
 
@@ -133,19 +135,21 @@ class OverlayRenderer:
 
         # 1. Main Debug info (Top Left)
         text = f"FPS: {int(fps)} | Scene: {current_scene_name}"
+        (tw, th), baseline = cv2.getTextSize(cv2.FONT_HERSHEY_SIMPLEX, 1, 2) # Wait, param order is wrong in text size for some reason? No, it's (text, font, scale, thickness)
+        # Fix text size call
         (tw, th), baseline = cv2.getTextSize(text, cv2.FONT_HERSHEY_SIMPLEX, 1, 2)
         debug_w, debug_h = tw + 20, th + baseline + 20
-        debug_buffer = np.zeros((debug_h, debug_w, 3), dtype=np.uint8)
+        debug_buffer = np.zeros((debug_h, debug_w, 4), dtype=np.uint8)
         draw_text_with_background(
             debug_buffer,
             text,
             (10, th + 10),
             cv2.FONT_HERSHEY_SIMPLEX,
             1,
-            (0, 0, 255),
+            (0, 0, 255, 255),
             2,
         )
-        patches.append(self._create_patch_from_buffer(debug_buffer, 50, 40))
+        patches.append(ImagePatch(x=50, y=40, width=debug_w, height=debug_h, data=debug_buffer))
 
         # 2. Hand inputs
         for hand_input in inputs:
@@ -153,26 +157,26 @@ class OverlayRenderer:
             label = hand_input.gesture.name
 
             # Draw a small yellow dot at the physical tip (projected)
-            hand_buffer = np.zeros((30, 30, 3), dtype=np.uint8)
-            cv2.circle(hand_buffer, (15, 15), 5, (0, 255, 255), -1)
+            hand_buffer = np.zeros((30, 30, 4), dtype=np.uint8)
+            cv2.circle(hand_buffer, (15, 15), 5, (0, 255, 255, 255), -1)
             patches.append(
-                self._create_patch_from_buffer(hand_buffer, px - 15, py - 15)
+                ImagePatch(x=px - 15, y=py - 15, width=30, height=30, data=hand_buffer)
             )
 
             # Draw label above it
             (lw, lh), _ = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, 0.5, 1)
-            label_buffer = np.zeros((lh + 10, lw + 10, 3), dtype=np.uint8)
+            label_buffer = np.zeros((lh + 10, lw + 10, 4), dtype=np.uint8)
             draw_text_with_background(
                 label_buffer,
                 label,
                 (5, lh + 5),
                 cv2.FONT_HERSHEY_SIMPLEX,
                 0.5,
-                (0, 255, 255),
+                (0, 255, 255, 255),
                 1,
             )
             patches.append(
-                self._create_patch_from_buffer(label_buffer, px - lw // 2, py - 30 - lh)
+                ImagePatch(x=px - lw // 2, y=py - 30 - lh, width=lw + 10, height=lh + 10, data=label_buffer)
             )
 
         return patches
@@ -183,8 +187,8 @@ class OverlayRenderer:
         if not notifications:
             # Return an empty patch at the notification location to clear it
             # This is critical for the layered renderer to know it should clear the cache.
-            empty = np.zeros((1, 1, 3), dtype=np.uint8)
-            patches.append(self._create_patch_from_buffer(empty, 50, 100))
+            empty = np.zeros((1, 1, 4), dtype=np.uint8)
+            patches.append(ImagePatch(x=50, y=100, width=1, height=1, data=empty))
             return patches
 
         # For simplicity, render all active notifications in one patch
@@ -196,7 +200,7 @@ class OverlayRenderer:
 
         h_per_msg = 40
         total_h = len(notifications) * h_per_msg + 20
-        buffer = np.zeros((total_h, max_w, 3), dtype=np.uint8)
+        buffer = np.zeros((total_h, max_w, 4), dtype=np.uint8)
 
         for i, msg in enumerate(notifications):
             draw_text_with_background(
@@ -205,9 +209,9 @@ class OverlayRenderer:
                 (10, 30 + i * h_per_msg),
                 cv2.FONT_HERSHEY_SIMPLEX,
                 1,
-                (0, 255, 255),
+                (0, 255, 255, 255),
                 2,
             )
 
-        patches.append(self._create_patch_from_buffer(buffer, 50, 100))
+        patches.append(ImagePatch(x=50, y=100, width=max_w, height=total_h, data=buffer))
         return patches

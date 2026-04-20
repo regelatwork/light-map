@@ -101,7 +101,7 @@ def draw_text_with_background(
     color=(255, 255, 255),
     thickness=1,
     bg_color=(0, 0, 0),
-    alpha=0.6,
+    alpha=0.75,
     padding=5,
 ):
     """Draws text with a semi-transparent rectangular background."""
@@ -127,25 +127,37 @@ def draw_text_with_background(
         cv2.putText(img, text, (x, y), font, scale, color, thickness)
         return
 
-    # Draw background with alpha blending
-    sub_img = img[bg_rect_y1:bg_rect_y2, bg_rect_x1:bg_rect_x2]
-
-    # Ensure colors match channel count (BGR or BGRA)
+    # Draw background
     channels = img.shape[2]
     if channels == 4:
-        # If color is 3-tuple, append alpha=255. If already 4-tuple, keep as is.
-        full_bg_color = bg_color if len(bg_color) == 4 else tuple(bg_color) + (255,)
-        full_text_color = color if len(color) == 4 else tuple(color) + (255,)
+        # For 4-channel (BGRA), we set the background color and alpha directly
+        # to ensure it's preserved in the patch.
+        bg_bgr = bg_color[:3]
+        bg_alpha = int(alpha * 255)
+        
+        # We blend the background box with whatever is already in the buffer
+        # using a manual blend to ensure the alpha is handled correctly.
+        roi = img[bg_rect_y1:bg_rect_y2, bg_rect_x1:bg_rect_x2]
+        
+        # Source (the box we are drawing)
+        src_alpha = bg_alpha
+        
+        # Simple blend: src * alpha + dst * (1-alpha)
+        # Note: Since this is usually a fresh buffer, dst is 0.
+        roi[:, :, :3] = (roi[:, :, :3].astype(np.uint16) * (255 - src_alpha) // 255 + 
+                         np.array(bg_bgr, dtype=np.uint16) * src_alpha // 255).astype(np.uint8)
+        
+        # For alpha, we take the maximum of current and new alpha (non-additive for UI boxes)
+        roi[:, :, 3] = np.maximum(roi[:, :, 3], src_alpha)
     else:
-        # For 3-channel images, use only the first 3 components of the color
-        full_bg_color = bg_color[:3] if len(bg_color) > 3 else bg_color
-        full_text_color = color[:3] if len(color) > 3 else color
-
-    rect = np.full(sub_img.shape, full_bg_color, dtype=np.uint8)
-    res = cv2.addWeighted(sub_img, 1 - alpha, rect, alpha, 0)
-    img[bg_rect_y1:bg_rect_y2, bg_rect_x1:bg_rect_x2] = res
+        # For 3-channel (BGR), use standard addWeighted
+        sub_img = img[bg_rect_y1:bg_rect_y2, bg_rect_x1:bg_rect_x2]
+        rect = np.full(sub_img.shape, bg_color[:3], dtype=np.uint8)
+        res = cv2.addWeighted(sub_img, 1 - alpha, rect, alpha, 0)
+        img[bg_rect_y1:bg_rect_y2, bg_rect_x1:bg_rect_x2] = res
 
     # Draw text
+    full_text_color = color if len(color) == channels else (tuple(color) + (255,) if channels == 4 else color[:3])
     cv2.putText(img, text, (x, y), font, scale, full_text_color, thickness)
 
 

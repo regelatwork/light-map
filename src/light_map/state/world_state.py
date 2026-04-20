@@ -499,6 +499,10 @@ class WorldState:
         return self._selection_atom.timestamp
 
     @property
+    def inspected_token_version(self) -> int:
+        return self._inspected_token_id_atom.timestamp
+
+    @property
     def projector_pose_version(self) -> int:
         return self._projector_pose_atom.timestamp
 
@@ -802,6 +806,7 @@ class WorldState:
             "dwell_state_version": self.dwell_state_version,
             "summon_progress_version": self.summon_progress_version,
             "selection_version": self.selection_version,
+            "inspected_token_version": self.inspected_token_version,
             "projector_pose_version": self.projector_pose_version,
             "grid_metadata_version": self.grid_metadata_version,
             "system_time": self.system_time,

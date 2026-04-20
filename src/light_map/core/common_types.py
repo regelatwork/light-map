@@ -4,7 +4,7 @@ from __future__ import annotations
 # Changes here MUST be kept in sync with the frontend.
 # This is enforced by tests/test_enum_sync.py.
 from enum import StrEnum
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import Any, List, Optional, Tuple, Dict, TYPE_CHECKING
 from abc import ABC, abstractmethod
 
@@ -520,6 +520,9 @@ class Token:
     height_mm: Optional[float] = None
     cover_bonus: int = 0
     reflex_bonus: int = 0
+
+    def copy(self) -> "Token":
+        return replace(self)
 
     def to_dict(self) -> Dict[str, Any]:
         return {

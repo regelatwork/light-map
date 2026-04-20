@@ -544,8 +544,6 @@ class Token:
             "profile": self.profile,
             "size": self.size,
             "height_mm": self.height_mm,
-            "cover_bonus": self.cover_bonus,
-            "reflex_bonus": self.reflex_bonus,
         }
 
 

@@ -135,11 +135,7 @@ class OverlayRenderer:
 
         # 1. Main Debug info (Top Left)
         text = f"FPS: {int(fps)} | Scene: {current_scene_name}"
-        (tw, th), baseline = cv2.getTextSize(
-            cv2.FONT_HERSHEY_SIMPLEX, 1, 2
-        )  # Wait, param order is wrong in text size for some reason? No, it's (text, font, scale, thickness)
-        # Fix text size call
-        (tw, th), baseline = cv2.getTextSize(text, cv2.FONT_HERSHEY_SIMPLEX, 1, 2)
+        (tw, th), baseline = cv2.getTextSize(text, cv2.FONT_HERSHEY_SIMPLEX, 0.5, 1)
         debug_w, debug_h = tw + 20, th + baseline + 20
         debug_buffer = np.zeros((debug_h, debug_w, 4), dtype=np.uint8)
         draw_text_with_background(

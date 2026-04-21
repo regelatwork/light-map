@@ -75,43 +75,61 @@ if HAS_NUMBA:
     @njit(cache=True)
     def _numba_calculate_cover_grade(
         npc_pixels: np.ndarray, pc_pixels: np.ndarray, blocker_mask: np.ndarray
-    ) -> float:
+    ) -> Tuple[float, float]:
         """
-        Calculates the percentage of NPC boundary pixels that are obscured.
-        N^2 logic: for each NPC pixel, find the best vantage from PC pixels.
+        Calculates:
+        1. total_ratio: percentage of NPC boundary pixels obscured (Wall or Low).
+        2. wall_ratio: percentage of NPC boundary pixels blocked by WALLS/DOORS.
+        Starfinder 1e: Attacker chooses ONE corner that sees as much as possible.
         """
         num_npc = len(npc_pixels)
-        if num_npc == 0:
-            return 0.0
+        num_pc = len(pc_pixels)
+        if num_npc == 0 or num_pc == 0:
+            return 0.0, 0.0
 
-        obscured_count = 0
-        visible_count = 0
-        for i in range(num_npc):
-            nx, ny = npc_pixels[i, 0], npc_pixels[i, 1]
+        min_total_ratio = 1.0
+        min_wall_ratio = 1.0
+        found_any_loe = False
 
-            best_status = 1  # Start with Blocked
+        # For each Attacker corner
+        for j in range(num_pc):
+            px, py = pc_pixels[j, 0], pc_pixels[j, 1]
 
-            for j in range(len(pc_pixels)):
-                px, py = pc_pixels[j, 0], pc_pixels[j, 1]
+            obscured_count = 0
+            wall_count = 0
+            has_any_loe_from_this_corner = False
 
+            for i in range(num_npc):
+                nx, ny = npc_pixels[i, 0], npc_pixels[i, 1]
                 status = _numba_trace_path(nx, ny, px, py, blocker_mask)
 
-                if status == 0:  # Clear path found (best possible)
-                    best_status = 0
-                    break
-                elif status == 2:  # Obscured path
-                    best_status = 2
-                    # Don't break, might find a Clear (0) path
-
-            if best_status != 1:
-                visible_count += 1
-                if best_status == 2:
+                # status: 0=Clear, 1=Blocked(Wall), 2=Obscured(Low)
+                if status != 0:
                     obscured_count += 1
+                    if status == 1:
+                        wall_count += 1
 
-        if visible_count == 0:
-            return -1.0  # Total Cover (No LOS)
+                if status != 1:  # Clear or Low Object both allow Line of Effect
+                    has_any_loe_from_this_corner = True
 
-        return obscured_count / visible_count
+            if has_any_loe_from_this_corner:
+                found_any_loe = True
+                total_ratio = obscured_count / num_npc
+                wall_ratio = wall_count / num_npc
+
+                # Selection Logic:
+                # We want the corner that has the best view (lowest wall ratio).
+                # If wall ratios are equal, choose the one with less total obstruction.
+                if wall_ratio < min_wall_ratio or (
+                    wall_ratio == min_wall_ratio and total_ratio < min_total_ratio
+                ):
+                    min_wall_ratio = wall_ratio
+                    min_total_ratio = total_ratio
+
+        if not found_any_loe:
+            return -1.0, -1.0
+
+        return min_total_ratio, min_wall_ratio
 
     @njit(cache=True)
     def _numba_is_line_obstructed(
@@ -402,6 +420,7 @@ class VisibilityEngine:
         cy_mask: int,
         size: int,
         grid_type: GridType = GridType.SQUARE,
+        ignore_blockers: bool = False,
     ) -> Tuple[np.ndarray, np.ndarray]:
         """
         Calculates the token's 'light source' footprint.
@@ -466,6 +485,8 @@ class VisibilityEngine:
 
         # 2. BFS Flood Fill within boundaries
         queue = deque([(cy_mask, cx_mask)])
+        visited = np.zeros((h, w), dtype=bool)
+        visited[cy_mask, cx_mask] = True
         footprint[cy_mask, cx_mask] = 255
 
         while queue:
@@ -474,21 +495,26 @@ class VisibilityEngine:
             for dy, dx in [(0, 1), (0, -1), (1, 0), (-1, 0)]:
                 ny, nx = y + dy, x + dx
 
-                if 0 <= nx < w and 0 <= ny < h:
-                    if footprint[ny, nx] == 0:
-                        # Check Plane boundaries
-                        is_inside = True
-                        for i in range(cell_planes.shape[0]):
-                            if (
-                                cell_planes[i, 0] * nx
-                                + cell_planes[i, 1] * ny
-                                + cell_planes[i, 2]
-                                > 0
-                            ):
-                                is_inside = False
-                                break
+                if 0 <= nx < w and 0 <= ny < h and not visited[ny, nx]:
+                    visited[ny, nx] = True
 
-                        if is_inside:
+                    # Check Plane boundaries
+                    is_inside = True
+                    for i in range(cell_planes.shape[0]):
+                        if (
+                            cell_planes[i, 0] * nx
+                            + cell_planes[i, 1] * ny
+                            + cell_planes[i, 2]
+                            > 0
+                        ):
+                            is_inside = False
+                            break
+
+                    if is_inside:
+                        if ignore_blockers:
+                            footprint[ny, nx] = 255
+                            queue.append((ny, nx))
+                        else:
                             # Standard blocker check for abutting walls
                             # Tokens can stand on empty space or tall objects
                             val = self.blocker_mask[ny, nx]
@@ -524,8 +550,9 @@ class VisibilityEngine:
         size = token.size if token.size is not None else 1
 
         # Grid type default to SQUARE for cover logic
+        # ignore_blockers=True ensures we get the FULL footprint even if part is behind a wall
         footprint, _ = self._calculate_token_footprint_with_planes(
-            cx_mask, cy_mask, size, GridType.SQUARE
+            cx_mask, cy_mask, size, GridType.SQUARE, ignore_blockers=True
         )
         border_points = self._get_footprint_border_points(footprint)
 
@@ -553,7 +580,7 @@ class VisibilityEngine:
 
         # 2. Use Numba-optimized cover grade calculation
         if HAS_NUMBA:
-            cover_grade = _numba_calculate_cover_grade(
+            total_ratio, wall_ratio = _numba_calculate_cover_grade(
                 npc_pixels, pc_pixels, self.blocker_mask
             )
         else:
@@ -561,18 +588,26 @@ class VisibilityEngine:
             return 0, 0
 
         # 3. Map cover grade to Starfinder 1e bonuses
-        # Grade -1.0 means Total Cover (No LOS)
-        if cover_grade < 0:
-            return -1, -1  # Indicates Total Cover
+        # Ratio -1.0 means Total Cover (No Line of Effect)
+        if total_ratio < 0:
+            return -1, -1
 
-        if cover_grade >= 0.90:
-            return 8, 4  # Improved Cover
-        elif cover_grade >= 0.50:
-            return 4, 2  # Standard Cover
-        elif cover_grade > 0.0:
-            return 2, 1  # Partial Cover
-        else:
-            return 0, 0
+        # Improved Cover (+8 AC / +4 Reflex)
+        # Starfinder: 'almost completely hidden', e.g. arrow slit or peeking.
+        # Rule: requires 90%+ of the target to be behind a solid WALL or DOOR.
+        if wall_ratio >= 0.90:
+            return 8, 4
+
+        # Standard Cover (+4 AC / +2 Reflex)
+        # Rule: 20%+ obscured by anything (Low or Wall).
+        if total_ratio >= 0.20:
+            return 4, 2
+
+        # Partial Cover (+2 AC / +1 Reflex)
+        if total_ratio > 0.0:
+            return 2, 1
+
+        return 0, 0
 
     def _is_line_obstructed(self, p1: Tuple[int, int], p2: Tuple[int, int]) -> bool:
         """

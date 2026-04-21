@@ -191,6 +191,7 @@ class ExclusiveVisionScene(BaseMapScene):
 
         engine = self.context.visibility_engine
         mask_w, mask_h = engine.width, engine.height
+        spacing = engine.grid_spacing_svg
 
         token_mask, _ = engine.get_token_vision_mask(
             self.token_id,
@@ -240,49 +241,47 @@ class ExclusiveVisionScene(BaseMapScene):
                 # Tactical Rule:
                 # 1. If we inspect a PC, calculate cover for all visible tokens (mostly NPCs).
                 # 2. If we inspect an NPC, calculate cover ONLY for visible PCs.
-                if not is_inspected_pc and not is_other_pc:
-                    # logging.debug(f"[ExclusiveVision] Skipping NPC-to-NPC: {self.token_id} to {t.id}")
+                is_enemy = (is_inspected_pc and not is_other_pc) or (
+                    not is_inspected_pc and is_other_pc
+                )
+                if not is_enemy:
+                    # logging.debug(f"[ExclusiveVision] Skipping non-enemy: {self.token_id} to {t.id}")
                     continue
 
-                # Check if token is visible in the mask (Searchlight check)
-                # World units -> Mask units
-                tx = int(t.world_x * engine.svg_to_mask_scale)
-                ty = int(t.world_y * engine.svg_to_mask_scale)
-
-                is_in_searchlight = False
-                if 0 <= tx < mask_w and 0 <= ty < mask_h:
-                    # Check 3x3 neighborhood for robustness
-                    y_start = max(0, ty - 1)
-                    y_end = min(mask_h, ty + 2)
-                    x_start = max(0, tx - 1)
-                    x_end = min(mask_w, tx + 2)
-                    if np.any(token_mask[y_start:y_end, x_start:x_end] > 0):
-                        is_in_searchlight = True
-
-                if not is_in_searchlight:
+                # Check if token is within reasonable tactical range (e.g. 100ft / 20 squares)
+                dist_sq = (t.world_x - target_token.world_x) ** 2 + (
+                    t.world_y - target_token.world_y
+                ) ** 2
+                max_range_svg = 20.0 * spacing  # 20 squares
+                if dist_sq > max_range_svg**2:
+                    logging.debug(
+                        f"[ExclusiveVision] Token {t.id} too far: {np.sqrt(dist_sq) / spacing:.1f} squares"
+                    )
                     continue
 
                 ac, reflex = engine.calculate_token_cover_bonuses(target_token, t)
 
-                old_ac, old_reflex = old_bonuses.get(t.id, (0, 0))
-
-                # If seen in searchlight, we log it (even if value is same as before,
-                # but we only log if it's a NEW inspection or logical change)
-                if is_in_searchlight:
-                    changed = True
-                    if ac != 0 or reflex != 0:
-                        logging.info(
-                            f"[ExclusiveVision] Cover calculated for token {t.id} ({other_profile.name}, {other_profile.type}): AC={ac}, Reflex={reflex}"
-                        )
-                    else:
-                        logging.info(
-                            f"[ExclusiveVision] LOS is clear for token {t.id} ({other_profile.name})"
-                        )
-                elif old_ac != 0 or old_reflex != 0:
-                    changed = True
+                # Log to INFO for every enemy within tactical range to verify logic
+                if ac == -1:
                     logging.info(
-                        f"[ExclusiveVision] Cover lost for token {t.id} ({other_profile.name})"
+                        f"[ExclusiveVision] Token {t.id} ({other_profile.name}): TOTAL COVER"
                     )
+                elif ac == 0:
+                    logging.info(
+                        f"[ExclusiveVision] Token {t.id} ({other_profile.name}): CLEAR LOS"
+                    )
+                else:
+                    logging.info(
+                        f"[ExclusiveVision] Token {t.id} ({other_profile.name}): AC={ac}, Reflex={reflex}"
+                    )
+
+                # Final Filter for RENDERING labels:
+                # We show labels for ALL enemies within range (already checked above)
+                # regardless of searchlight status.
+
+                old_ac, old_reflex = old_bonuses.get(t.id, (0, 0))
+                if t.id not in old_bonuses or ac != old_ac:
+                    changed = True
 
                 new_bonuses[t.id] = (ac, reflex)
 

@@ -30,22 +30,48 @@ def test_calculate_cover_bonuses_starfinder_rules():
     assert reflex == 0
 
     # --- SCENARIO 2: PARTIAL COVER (+2/+1) ---
-    # Put a small Low Object between them, close to target
-    # Obstacle at x=45. Cover y=9 to y=11 (3 pixels).
+    # Put a tiny Low Object between them, close to target
+    # 1 pixel wide. Ratio will be small.
     engine.blocker_mask[9:11, 45] = MASK_VALUE_LOW
     ac, reflex = engine.calculate_token_cover_bonuses(source, target)
     assert ac == 2
     assert reflex == 1
 
-    # --- SCENARIO 5: TOTAL COVER (-1/-1) ---
-    # Replace low object with a large Wall
+    # --- SCENARIO 3: STANDARD COVER (+4/+2) ---
+    # Larger Low Object.
+    engine.blocker_mask[5:15, 45] = MASK_VALUE_LOW
+    ac, reflex = engine.calculate_token_cover_bonuses(source, target)
+    assert ac == 4
+    assert reflex == 2
+
+    # --- SCENARIO 4: NO IMPROVED COVER FROM LOW OBJECTS ---
+    # Even if blocked 100% by Low Objects, should only be +4
+    engine.blocker_mask[0:100, 45] = MASK_VALUE_LOW
+    ac, reflex = engine.calculate_token_cover_bonuses(source, target)
+    assert ac == 4
+    assert reflex == 2
+
+    # --- SCENARIO 5: IMPROVED COVER (+8/+4) FROM WALLS ---
+    # Must be 90%+ blocked by WALLS from the BEST corner.
     engine.blocker_mask.fill(0)
-    engine.blocker_mask[0:100, 45] = MASK_VALUE_WALL
+    # Target is Medium (size 1) -> approx 64 border pixels (4 * 16).
+    # To hit 90%, we need to block approx 58 pixels.
+    # I'll block a large vertical slice and leave only 2 pixels open.
+    engine.blocker_mask[0:100, 42:58] = MASK_VALUE_WALL
+    engine.blocker_mask[10, 42:58] = 0  # 1-pixel high horizontal slit
+    ac, reflex = engine.calculate_token_cover_bonuses(source, target)
+    assert ac == 8
+    assert reflex == 4
+
+    # --- SCENARIO 6: TOTAL COVER (-1/-1) ---
+    # Massive wall, no gaps.
+    engine.blocker_mask.fill(0)
+    engine.blocker_mask[0:100, 20:80] = MASK_VALUE_WALL
     ac, reflex = engine.calculate_token_cover_bonuses(source, target)
     assert ac == -1
     assert reflex == -1
 
-    # --- SCENARIO 6: PROXIMITY RULE (NO COVER) ---
+    # --- SCENARIO 7: PROXIMITY RULE (NO COVER) ---
     # Put low object close to ATTACKER (x=15)
     engine.blocker_mask.fill(0)
     engine.blocker_mask[0:100, 15] = MASK_VALUE_LOW

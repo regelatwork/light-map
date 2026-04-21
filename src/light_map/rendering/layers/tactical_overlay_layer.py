@@ -47,50 +47,28 @@ class TacticalOverlayLayer(Layer):
             return []
 
         patches = []
-        mask = self.state.inspected_token_mask
-        mask_h, mask_w = mask.shape[:2]
 
         # Access tactical bonuses from dedicated state map
         bonuses = self.state.tactical_bonuses
-
-        # We need the scale to check the mask
-        scale = self.visibility_engine.svg_to_mask_scale
-        ppi = self.map_system.config.projector_ppi if self.map_system.config else 96.0
 
         # Combine tokens for rendering
         all_tokens = []
         all_tokens.extend(self.state.tokens)
         existing_ids = {t.id for t in all_tokens}
-        for rt in self.state.raw_tokens:
-            if rt.id not in existing_ids:
-                all_tokens.append(rt)
+        all_tokens.extend(
+            [t for t in self.map_system.ghost_tokens if t.id not in existing_ids]
+        )
 
-        # logging.debug(f"[TacticalOverlay] Generating patches for {len(all_tokens)} tokens. Inspected: {self.state.inspected_token_id}")
+        ppi = self.map_system.config.projector_ppi if self.map_system.config else 96.0
 
         for token in all_tokens:
             if token.id == self.state.inspected_token_id:
                 continue
 
-            # Check visibility in mask (Searchlight check)
-            # World units -> Mask units
-            mx = int(token.world_x * scale)
-            my = int(token.world_y * scale)
-
-            is_visible = False
-            if 0 <= mx < mask_w and 0 <= my < mask_h:
-                # Check 3x3 neighborhood for robustness
-                y_start = max(0, my - 1)
-                y_end = min(mask_h, my + 2)
-                x_start = max(0, mx - 1)
-                x_end = min(mask_w, mx + 2)
-                if np.any(mask[y_start:y_end, x_start:x_end] > 0):
-                    is_visible = True
-
-            if not is_visible:
-                continue
-
             # Retrieve bonuses for this token
-            ac_bonus, reflex_bonus = bonuses.get(token.id, (0, 0))
+            ac_bonus, reflex_bonus = bonuses.get(token.id, (None, None))
+            if ac_bonus is None:
+                continue
 
             # Determine label text and color
             if ac_bonus == -1:

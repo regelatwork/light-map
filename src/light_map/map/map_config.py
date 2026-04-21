@@ -548,7 +548,7 @@ class MapConfigManager:
             cv2.imwrite(os.path.join(storage_dir, "fow.png"), fow_manager.explored_mask)
             # Save Visible Mask (LOS)
             cv2.imwrite(os.path.join(storage_dir, "los.png"), fow_manager.visible_mask)
-            
+
             # Save Discovered Door IDs
             door_path = os.path.join(storage_dir, "discovered_doors.json")
             with open(door_path, "w") as f:

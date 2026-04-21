@@ -104,7 +104,7 @@ def test_render_flash(mock_app_context):
     with patch("time.monotonic", return_value=mock_time):
         scene.on_enter()
         scene.update([], [], mock_time)  # Move to FLASH stage
-        
+
         mock_app = MagicMock()
         mock_app.flash_layer = MagicMock()
         layers = scene.get_active_layers(mock_app)

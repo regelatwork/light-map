@@ -111,7 +111,7 @@ class BaseMapScene(Scene):
                     engine = self.context.visibility_engine
                     mask_w, mask_h = engine.width, engine.height
 
-                    token_mask = engine.get_token_vision_mask(
+                    token_mask, _ = engine.get_token_vision_mask(
                         token.id,
                         token.world_x,
                         token.world_y,

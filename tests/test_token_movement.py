@@ -35,8 +35,12 @@ def test_token_movement_propagation():
     # Ensure grid is set
     map_file = "test.svg"
     from light_map.core.common_types import GridType
+
     map_config.data.maps[map_file] = MagicMock(
-        grid_spacing_svg=100.0, grid_origin_svg_x=0.0, grid_origin_svg_y=0.0, grid_type=GridType.SQUARE
+        grid_spacing_svg=100.0,
+        grid_origin_svg_x=0.0,
+        grid_origin_svg_y=0.0,
+        grid_type=GridType.SQUARE,
     )
 
     config = AppConfig(

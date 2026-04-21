@@ -12,7 +12,7 @@ def config():
         height=1000,
         projector_matrix=np.eye(3),
         projector_ppi=100.0,
-        pointer_offset_mm=0.0, # Disable offset for simple extension test
+        pointer_offset_mm=0.0,  # Disable offset for simple extension test
     )
 
 

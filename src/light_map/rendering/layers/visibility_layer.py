@@ -1,6 +1,6 @@
 import numpy as np
 from typing import List, Optional
-from light_map.core.common_types import ImagePatch
+from light_map.core.common_types import ImagePatch, LayerMode
 from light_map.core.constants import (
     ALPHA_OPAQUE,
 )
@@ -23,7 +23,11 @@ class VisibilityLayer(VisibilityBaseLayer):
         )
 
     def _generate_patches(self, current_time: float) -> List[ImagePatch]:
-        if self.state is None or self.state.fow_disabled or self.state.visibility_mask is None:
+        if (
+            self.state is None
+            or self.state.fow_disabled
+            or self.state.visibility_mask is None
+        ):
             return []
 
         return self._render_mask_to_patches(self.state.visibility_mask)
@@ -38,6 +42,7 @@ class ExclusiveVisionLayer(VisibilityBaseLayer):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.mask_override: Optional[np.ndarray] = None
+        self.layer_mode = LayerMode.MASKED
 
     def set_mask(self, mask: Optional[np.ndarray]):
         self.mask_override = mask

@@ -140,7 +140,12 @@ class TokenFilter:
             )
         else:
             return self._apply_hex_snapping(
-                token, grid_spacing, grid_origin_x, grid_origin_y, token_configs, grid_type
+                token,
+                grid_spacing,
+                grid_origin_x,
+                grid_origin_y,
+                token_configs,
+                grid_type,
             )
 
     def _apply_square_snapping(
@@ -192,7 +197,11 @@ class TokenFilter:
         token_configs: Dict[int, Dict] = None,
         grid_type: GridType = GridType.HEX_POINTY,
     ) -> Token:
-        hex_geo = PointyTopHex(grid_spacing) if grid_type == GridType.HEX_POINTY else FlatTopHex(grid_spacing)
+        hex_geo = (
+            PointyTopHex(grid_spacing)
+            if grid_type == GridType.HEX_POINTY
+            else FlatTopHex(grid_spacing)
+        )
 
         # 1. Transform world to hex-space
         rel_x = token.world_x - grid_origin_x

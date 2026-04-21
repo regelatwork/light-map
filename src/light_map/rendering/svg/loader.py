@@ -283,7 +283,7 @@ class SVGLoader:
                                 render_subtree(child)
 
                     render_subtree(elem)
-                    
+
                     # Restore mask
                     elem.values["mask"] = old_mask
 

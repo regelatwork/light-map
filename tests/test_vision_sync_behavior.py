@@ -27,11 +27,13 @@ def mock_app():
         patch("light_map.interactive_app.AnalyticsManager"),
         patch("light_map.interactive_app.TemporalEventManager") as mock_events_class,
         patch("light_map.interactive_app.ArucoTokenDetector"),
-        patch("light_map.interactive_app.InteractiveApp._load_camera_calibration") as mock_cal,
+        patch(
+            "light_map.interactive_app.InteractiveApp._load_camera_calibration"
+        ) as mock_cal,
         patch("light_map.interactive_app.VisibilityEngine") as mock_ve_class,
     ):
         mock_cal.return_value = (np.eye(3), np.zeros(5), np.zeros(3), np.zeros(3))
-        
+
         # Setup mock events
         mock_events = mock_events_class.return_value
         mock_events.has_event.return_value = False

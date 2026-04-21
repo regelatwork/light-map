@@ -315,6 +315,7 @@ def run_app(args):
                 if app.fow_manager
                 else True,
                 "current_map_path": app.current_map_path,
+                "projector_ppi": app.config.projector_ppi,
                 "map_width": app.map_system.svg_loader.width
                 if app.map_system.svg_loader
                 else 0.0,
@@ -500,6 +501,10 @@ def run_app(args):
                                 if app.current_scene == app.scenes[SceneId.MENU]:
                                     app.current_scene.on_enter()
 
+                        if not state.is_running:
+                            logger.info("Shutdown requested via state.is_running")
+                            return False
+
                         # B. Process and Render
                         main_loop.debug_mode = app.debug_mode
                         output_image, scene_actions = app.process_state(state, actions)
@@ -626,6 +631,7 @@ def run_app(args):
                                     "gm_position": str(app.config.gm_position),
                                     "debug_mode": app.debug_mode,
                                     "fow_disabled": fow_disabled,
+                                    "projector_ppi": app.config.projector_ppi,
                                     "current_map_path": app.current_map_path,
                                     "map_width": app.map_system.svg_loader.width
                                     if app.map_system.svg_loader

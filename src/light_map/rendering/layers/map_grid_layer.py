@@ -155,14 +155,23 @@ class MapGridLayer(Layer):
                     )
         else:
             # Hex Grid
-            hex_geo = PointyTopHex(spacing) if grid.type == GridType.HEX_POINTY else FlatTopHex(spacing)
-            
+            hex_geo = (
+                PointyTopHex(spacing)
+                if grid.type == GridType.HEX_POINTY
+                else FlatTopHex(spacing)
+            )
+
             # Offset center for vertices
             v_offsets = []
             for i in range(6):
                 angle_deg = 60 * i + (30 if grid.type == GridType.HEX_POINTY else 0)
                 angle_rad_v = math.radians(angle_deg)
-                v_offsets.append((hex_geo.size * math.cos(angle_rad_v), hex_geo.size * math.sin(angle_rad_v)))
+                v_offsets.append(
+                    (
+                        hex_geo.size * math.cos(angle_rad_v),
+                        hex_geo.size * math.sin(angle_rad_v),
+                    )
+                )
 
             for i in range(start_i, end_i + 1):
                 for j in range(start_j, end_j + 1):
@@ -177,7 +186,10 @@ class MapGridLayer(Layer):
                     cy_s = off_y + rot_rel_y
 
                     # Skip if too far from screen
-                    if not (-spacing <= cx_s < self.width + spacing and -spacing <= cy_s < self.height + spacing):
+                    if not (
+                        -spacing <= cx_s < self.width + spacing
+                        and -spacing <= cy_s < self.height + spacing
+                    ):
                         continue
 
                     # Draw Hexagon
@@ -187,7 +199,7 @@ class MapGridLayer(Layer):
                         rvx = vx * cos_a - vy * sin_a
                         rvy = vx * sin_a + vy * cos_a
                         pts.append([int(round(cx_s + rvx)), int(round(cy_s + rvy))])
-                    
+
                     cv2.polylines(buffer, [np.array(pts)], True, color_black, 3)
                     cv2.polylines(buffer, [np.array(pts)], True, grid_color, 1)
 
@@ -212,7 +224,9 @@ class MapGridLayer(Layer):
         import re
 
         # Handle rgba(r, g, b, a)
-        rgba_match = re.match(r"rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\)", color_str)
+        rgba_match = re.match(
+            r"rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\)", color_str
+        )
         if rgba_match:
             r, g, b = map(int, rgba_match.groups()[:3])
             a = float(rgba_match.group(4)) if rgba_match.group(4) else 1.0

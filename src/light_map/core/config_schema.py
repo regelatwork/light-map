@@ -242,7 +242,9 @@ class MapEntrySchema(BaseModel):
         default=0.0, title="Grid Origin Y", description="Vertical grid offset."
     )
     grid_type: GridType = Field(
-        default=GridType.SQUARE, title="Grid Type", description="Grid geometry (Square or Hex)."
+        default=GridType.SQUARE,
+        title="Grid Type",
+        description="Grid geometry (Square or Hex).",
     )
     physical_unit_inches: float = Field(
         default=1.0,

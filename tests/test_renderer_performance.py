@@ -6,6 +6,7 @@ from light_map.core.common_types import ImagePatch, LayerMode, AppConfig
 
 from light_map.rendering.composition_utils import composite_patch
 
+
 def test_renderer_correctness():
     config = AppConfig(width=100, height=100, projector_matrix=np.eye(3))
     renderer = Renderer(config)
@@ -79,7 +80,9 @@ def benchmark_renderer():
     start = time.perf_counter()
     for _ in range(100):
         for patch in patches:
-            composite_patch(renderer.output_buffer, patch, LayerMode.NORMAL, width, height)
+            composite_patch(
+                renderer.output_buffer, patch, LayerMode.NORMAL, width, height
+            )
     end = time.perf_counter()
 
     print(f"Time for 1000 patches: {end - start:.4f}s")

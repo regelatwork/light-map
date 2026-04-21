@@ -33,7 +33,7 @@ class DoorLayer(Layer):
             self.state.visibility_version,
             self.state.viewport_version,
             self.state.grid_metadata_version,
-            self.state.fow_version, # To pick up door discovery
+            self.state.fow_version,  # To pick up door discovery
         )
 
     def _generate_patches(self, current_time: float) -> List[ImagePatch]:
@@ -69,7 +69,7 @@ class DoorLayer(Layer):
         for blocker in self.state.blockers:
             if blocker.type != VisibilityType.DOOR:
                 continue
-            
+
             # Object-Based Discovery Check
             if blocker.id not in discovered_ids:
                 continue
@@ -86,12 +86,32 @@ class DoorLayer(Layer):
             if blocker.is_open:
                 # Render endpoints as circles
                 for pt in transformed_points:
-                    cv2.circle(image, pt, circle_outline, BLACK, -1, lineType=cv2.LINE_AA)
-                    cv2.circle(image, pt, circle_radius, YELLOW, -1, lineType=cv2.LINE_AA)
+                    cv2.circle(
+                        image, pt, circle_outline, BLACK, -1, lineType=cv2.LINE_AA
+                    )
+                    cv2.circle(
+                        image, pt, circle_radius, YELLOW, -1, lineType=cv2.LINE_AA
+                    )
             else:
                 # Render as thick yellow line
-                pts_array = np.array(transformed_points, dtype=np.int32).reshape((-1, 1, 2))
-                cv2.polylines(image, [pts_array], False, BLACK, thickness=black_thickness, lineType=cv2.LINE_AA)
-                cv2.polylines(image, [pts_array], False, YELLOW, thickness=yellow_thickness, lineType=cv2.LINE_AA)
+                pts_array = np.array(transformed_points, dtype=np.int32).reshape(
+                    (-1, 1, 2)
+                )
+                cv2.polylines(
+                    image,
+                    [pts_array],
+                    False,
+                    BLACK,
+                    thickness=black_thickness,
+                    lineType=cv2.LINE_AA,
+                )
+                cv2.polylines(
+                    image,
+                    [pts_array],
+                    False,
+                    YELLOW,
+                    thickness=yellow_thickness,
+                    lineType=cv2.LINE_AA,
+                )
 
         return [ImagePatch(x=0, y=0, width=self.width, height=self.height, data=image)]

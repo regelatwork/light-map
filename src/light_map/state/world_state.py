@@ -100,6 +100,9 @@ class WorldState:
         self._fps_atom = VersionedAtom(0.0, "fps")
         self._config_version_atom = VersionedAtom(0, "config")
 
+        # Lifecycle
+        self.is_running = True
+
         # Remote Action Queuing
         self.pending_actions: List[Dict[str, Any]] = []
 
@@ -301,6 +304,10 @@ class WorldState:
         self._inspected_token_mask_atom.update(value)
 
     @property
+    def inspected_token_mask_version(self) -> int:
+        return self._inspected_token_mask_atom.timestamp
+
+    @property
     def effective_show_tokens(self) -> bool:
         return self._show_tokens_atom.value
 
@@ -341,12 +348,20 @@ class WorldState:
         self._inspected_token_id_atom.update(value)
 
     @property
+    def inspected_token_id_version(self) -> int:
+        return self._inspected_token_id_atom.timestamp
+
+    @property
     def tactical_bonuses(self) -> Dict[int, Tuple[int, int]]:
         return self._tactical_bonuses_atom.value
 
     @tactical_bonuses.setter
     def tactical_bonuses(self, value: Dict[int, Tuple[int, int]]):
         self._tactical_bonuses_atom.update(value)
+
+    @property
+    def tactical_bonuses_version(self) -> int:
+        return self._tactical_bonuses_atom.timestamp
 
     @property
     def config_version(self) -> int:
@@ -815,6 +830,7 @@ class WorldState:
             ],
             "dwell_state": self.dwell_state,
             "summon_progress": self.summon_progress,
+            "inspected_token_id": self.inspected_token_id,
             "tactical_bonuses": self.tactical_bonuses,
             "grid_spacing_svg": self.grid_spacing_svg,
             "grid_origin_svg_x": self.grid_origin_svg_x,
@@ -822,6 +838,14 @@ class WorldState:
             "grid_type": str(self.grid_type),
             "grid_overlay_visible": self.grid_overlay_visible,
             "grid_overlay_color": self.grid_overlay_color,
+            "grid_metadata": {
+                "spacing_svg": self.grid_spacing_svg,
+                "origin_svg_x": self.grid_origin_svg_x,
+                "origin_svg_y": self.grid_origin_svg_y,
+                "type": str(self.grid_type),
+                "overlay_visible": self.grid_overlay_visible,
+                "overlay_color": self.grid_overlay_color,
+            },
             "map_version": self.map_version,
             "menu_version": self.menu_version,
             "tokens_version": self.tokens_version,

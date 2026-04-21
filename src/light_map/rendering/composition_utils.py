@@ -88,7 +88,7 @@ def composite_patch(
 
                 dst_view = buffer[buffer_y1:buffer_y2, buffer_x1:buffer_x2, :3]
                 src_bgr = np.ascontiguousarray(patch_slice[:, :, :3])
-                
+
                 if dst_view.flags.c_contiguous:
                     cv2.addWeighted(
                         src_bgr,

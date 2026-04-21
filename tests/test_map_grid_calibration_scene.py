@@ -199,5 +199,3 @@ def test_grid_overlay_logic():
     # Offsets should NOT change
     assert overlay.offset_x == 10.0
     assert overlay.offset_y == 20.0
-
-

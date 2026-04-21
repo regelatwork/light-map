@@ -27,7 +27,7 @@ def test_visibility_empty_room():
     assert mask[56, 56] > 0
     # Check point outside: (16+90, 16) = (106, 16)
     assert mask[16, 106] == 0
-    
+
     # No doors in empty room
     assert len(door_ids) == 0
 
@@ -57,7 +57,7 @@ def test_visibility_blocked_by_wall():
     assert mask[16, 20] > 0
     # Point after wall: (28, 16) -> (175 svg, 100 svg)
     assert mask[16, 28] == 0
-    
+
     # Walls are not doors
     assert len(door_ids) == 0
 
@@ -76,9 +76,11 @@ def test_visibility_door_toggle():
 
     # Token at (100, 100)
     # Door closed: blocked
-    mask_closed, door_ids_closed = engine.get_token_vision_mask(1, 100, 100, 1, 10, mask_w, mask_h)
+    mask_closed, door_ids_closed = engine.get_token_vision_mask(
+        1, 100, 100, 1, 10, mask_w, mask_h
+    )
     assert mask_closed[16, 28] == 0
-    
+
     # The door itself should be discovered
     assert "door1" in door_ids_closed
 
@@ -87,7 +89,9 @@ def test_visibility_door_toggle():
     # Re-update blockers to rebuild mask
     engine.update_blockers([door], mask_width=mask_w, mask_height=mask_h)
 
-    mask_open, door_ids_open = engine.get_token_vision_mask(1, 100, 100, 1, 10, mask_w, mask_h)
+    mask_open, door_ids_open = engine.get_token_vision_mask(
+        1, 100, 100, 1, 10, mask_w, mask_h
+    )
     assert mask_open[16, 28] > 0
     # Open door is transparent to vision but still identified
     assert "door1" in door_ids_open

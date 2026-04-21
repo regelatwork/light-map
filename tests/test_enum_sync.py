@@ -42,14 +42,18 @@ def test_enums_sync():
     """
     root_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     ts_file = os.path.join(root_dir, "frontend", "src", "types", "system.ts")
-    schema_file = os.path.join(root_dir, "frontend", "src", "types", "schema.generated.ts")
+    schema_file = os.path.join(
+        root_dir, "frontend", "src", "types", "schema.generated.ts"
+    )
 
     assert os.path.exists(ts_file), f"Frontend types file not found at {ts_file}"
-    assert os.path.exists(schema_file), f"Frontend schema file not found at {schema_file}"
+    assert os.path.exists(schema_file), (
+        f"Frontend schema file not found at {schema_file}"
+    )
 
     ts_enums = parse_ts_enums(ts_file)
     schema_enums = parse_ts_enums(schema_file)
-    
+
     # Merge enums
     all_ts_enums = {**schema_enums, **ts_enums}
 

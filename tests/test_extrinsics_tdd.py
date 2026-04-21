@@ -113,17 +113,24 @@ def test_extrinsics_scene_renders_rectangles(mock_rect, mock_context):
     """
     from light_map.rendering.layers.calibration_layer import CalibrationLayer
     from light_map.state.world_state import WorldState
-    
+
     # We need a real WorldState to hold the calibration state
     state = WorldState()
     mock_context.state = state
-    
+
     scene = ExtrinsicsCalibrationScene(mock_context)
     scene.on_enter()
 
     # Simulate some detected markers to change status to VALID
     scene._target_status[0] = "VALID"
-    scene._target_info[0] = {"x": 220, "y": 180, "aid": 10, "height": 25.0, "size": 1, "name": "Token 10"}
+    scene._target_info[0] = {
+        "x": 220,
+        "y": 180,
+        "aid": 10,
+        "height": 25.0,
+        "size": 1,
+        "name": "Token 10",
+    }
     scene._sync_calibration_state()
 
     # Create the layer and render

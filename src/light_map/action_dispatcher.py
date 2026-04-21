@@ -67,6 +67,7 @@ class ActionDispatcher:
         self.register("TOGGLE_DOOR", handle_toggle_door)
         self.register("TOGGLE_GRID", handle_toggle_grid)
         self.register("SET_GRID_COLOR", handle_set_grid_color)
+        self.register("QUIT", handle_quit)
 
         # Remote Driver / System Actions
         self.register("ZOOM", handle_zoom)
@@ -700,4 +701,13 @@ def handle_menu_interact(
         logging.warning(
             f"ActionDispatcher: MENU_INTERACT ignored - current scene {app.current_scene.__class__.__name__} is not MenuScene"
         )
+    return None
+
+
+def handle_quit(
+    app: "InteractiveApp", payload: Dict[str, Any], state: Optional["WorldState"] = None
+) -> Optional["SceneTransition"]:
+    logging.info("ActionDispatcher: Received QUIT action")
+    if state is not None:
+        state.is_running = False
     return None

@@ -18,7 +18,13 @@ from pydantic import BaseModel
 from typing import List, Dict, Any, Optional
 from multiprocessing import Queue, Event
 
-from light_map.core.common_types import DetectionResult, ResultType, Token, GestureType, GridType
+from light_map.core.common_types import (
+    DetectionResult,
+    ResultType,
+    Token,
+    GestureType,
+    GridType,
+)
 from light_map.core.scene import HandInput
 
 

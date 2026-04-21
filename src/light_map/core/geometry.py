@@ -4,6 +4,7 @@ from typing import Tuple
 
 class HexGeometry:
     """Base hex geometry logic."""
+
     def __init__(self, spacing: float):
         self.spacing = spacing
         # size is distance from center to vertex
@@ -30,6 +31,7 @@ class HexGeometry:
 
 class PointyTopHex(HexGeometry):
     """Pointy-top hex orientation logic."""
+
     def to_pixel(self, q: float, r: float) -> Tuple[float, float]:
         x = self.size * math.sqrt(3) * (q + r / 2.0)
         y = self.size * 1.5 * r
@@ -43,6 +45,7 @@ class PointyTopHex(HexGeometry):
 
 class FlatTopHex(HexGeometry):
     """Flat-top hex orientation logic."""
+
     def to_pixel(self, q: float, r: float) -> Tuple[float, float]:
         x = self.size * 1.5 * q
         y = self.size * math.sqrt(3) * (r + q / 2.0)

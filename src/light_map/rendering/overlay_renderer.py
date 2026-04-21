@@ -135,7 +135,9 @@ class OverlayRenderer:
 
         # 1. Main Debug info (Top Left)
         text = f"FPS: {int(fps)} | Scene: {current_scene_name}"
-        (tw, th), baseline = cv2.getTextSize(cv2.FONT_HERSHEY_SIMPLEX, 1, 2) # Wait, param order is wrong in text size for some reason? No, it's (text, font, scale, thickness)
+        (tw, th), baseline = cv2.getTextSize(
+            cv2.FONT_HERSHEY_SIMPLEX, 1, 2
+        )  # Wait, param order is wrong in text size for some reason? No, it's (text, font, scale, thickness)
         # Fix text size call
         (tw, th), baseline = cv2.getTextSize(text, cv2.FONT_HERSHEY_SIMPLEX, 1, 2)
         debug_w, debug_h = tw + 20, th + baseline + 20
@@ -149,7 +151,9 @@ class OverlayRenderer:
             (0, 0, 255, 255),
             2,
         )
-        patches.append(ImagePatch(x=50, y=40, width=debug_w, height=debug_h, data=debug_buffer))
+        patches.append(
+            ImagePatch(x=50, y=40, width=debug_w, height=debug_h, data=debug_buffer)
+        )
 
         # 2. Hand inputs
         for hand_input in inputs:
@@ -176,7 +180,13 @@ class OverlayRenderer:
                 1,
             )
             patches.append(
-                ImagePatch(x=px - lw // 2, y=py - 30 - lh, width=lw + 10, height=lh + 10, data=label_buffer)
+                ImagePatch(
+                    x=px - lw // 2,
+                    y=py - 30 - lh,
+                    width=lw + 10,
+                    height=lh + 10,
+                    data=label_buffer,
+                )
             )
 
         return patches
@@ -213,5 +223,7 @@ class OverlayRenderer:
                 2,
             )
 
-        patches.append(ImagePatch(x=50, y=100, width=max_w, height=total_h, data=buffer))
+        patches.append(
+            ImagePatch(x=50, y=100, width=max_w, height=total_h, data=buffer)
+        )
         return patches

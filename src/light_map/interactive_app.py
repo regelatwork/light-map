@@ -704,13 +704,15 @@ class InteractiveApp:
             and state is not None
         ):
             # Calculate latest vision mask on-demand
-            combined_pc_mask, disc_ids = self.visibility_engine.get_aggregate_vision_mask(
-                state.tokens,
-                self.map_config,
-                self.fow_manager.width,
-                self.fow_manager.height,
-                vision_range_grid=25.0,
-                grid_type=state.grid_type,
+            combined_pc_mask, disc_ids = (
+                self.visibility_engine.get_aggregate_vision_mask(
+                    state.tokens,
+                    self.map_config,
+                    self.fow_manager.width,
+                    self.fow_manager.height,
+                    vision_range_grid=25.0,
+                    grid_type=state.grid_type,
+                )
             )
 
             if combined_pc_mask is not None:
@@ -745,6 +747,24 @@ class InteractiveApp:
             grid_origin=origin,
         )
         self.app_context.visibility_engine = self.visibility_engine
+
+        # Ensure all scenes and layers that depend on engine are updated
+        if SceneId.EXCLUSIVE_VISION in self.scenes:
+            self.scenes[
+                SceneId.EXCLUSIVE_VISION
+            ].visibility_engine = self.visibility_engine
+
+        if self.layer_manager:
+            self.layer_manager.visibility_layer.visibility_engine = (
+                self.visibility_engine
+            )
+            self.layer_manager.exclusive_vision_layer.visibility_engine = (
+                self.visibility_engine
+            )
+            self.layer_manager.tactical_overlay_layer.visibility_engine = (
+                self.visibility_engine
+            )
+            self.layer_manager.fow_layer.visibility_engine = self.visibility_engine
 
         # Sync to WorldState
         self.state.grid_metadata = GridMetadata(

@@ -89,8 +89,8 @@ def test_door_layer_render_open_door(state):
     # (y, x) indexing
     assert data[10, 10, 3] == 255
     # Just check yellow component, it might be slightly blended due to AA
-    assert data[10, 10, 1] > 200 # Green
-    assert data[10, 10, 2] > 200 # Blue (wait Yellow is BGR [0, 255, 255])
+    assert data[10, 10, 1] > 200  # Green
+    assert data[10, 10, 2] > 200  # Blue (wait Yellow is BGR [0, 255, 255])
 
     assert data[10, 20, 3] == 255
     assert data[10, 20, 1] > 200

@@ -134,19 +134,21 @@ def draw_text_with_background(
         # to ensure it's preserved in the patch.
         bg_bgr = bg_color[:3]
         bg_alpha = int(alpha * 255)
-        
+
         # We blend the background box with whatever is already in the buffer
         # using a manual blend to ensure the alpha is handled correctly.
         roi = img[bg_rect_y1:bg_rect_y2, bg_rect_x1:bg_rect_x2]
-        
+
         # Source (the box we are drawing)
         src_alpha = bg_alpha
-        
+
         # Simple blend: src * alpha + dst * (1-alpha)
         # Note: Since this is usually a fresh buffer, dst is 0.
-        roi[:, :, :3] = (roi[:, :, :3].astype(np.uint16) * (255 - src_alpha) // 255 + 
-                         np.array(bg_bgr, dtype=np.uint16) * src_alpha // 255).astype(np.uint8)
-        
+        roi[:, :, :3] = (
+            roi[:, :, :3].astype(np.uint16) * (255 - src_alpha) // 255
+            + np.array(bg_bgr, dtype=np.uint16) * src_alpha // 255
+        ).astype(np.uint8)
+
         # For alpha, we take the maximum of current and new alpha (non-additive for UI boxes)
         roi[:, :, 3] = np.maximum(roi[:, :, 3], src_alpha)
     else:
@@ -157,7 +159,11 @@ def draw_text_with_background(
         img[bg_rect_y1:bg_rect_y2, bg_rect_x1:bg_rect_x2] = res
 
     # Draw text
-    full_text_color = color if len(color) == channels else (tuple(color) + (255,) if channels == 4 else color[:3])
+    full_text_color = (
+        color
+        if len(color) == channels
+        else (tuple(color) + (255,) if channels == 4 else color[:3])
+    )
     cv2.putText(img, text, (x, y), font, scale, full_text_color, thickness)
 
 

@@ -1,15 +1,9 @@
 from typing import Any, Callable, Dict, Optional, TYPE_CHECKING
-from dataclasses import replace
-import os
 import logging
 
 if TYPE_CHECKING:
     from light_map.interactive_app import InteractiveApp
     from light_map.core.scene import SceneTransition, WorldState
-from light_map.core.common_types import GridMetadata, SelectionState
-from light_map.core.config_schema import GlobalConfigSchema
-from light_map.core.config_utils import sync_pydantic_to_dataclass
-
 
 ActionHandler = Callable[
     ["InteractiveApp", Dict[str, Any], Optional["WorldState"]],
@@ -37,9 +31,10 @@ class ActionDispatcher:
 
         # Handle legacy "map_file" which isn't always in an "action" field
         if "map_file" in payload:
-            self.app.load_map(payload["map_file"], payload.get("load_session", False))
+            self.app.persistence_service.load_map(
+                payload["map_file"], payload.get("load_session", False)
+            )
 
-        action_name = payload.get("action")
         if not action_name:
             return None
 
@@ -110,9 +105,7 @@ class ActionDispatcher:
 def handle_sync_vision(
     app: "InteractiveApp", payload: Dict[str, Any], state: Optional["WorldState"] = None
 ) -> Optional["SceneTransition"]:
-    if state is not None:
-        app._sync_vision(state)
-    app.app_context.notifications.add_notification("Vision Synchronized")
+    app.environment_manager.sync_vision(state)
     return None
 
 
@@ -120,9 +113,9 @@ def handle_trigger_menu(
     app: "InteractiveApp", payload: Dict[str, Any], state: Optional["WorldState"] = None
 ) -> Optional["SceneTransition"]:
     from light_map.core.common_types import SceneId
-    from light_map.core.scene import SceneTransition
 
-    return SceneTransition(SceneId.MENU)
+    app.scene_manager.transition_to(SceneId.MENU)
+    return None
 
 
 def handle_reset_zoom(
@@ -137,46 +130,8 @@ def handle_update_grid(
     app: "InteractiveApp", payload: Dict[str, Any], state: Optional["WorldState"] = None
 ) -> Optional["SceneTransition"]:
     if app.current_map_path:
-        entry = app.map_config.data.maps.get(app.current_map_path)
-        if entry:
-            entry.grid_origin_svg_x = payload.get("offset_x", 0.0)
-            entry.grid_origin_svg_y = payload.get("offset_y", 0.0)
-
-            spacing = payload.get("spacing")
-            if spacing is not None and spacing > 0:
-                entry.grid_spacing_svg = spacing
-                app.refresh_base_scale()
-
-            grid_type_val = payload.get("grid_type")
-            if grid_type_val:
-                from light_map.core.common_types import GridType
-
-                try:
-                    entry.grid_type = GridType(grid_type_val)
-                except (ValueError, KeyError):
-                    pass
-
-            visible = payload.get("visible")
-            if visible is not None:
-                entry.grid_overlay_visible = bool(visible)
-
-            color = payload.get("color")
-            if color:
-                entry.grid_overlay_color = color
-
-            app.map_config.save()
-
-            app.state.grid_metadata = GridMetadata(
-                spacing_svg=entry.grid_spacing_svg,
-                origin_svg_x=entry.grid_origin_svg_x,
-                origin_svg_y=entry.grid_origin_svg_y,
-                type=entry.grid_type,
-                overlay_visible=entry.grid_overlay_visible,
-                overlay_color=entry.grid_overlay_color,
-            )
-
-            app._rebuild_visibility_stack(entry)
-            app.notifications.add_notification("Grid Configuration Updated")
+        app.persistence_service.update_grid(app.current_map_path, **payload)
+        app.notifications.add_notification("Grid Configuration Updated")
     return None
 
 
@@ -184,22 +139,9 @@ def handle_toggle_grid(
     app: "InteractiveApp", payload: Dict[str, Any], state: Optional["WorldState"] = None
 ) -> Optional["SceneTransition"]:
     if app.current_map_path:
-        entry = app.map_config.data.maps.get(app.current_map_path)
-        if entry:
-            entry.grid_overlay_visible = not entry.grid_overlay_visible
-            app.map_config.save()
-
-            app.state.grid_metadata = GridMetadata(
-                spacing_svg=entry.grid_spacing_svg,
-                origin_svg_x=entry.grid_origin_svg_x,
-                origin_svg_y=entry.grid_origin_svg_y,
-                type=entry.grid_type,
-                overlay_visible=entry.grid_overlay_visible,
-                overlay_color=entry.grid_overlay_color,
-            )
-
-            state_str = "ON" if entry.grid_overlay_visible else "OFF"
-            app.notifications.add_notification(f"Visible Grid {state_str}")
+        visible = app.persistence_service.toggle_grid(app.current_map_path)
+        state_str = "ON" if visible else "OFF"
+        app.notifications.add_notification(f"Visible Grid {state_str}")
     else:
         app.notifications.add_notification("Load a map to toggle grid.")
     return None
@@ -210,21 +152,8 @@ def handle_set_grid_color(
 ) -> Optional["SceneTransition"]:
     color = payload.get("color") or payload.get("payload")
     if app.current_map_path and color:
-        entry = app.map_config.data.maps.get(app.current_map_path)
-        if entry:
-            entry.grid_overlay_color = color
-            app.map_config.save()
-
-            app.state.grid_metadata = GridMetadata(
-                spacing_svg=entry.grid_spacing_svg,
-                origin_svg_x=entry.grid_origin_svg_x,
-                origin_svg_y=entry.grid_origin_svg_y,
-                type=entry.grid_type,
-                overlay_visible=entry.grid_overlay_visible,
-                overlay_color=entry.grid_overlay_color,
-            )
-
-            app.notifications.add_notification(f"Grid Color Set: {color}")
+        app.persistence_service.set_grid_color(app.current_map_path, color)
+        app.notifications.add_notification(f"Grid Color Set: {color}")
     return None
 
 
@@ -272,136 +201,32 @@ def handle_set_viewport(
 def handle_reset_fow(
     app: "InteractiveApp", payload: Dict[str, Any], state: Optional["WorldState"] = None
 ) -> Optional["SceneTransition"]:
-    if app.fow_manager and app.current_map_path:
-        app.fow_manager.reset()
-        app.map_config.save_fow_masks(app.current_map_path, app.fow_manager)
-        app.state.fow_mask = app.fow_manager.explored_mask.copy()
-        app.notifications.add_notification("Fog of War Reset")
+    if app.current_map_path:
+        app.environment_manager.reset_fow(app.current_map_path, state)
     return None
 
 
 def handle_toggle_fow(
     app: "InteractiveApp", payload: Dict[str, Any], state: Optional["WorldState"] = None
 ) -> Optional["SceneTransition"]:
-    if app.fow_manager:
-        app.fow_manager.is_disabled = not app.fow_manager.is_disabled
-        if state is not None:
-            state.fow_disabled = app.fow_manager.is_disabled
-            if state.fow_mask is not None:
-                state.fow_mask = app.fow_manager.explored_mask.copy()
-
-        # Persist to map config
-        if app.current_map_path:
-            entry = app.map_config.data.maps.get(app.current_map_path)
-            if entry:
-                entry.fow_disabled = app.fow_manager.is_disabled
-                app.map_config.save()
-
-        state_str = "OFF" if app.fow_manager.is_disabled else "ON"
-        app.notifications.add_notification(f"GM: Fog of War {state_str}")
+    if app.current_map_path:
+        app.environment_manager.toggle_fow(app.current_map_path, state)
     return None
-
-
-def handle_update_config_generic(
-    app: "InteractiveApp",
-    payload: Dict[str, Any],
-    schema_class: Any,
-    update_func: Callable[[Dict[str, Any]], None],
-    target_state: Any,
-    on_success: Optional[Callable[[Dict[str, Any]], None]] = None,
-) -> bool:
-    """
-    Generic helper to validate payload with Pydantic and update storage and runtime state.
-    Returns True if any changes were applied.
-    """
-    try:
-        # 1. Validate (handles typecasting and range checks)
-        # Using schema_class(**payload) to validate only what's provided
-        validated = schema_class(**payload)
-
-        # 2. Update storage (MapConfigManager)
-        # This also handles persisting to disk via app.map_config.save() inside update_func
-        update_func(payload)
-
-        # 3. Sync to runtime AppConfig
-        sync_pydantic_to_dataclass(validated, target_state)
-
-        # 4. Optional post-sync logic
-        if on_success:
-            on_success(payload)
-
-        return True
-    except Exception as e:
-        logging.error(f"ActionDispatcher: Failed to update config: {e}")
-        return False
 
 
 def handle_update_system_config(
     app: "InteractiveApp", payload: Dict[str, Any], state: Optional["WorldState"] = None
 ) -> Optional["SceneTransition"]:
-    """Updates global system configuration."""
-
-    def on_sync_success(validated_payload: Dict[str, Any]):
-        # Handle side effects that aren't pure data sync
-        if "use_projector_3d_model" in validated_payload:
-            if app.config.projector_3d_model:
-                app.config.projector_3d_model.use_3d = app.config.use_projector_3d_model
-
-        if "projector_ppi" in validated_payload:
-            app.refresh_base_scale()
-
-        # Update WorldState Atom for real-time feedback on position overrides
-        pos_fields = {
-            "projector_pos_x_override",
-            "projector_pos_y_override",
-            "projector_pos_z_override",
-        }
-        if state is not None and any(f in validated_payload for f in pos_fields):
-            from light_map.core.common_types import ProjectorPose
-
-            if app.config.projector_3d_model:
-                calibrated_pos = (
-                    app.config.projector_3d_model.calibrated_projector_center
-                )
-                if calibrated_pos is not None:
-                    gs = app.map_config.data.global_settings
-                    new_pose = ProjectorPose(
-                        x=gs.projector_pos_x_override
-                        if gs.projector_pos_x_override is not None
-                        else calibrated_pos[0],
-                        y=gs.projector_pos_y_override
-                        if gs.projector_pos_y_override is not None
-                        else calibrated_pos[1],
-                        z=gs.projector_pos_z_override
-                        if gs.projector_pos_z_override is not None
-                        else calibrated_pos[2],
-                    )
-                    state.projector_pose = new_pose
-
-        if state is not None:
-            state.config_data += 1
+    if app.persistence_service.update_system_config(payload):
         app.notifications.add_notification("System Settings Updated")
-
-    handle_update_config_generic(
-        app,
-        payload,
-        GlobalConfigSchema,
-        app.map_config.update_global_settings,
-        app.config,
-        on_success=on_sync_success,
-    )
-
     return None
 
 
 def handle_toggle_hand_masking(
     app: "InteractiveApp", payload: Dict[str, Any], state: Optional["WorldState"] = None
 ) -> Optional["SceneTransition"]:
-    gs = app.map_config.data.global_settings
-    gs.enable_hand_masking = not gs.enable_hand_masking
-    app.map_config.save()
-    app.config.enable_hand_masking = gs.enable_hand_masking
-    state_str = "ON" if gs.enable_hand_masking else "OFF"
+    visible = app.persistence_service.toggle_hand_masking()
+    state_str = "ON" if visible else "OFF"
     app.notifications.add_notification(f"Projection Masking {state_str}")
     return None
 
@@ -409,16 +234,10 @@ def handle_toggle_hand_masking(
 def handle_set_gm_position(
     app: "InteractiveApp", payload: Dict[str, Any], state: Optional["WorldState"] = None
 ) -> Optional["SceneTransition"]:
-    from light_map.core.common_types import GmPosition
-
-    try:
-        new_pos = GmPosition(payload.get("payload", "None"))
-        gs = app.map_config.data.global_settings
-        gs.gm_position = new_pos
-        app.map_config.save()
-        app.config.gm_position = gs.gm_position
+    new_pos = app.persistence_service.set_gm_position(payload.get("payload", "None"))
+    if new_pos:
         app.notifications.add_notification(f"GM Position: {new_pos}")
-    except (ValueError, KeyError):
+    else:
         app.notifications.add_notification("Invalid GM Position")
     return None
 
@@ -436,29 +255,14 @@ def handle_inspect_token(
     app: "InteractiveApp", payload: Dict[str, Any], state: Optional["WorldState"] = None
 ) -> Optional["SceneTransition"]:
     from light_map.core.common_types import SceneId
-    from light_map.core.scene import SceneTransition
 
     token_id_str = payload.get("payload")
     if token_id_str is not None:
         try:
             token_id = int(token_id_str)
-            # Find token in state to ensure it exists
-            found = False
-            if state is not None:
-                for t in state.tokens:
-                    if t.id == token_id:
-                        found = True
-                        break
-                if not found:
-                    for t in state.raw_tokens:
-                        if t.id == token_id:
-                            found = True
-                            break
-
-            if found:
-                return SceneTransition(
-                    SceneId.EXCLUSIVE_VISION, payload={"token_id": token_id}
-                )
+            app.scene_manager.transition_to(
+                SceneId.EXCLUSIVE_VISION, payload={"token_id": token_id}
+            )
         except ValueError:
             pass
     return None
@@ -475,38 +279,9 @@ def handle_clear_inspection(
 def handle_toggle_door(
     app: "InteractiveApp", payload: Dict[str, Any], state: Optional["WorldState"] = None
 ) -> Optional["SceneTransition"]:
-    from light_map.core.common_types import SelectionType
-
     door_id = payload.get("door_id") or payload.get("payload")
-    if door_id:
-        app.state.selection = SelectionState(type=SelectionType.DOOR, id=door_id)
-
-    if app.state.selection.type == SelectionType.DOOR and app.state.selection.id:
-        door_id = app.state.selection.id
-        found = False
-        for i, blocker in enumerate(app.visibility_engine.blockers):
-            if blocker.id == door_id:
-                app.visibility_engine.blockers[i] = replace(
-                    blocker, is_open=not blocker.is_open
-                )
-                found = True
-        if found:
-            app.visibility_engine.update_blockers(
-                app.visibility_engine.blockers,
-                app.fow_manager.width,
-                app.fow_manager.height,
-            )
-            app._sync_blockers_to_state(state)
-            app.notifications.add_notification(f"Door {door_id} Toggled")
-            app.save_session()
-            if state is not None:
-                app._sync_vision(state)
-    else:
-        app.notifications.add_notification("No door selected to toggle")
+    app.environment_manager.toggle_door(door_id, state)
     return None
-
-
-# --- NEW HANDLERS ---
 
 
 def handle_zoom(
@@ -524,105 +299,7 @@ def handle_update_token(
 ) -> Optional["SceneTransition"]:
     token_id = payload.get("id")
     if token_id is not None:
-        # Try to get existing definition to preserve fields
-        existing_def = None
-        is_map_override = False
-
-        map_file = app.current_map_path
-        if map_file:
-            map_entry = app.map_config.data.maps.get(map_file)
-            if map_entry:
-                existing_def = map_entry.aruco_overrides.get(token_id)
-                if existing_def:
-                    is_map_override = True
-
-        # Explicit override from action data (if provided)
-        action_override = payload.get("is_map_override")
-        if action_override is not None:
-            is_map_override = action_override
-
-        if not existing_def:
-            existing_def = app.map_config.data.global_settings.aruco_defaults.get(
-                token_id
-            )
-
-        new_name = payload.get("name")
-        new_color = payload.get("color")
-        new_type = payload.get("type")
-        new_profile = payload.get("profile")
-        new_size = payload.get("size")
-        new_height_mm = payload.get("height_mm")
-
-        # Use existing values if not provided in the update
-        final_name = (
-            new_name
-            if new_name is not None
-            else (existing_def.name if existing_def else f"Token {token_id}")
-        )
-        final_type = (
-            new_type
-            if new_type is not None
-            else (existing_def.type if existing_def else "NPC")
-        )
-        # Determination of final profile and dimensions must respect the exclusivity invariant
-        final_profile = new_profile
-        final_size = new_size
-        final_height_mm = new_height_mm
-
-        if final_profile is not None:
-            # If profile is explicitly provided (even if ''), it clears individual overrides
-            if final_profile == "":
-                final_profile = None
-            else:
-                final_size = None
-                final_height_mm = None
-        elif final_size is not None or final_height_mm is not None:
-            # If custom dimensions are explicitly provided, clear profile
-            final_profile = None
-        else:
-            # Nothing was provided in this update, fallback to existing
-            if existing_def:
-                final_profile = existing_def.profile
-                final_size = existing_def.size
-                final_height_mm = existing_def.height_mm
-            else:
-                final_profile = None
-                final_size = None
-                final_height_mm = None
-
-        final_color = (
-            new_color
-            if new_color is not None
-            else (existing_def.color if existing_def else None)
-        )
-
-        if is_map_override and map_file:
-            app.map_config.set_map_aruco_override(
-                map_name=map_file,
-                aruco_id=token_id,
-                name=final_name,
-                type=final_type,
-                profile=final_profile,
-                size=final_size,
-                height_mm=final_height_mm,
-                color=final_color,
-            )
-            logging.info(
-                f"ActionDispatcher: Updated MAP override for token {token_id} on {os.path.basename(map_file)}"
-            )
-        else:
-            app.map_config.set_global_aruco_definition(
-                aruco_id=token_id,
-                name=final_name,
-                type=final_type,
-                profile=final_profile,
-                size=final_size,
-                height_mm=final_height_mm,
-                color=final_color,
-            )
-            logging.info(
-                f"ActionDispatcher: Updated GLOBAL definition for token {token_id}"
-            )
+        app.persistence_service.update_token(token_id, **payload)
     return None
 
 
@@ -630,12 +307,8 @@ def handle_delete_token_override(
     app: "InteractiveApp", payload: Dict[str, Any], state: Optional["WorldState"] = None
 ) -> Optional["SceneTransition"]:
     token_id = payload.get("id")
-    map_file = app.current_map_path
-    if token_id is not None and map_file:
-        app.map_config.delete_map_aruco_override(map_file, token_id)
-        logging.info(
-            f"ActionDispatcher: Deleted MAP override for token {token_id} on {os.path.basename(map_file)}"
-        )
+    if token_id is not None:
+        app.persistence_service.delete_token_override(token_id)
     return None
 
 
@@ -644,10 +317,7 @@ def handle_delete_token(
 ) -> Optional["SceneTransition"]:
     token_id = payload.get("id")
     if token_id is not None:
-        app.map_config.delete_global_aruco_definition(token_id)
-        logging.info(
-            f"ActionDispatcher: Deleted GLOBAL definition for token {token_id}"
-        )
+        app.persistence_service.delete_token(token_id)
     return None
 
 
@@ -657,12 +327,7 @@ def handle_update_token_profile(
     name = payload.get("name")
     size = payload.get("size")
     height_mm = payload.get("height_mm")
-
-    if name is not None and size is not None and height_mm is not None:
-        app.map_config.set_token_profile(name, size, height_mm)
-        logging.info(
-            f"ActionDispatcher: Updated profile '{name}' (S:{size} H:{height_mm}mm)"
-        )
+    app.persistence_service.update_token_profile(name, size, height_mm)
     return None
 
 
@@ -670,44 +335,26 @@ def handle_delete_token_profile(
     app: "InteractiveApp", payload: Dict[str, Any], state: Optional["WorldState"] = None
 ) -> Optional["SceneTransition"]:
     name = payload.get("name")
-    if name is not None:
-        app.map_config.delete_token_profile(name)
-        logging.info(f"ActionDispatcher: Deleted profile '{name}'")
+    app.persistence_service.delete_token_profile(name)
     return None
 
 
 def handle_menu_interact(
     app: "InteractiveApp", payload: Dict[str, Any], state: Optional["WorldState"] = None
 ) -> Optional["SceneTransition"]:
-    # Use class name check to avoid potential double-import/instance-check issues
-    is_menu_scene = app.current_scene.__class__.__name__ == "MenuScene"
-
-    logging.debug(
-        f"ActionDispatcher: Received MENU_INTERACT index={payload.get('index')}, current_scene={app.current_scene.__class__.__name__}"
-    )
-
+    is_menu_scene = app.scene_manager.current_scene_id.value == "MENU"
     if is_menu_scene:
         index = payload.get("index")
         if index is not None:
-            # Safely access menu_system (expected on MenuScene)
-            menu_sys = getattr(app.current_scene, "menu_system", None)
+            menu_sys = getattr(app.scene_manager.current_scene, "menu_system", None)
             if menu_sys:
                 menu_sys.trigger_index(index)
-            else:
-                logging.error(
-                    "ActionDispatcher: Current scene is MenuScene but has no menu_system"
-                )
-    else:
-        logging.warning(
-            f"ActionDispatcher: MENU_INTERACT ignored - current scene {app.current_scene.__class__.__name__} is not MenuScene"
-        )
     return None
 
 
 def handle_quit(
     app: "InteractiveApp", payload: Dict[str, Any], state: Optional["WorldState"] = None
 ) -> Optional["SceneTransition"]:
-    logging.info("ActionDispatcher: Received QUIT action")
     if state is not None:
         state.is_running = False
     return None

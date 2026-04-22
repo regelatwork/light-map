@@ -148,12 +148,12 @@ def test_interactive_app_process_state_actions(mock_config, monkeypatch):
     assert len(ws.pending_actions) == 0
 
     # 3. Inject Generic Action (SYNC_VISION)
-    app._sync_vision = MagicMock()
+    app.environment_manager.sync_vision = MagicMock()
     ws.pending_actions.append({"action": "SYNC_VISION"})
 
     app.process_state(ws, [])
 
-    app._sync_vision.assert_called_once_with(ws)
+    app.environment_manager.sync_vision.assert_called_once_with(ws)
     assert len(ws.pending_actions) == 0
 
     # 4. Inject TOGGLE_DOOR action with door_id

@@ -52,11 +52,13 @@ def mock_app():
         # Manually inject a loaded map state
         app.map_system.is_map_loaded.return_value = True
         app.map_system.world_to_screen.return_value = (0.0, 0.0)
-        app.fow_manager = MagicMock()
-        app.fow_manager.width = 10
-        app.fow_manager.height = 10
-        app.fow_manager.visible_mask = np.zeros((10, 10), dtype=np.uint8)
-        app.fow_manager.discovered_ids = set()
+        app.environment_manager.fow_manager = MagicMock()
+        app.environment_manager.fow_manager.width = 10
+        app.environment_manager.fow_manager.height = 10
+        app.environment_manager.fow_manager.visible_mask = np.zeros(
+            (10, 10), dtype=np.uint8
+        )
+        app.environment_manager.fow_manager.discovered_ids = set()
 
         return app
 
@@ -66,6 +68,9 @@ def test_vision_frozen_until_sync(mock_app):
     app = mock_app
     app.current_map_path = "/tmp/test_map.svg"
     state = app.state
+    from light_map.core.common_types import MapRenderState
+
+    state.map_render_state = MapRenderState(filepath=app.current_map_path)
 
     # 1. Add a PC token
     pc_token = Token(id=1, world_x=5, world_y=5)
@@ -78,13 +83,13 @@ def test_vision_frozen_until_sync(mock_app):
     app.process_state(state, [])
 
     # 3. Check that the fow_manager's visible_mask is still empty (NOT updated)
-    assert np.all(app.fow_manager.visible_mask == 0)
+    assert np.all(app.environment_manager.fow_manager.visible_mask == 0)
 
     # 4. Trigger Sync Vision (Now calculates vision on-demand)
     app._handle_payloads({"action": "SYNC_VISION"}, state)
 
     # 5. Check that the fow_manager's visible_mask is NOW updated
-    app.fow_manager.set_visible_mask.assert_called_once()
+    app.environment_manager.fow_manager.set_visible_mask.assert_called_once()
     # Check that world state visibility mask is updated
     assert state.visibility_mask is not None
     assert state.visibility_mask[0, 0] == 255

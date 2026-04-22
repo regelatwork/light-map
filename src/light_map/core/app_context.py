@@ -48,3 +48,26 @@ class AppContext:
     inspected_token_id: Optional[int] = None
     inspected_token_mask: Optional[np.ndarray] = None
     save_session: Optional[Callable[[], None]] = None
+
+
+@dataclass
+class VisionContext:
+    """Stripped-down context for worker processes (e.g., Vision)."""
+
+    app_config: AppConfig
+    camera_projection_model: Optional[CameraProjectionModel] = None
+
+
+@dataclass
+class RemoteContext:
+    """Minimal context for the API bridge/Remote process."""
+
+    app_config: AppConfig
+    state: Optional[WorldState] = None
+
+
+@dataclass
+class MainContext(AppContext):
+    """The full context used in the main process."""
+
+    pass

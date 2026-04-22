@@ -20,7 +20,7 @@ def app(tmp_path):
     )
     with (
         patch(
-            "light_map.interactive_app.InteractiveApp._initialize_scenes"
+            "light_map.core.scene_manager.SceneManager._initialize_scenes"
         ) as mock_init,
         patch(
             "light_map.interactive_app.InteractiveApp._load_camera_calibration",

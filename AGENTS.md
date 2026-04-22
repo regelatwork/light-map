@@ -13,6 +13,14 @@ The goal of Light Map is to create a seamless bridge between physical and digita
 
 ## Development Guidelines
 
+### Architectural Invariants
+
+#### 1. Read/Write Separation (State Management)
+The application adheres to a strict access pattern for the `WorldState`:
+- **Read-Only Access:** All components (Scenes, Renderers, Remote API) must read state exclusively from the `WorldState`.
+- **Manager-Only Writes:** Mutations to the `WorldState` are strictly reserved for specialized Manager classes (`PersistenceService`, `EnvironmentManager`, `SceneManager`). 
+- **No Direct Setters:** Never modify `WorldState` attributes directly from handlers or scenes. Always delegate to the appropriate manager to ensure validation, persistence, and atomic updates.
+
 ### Coding Standards
 
 - **Python Style & Linting**: Use [Ruff](https://beta.ruff.rs/docs/). Run `ruff format .` and `ruff check . --fix`.

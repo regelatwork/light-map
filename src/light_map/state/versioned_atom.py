@@ -1,4 +1,5 @@
 import time
+import operator
 from typing import TypeVar, Generic, Optional, Callable
 
 T = TypeVar("T")
@@ -14,7 +15,7 @@ class VersionedAtom(Generic[T]):
         self._value = initial_value
         self._name = name
         self._timestamp = time.monotonic_ns()
-        self._equality_fn = equality_fn or (lambda a, b: a == b)
+        self._equality_fn = equality_fn or operator.eq
 
     @property
     def value(self) -> T:

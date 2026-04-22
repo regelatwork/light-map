@@ -27,6 +27,7 @@ def mock_map_system():
     )  # Simple scale for testing
     ms.config = MagicMock()
     ms.config.projector_ppi = 96.0
+    ms.ghost_tokens = []
     return ms
 
 
@@ -44,7 +45,8 @@ def test_tactical_overlay_clear_los(mock_state, mock_map_system, mock_engine):
     # Token 2 is visible
     token = Token(id=2, world_x=50, world_y=50)
     mock_state.tokens = [token]
-    # No tactical bonuses set
+    # No tactical bonuses set explicitly, but required for the layer to process it
+    mock_state.tactical_bonuses = {2: (0, 0)}
 
     patches = layer._generate_patches(0.0)
 

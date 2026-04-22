@@ -55,7 +55,9 @@ def test_door_state_restoration_syncs_to_state(mock_config, monkeypatch, tmp_pat
     mock_loader.svg.height = 100
     mock_loader.detect_grid_spacing.return_value = (50.0, 0.0, 0.0)
 
-    monkeypatch.setattr("light_map.interactive_app.SVGLoader", lambda f: mock_loader)
+    monkeypatch.setattr(
+        "light_map.persistence.persistence_service.SVGLoader", lambda f: mock_loader
+    )
     monkeypatch.setattr(
         InteractiveApp,
         "_load_camera_calibration",
@@ -108,7 +110,9 @@ def test_toggle_door_syncs_to_state(mock_config, monkeypatch, tmp_path):
     mock_loader.svg.height = 100
     mock_loader.detect_grid_spacing.return_value = (50.0, 0.0, 0.0)
 
-    monkeypatch.setattr("light_map.interactive_app.SVGLoader", lambda f: mock_loader)
+    monkeypatch.setattr(
+        "light_map.persistence.persistence_service.SVGLoader", lambda f: mock_loader
+    )
     monkeypatch.setattr(
         InteractiveApp,
         "_load_camera_calibration",

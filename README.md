@@ -11,6 +11,21 @@ Light Map is an interactive Augmented Reality (AR) tabletop platform that merges
 - **Hierarchical Menu**: Hands-free control system.
 - **Web Dashboard**: Real-time monitoring and configuration via a browser-based interface.
 
+## System Architecture
+
+Light Map uses a modular orchestration architecture focused on reliability and cross-process performance:
+
+- **InteractiveApp (The Bootstrapper)**: Handles hardware lifecycle, process spawning, and IPC setup.
+- **WorldState (The Source of Truth)**: A versioned, shared state container used by all processes.
+- **Specialized Managers**:
+    - **SceneManager**: Manages the application's state machine and scene lifecycles.
+    - **EnvironmentManager**: Orchestrates visibility, line-of-sight, and Fog of War logic.
+    - **PersistenceService**: Handles all file I/O and atomic state synchronization.
+
+### Architectural Invariant: Read/Write Separation
+- **Reads** are performed exclusively from the `WorldState`.
+- **Writes** are strictly routed through the specialized Managers to ensure consistency and persistence.
+
 ## Documentation
 
 - [Calibration Guide](docs/calibration.md)

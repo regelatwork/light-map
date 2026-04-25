@@ -5,7 +5,7 @@ import math
 from collections import deque
 from typing import List, Tuple, Dict, Optional, TYPE_CHECKING, Set
 from light_map.visibility.visibility_types import VisibilityType, VisibilityBlocker
-from light_map.core.common_types import Token, GridType
+from light_map.core.common_types import Token, GridType, CoverResult, WedgeSegment
 
 # Optional Numba support
 try:
@@ -75,21 +75,25 @@ if HAS_NUMBA:
     @njit(cache=True)
     def _numba_calculate_cover_grade(
         npc_pixels: np.ndarray, pc_pixels: np.ndarray, blocker_mask: np.ndarray
-    ) -> Tuple[float, float]:
+    ) -> Tuple[float, float, int]:
         """
         Calculates:
         1. total_ratio: percentage of NPC boundary pixels obscured (Wall or Low).
         2. wall_ratio: percentage of NPC boundary pixels blocked by WALLS/DOORS.
+        3. best_apex_index: index of the PC corner that provided the best view.
         Starfinder 1e: Attacker chooses ONE corner that sees as much as possible.
         """
         num_npc = len(npc_pixels)
         num_pc = len(pc_pixels)
         if num_npc == 0 or num_pc == 0:
-            return 0.0, 0.0
+            return 0.0, 0.0, 0
 
-        min_total_ratio = 1.0
-        min_wall_ratio = 1.0
+        min_total_ratio = 1.1
+        min_wall_ratio = 1.1
         found_any_loe = False
+        
+        best_indices = np.zeros(num_pc, dtype=np.int32)
+        best_count = 0
 
         # For each Attacker corner
         for j in range(num_pc):
@@ -125,11 +129,17 @@ if HAS_NUMBA:
                 ):
                     min_wall_ratio = wall_ratio
                     min_total_ratio = total_ratio
+                    best_indices[0] = j
+                    best_count = 1
+                elif wall_ratio == min_wall_ratio and total_ratio == min_total_ratio:
+                    best_indices[best_count] = j
+                    best_count += 1
 
         if not found_any_loe:
-            return -1.0, -1.0
+            return -1.0, -1.0, 0
 
-        return min_total_ratio, min_wall_ratio
+        best_index = best_indices[best_count // 2]
+        return min_total_ratio, min_wall_ratio, best_index
 
     @njit(cache=True)
     def _numba_is_line_obstructed(
@@ -563,51 +573,119 @@ class VisibilityEngine:
 
     def calculate_token_cover_bonuses(
         self, source_token: Token, target_token: Token
-    ) -> Tuple[int, int]:
+    ) -> CoverResult:
         """
         Calculates AC and Reflex save bonuses for a target token viewed from a source token.
-        Returns (ac_bonus, reflex_bonus).
+        Returns CoverResult containing bonuses, best apex, and visual segments.
         """
         if self.blocker_mask is None:
-            return 0, 0
+            return CoverResult(0, 0, (0, 0), [], np.empty((0, 2), dtype=np.int32))
 
         # 1. Get boundary pixels
         npc_pixels = self._get_token_boundary_pixels(target_token)
         pc_pixels = self._get_token_boundary_pixels(source_token)
 
         if len(npc_pixels) == 0 or len(pc_pixels) == 0:
-            return 0, 0
+            return CoverResult(0, 0, (0, 0), [], np.empty((0, 2), dtype=np.int32))
 
         # 2. Use Numba-optimized cover grade calculation
         if HAS_NUMBA:
-            total_ratio, wall_ratio = _numba_calculate_cover_grade(
+            total_ratio, wall_ratio, best_apex_idx = _numba_calculate_cover_grade(
                 npc_pixels, pc_pixels, self.blocker_mask
             )
         else:
             # Python fallback (not implemented for N^2, returns no cover)
-            return 0, 0
+            return CoverResult(0, 0, (0, 0), [], np.empty((0, 2), dtype=np.int32))
 
         # 3. Map cover grade to Starfinder 1e bonuses
         # Ratio -1.0 means Total Cover (No Line of Effect)
+        ac_bonus, reflex_bonus = 0, 0
         if total_ratio < 0:
-            return -1, -1
+            ac_bonus, reflex_bonus = -1, -1
+        elif wall_ratio >= 0.90:
+            ac_bonus, reflex_bonus = 8, 4
+        elif total_ratio >= 0.20:
+            ac_bonus, reflex_bonus = 4, 2
+        elif total_ratio > 0.0:
+            ac_bonus, reflex_bonus = 2, 1
 
-        # Improved Cover (+8 AC / +4 Reflex)
-        # Starfinder: 'almost completely hidden', e.g. arrow slit or peeking.
-        # Rule: requires 90%+ of the target to be behind a solid WALL or DOOR.
-        if wall_ratio >= 0.90:
-            return 8, 4
+        best_apex = (int(pc_pixels[best_apex_idx, 0]), int(pc_pixels[best_apex_idx, 1]))
 
-        # Standard Cover (+4 AC / +2 Reflex)
-        # Rule: 20%+ obscured by anything (Low or Wall).
-        if total_ratio >= 0.20:
-            return 4, 2
+        # --- PIXEL ORDERING ---
+        # Sort npc_pixels by polar angle relative to BEST APEX for contiguous segments
+        # This ensures that "contiguous indices" translate to contiguous geometric wedges.
+        angles = np.arctan2(
+            npc_pixels[:, 1] - best_apex[1], npc_pixels[:, 0] - best_apex[0]
+        )
+        sort_idx = np.argsort(angles)
+        npc_pixels = npc_pixels[sort_idx]
 
-        # Partial Cover (+2 AC / +1 Reflex)
-        if total_ratio > 0.0:
-            return 2, 1
+        # --- SEGMENT EXTRACTION ---
+        segments = []
+        if ac_bonus != -1:
+            # Trace paths from best apex to sorted NPC pixels
+            statuses = []
+            target_center = (
+                int(target_token.world_x * self.svg_to_mask_scale),
+                int(target_token.world_y * self.svg_to_mask_scale),
+            )
+            for i in range(len(npc_pixels)):
+                nx, ny = npc_pixels[i, 0], npc_pixels[i, 1]
 
-        return 0, 0
+                # Near-Side Filtering: (P_x - C_x)*(P_x - A_x) + (P_y - C_y)*(P_y - A_y) <= 0
+                # P = (nx, ny), C = target_center, A = best_apex
+                near_side = (nx - target_center[0]) * (nx - best_apex[0]) + (
+                    ny - target_center[1]
+                ) * (ny - best_apex[1])
+
+                if near_side <= 0:
+                    status = _numba_trace_path(
+                        nx, ny, best_apex[0], best_apex[1], self.blocker_mask
+                    )
+                    statuses.append(status)
+                else:
+                    statuses.append(-1)  # Filtered out (Far side)
+
+            # Group contiguous statuses (0: Clear, 2: Obscured)
+            current_start = -1
+            current_status = -1
+
+            for i in range(len(statuses)):
+                status = statuses[i]
+
+                if status in (0, 2):
+                    if current_status == -1:
+                        current_start = i
+                        current_status = status
+                    elif status != current_status:
+                        # Close previous segment
+                        segments.append(
+                            WedgeSegment(current_start, i - 1, current_status)
+                        )
+                        current_start = i
+                        current_status = status
+                else:
+                    # Filtered or Blocked
+                    if current_status != -1:
+                        segments.append(
+                            WedgeSegment(current_start, i - 1, current_status)
+                        )
+                        current_start = -1
+                        current_status = -1
+
+            # Close final segment
+            if current_status != -1:
+                segments.append(
+                    WedgeSegment(current_start, len(statuses) - 1, current_status)
+                )
+
+        return CoverResult(
+            ac_bonus=ac_bonus,
+            reflex_bonus=reflex_bonus,
+            best_apex=best_apex,
+            segments=segments,
+            npc_pixels=npc_pixels,
+        )
 
     def _is_line_obstructed(self, p1: Tuple[int, int], p2: Tuple[int, int]) -> bool:
         """

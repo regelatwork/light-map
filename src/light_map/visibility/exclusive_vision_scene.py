@@ -259,7 +259,8 @@ class ExclusiveVisionScene(BaseMapScene):
                     )
                     continue
 
-                ac, reflex = engine.calculate_token_cover_bonuses(target_token, t)
+                cover_result = engine.calculate_token_cover_bonuses(target_token, t)
+                ac, reflex = cover_result.ac_bonus, cover_result.reflex_bonus
 
                 # Log to INFO for every enemy within tactical range to verify logic
                 if ac == -1:
@@ -272,18 +273,18 @@ class ExclusiveVisionScene(BaseMapScene):
                     )
                 else:
                     logging.info(
-                        f"[ExclusiveVision] Token {t.id} ({other_profile.name}): AC={ac}, Reflex={reflex}"
+                        f"[ExclusiveVision] Token {t.id} ({other_profile.name}): AC={ac}, Reflex={reflex}, Segments={len(cover_result.segments)}"
                     )
 
                 # Final Filter for RENDERING labels:
                 # We show labels for ALL enemies within range (already checked above)
                 # regardless of searchlight status.
 
-                old_ac, old_reflex = old_bonuses.get(t.id, (0, 0))
-                if t.id not in old_bonuses or ac != old_ac:
+                old_result = old_bonuses.get(t.id)
+                if old_result != cover_result:
                     changed = True
 
-                new_bonuses[t.id] = (ac, reflex)
+                new_bonuses[t.id] = cover_result
 
             # Update state if logical content changed or population changed
             if changed or len(new_bonuses) != len(old_bonuses):

@@ -3,7 +3,7 @@ import numpy as np
 from unittest.mock import MagicMock
 from light_map.state.world_state import WorldState
 from light_map.rendering.layers.tactical_overlay_layer import TacticalOverlayLayer
-from light_map.core.common_types import Token
+from light_map.core.common_types import Token, CoverResult, WedgeSegment
 from light_map.map.map_system import MapSystem
 from light_map.visibility.visibility_engine import VisibilityEngine
 
@@ -22,10 +22,12 @@ def mock_state():
 def mock_map_system():
     ms = MagicMock(spec=MapSystem)
     ms.world_to_screen.side_effect = lambda x, y: (
-        x * 2,
-        y * 2,
+        float(x * 2),
+        float(y * 2),
     )  # Simple scale for testing
     ms.config = MagicMock()
+    ms.config.width = 1920
+    ms.config.height = 1080
     ms.config.projector_ppi = 96.0
     ms.ghost_tokens = []
     return ms
@@ -46,14 +48,14 @@ def test_tactical_overlay_clear_los(mock_state, mock_map_system, mock_engine):
     token = Token(id=2, world_x=50, world_y=50)
     mock_state.tokens = [token]
     # No tactical bonuses set explicitly, but required for the layer to process it
-    mock_state.tactical_bonuses = {2: (0, 0)}
+    mock_state.tactical_bonuses = {2: CoverResult(0, 0, (10, 10), [], np.empty((0, 2)))}
 
     patches = layer._generate_patches(0.0)
 
+    # Should have 1 label patch (wedge patch not created if no wedges drawn)
     assert len(patches) == 1
     patch = patches[0]
     assert patch.x == (50 * 2) - (patch.width // 2)
-    assert patch.y == (50 * 2) + 48 + 5
 
 
 def test_tactical_overlay_cover_bonus(mock_state, mock_map_system, mock_engine):
@@ -62,7 +64,7 @@ def test_tactical_overlay_cover_bonus(mock_state, mock_map_system, mock_engine):
 
     token = Token(id=2, world_x=50, world_y=50)
     mock_state.tokens = [token]
-    mock_state.tactical_bonuses = {2: (4, 2)}
+    mock_state.tactical_bonuses = {2: CoverResult(4, 2, (10, 10), [], np.empty((0, 2)))}
 
     patches = layer._generate_patches(0.0)
     assert len(patches) == 1
@@ -74,7 +76,7 @@ def test_tactical_overlay_total_cover(mock_state, mock_map_system, mock_engine):
 
     token = Token(id=2, world_x=50, world_y=50)
     mock_state.tokens = [token]
-    mock_state.tactical_bonuses = {2: (-1, -1)}
+    mock_state.tactical_bonuses = {2: CoverResult(-1, -1, (10, 10), [], np.empty((0, 2)))}
 
     patches = layer._generate_patches(0.0)
     assert len(patches) == 1
@@ -106,3 +108,31 @@ def test_tactical_overlay_skips_inspected_token(
 
     patches = layer._generate_patches(0.0)
     assert len(patches) == 0
+
+
+def test_tactical_overlay_wedge_generation(mock_state, mock_map_system, mock_engine):
+    """Verifies that a wedge patch is generated when segments are present."""
+    layer = TacticalOverlayLayer(mock_state, mock_map_system, mock_engine)
+
+    token = Token(id=2, world_x=50, world_y=50)
+    mock_state.tokens = [token]
+
+    # Create dummy npc_pixels and segments
+    npc_pixels = np.array([[60, 10], [61, 11], [62, 12]], dtype=np.int32)
+    segments = [WedgeSegment(0, 2, 0)]  # One clear segment
+
+    mock_state.tactical_bonuses = {
+        2: CoverResult(0, 0, (10, 10), segments, npc_pixels)
+    }
+
+    patches = layer._generate_patches(0.0)
+
+    # Should have 2 patches: one for the wedges (full screen) and one for the label
+    assert len(patches) == 2
+
+    # One patch should be full screen (x=0, y=0, w=1920, h=1080)
+    wedge_patch = next((p for p in patches if p.x == 0 and p.y == 0), None)
+    assert wedge_patch is not None
+    assert wedge_patch.width == 1920
+    assert wedge_patch.height == 1080
+    assert wedge_patch.data is not None

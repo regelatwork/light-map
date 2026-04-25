@@ -309,6 +309,22 @@ class SelectionState:
 
 
 @dataclass
+class WedgeSegment:
+    start_idx: int
+    end_idx: int
+    status: int  # 0: Clear, 2: Obscured (1: Blocked is filtered out)
+
+
+@dataclass
+class CoverResult:
+    ac_bonus: int
+    reflex_bonus: int
+    best_apex: Tuple[int, int]  # (x, y) in mask space
+    segments: List[WedgeSegment]
+    npc_pixels: np.ndarray  # (x, y) in mask space, sorted relative to best_apex
+
+
+@dataclass
 class GridMetadata:
     spacing_svg: float = 0.0
     origin_svg_x: float = 0.0

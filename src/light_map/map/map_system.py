@@ -72,7 +72,7 @@ class MapSystem:
     def redo(self):
         """Restores the state that was undone."""
         if not self.redo_stack:
-            raise IndexError("Nothing to redo")
+            return
         from copy import deepcopy
 
         self.undo_stack.append(deepcopy(self.state))

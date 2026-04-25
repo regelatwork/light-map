@@ -32,6 +32,12 @@ For each visible NPC token during Exclusive Vision:
 
 ### 3.2 Tactical Overlay
 - **Floating Labels:** A dedicated rendering layer (`TacticalOverlayLayer`) displays cover bonuses below the name of each visible target token.
+- **Cone of Fire:** For each visible target, a visual "cone" radiates from the attacker's best vantage point (apex) to the target's near-side boundary.
+  - **Discrete Wedges:** If objects or walls block part of the view, the cone is split into multiple discrete wedges.
+  - **Status Textures:**
+    - **Clear LOS:** Solid translucent fill (low alpha).
+    - **Low Cover:** "Tactical Radar" stipple pattern (sparse dot grid).
+  - **Sharp Edges:** White lines define the outer boundaries of each visible wedge.
 - **GM Mode:** GMs can enter Exclusive Vision for an NPC to see cover bonuses against all PCs.
 - **Manual Overrides:** Frontend toggles allow the GM to manually set cover or concealment states for any token, overriding the geometric calculation.
 

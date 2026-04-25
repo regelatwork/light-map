@@ -47,7 +47,75 @@ class TacticalOverlayLayer(Layer):
             return []
 
         patches = []
+        
+        # 1. Render Visual Wedges (Polygons)
+        bonuses = self.state.tactical_bonuses
+        if bonuses:
+            screen_w = self.map_system.config.width if self.map_system.config else 1920
+            screen_h = self.map_system.config.height if self.map_system.config else 1080
+            
+            # Create a single large patch for all wedges
+            wedge_img = np.zeros((screen_h, screen_w, 4), dtype=np.uint8)
+            
+            # Create stipple mask
+            tile = np.zeros((4, 4), dtype=np.uint8)
+            tile[0, 0] = 255
+            tile[2, 2] = 255
+            stipple_mask = np.tile(tile, (screen_h // 4 + 1, screen_w // 4 + 1))[:screen_h, :screen_w]
+            
+            svg_to_mask_scale = self.visibility_engine.svg_to_mask_scale
+            inv_scale = 1.0 / svg_to_mask_scale
+            
+            drawn_any_wedge = False
+            for target_id, cover in bonuses.items():
+                if target_id == self.state.inspected_token_id:
+                    continue
+                
+                if not cover.segments:
+                    continue
+                
+                # Apex in Screen Space
+                ax, ay = cover.best_apex
+                asx, asy = self.map_system.world_to_screen(ax * inv_scale, ay * inv_scale)
+                apex_screen = (int(asx), int(asy))
+                
+                for seg in cover.segments:
+                    # NPC Pixels in Screen Space
+                    seg_pixels = cover.npc_pixels[seg.start_idx : seg.end_idx + 1]
+                    poly_points = [apex_screen]
+                    for px, py in seg_pixels:
+                        psx, psy = self.map_system.world_to_screen(px * inv_scale, py * inv_scale)
+                        poly_points.append((int(psx), int(psy)))
+                    
+                    if len(poly_points) < 3:
+                        continue
+                        
+                    pts = np.array(poly_points, dtype=np.int32)
+                    
+                    if seg.status == 0:  # Clear: Cyan 15% alpha
+                        cv2.fillPoly(wedge_img, [pts], (255, 255, 0, 38))
+                    elif seg.status == 2:  # Obscured: Stipple
+                        # Draw wedge to temp mask
+                        wedge_mask = np.zeros((screen_h, screen_w), dtype=np.uint8)
+                        cv2.fillPoly(wedge_mask, [pts], 255)
+                        
+                        # Apply stipple pattern
+                        final_stipple = cv2.bitwise_and(wedge_mask, stipple_mask)
+                        
+                        # Apply to wedge_img (Cyan stipple)
+                        wedge_img[final_stipple > 0] = (255, 255, 0, 180) # Higher alpha for stipple visibility
+                    
+                    # Outlines: 1px White
+                    cv2.line(wedge_img, apex_screen, poly_points[1], (255, 255, 255, 255), 1)
+                    cv2.line(wedge_img, apex_screen, poly_points[-1], (255, 255, 255, 255), 1)
+                    drawn_any_wedge = True
+            
+            if drawn_any_wedge:
+                patches.append(
+                    ImagePatch(x=0, y=0, width=screen_w, height=screen_h, data=wedge_img)
+                )
 
+        # 2. Render Tactical Labels
         # Access tactical bonuses from dedicated state map
         bonuses = self.state.tactical_bonuses
 
@@ -66,9 +134,12 @@ class TacticalOverlayLayer(Layer):
                 continue
 
             # Retrieve bonuses for this token
-            ac_bonus, reflex_bonus = bonuses.get(token.id, (None, None))
-            if ac_bonus is None:
+            cover = bonuses.get(token.id)
+            if cover is None:
                 continue
+            
+            ac_bonus = cover.ac_bonus
+            reflex_bonus = cover.reflex_bonus
 
             # Determine label text and color
             if ac_bonus == -1:

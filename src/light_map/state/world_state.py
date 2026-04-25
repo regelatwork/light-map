@@ -13,6 +13,7 @@ from light_map.core.common_types import (
     CalibrationState,
     ProjectorPose,
     GridType,
+    CoverResult,
 )
 from light_map.menu.menu_system import MenuState
 from light_map.core.scene import HandInput
@@ -352,11 +353,11 @@ class WorldState:
         return self._inspected_token_id_atom.timestamp
 
     @property
-    def tactical_bonuses(self) -> Dict[int, Tuple[int, int]]:
+    def tactical_bonuses(self) -> Dict[int, CoverResult]:
         return self._tactical_bonuses_atom.value
 
     @tactical_bonuses.setter
-    def tactical_bonuses(self, value: Dict[int, Tuple[int, int]]):
+    def tactical_bonuses(self, value: Dict[int, CoverResult]):
         self._tactical_bonuses_atom.update(value)
 
     @property

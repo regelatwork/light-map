@@ -122,3 +122,11 @@ def test_reset_zoom_to_base_pivots_around_center(map_system):
     # Pan should return to 400
     assert map_system.state.x == 400.0
     assert map_system.state.y == 400.0
+
+
+def test_undo_redo_empty_stacks(map_system):
+    """Verifies that undo/redo don't crash when stacks are empty."""
+    # Should not raise IndexError
+    map_system.undo()
+    map_system.redo()
+    assert map_system.state.zoom == 1.0

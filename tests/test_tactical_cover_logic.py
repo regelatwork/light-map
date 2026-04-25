@@ -25,7 +25,8 @@ def test_calculate_cover_bonuses_starfinder_rules():
     target = Token(id=2, world_x=50, world_y=10, size=1)
 
     # --- SCENARIO 1: NO COVER ---
-    ac, reflex = engine.calculate_token_cover_bonuses(source, target)
+    res = engine.calculate_token_cover_bonuses(source, target)
+    ac, reflex = res.ac_bonus, res.reflex_bonus
     assert ac == 0
     assert reflex == 0
 
@@ -33,21 +34,24 @@ def test_calculate_cover_bonuses_starfinder_rules():
     # Put a tiny Low Object between them, close to target
     # 1 pixel wide. Ratio will be small.
     engine.blocker_mask[9:11, 45] = MASK_VALUE_LOW
-    ac, reflex = engine.calculate_token_cover_bonuses(source, target)
+    res = engine.calculate_token_cover_bonuses(source, target)
+    ac, reflex = res.ac_bonus, res.reflex_bonus
     assert ac == 2
     assert reflex == 1
 
     # --- SCENARIO 3: STANDARD COVER (+4/+2) ---
     # Larger Low Object.
     engine.blocker_mask[5:15, 45] = MASK_VALUE_LOW
-    ac, reflex = engine.calculate_token_cover_bonuses(source, target)
+    res = engine.calculate_token_cover_bonuses(source, target)
+    ac, reflex = res.ac_bonus, res.reflex_bonus
     assert ac == 4
     assert reflex == 2
 
     # --- SCENARIO 4: NO IMPROVED COVER FROM LOW OBJECTS ---
     # Even if blocked 100% by Low Objects, should only be +4
     engine.blocker_mask[0:100, 45] = MASK_VALUE_LOW
-    ac, reflex = engine.calculate_token_cover_bonuses(source, target)
+    res = engine.calculate_token_cover_bonuses(source, target)
+    ac, reflex = res.ac_bonus, res.reflex_bonus
     assert ac == 4
     assert reflex == 2
 
@@ -59,7 +63,8 @@ def test_calculate_cover_bonuses_starfinder_rules():
     # I'll block a large vertical slice and leave only 2 pixels open.
     engine.blocker_mask[0:100, 42:58] = MASK_VALUE_WALL
     engine.blocker_mask[10, 42:58] = 0  # 1-pixel high horizontal slit
-    ac, reflex = engine.calculate_token_cover_bonuses(source, target)
+    res = engine.calculate_token_cover_bonuses(source, target)
+    ac, reflex = res.ac_bonus, res.reflex_bonus
     assert ac == 8
     assert reflex == 4
 
@@ -67,7 +72,8 @@ def test_calculate_cover_bonuses_starfinder_rules():
     # Massive wall, no gaps.
     engine.blocker_mask.fill(0)
     engine.blocker_mask[0:100, 20:80] = MASK_VALUE_WALL
-    ac, reflex = engine.calculate_token_cover_bonuses(source, target)
+    res = engine.calculate_token_cover_bonuses(source, target)
+    ac, reflex = res.ac_bonus, res.reflex_bonus
     assert ac == -1
     assert reflex == -1
 
@@ -75,7 +81,8 @@ def test_calculate_cover_bonuses_starfinder_rules():
     # Put low object close to ATTACKER (x=15)
     engine.blocker_mask.fill(0)
     engine.blocker_mask[0:100, 15] = MASK_VALUE_LOW
-    ac, reflex = engine.calculate_token_cover_bonuses(source, target)
+    res = engine.calculate_token_cover_bonuses(source, target)
+    ac, reflex = res.ac_bonus, res.reflex_bonus
     # Target (x=50) is NOT closer to obstacle (x=15) than attacker (x=10)
     assert ac == 0
     assert reflex == 0
@@ -92,11 +99,11 @@ def test_proximity_30ft_rule():
 
     # Low object at x=50. Dist to target = 100 (> 96px / 30ft)
     engine.blocker_mask[:, 50] = MASK_VALUE_LOW
-    ac, reflex = engine.calculate_token_cover_bonuses(source, target)
-    assert ac == 0  # Too far
+    res = engine.calculate_token_cover_bonuses(source, target)
+    assert res.ac_bonus == 0  # Too far
 
     # Low object at x=100. Dist to target = 50 (< 96px)
     engine.blocker_mask.fill(0)
     engine.blocker_mask[:, 100] = MASK_VALUE_LOW
-    ac, reflex = engine.calculate_token_cover_bonuses(source, target)
-    assert ac > 0  # Should provide cover
+    res = engine.calculate_token_cover_bonuses(source, target)
+    assert res.ac_bonus > 0  # Should provide cover

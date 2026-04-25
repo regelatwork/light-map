@@ -79,22 +79,33 @@ class TacticalOverlayLayer(Layer):
                 asx, asy = self.map_system.world_to_screen(ax * inv_scale, ay * inv_scale)
                 apex_screen = (int(asx), int(asy))
                 
-                # Track extreme points for outer lines
-                first_edge_point = None
-                last_edge_point = None
-
+            drawn_any_wedge = False
+            for target_id, cover in bonuses.items():
+                if target_id == self.state.inspected_token_id:
+                    continue
+                
+                if not cover.segments:
+                    continue
+                
+                # Apex in Screen Space
+                ax, ay = cover.best_apex
+                asx, asy = self.map_system.world_to_screen(ax * inv_scale, ay * inv_scale)
+                apex_screen = (int(asx), int(asy))
+                
+                # To find the true edges of the cone, we need to find the angular extremes
+                # relative to the apex among all visible pixels.
+                all_visible_pts = []
+                
                 for seg in cover.segments:
                     # NPC Pixels in Screen Space
                     seg_pixels = cover.npc_pixels[seg.start_idx : seg.end_idx + 1]
                     poly_points = [apex_screen]
+                    
                     for px, py in seg_pixels:
                         psx, psy = self.map_system.world_to_screen(px * inv_scale, py * inv_scale)
                         p_screen = (int(psx), int(psy))
                         poly_points.append(p_screen)
-                        
-                        if first_edge_point is None:
-                            first_edge_point = p_screen
-                        last_edge_point = p_screen
+                        all_visible_pts.append(p_screen)
                     
                     if len(poly_points) < 3:
                         continue
@@ -113,11 +124,37 @@ class TacticalOverlayLayer(Layer):
                         
                         # Apply to wedge_img (Cyan dots, high alpha)
                         wedge_img[final_stipple > 0] = (255, 255, 0, 200)
-                
-                # Outlines: 2px White, ONLY for the outermost edges of the entire cone
-                if first_edge_point and last_edge_point:
-                    cv2.line(wedge_img, apex_screen, first_edge_point, (255, 255, 255, 255), 2)
-                    cv2.line(wedge_img, apex_screen, last_edge_point, (255, 255, 255, 255), 2)
+
+                # Draw the two outermost edges of the entire cone
+                if all_visible_pts:
+                    # Calculate angles of all points relative to apex
+                    # We use a simple approach: just find the two points that are 'most apart' angularly
+                    # But for tokens, we can just take the global min/max angle pixels
+                    
+                    # Compute relative vectors
+                    pts_np = np.array(all_visible_pts)
+                    vecs = pts_np - np.array(apex_screen)
+                    angles = np.arctan2(vecs[:, 1], vecs[:, 0])
+                    
+                    # Handle wrap-around by checking the span
+                    min_ang = np.min(angles)
+                    max_ang = np.max(angles)
+                    
+                    if max_ang - min_ang > np.pi:
+                        # Wrap-around case: the 'gap' is in the middle of the angles
+                        # The edges are the points closest to each other in the 'gap'
+                        angles_shifted = (angles + np.pi) % (2 * np.pi) - np.pi
+                        idx_min = np.argmin(angles_shifted)
+                        idx_max = np.argmax(angles_shifted)
+                    else:
+                        idx_min = np.argmin(angles)
+                        idx_max = np.argmax(angles)
+                    
+                    p_edge1 = tuple(all_visible_pts[idx_min])
+                    p_edge2 = tuple(all_visible_pts[idx_max])
+                    
+                    cv2.line(wedge_img, apex_screen, p_edge1, (255, 255, 255, 255), 2)
+                    cv2.line(wedge_img, apex_screen, p_edge2, (255, 255, 255, 255), 2)
                     drawn_any_wedge = True
             
             if drawn_any_wedge:

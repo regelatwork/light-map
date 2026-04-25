@@ -1,7 +1,7 @@
 import time
 from contextlib import contextmanager
 import numpy as np
-from typing import List, Optional, Callable, Any, Dict, Set, Tuple
+from typing import List, Optional, Callable, Any, Dict, Set
 from light_map.core.common_types import (
     Token,
     DetectionResult,

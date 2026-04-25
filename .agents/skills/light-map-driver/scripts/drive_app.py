@@ -43,7 +43,7 @@ def main():
                 if httpx.get(f"{args.url}/health", timeout=1).status_code == 200:
                     print("API UP.")
                     break
-            except:
+            except Exception:
                 time.sleep(1)
         else:
             return
@@ -94,7 +94,7 @@ def main():
         print("Shutting down...")
         try:
             httpx.post(f"{args.url}/input/actions", json=["QUIT"], timeout=2)
-        except:
+        except Exception:
             pass
         process.wait(timeout=5)
 

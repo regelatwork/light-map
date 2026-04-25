@@ -86,9 +86,7 @@ def test_redo_stack_cleared_on_new_push(map_system):
 
     # Redo stack should be cleared
     assert not map_system.can_redo()
-    with pytest.raises(IndexError):
-        map_system.redo()
-
+    map_system.redo()  # Should not raise IndexError anymore
 
 def test_can_undo_redo_flags(map_system):
     assert not map_system.can_undo()

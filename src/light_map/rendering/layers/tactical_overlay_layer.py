@@ -96,6 +96,16 @@ class TacticalOverlayLayer(Layer):
                 # relative to the apex among all visible pixels.
                 all_visible_pts = []
                 
+                # Target Center in Screen Space (to pinch the polygons)
+                # target_token.world_x/y are in SVG coordinates
+                all_tokens = self.state.tokens + [t for t in self.map_system.ghost_tokens if t.id not in {tk.id for tk in self.state.tokens}]
+                target_tk = next((t for t in all_tokens if t.id == target_id), None)
+                if target_tk:
+                    tsx, tsy = self.map_system.world_to_screen(target_tk.world_x, target_tk.world_y)
+                    target_center_screen = (int(tsx), int(tsy))
+                else:
+                    target_center_screen = None
+
                 for seg in cover.segments:
                     # NPC Pixels in Screen Space
                     seg_pixels = cover.npc_pixels[seg.start_idx : seg.end_idx + 1]
@@ -107,6 +117,10 @@ class TacticalOverlayLayer(Layer):
                         poly_points.append(p_screen)
                         all_visible_pts.append(p_screen)
                     
+                    # Add Target Center to close the polygon tightly against the boundary
+                    if target_center_screen:
+                        poly_points.append(target_center_screen)
+
                     if len(poly_points) < 3:
                         continue
                         

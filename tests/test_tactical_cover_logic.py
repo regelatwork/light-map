@@ -107,3 +107,25 @@ def test_proximity_30ft_rule():
     engine.blocker_mask[:, 100] = MASK_VALUE_LOW
     res = engine.calculate_token_cover_bonuses(source, target)
     assert res.ac_bonus > 0  # Should provide cover
+
+
+def test_token_size_impact():
+    """Verifies that token size correctly scales the boundary footprint."""
+    engine = VisibilityEngine(grid_spacing_svg=10.0)
+    engine.svg_to_mask_scale = 1.0
+    engine.blocker_mask = np.zeros((100, 100), dtype=np.uint8)
+
+    source = Token(id=1, world_x=10, world_y=10, size=1)
+    
+    # Target size 1
+    target1 = Token(id=2, world_x=50, world_y=50, size=1)
+    res1 = engine.calculate_token_cover_bonuses(source, target1)
+    num_pixels_1 = len(res1.npc_pixels)
+
+    # Target size 2
+    target2 = Token(id=3, world_x=50, world_y=50, size=2)
+    res2 = engine.calculate_token_cover_bonuses(source, target2)
+    num_pixels_2 = len(res2.npc_pixels)
+
+    # Size 2 should have significantly more boundary pixels than Size 1
+    assert num_pixels_2 > num_pixels_1 * 1.5

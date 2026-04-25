@@ -248,10 +248,18 @@ class ExclusiveVisionScene(BaseMapScene):
                     # logging.debug(f"[ExclusiveVision] Skipping non-enemy: {self.token_id} to {t.id}")
                     continue
 
+                # Ensure sizes are correct for cover calculation
+                source_token_copy = target_token.copy()
+                source_token_copy.size = inspected_profile.size
+                
+                target_token_copy = t.copy()
+                target_token_copy.size = other_profile.size
+
                 # Check if token is within reasonable tactical range (e.g. 100ft / 20 squares)
                 dist_sq = (t.world_x - target_token.world_x) ** 2 + (
                     t.world_y - target_token.world_y
                 ) ** 2
+                spacing = engine.grid_spacing_svg
                 max_range_svg = 20.0 * spacing  # 20 squares
                 if dist_sq > max_range_svg**2:
                     logging.debug(
@@ -259,7 +267,7 @@ class ExclusiveVisionScene(BaseMapScene):
                     )
                     continue
 
-                cover_result = engine.calculate_token_cover_bonuses(target_token, t)
+                cover_result = engine.calculate_token_cover_bonuses(source_token_copy, target_token_copy)
                 ac, reflex = cover_result.ac_bonus, cover_result.reflex_bonus
 
                 # Log to INFO for every enemy within tactical range to verify logic

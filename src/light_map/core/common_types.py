@@ -323,6 +323,17 @@ class CoverResult:
     segments: List[WedgeSegment]
     npc_pixels: np.ndarray  # (x, y) in mask space, sorted relative to best_apex
 
+    def __eq__(self, other: Any) -> bool:
+        if not isinstance(other, CoverResult):
+            return False
+        return (
+            self.ac_bonus == other.ac_bonus
+            and self.reflex_bonus == other.reflex_bonus
+            and self.best_apex == other.best_apex
+            and self.segments == other.segments
+            and np.array_equal(self.npc_pixels, other.npc_pixels)
+        )
+
 
 @dataclass
 class GridMetadata:

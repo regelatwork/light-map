@@ -538,16 +538,25 @@ class VisibilityEngine:
         self, footprint: np.ndarray
     ) -> List[Tuple[int, int]]:
         """
-        Extracts the (x, y) coordinates of all pixels on the inner perimeter of the footprint.
+        Extracts the (x, y) coordinates of all pixels on the perimeter of the footprint.
+        Uses cv2.findContours to ensure they are returned in a spatially ordered path.
         """
         if footprint is None or not np.any(footprint > 0):
             return []
 
-        kernel = np.ones((3, 3), np.uint8)
-        eroded = cv2.erode(footprint, kernel, iterations=1)
-        border_mask = cv2.subtract(footprint, eroded)
-        y_coords, x_coords = np.where(border_mask > 0)
-        return list(zip(x_coords.tolist(), y_coords.tolist()))
+        # Find external contour
+        contours, _ = cv2.findContours(
+            footprint, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE
+        )
+        if not contours:
+            return []
+
+        # Pick the largest contour (the token itself)
+        main_contour = max(contours, key=cv2.contourArea)
+        
+        # Reshape (N, 1, 2) to (N, 2)
+        points = main_contour.reshape((-1, 2))
+        return [(int(p[0]), int(p[1])) for p in points]
 
     def _get_token_boundary_pixels(self, token: Token) -> np.ndarray:
         """
@@ -611,16 +620,8 @@ class VisibilityEngine:
 
         best_apex = (int(pc_pixels[best_apex_idx, 0]), int(pc_pixels[best_apex_idx, 1]))
 
-        # --- PIXEL ORDERING ---
-        # Sort npc_pixels by polar angle relative to BEST APEX for contiguous segments
-        # This ensures that "contiguous indices" translate to contiguous geometric wedges.
-        angles = np.arctan2(
-            npc_pixels[:, 1] - best_apex[1], npc_pixels[:, 0] - best_apex[0]
-        )
-        sort_idx = np.argsort(angles)
-        npc_pixels = npc_pixels[sort_idx]
-
         # --- SEGMENT EXTRACTION ---
+        # Note: npc_pixels is already spatially ordered by _get_footprint_border_points (via findContours)
         segments = []
         if ac_bonus != -1:
             # Trace paths from best apex to sorted NPC pixels

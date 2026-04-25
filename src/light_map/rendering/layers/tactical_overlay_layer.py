@@ -57,10 +57,10 @@ class TacticalOverlayLayer(Layer):
             # Create a single large patch for all wedges
             wedge_img = np.zeros((screen_h, screen_w, 4), dtype=np.uint8)
             
-            # Create stipple mask
+            # Create stipple mask (2x2 dots in a 4x4 tile for high visibility)
             tile = np.zeros((4, 4), dtype=np.uint8)
-            tile[0, 0] = 255
-            tile[2, 2] = 255
+            tile[0:2, 0:2] = 255
+            tile[2:4, 2:4] = 255
             stipple_mask = np.tile(tile, (screen_h // 4 + 1, screen_w // 4 + 1))[:screen_h, :screen_w]
             
             svg_to_mask_scale = self.visibility_engine.svg_to_mask_scale
@@ -79,21 +79,30 @@ class TacticalOverlayLayer(Layer):
                 asx, asy = self.map_system.world_to_screen(ax * inv_scale, ay * inv_scale)
                 apex_screen = (int(asx), int(asy))
                 
+                # Track extreme points for outer lines
+                first_edge_point = None
+                last_edge_point = None
+
                 for seg in cover.segments:
                     # NPC Pixels in Screen Space
                     seg_pixels = cover.npc_pixels[seg.start_idx : seg.end_idx + 1]
                     poly_points = [apex_screen]
                     for px, py in seg_pixels:
                         psx, psy = self.map_system.world_to_screen(px * inv_scale, py * inv_scale)
-                        poly_points.append((int(psx), int(psy)))
+                        p_screen = (int(psx), int(psy))
+                        poly_points.append(p_screen)
+                        
+                        if first_edge_point is None:
+                            first_edge_point = p_screen
+                        last_edge_point = p_screen
                     
                     if len(poly_points) < 3:
                         continue
                         
-                    pts = np.array(poly_points, dtype=np.int32)
+                    pts = np.array(poly_points, dtype=np.int32).reshape((-1, 1, 2))
                     
-                    if seg.status == 0:  # Clear: Cyan 15% alpha
-                        cv2.fillPoly(wedge_img, [pts], (255, 255, 0, 38))
+                    if seg.status == 0:  # Clear: Cyan (High alpha for visibility)
+                        cv2.fillPoly(wedge_img, [pts], (255, 255, 0, 80))
                     elif seg.status == 2:  # Obscured: Stipple
                         # Draw wedge to temp mask
                         wedge_mask = np.zeros((screen_h, screen_w), dtype=np.uint8)
@@ -102,12 +111,13 @@ class TacticalOverlayLayer(Layer):
                         # Apply stipple pattern
                         final_stipple = cv2.bitwise_and(wedge_mask, stipple_mask)
                         
-                        # Apply to wedge_img (Cyan stipple)
-                        wedge_img[final_stipple > 0] = (255, 255, 0, 180) # Higher alpha for stipple visibility
-                    
-                    # Outlines: 1px White
-                    cv2.line(wedge_img, apex_screen, poly_points[1], (255, 255, 255, 255), 1)
-                    cv2.line(wedge_img, apex_screen, poly_points[-1], (255, 255, 255, 255), 1)
+                        # Apply to wedge_img (Cyan dots, high alpha)
+                        wedge_img[final_stipple > 0] = (255, 255, 0, 200)
+                
+                # Outlines: 2px White, ONLY for the outermost edges of the entire cone
+                if first_edge_point and last_edge_point:
+                    cv2.line(wedge_img, apex_screen, first_edge_point, (255, 255, 255, 255), 2)
+                    cv2.line(wedge_img, apex_screen, last_edge_point, (255, 255, 255, 255), 2)
                     drawn_any_wedge = True
             
             if drawn_any_wedge:

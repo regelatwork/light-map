@@ -13,9 +13,11 @@ session.json
 maps/
 map_state.json
 *.svg
+!tests/tactical_cases/*.svg
 *.png
 *.FCBak
 light_map.log
+tests/tactical_cases/results/
 
 # LaTeX artifacts
 docs/whitepaper/*.aux

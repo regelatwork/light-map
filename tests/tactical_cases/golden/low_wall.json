@@ -1,0 +1,33 @@
+{
+  "case_name": "low_wall",
+  "grid_params": {
+    "spacing_svg": 10.0,
+    "svg_to_mask_scale": 1.6,
+    "mask_resolution": [
+      320,
+      320
+    ]
+  },
+  "cover_result": {
+    "ac_bonus": 8,
+    "reflex_bonus": 4,
+    "total_ratio": 1.0,
+    "wall_ratio": 0.0,
+    "best_apex_svg": [
+      30.0,
+      110.0
+    ],
+    "wedges": [
+      {
+        "status": "OBSCURED_LOW",
+        "start_idx": 0,
+        "end_idx": 24
+      },
+      {
+        "status": "OBSCURED_LOW",
+        "start_idx": 57,
+        "end_idx": 63
+      }
+    ]
+  }
+}

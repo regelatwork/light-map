@@ -93,10 +93,9 @@ if HAS_NUMBA:
 
         min_total_ratio = 1.1
         min_wall_ratio = 1.1
+        min_dist_to_target = 1e9
         found_any_loe = False
-
-        best_indices = np.zeros(num_pc, dtype=np.int32)
-        best_count = 0
+        best_index = 0
 
         # For each Attacker corner
         for j in range(num_pc):
@@ -133,25 +132,33 @@ if HAS_NUMBA:
                 found_any_loe = True
                 total_ratio = obscured_count / num_near_side
                 wall_ratio = wall_count / num_near_side
+                dist_to_target = math.sqrt(
+                    (px - target_center[0]) ** 2 + (py - target_center[1]) ** 2
+                )
 
                 # Selection Logic:
-                # We want the corner that has the best view (lowest wall ratio).
-                # If wall ratios are equal, choose the one with less total obstruction.
-                if wall_ratio < min_wall_ratio or (
-                    wall_ratio == min_wall_ratio and total_ratio < min_total_ratio
-                ):
+                # 1. We want the corner that has the best view (lowest wall ratio).
+                # 2. If wall ratios are equal, choose the one with less total obstruction.
+                # 3. If still equal, choose the one closest to the target.
+                is_better = False
+                if wall_ratio < min_wall_ratio:
+                    is_better = True
+                elif wall_ratio == min_wall_ratio:
+                    if total_ratio < min_total_ratio:
+                        is_better = True
+                    elif total_ratio == min_total_ratio:
+                        if dist_to_target < min_dist_to_target:
+                            is_better = True
+
+                if is_better:
                     min_wall_ratio = wall_ratio
                     min_total_ratio = total_ratio
-                    best_indices[0] = j
-                    best_count = 1
-                elif wall_ratio == min_wall_ratio and total_ratio == min_total_ratio:
-                    best_indices[best_count] = j
-                    best_count += 1
+                    min_dist_to_target = dist_to_target
+                    best_index = j
 
         if not found_any_loe:
             return -1.0, -1.0, 0
 
-        best_index = best_indices[best_count // 2]
         return min_total_ratio, min_wall_ratio, best_index
 
     @njit(cache=True)

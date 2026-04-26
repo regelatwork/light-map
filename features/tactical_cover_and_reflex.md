@@ -14,11 +14,6 @@ Automatically calculate and display Armor Class (AC) and Reflex save bonuses pro
 The engine implements the following rules for calculating cover:
 - **Obstacle Proximity:** A low object only provides cover if the target is within 30 feet (6 grid squares) of the obstacle and closer to the obstacle than the attacker is.
 - **Best Vantage:** The attacker (PC) chooses their "best corner" (any pixel on their footprint boundary) to see as much of the target (NPC) as possible.
-- **Soft Cover (Creatures):** 
-  - Creatures (allies or enemies) provide "Soft Cover" (+4 AC bonus) if they block a line of effect between the attacker and target.
-  - Soft Cover provides **no bonus to Reflex saves**.
-  - Soft Cover does not stack with itself or other cover; the best single bonus applies.
-  - Creatures sharing the same space (e.g., Tiny creatures in a Medium space) do not provide cover to each other.
 - **Cover Grades:**
   - **No Cover:** 0% of the target's boundary pixels are obscured.
   - **Partial Cover (+2 AC, +1 Reflex):** > 0% but < 50% of target boundary pixels obscured.
@@ -26,18 +21,26 @@ The engine implements the following rules for calculating cover:
   - **Improved Cover (+8 AC, +4 Reflex):** > 90% of target boundary pixels obscured.
   - **Total Cover:** No attacker pixel can see any target pixel (No LOS).
 
+### 2.3 Soft Cover (Creatures)
+Creatures (allies or enemies) provide "Soft Cover" if they stand between the attacker and the target.
+- **Bonuses:** Soft cover provides a **+4 AC bonus** but **no bonus to Reflex saves** (+0 Reflex).
+- **Mutual Exclusion:** Creatures sharing the same space (e.g., Tiny creatures in a Medium space) do not provide cover to each other.
+- **Precedence:** Soft cover does not stack with other forms of cover. If a target has both soft cover and partial cover, the higher AC bonus (+4) applies, but the Reflex bonus remains (+1) from the partial cover.
+
 ## 3. Technical Specifications
 
-### 3.1 Numba-Optimized $N^2$ Algorithm
-For each visible NPC token during Exclusive Vision:
-1. Extract boundary pixels for both Attacker (PC) and Target (NPC).
-2. Create a **Tactical Blocker Mask**:
-   - Copy the static `blocker_mask`.
-   - Stamp all active tokens (excluding attacker and target) as `MASK_VALUE_SOFT_COVER = 75`.
-3. For each Target pixel, check if it is "visible" from **any** Attacker pixel using the Tactical Blocker Mask.
-4. A line is **obscured** if it intersects a `LOW_OBJECT` (val 50) and satisfies proximity conditions.
-5. A line is **blocked** if it intersects a `WALL` (val 255), `CLOSED_DOOR` (val 200), or `TALL_OBJECT` (val 100).
-6. A line has **soft cover** if it intersects a creature (val 75) without hitting a harder obstacle.
+### 3.1 Numba-Optimized "Stamp & Trace" Algorithm
+For each visible NPC token during Exclusive Vision, the engine performs a dynamic "Stamp & Trace" calculation:
+1. **Extract Boundaries:** Get boundary pixels for both Attacker (PC) and Target (NPC).
+2. **Stamp Mask:** 
+   - Create a temporary copy of the static `blocker_mask`.
+   - Stamp the footprints of all active tokens (excluding attacker and target) as `MASK_VALUE_SOFT_COVER = 75`.
+3. **Trace Rays:** For each Target pixel, check if it is "visible" from **any** Attacker pixel using the stamped mask.
+4. **Determine Status:**
+   - A line is **obscured** if it intersects a `LOW_OBJECT` (val 50) and satisfies proximity conditions.
+   - A line is **blocked** if it intersects a `WALL` (val 255), `CLOSED_DOOR` (val 200), or `TALL_OBJECT` (val 100).
+   - A line has **soft cover** if it intersects a creature (val 75) without hitting a harder obstacle.
+5. **Aggregate Grades:** The final cover grade is determined by the percentage of obscured vs. soft-cover lines. Harder cover always takes precedence for a given ray.
 
 ### 3.2 Tactical Overlay
 - **Floating Labels:** A dedicated rendering layer (`TacticalOverlayLayer`) displays cover bonuses below the name of each visible target token.

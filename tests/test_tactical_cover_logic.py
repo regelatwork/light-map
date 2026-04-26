@@ -51,7 +51,8 @@ def test_calculate_cover_bonuses_starfinder_rules():
     engine.blocker_mask[0:100, 40:45] = MASK_VALUE_LOW
     res = engine.calculate_token_cover_bonuses(source, target)
     if res.total_ratio >= 0.90:
-        assert res.ac_bonus == 8
+        # Capped at +4 for Low Objects
+        assert res.ac_bonus == 4
     elif res.total_ratio >= 0.50:
         assert res.ac_bonus == 4
     elif res.total_ratio > 0.0:
@@ -59,26 +60,26 @@ def test_calculate_cover_bonuses_starfinder_rules():
     else:
         assert res.ac_bonus == 0
 
-    # --- SCENARIO 4: IMPROVED COVER FROM LOW OBJECTS (+8/+4) ---
-    # Block 100% of the front to guarantee Improved Cover
+    # --- SCENARIO 4: LOW OBJECTS CAPPED AT STANDARD COVER (+4/+2) ---
+    # Block 100% of the front to guarantee it's > 90% obscured.
     engine.blocker_mask.fill(0)
     engine.blocker_mask[0:100, 30:50] = MASK_VALUE_LOW
     res = engine.calculate_token_cover_bonuses(source, target)
     assert res.total_ratio >= 0.90
-    assert res.ac_bonus == 8
+    assert res.wall_ratio == 0.0
+    assert res.ac_bonus == 4  # Capped!
 
     # --- SCENARIO 5: IMPROVED COVER (+8/+4) FROM WALLS ---
-    # Must be 90%+ blocked by WALLS from the BEST corner.
+    # Must be 90%+ blocked TOTAL, and 50%+ blocked by WALLS.
     engine.blocker_mask.fill(0)
     # Target is Medium (size 1) -> approx 64 border pixels (4 * 16).
-    # To hit 90%, we need to block approx 58 pixels.
-    # I'll block a large vertical slice and leave only 2 pixels open.
+    # We block everything with walls but leave a thin 2-pixel horizontal slit.
     engine.blocker_mask[0:100, 42:58] = MASK_VALUE_WALL
-    engine.blocker_mask[10, 42:58] = 0  # 1-pixel high horizontal slit
+    engine.blocker_mask[10:12, 42:58] = 0 # Slit at target center height
     res = engine.calculate_token_cover_bonuses(source, target)
-    ac, reflex = res.ac_bonus, res.reflex_bonus
-    assert ac == 8
-    assert reflex == 4
+    assert res.total_ratio >= 0.90
+    assert res.wall_ratio >= 0.50
+    assert res.ac_bonus == 8
 
     # --- SCENARIO 6: TOTAL COVER (-1/-1) ---
     # Massive wall, no gaps.

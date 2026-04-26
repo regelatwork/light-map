@@ -23,6 +23,256 @@
         "start_idx": 0,
         "end_idx": 30
       }
+    ],
+    "boundary_samples": [
+      {
+        "mask_xy": [
+          288,
+          160
+        ],
+        "angle_rad": -0.033320995878247196,
+        "status": "OBSCURED_LOW"
+      },
+      {
+        "mask_xy": [
+          289,
+          160
+        ],
+        "angle_rad": -0.03318283616649847,
+        "status": "OBSCURED_LOW"
+      },
+      {
+        "mask_xy": [
+          290,
+          160
+        ],
+        "angle_rad": -0.03304581701892995,
+        "status": "OBSCURED_LOW"
+      },
+      {
+        "mask_xy": [
+          291,
+          160
+        ],
+        "angle_rad": -0.03290992437495586,
+        "status": "OBSCURED_LOW"
+      },
+      {
+        "mask_xy": [
+          292,
+          160
+        ],
+        "angle_rad": -0.03277514440407577,
+        "status": "OBSCURED_LOW"
+      },
+      {
+        "mask_xy": [
+          293,
+          160
+        ],
+        "angle_rad": -0.03264146350118918,
+        "status": "OBSCURED_LOW"
+      },
+      {
+        "mask_xy": [
+          294,
+          160
+        ],
+        "angle_rad": -0.032508868282023935,
+        "status": "OBSCURED_LOW"
+      },
+      {
+        "mask_xy": [
+          295,
+          160
+        ],
+        "angle_rad": -0.032377345578675505,
+        "status": "OBSCURED_LOW"
+      },
+      {
+        "mask_xy": [
+          288,
+          161
+        ],
+        "angle_rad": -0.029158400245143854,
+        "status": "OBSCURED_LOW"
+      },
+      {
+        "mask_xy": [
+          288,
+          162
+        ],
+        "angle_rad": -0.02499479361892016,
+        "status": "OBSCURED_LOW"
+      },
+      {
+        "mask_xy": [
+          288,
+          163
+        ],
+        "angle_rad": -0.020830320036217084,
+        "status": "OBSCURED_LOW"
+      },
+      {
+        "mask_xy": [
+          288,
+          164
+        ],
+        "angle_rad": -0.016665123713940747,
+        "status": "OBSCURED_LOW"
+      },
+      {
+        "mask_xy": [
+          288,
+          165
+        ],
+        "angle_rad": -0.012499349019361679,
+        "status": "OBSCURED_LOW"
+      },
+      {
+        "mask_xy": [
+          288,
+          166
+        ],
+        "angle_rad": -0.008333140440135918,
+        "status": "OBSCURED_LOW"
+      },
+      {
+        "mask_xy": [
+          288,
+          167
+        ],
+        "angle_rad": -0.004166642554263516,
+        "status": "OBSCURED_LOW"
+      },
+      {
+        "mask_xy": [
+          288,
+          168
+        ],
+        "angle_rad": 0.0,
+        "status": "OBSCURED_LOW"
+      },
+      {
+        "mask_xy": [
+          288,
+          169
+        ],
+        "angle_rad": 0.004166642554263516,
+        "status": "OBSCURED_LOW"
+      },
+      {
+        "mask_xy": [
+          288,
+          170
+        ],
+        "angle_rad": 0.008333140440135918,
+        "status": "OBSCURED_LOW"
+      },
+      {
+        "mask_xy": [
+          288,
+          171
+        ],
+        "angle_rad": 0.012499349019361679,
+        "status": "OBSCURED_LOW"
+      },
+      {
+        "mask_xy": [
+          288,
+          172
+        ],
+        "angle_rad": 0.016665123713940747,
+        "status": "OBSCURED_LOW"
+      },
+      {
+        "mask_xy": [
+          288,
+          173
+        ],
+        "angle_rad": 0.020830320036217084,
+        "status": "OBSCURED_LOW"
+      },
+      {
+        "mask_xy": [
+          288,
+          174
+        ],
+        "angle_rad": 0.02499479361892016,
+        "status": "OBSCURED_LOW"
+      },
+      {
+        "mask_xy": [
+          288,
+          175
+        ],
+        "angle_rad": 0.029158400245143854,
+        "status": "OBSCURED_LOW"
+      },
+      {
+        "mask_xy": [
+          295,
+          176
+        ],
+        "angle_rad": 0.032377345578675505,
+        "status": "OBSCURED_LOW"
+      },
+      {
+        "mask_xy": [
+          294,
+          176
+        ],
+        "angle_rad": 0.032508868282023935,
+        "status": "OBSCURED_LOW"
+      },
+      {
+        "mask_xy": [
+          293,
+          176
+        ],
+        "angle_rad": 0.03264146350118918,
+        "status": "OBSCURED_LOW"
+      },
+      {
+        "mask_xy": [
+          292,
+          176
+        ],
+        "angle_rad": 0.03277514440407577,
+        "status": "OBSCURED_LOW"
+      },
+      {
+        "mask_xy": [
+          291,
+          176
+        ],
+        "angle_rad": 0.03290992437495586,
+        "status": "OBSCURED_LOW"
+      },
+      {
+        "mask_xy": [
+          290,
+          176
+        ],
+        "angle_rad": 0.03304581701892995,
+        "status": "OBSCURED_LOW"
+      },
+      {
+        "mask_xy": [
+          289,
+          176
+        ],
+        "angle_rad": 0.03318283616649847,
+        "status": "OBSCURED_LOW"
+      },
+      {
+        "mask_xy": [
+          288,
+          176
+        ],
+        "angle_rad": 0.033320995878247196,
+        "status": "OBSCURED_LOW"
+      }
     ]
   }
 }

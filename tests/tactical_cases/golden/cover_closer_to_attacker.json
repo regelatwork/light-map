@@ -23,6 +23,256 @@
         "start_idx": 0,
         "end_idx": 30
       }
+    ],
+    "boundary_samples": [
+      {
+        "mask_xy": [
+          160,
+          160
+        ],
+        "angle_rad": -0.07130746478529032,
+        "status": "CLEAR"
+      },
+      {
+        "mask_xy": [
+          161,
+          160
+        ],
+        "angle_rad": -0.0706785340506056,
+        "status": "CLEAR"
+      },
+      {
+        "mask_xy": [
+          162,
+          160
+        ],
+        "angle_rad": -0.07006058263845544,
+        "status": "CLEAR"
+      },
+      {
+        "mask_xy": [
+          163,
+          160
+        ],
+        "angle_rad": -0.06945332599532211,
+        "status": "CLEAR"
+      },
+      {
+        "mask_xy": [
+          164,
+          160
+        ],
+        "angle_rad": -0.0688564893010446,
+        "status": "CLEAR"
+      },
+      {
+        "mask_xy": [
+          165,
+          160
+        ],
+        "angle_rad": -0.06826980705682754,
+        "status": "CLEAR"
+      },
+      {
+        "mask_xy": [
+          166,
+          160
+        ],
+        "angle_rad": -0.06769302269396865,
+        "status": "CLEAR"
+      },
+      {
+        "mask_xy": [
+          167,
+          160
+        ],
+        "angle_rad": -0.0671258882021007,
+        "status": "CLEAR"
+      },
+      {
+        "mask_xy": [
+          160,
+          161
+        ],
+        "angle_rad": -0.06241880999595735,
+        "status": "CLEAR"
+      },
+      {
+        "mask_xy": [
+          160,
+          162
+        ],
+        "angle_rad": -0.05352026845931512,
+        "status": "CLEAR"
+      },
+      {
+        "mask_xy": [
+          160,
+          163
+        ],
+        "angle_rad": -0.044613235046302796,
+        "status": "CLEAR"
+      },
+      {
+        "mask_xy": [
+          160,
+          164
+        ],
+        "angle_rad": -0.03569911267932397,
+        "status": "CLEAR"
+      },
+      {
+        "mask_xy": [
+          160,
+          165
+        ],
+        "angle_rad": -0.026779311019766005,
+        "status": "CLEAR"
+      },
+      {
+        "mask_xy": [
+          160,
+          166
+        ],
+        "angle_rad": -0.017855245139552514,
+        "status": "CLEAR"
+      },
+      {
+        "mask_xy": [
+          160,
+          167
+        ],
+        "angle_rad": -0.008928334179836715,
+        "status": "CLEAR"
+      },
+      {
+        "mask_xy": [
+          160,
+          168
+        ],
+        "angle_rad": 0.0,
+        "status": "CLEAR"
+      },
+      {
+        "mask_xy": [
+          160,
+          169
+        ],
+        "angle_rad": 0.008928334179836715,
+        "status": "CLEAR"
+      },
+      {
+        "mask_xy": [
+          160,
+          170
+        ],
+        "angle_rad": 0.017855245139552514,
+        "status": "CLEAR"
+      },
+      {
+        "mask_xy": [
+          160,
+          171
+        ],
+        "angle_rad": 0.026779311019766005,
+        "status": "CLEAR"
+      },
+      {
+        "mask_xy": [
+          160,
+          172
+        ],
+        "angle_rad": 0.03569911267932397,
+        "status": "CLEAR"
+      },
+      {
+        "mask_xy": [
+          160,
+          173
+        ],
+        "angle_rad": 0.044613235046302796,
+        "status": "CLEAR"
+      },
+      {
+        "mask_xy": [
+          160,
+          174
+        ],
+        "angle_rad": 0.05352026845931512,
+        "status": "CLEAR"
+      },
+      {
+        "mask_xy": [
+          160,
+          175
+        ],
+        "angle_rad": 0.06241880999595735,
+        "status": "CLEAR"
+      },
+      {
+        "mask_xy": [
+          167,
+          176
+        ],
+        "angle_rad": 0.0671258882021007,
+        "status": "CLEAR"
+      },
+      {
+        "mask_xy": [
+          166,
+          176
+        ],
+        "angle_rad": 0.06769302269396865,
+        "status": "CLEAR"
+      },
+      {
+        "mask_xy": [
+          165,
+          176
+        ],
+        "angle_rad": 0.06826980705682754,
+        "status": "CLEAR"
+      },
+      {
+        "mask_xy": [
+          164,
+          176
+        ],
+        "angle_rad": 0.0688564893010446,
+        "status": "CLEAR"
+      },
+      {
+        "mask_xy": [
+          163,
+          176
+        ],
+        "angle_rad": 0.06945332599532211,
+        "status": "CLEAR"
+      },
+      {
+        "mask_xy": [
+          162,
+          176
+        ],
+        "angle_rad": 0.07006058263845544,
+        "status": "CLEAR"
+      },
+      {
+        "mask_xy": [
+          161,
+          176
+        ],
+        "angle_rad": 0.0706785340506056,
+        "status": "CLEAR"
+      },
+      {
+        "mask_xy": [
+          160,
+          176
+        ],
+        "angle_rad": 0.07130746478529032,
+        "status": "CLEAR"
+      }
     ]
   }
 }

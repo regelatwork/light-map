@@ -121,6 +121,7 @@ class TacticalOverlayLayer(Layer):
                     ang_end = math.atan2(vec_end[1], vec_end[0])
                     
                     # 2. Determine Radius
+                    # Use distance from apex to target center for a consistent "radar sweep" length
                     if target_center_screen:
                         dist = math.sqrt((apex_screen[0]-target_center_screen[0])**2 + (apex_screen[1]-target_center_screen[1])**2)
                     else:
@@ -129,7 +130,8 @@ class TacticalOverlayLayer(Layer):
                         dist = math.sqrt((apex_screen[0]-psx_s)**2 + (apex_screen[1]-psy_s)**2)
                     
                     # 3. Build smooth arc for the sector
-                    num_arc_pts = 10
+                    # Using 20 points for a very smooth high-res curve
+                    num_arc_pts = 20
                     arc_pts = []
                     
                     # Handle wrap-around for interpolation
@@ -146,11 +148,8 @@ class TacticalOverlayLayer(Layer):
                         arc_pts.append([px, py])
                         all_visible_pts.append([px, py])
                     
+                    # A pure circular sector polygon is [Apex, P1, P2, ..., PN]
                     poly_points = [apex_screen] + arc_pts
-                    if target_center_screen:
-                        # Add target center to "pinch" it and stop at the leading edge
-                        poly_points.append(target_center_screen)
-
                     pts = np.array(poly_points, dtype=np.int32).reshape((-1, 1, 2))
                     
                     if seg.status == 0:  # Clear

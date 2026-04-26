@@ -17,6 +17,520 @@
       15.0,
       15.0
     ],
-    "wedges": []
+    "wedges": [],
+    "boundary_samples": [
+      {
+        "mask_xy": [
+          160,
+          160
+        ],
+        "angle_rad": 0.7853981633974483,
+        "status": "BLOCKED"
+      },
+      {
+        "mask_xy": [
+          160,
+          161
+        ],
+        "angle_rad": 0.789061150677683,
+        "status": "BLOCKED"
+      },
+      {
+        "mask_xy": [
+          160,
+          162
+        ],
+        "angle_rad": 0.7926973038411456,
+        "status": "BLOCKED"
+      },
+      {
+        "mask_xy": [
+          160,
+          163
+        ],
+        "angle_rad": 0.7963068215801123,
+        "status": "BLOCKED"
+      },
+      {
+        "mask_xy": [
+          160,
+          164
+        ],
+        "angle_rad": 0.7998899024629483,
+        "status": "BLOCKED"
+      },
+      {
+        "mask_xy": [
+          160,
+          165
+        ],
+        "angle_rad": 0.8034467448753795,
+        "status": "BLOCKED"
+      },
+      {
+        "mask_xy": [
+          160,
+          166
+        ],
+        "angle_rad": 0.8069775469639785,
+        "status": "BLOCKED"
+      },
+      {
+        "mask_xy": [
+          160,
+          167
+        ],
+        "angle_rad": 0.8104825065818138,
+        "status": "BLOCKED"
+      },
+      {
+        "mask_xy": [
+          160,
+          168
+        ],
+        "angle_rad": 0.8139618212362083,
+        "status": "BLOCKED"
+      },
+      {
+        "mask_xy": [
+          160,
+          169
+        ],
+        "angle_rad": 0.8174156880385589,
+        "status": "BLOCKED"
+      },
+      {
+        "mask_xy": [
+          160,
+          170
+        ],
+        "angle_rad": 0.820844303656163,
+        "status": "BLOCKED"
+      },
+      {
+        "mask_xy": [
+          160,
+          171
+        ],
+        "angle_rad": 0.824247864266005,
+        "status": "BLOCKED"
+      },
+      {
+        "mask_xy": [
+          160,
+          172
+        ],
+        "angle_rad": 0.8276265655104502,
+        "status": "BLOCKED"
+      },
+      {
+        "mask_xy": [
+          160,
+          173
+        ],
+        "angle_rad": 0.8309806024547974,
+        "status": "BLOCKED"
+      },
+      {
+        "mask_xy": [
+          160,
+          174
+        ],
+        "angle_rad": 0.8343101695466429,
+        "status": "BLOCKED"
+      },
+      {
+        "mask_xy": [
+          160,
+          175
+        ],
+        "angle_rad": 0.8376154605770054,
+        "status": "BLOCKED"
+      },
+      {
+        "mask_xy": [
+          160,
+          176
+        ],
+        "angle_rad": 0.8408966686431651,
+        "status": "BLOCKED"
+      },
+      {
+        "mask_xy": [
+          161,
+          176
+        ],
+        "angle_rad": 0.8372547449327812,
+        "status": "BLOCKED"
+      },
+      {
+        "mask_xy": [
+          162,
+          176
+        ],
+        "angle_rad": 0.8336365745753866,
+        "status": "BLOCKED"
+      },
+      {
+        "mask_xy": [
+          163,
+          176
+        ],
+        "angle_rad": 0.8300420197500464,
+        "status": "BLOCKED"
+      },
+      {
+        "mask_xy": [
+          164,
+          176
+        ],
+        "angle_rad": 0.8264709419879024,
+        "status": "BLOCKED"
+      },
+      {
+        "mask_xy": [
+          165,
+          176
+        ],
+        "angle_rad": 0.8229232022277114,
+        "status": "BLOCKED"
+      },
+      {
+        "mask_xy": [
+          166,
+          176
+        ],
+        "angle_rad": 0.8193986608698693,
+        "status": "BLOCKED"
+      },
+      {
+        "mask_xy": [
+          167,
+          176
+        ],
+        "angle_rad": 0.8158971778289403,
+        "status": "BLOCKED"
+      },
+      {
+        "mask_xy": [
+          168,
+          176
+        ],
+        "angle_rad": 0.8124186125847132,
+        "status": "BLOCKED"
+      },
+      {
+        "mask_xy": [
+          169,
+          176
+        ],
+        "angle_rad": 0.8089628242318072,
+        "status": "BLOCKED"
+      },
+      {
+        "mask_xy": [
+          170,
+          176
+        ],
+        "angle_rad": 0.8055296715278508,
+        "status": "BLOCKED"
+      },
+      {
+        "mask_xy": [
+          171,
+          176
+        ],
+        "angle_rad": 0.8021190129402531,
+        "status": "BLOCKED"
+      },
+      {
+        "mask_xy": [
+          172,
+          176
+        ],
+        "angle_rad": 0.798730706691594,
+        "status": "BLOCKED"
+      },
+      {
+        "mask_xy": [
+          173,
+          176
+        ],
+        "angle_rad": 0.7953646108036554,
+        "status": "BLOCKED"
+      },
+      {
+        "mask_xy": [
+          174,
+          176
+        ],
+        "angle_rad": 0.7920205831401161,
+        "status": "BLOCKED"
+      },
+      {
+        "mask_xy": [
+          175,
+          176
+        ],
+        "angle_rad": 0.7886984814479355,
+        "status": "BLOCKED"
+      },
+      {
+        "mask_xy": [
+          176,
+          176
+        ],
+        "angle_rad": 0.7853981633974483,
+        "status": "BLOCKED"
+      },
+      {
+        "mask_xy": [
+          176,
+          175
+        ],
+        "angle_rad": 0.7820978453469611,
+        "status": "BLOCKED"
+      },
+      {
+        "mask_xy": [
+          176,
+          174
+        ],
+        "angle_rad": 0.7787757436547805,
+        "status": "BLOCKED"
+      },
+      {
+        "mask_xy": [
+          176,
+          173
+        ],
+        "angle_rad": 0.7754317159912413,
+        "status": "BLOCKED"
+      },
+      {
+        "mask_xy": [
+          176,
+          172
+        ],
+        "angle_rad": 0.7720656201033026,
+        "status": "BLOCKED"
+      },
+      {
+        "mask_xy": [
+          176,
+          171
+        ],
+        "angle_rad": 0.7686773138546436,
+        "status": "BLOCKED"
+      },
+      {
+        "mask_xy": [
+          176,
+          170
+        ],
+        "angle_rad": 0.7652666552670457,
+        "status": "BLOCKED"
+      },
+      {
+        "mask_xy": [
+          176,
+          169
+        ],
+        "angle_rad": 0.7618335025630895,
+        "status": "BLOCKED"
+      },
+      {
+        "mask_xy": [
+          176,
+          168
+        ],
+        "angle_rad": 0.7583777142101835,
+        "status": "BLOCKED"
+      },
+      {
+        "mask_xy": [
+          176,
+          167
+        ],
+        "angle_rad": 0.7548991489659563,
+        "status": "BLOCKED"
+      },
+      {
+        "mask_xy": [
+          176,
+          166
+        ],
+        "angle_rad": 0.7513976659250272,
+        "status": "BLOCKED"
+      },
+      {
+        "mask_xy": [
+          176,
+          165
+        ],
+        "angle_rad": 0.7478731245671852,
+        "status": "BLOCKED"
+      },
+      {
+        "mask_xy": [
+          176,
+          164
+        ],
+        "angle_rad": 0.7443253848069943,
+        "status": "BLOCKED"
+      },
+      {
+        "mask_xy": [
+          176,
+          163
+        ],
+        "angle_rad": 0.7407543070448501,
+        "status": "BLOCKED"
+      },
+      {
+        "mask_xy": [
+          176,
+          162
+        ],
+        "angle_rad": 0.73715975221951,
+        "status": "BLOCKED"
+      },
+      {
+        "mask_xy": [
+          176,
+          161
+        ],
+        "angle_rad": 0.7335415818621154,
+        "status": "BLOCKED"
+      },
+      {
+        "mask_xy": [
+          176,
+          160
+        ],
+        "angle_rad": 0.7298996581517315,
+        "status": "BLOCKED"
+      },
+      {
+        "mask_xy": [
+          175,
+          160
+        ],
+        "angle_rad": 0.7331808662178911,
+        "status": "BLOCKED"
+      },
+      {
+        "mask_xy": [
+          174,
+          160
+        ],
+        "angle_rad": 0.7364861572482536,
+        "status": "BLOCKED"
+      },
+      {
+        "mask_xy": [
+          173,
+          160
+        ],
+        "angle_rad": 0.7398157243400992,
+        "status": "BLOCKED"
+      },
+      {
+        "mask_xy": [
+          172,
+          160
+        ],
+        "angle_rad": 0.7431697612844465,
+        "status": "BLOCKED"
+      },
+      {
+        "mask_xy": [
+          171,
+          160
+        ],
+        "angle_rad": 0.7465484625288915,
+        "status": "BLOCKED"
+      },
+      {
+        "mask_xy": [
+          170,
+          160
+        ],
+        "angle_rad": 0.7499520231387335,
+        "status": "BLOCKED"
+      },
+      {
+        "mask_xy": [
+          169,
+          160
+        ],
+        "angle_rad": 0.7533806387563378,
+        "status": "BLOCKED"
+      },
+      {
+        "mask_xy": [
+          168,
+          160
+        ],
+        "angle_rad": 0.7568345055586884,
+        "status": "BLOCKED"
+      },
+      {
+        "mask_xy": [
+          167,
+          160
+        ],
+        "angle_rad": 0.7603138202130829,
+        "status": "BLOCKED"
+      },
+      {
+        "mask_xy": [
+          166,
+          160
+        ],
+        "angle_rad": 0.7638187798309182,
+        "status": "BLOCKED"
+      },
+      {
+        "mask_xy": [
+          165,
+          160
+        ],
+        "angle_rad": 0.7673495819195172,
+        "status": "BLOCKED"
+      },
+      {
+        "mask_xy": [
+          164,
+          160
+        ],
+        "angle_rad": 0.7709064243319483,
+        "status": "BLOCKED"
+      },
+      {
+        "mask_xy": [
+          163,
+          160
+        ],
+        "angle_rad": 0.7744895052147843,
+        "status": "BLOCKED"
+      },
+      {
+        "mask_xy": [
+          162,
+          160
+        ],
+        "angle_rad": 0.7780990229537511,
+        "status": "BLOCKED"
+      },
+      {
+        "mask_xy": [
+          161,
+          160
+        ],
+        "angle_rad": 0.7817351761172137,
+        "status": "BLOCKED"
+      }
+    ]
   }
 }

@@ -23,6 +23,504 @@
         "start_idx": 39,
         "end_idx": 61
       }
+    ],
+    "boundary_samples": [
+      {
+        "mask_xy": [
+          232,
+          152
+        ],
+        "angle_rad": -0.1297025371559121,
+        "status": "BLOCKED"
+      },
+      {
+        "mask_xy": [
+          233,
+          152
+        ],
+        "angle_rad": -0.1290092162593773,
+        "status": "BLOCKED"
+      },
+      {
+        "mask_xy": [
+          234,
+          152
+        ],
+        "angle_rad": -0.1283232276857948,
+        "status": "BLOCKED"
+      },
+      {
+        "mask_xy": [
+          235,
+          152
+        ],
+        "angle_rad": -0.1276444563663153,
+        "status": "BLOCKED"
+      },
+      {
+        "mask_xy": [
+          236,
+          152
+        ],
+        "angle_rad": -0.12697278961407893,
+        "status": "BLOCKED"
+      },
+      {
+        "mask_xy": [
+          237,
+          152
+        ],
+        "angle_rad": -0.12630811706324024,
+        "status": "BLOCKED"
+      },
+      {
+        "mask_xy": [
+          238,
+          152
+        ],
+        "angle_rad": -0.12565033060984618,
+        "status": "BLOCKED"
+      },
+      {
+        "mask_xy": [
+          239,
+          152
+        ],
+        "angle_rad": -0.12499932435450178,
+        "status": "BLOCKED"
+      },
+      {
+        "mask_xy": [
+          240,
+          152
+        ],
+        "angle_rad": -0.12435499454676144,
+        "status": "BLOCKED"
+      },
+      {
+        "mask_xy": [
+          232,
+          153
+        ],
+        "angle_rad": -0.12435499454676144,
+        "status": "BLOCKED"
+      },
+      {
+        "mask_xy": [
+          241,
+          152
+        ],
+        "angle_rad": -0.12371723953118564,
+        "status": "BLOCKED"
+      },
+      {
+        "mask_xy": [
+          242,
+          152
+        ],
+        "angle_rad": -0.12308595969500578,
+        "status": "BLOCKED"
+      },
+      {
+        "mask_xy": [
+          243,
+          152
+        ],
+        "angle_rad": -0.12246105741734142,
+        "status": "BLOCKED"
+      },
+      {
+        "mask_xy": [
+          244,
+          152
+        ],
+        "angle_rad": -0.1218424370199172,
+        "status": "BLOCKED"
+      },
+      {
+        "mask_xy": [
+          245,
+          152
+        ],
+        "angle_rad": -0.12123000471922787,
+        "status": "BLOCKED"
+      },
+      {
+        "mask_xy": [
+          246,
+          152
+        ],
+        "angle_rad": -0.12062366858010272,
+        "status": "BLOCKED"
+      },
+      {
+        "mask_xy": [
+          232,
+          154
+        ],
+        "angle_rad": -0.11900029338277994,
+        "status": "BLOCKED"
+      },
+      {
+        "mask_xy": [
+          232,
+          155
+        ],
+        "angle_rad": -0.11363872694870984,
+        "status": "BLOCKED"
+      },
+      {
+        "mask_xy": [
+          232,
+          156
+        ],
+        "angle_rad": -0.10827059086045604,
+        "status": "BLOCKED"
+      },
+      {
+        "mask_xy": [
+          232,
+          157
+        ],
+        "angle_rad": -0.10289618297318436,
+        "status": "BLOCKED"
+      },
+      {
+        "mask_xy": [
+          232,
+          158
+        ],
+        "angle_rad": -0.09751580328754604,
+        "status": "BLOCKED"
+      },
+      {
+        "mask_xy": [
+          232,
+          159
+        ],
+        "angle_rad": -0.09212975385409725,
+        "status": "BLOCKED"
+      },
+      {
+        "mask_xy": [
+          232,
+          160
+        ],
+        "angle_rad": -0.08673833867598511,
+        "status": "BLOCKED"
+      },
+      {
+        "mask_xy": [
+          232,
+          161
+        ],
+        "angle_rad": -0.08134186360997483,
+        "status": "BLOCKED"
+      },
+      {
+        "mask_xy": [
+          232,
+          162
+        ],
+        "angle_rad": -0.07594063626589467,
+        "status": "BLOCKED"
+      },
+      {
+        "mask_xy": [
+          232,
+          163
+        ],
+        "angle_rad": -0.07053496590457822,
+        "status": "BLOCKED"
+      },
+      {
+        "mask_xy": [
+          232,
+          164
+        ],
+        "angle_rad": -0.06512516333438588,
+        "status": "BLOCKED"
+      },
+      {
+        "mask_xy": [
+          232,
+          165
+        ],
+        "angle_rad": -0.05971154080638943,
+        "status": "BLOCKED"
+      },
+      {
+        "mask_xy": [
+          232,
+          166
+        ],
+        "angle_rad": -0.054294411908306,
+        "status": "BLOCKED"
+      },
+      {
+        "mask_xy": [
+          232,
+          167
+        ],
+        "angle_rad": -0.04887409145726971,
+        "status": "BLOCKED"
+      },
+      {
+        "mask_xy": [
+          232,
+          168
+        ],
+        "angle_rad": -0.04345089539153084,
+        "status": "BLOCKED"
+      },
+      {
+        "mask_xy": [
+          232,
+          169
+        ],
+        "angle_rad": -0.03802514066117462,
+        "status": "BLOCKED"
+      },
+      {
+        "mask_xy": [
+          232,
+          170
+        ],
+        "angle_rad": -0.032597145117952815,
+        "status": "BLOCKED"
+      },
+      {
+        "mask_xy": [
+          232,
+          171
+        ],
+        "angle_rad": -0.027167227404323164,
+        "status": "BLOCKED"
+      },
+      {
+        "mask_xy": [
+          232,
+          172
+        ],
+        "angle_rad": -0.021735706841792667,
+        "status": "BLOCKED"
+      },
+      {
+        "mask_xy": [
+          232,
+          173
+        ],
+        "angle_rad": -0.016302903318662125,
+        "status": "BLOCKED"
+      },
+      {
+        "mask_xy": [
+          232,
+          174
+        ],
+        "angle_rad": -0.01086913717727018,
+        "status": "BLOCKED"
+      },
+      {
+        "mask_xy": [
+          232,
+          175
+        ],
+        "angle_rad": -0.005434729100835944,
+        "status": "BLOCKED"
+      },
+      {
+        "mask_xy": [
+          232,
+          176
+        ],
+        "angle_rad": 0.0,
+        "status": "BLOCKED"
+      },
+      {
+        "mask_xy": [
+          232,
+          177
+        ],
+        "angle_rad": 0.005434729100835944,
+        "status": "CLEAR"
+      },
+      {
+        "mask_xy": [
+          232,
+          178
+        ],
+        "angle_rad": 0.01086913717727018,
+        "status": "CLEAR"
+      },
+      {
+        "mask_xy": [
+          232,
+          179
+        ],
+        "angle_rad": 0.016302903318662125,
+        "status": "CLEAR"
+      },
+      {
+        "mask_xy": [
+          232,
+          180
+        ],
+        "angle_rad": 0.021735706841792667,
+        "status": "CLEAR"
+      },
+      {
+        "mask_xy": [
+          232,
+          181
+        ],
+        "angle_rad": 0.027167227404323164,
+        "status": "CLEAR"
+      },
+      {
+        "mask_xy": [
+          232,
+          182
+        ],
+        "angle_rad": 0.032597145117952815,
+        "status": "CLEAR"
+      },
+      {
+        "mask_xy": [
+          232,
+          183
+        ],
+        "angle_rad": 0.03802514066117462,
+        "status": "CLEAR"
+      },
+      {
+        "mask_xy": [
+          247,
+          184
+        ],
+        "angle_rad": 0.04017936944048361,
+        "status": "CLEAR"
+      },
+      {
+        "mask_xy": [
+          246,
+          184
+        ],
+        "angle_rad": 0.04038207556449991,
+        "status": "CLEAR"
+      },
+      {
+        "mask_xy": [
+          245,
+          184
+        ],
+        "angle_rad": 0.04058683624758654,
+        "status": "CLEAR"
+      },
+      {
+        "mask_xy": [
+          244,
+          184
+        ],
+        "angle_rad": 0.0407936828678654,
+        "status": "CLEAR"
+      },
+      {
+        "mask_xy": [
+          243,
+          184
+        ],
+        "angle_rad": 0.041002647445327445,
+        "status": "CLEAR"
+      },
+      {
+        "mask_xy": [
+          242,
+          184
+        ],
+        "angle_rad": 0.041213762658320205,
+        "status": "CLEAR"
+      },
+      {
+        "mask_xy": [
+          241,
+          184
+        ],
+        "angle_rad": 0.04142706186054587,
+        "status": "CLEAR"
+      },
+      {
+        "mask_xy": [
+          240,
+          184
+        ],
+        "angle_rad": 0.04164257909858842,
+        "status": "CLEAR"
+      },
+      {
+        "mask_xy": [
+          239,
+          184
+        ],
+        "angle_rad": 0.041860349129989136,
+        "status": "CLEAR"
+      },
+      {
+        "mask_xy": [
+          238,
+          184
+        ],
+        "angle_rad": 0.04208040744189057,
+        "status": "CLEAR"
+      },
+      {
+        "mask_xy": [
+          237,
+          184
+        ],
+        "angle_rad": 0.04230279027027003,
+        "status": "CLEAR"
+      },
+      {
+        "mask_xy": [
+          236,
+          184
+        ],
+        "angle_rad": 0.0425275346197842,
+        "status": "CLEAR"
+      },
+      {
+        "mask_xy": [
+          235,
+          184
+        ],
+        "angle_rad": 0.04275467828424801,
+        "status": "CLEAR"
+      },
+      {
+        "mask_xy": [
+          234,
+          184
+        ],
+        "angle_rad": 0.042984259867771116,
+        "status": "CLEAR"
+      },
+      {
+        "mask_xy": [
+          233,
+          184
+        ],
+        "angle_rad": 0.043216318806577066,
+        "status": "CLEAR"
+      },
+      {
+        "mask_xy": [
+          232,
+          184
+        ],
+        "angle_rad": 0.04345089539153084,
+        "status": "CLEAR"
+      }
     ]
   }
 }

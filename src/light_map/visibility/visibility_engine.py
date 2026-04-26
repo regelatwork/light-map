@@ -663,6 +663,20 @@ class VisibilityEngine:
             # 2. Sort by angle to enable monotonic sweep
             sort_idx = np.argsort(angles)
             sorted_angles = angles[sort_idx]
+            
+            # 2.5 Handle wrap-around: find the largest angular gap
+            # The "true" start/end of the token are on either side of this gap.
+            gaps = np.diff(sorted_angles)
+            # Gap between last and first (circular)
+            last_gap = (sorted_angles[0] + 2*np.pi) - sorted_angles[-1]
+            all_gaps = np.concatenate([gaps, [last_gap]])
+            
+            max_gap_idx = np.argmax(all_gaps)
+            # Shift such that max_gap_idx is the last element
+            shift = (max_gap_idx + 1) % len(sort_idx)
+            sort_idx = np.roll(sort_idx, -shift)
+            
+            sorted_angles = angles[sort_idx]
             sorted_pixels = npc_pixels[sort_idx]
             
             # 3. Sample statuses for all points

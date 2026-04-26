@@ -651,35 +651,46 @@ class VisibilityEngine:
 
         # --- NEW SEGMENT EXTRACTION (Angular Sampling) ---
         segments = []
-        sorted_pixels = npc_pixels.copy()
         if ac_bonus != -1:
-            # 1. Calculate angles for all pixels relative to the chosen apex
-            # Angles are in range [-pi, pi]
+            # 1. First, identify only the NEAR-SIDE pixels
+            target_center = (
+                int(target_token.world_x * self.svg_to_mask_scale),
+                int(target_token.world_y * self.svg_to_mask_scale),
+            )
+            near_side_pts = []
+            for i in range(len(npc_pixels)):
+                nx, ny = npc_pixels[i, 0], npc_pixels[i, 1]
+                # Near-Side Filter: (P-C)·(P-A) <= 1.0 (strict)
+                if (nx - target_center[0]) * (nx - best_apex[0]) + (
+                    ny - target_center[1]
+                ) * (ny - best_apex[1]) <= 1.0:
+                    near_side_pts.append([nx, ny])
+            
+            if not near_side_pts:
+                return CoverResult(ac_bonus, reflex_bonus, best_apex, [], npc_pixels, total_ratio, wall_ratio)
+            
+            near_side_pixels = np.array(near_side_pts, dtype=np.int32)
+            
+            # 2. Calculate angles relative to apex for near-side points ONLY
             angles = np.arctan2(
-                npc_pixels[:, 1] - best_apex[1], 
-                npc_pixels[:, 0] - best_apex[0]
+                near_side_pixels[:, 1] - best_apex[1], 
+                near_side_pixels[:, 0] - best_apex[0]
             )
             
-            # 2. Sort by angle to enable monotonic sweep
+            # 3. Sort by angle to enable monotonic sweep across the silhouette
             sort_idx = np.argsort(angles)
             sorted_angles = angles[sort_idx]
+            sorted_pixels = near_side_pixels[sort_idx]
             
-            # 2.5 Handle wrap-around: find the largest angular gap
-            # The "true" start/end of the token are on either side of this gap.
+            # 4. Handle wrap-around for the subset if needed (to keep it contiguous)
             gaps = np.diff(sorted_angles)
-            # Gap between last and first (circular)
             last_gap = (sorted_angles[0] + 2*np.pi) - sorted_angles[-1]
             all_gaps = np.concatenate([gaps, [last_gap]])
-            
             max_gap_idx = np.argmax(all_gaps)
-            # Shift such that max_gap_idx is the last element
             shift = (max_gap_idx + 1) % len(sort_idx)
-            sort_idx = np.roll(sort_idx, -shift)
+            sorted_pixels = np.roll(sorted_pixels, -shift, axis=0)
             
-            sorted_angles = angles[sort_idx]
-            sorted_pixels = npc_pixels[sort_idx]
-            
-            # 3. Sample statuses for all points
+            # 5. Sample statuses for these points
             statuses = np.zeros(len(sorted_pixels), dtype=np.int32)
             for i in range(len(sorted_pixels)):
                 nx, ny = sorted_pixels[i, 0], sorted_pixels[i, 1]
@@ -687,29 +698,34 @@ class VisibilityEngine:
                     nx, ny, best_apex[0], best_apex[1], self.blocker_mask
                 )
 
-            # 4. Extract segments by looking at transitions
-            # A segment covers the span between samples.
+            # 6. Extract segments by looking at transitions
             if len(statuses) > 1:
                 current_start = 0
                 for i in range(1, len(statuses)):
                     if statuses[i] != statuses[current_start]:
-                        # Status changed! 
-                        # Record the PREVIOUS run if it was visible
                         if statuses[current_start] in (0, 2):
-                            # Segment from current_start to i-1
                             segments.append(WedgeSegment(current_start, i - 1, int(statuses[current_start])))
                         current_start = i
                 
-                # Handle final segment
                 if statuses[current_start] in (0, 2):
                     segments.append(WedgeSegment(current_start, len(statuses) - 1, int(statuses[current_start])))
+
+            return CoverResult(
+                ac_bonus=ac_bonus,
+                reflex_bonus=reflex_bonus,
+                best_apex=best_apex,
+                segments=segments,
+                npc_pixels=sorted_pixels,
+                total_ratio=total_ratio,
+                wall_ratio=wall_ratio,
+            )
 
         return CoverResult(
             ac_bonus=ac_bonus,
             reflex_bonus=reflex_bonus,
             best_apex=best_apex,
-            segments=segments,
-            npc_pixels=sorted_pixels,
+            segments=[],
+            npc_pixels=npc_pixels,
             total_ratio=total_ratio,
             wall_ratio=wall_ratio,
         )

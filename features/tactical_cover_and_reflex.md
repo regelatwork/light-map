@@ -14,6 +14,11 @@ Automatically calculate and display Armor Class (AC) and Reflex save bonuses pro
 The engine implements the following rules for calculating cover:
 - **Obstacle Proximity:** A low object only provides cover if the target is within 30 feet (6 grid squares) of the obstacle and closer to the obstacle than the attacker is.
 - **Best Vantage:** The attacker (PC) chooses their "best corner" (any pixel on their footprint boundary) to see as much of the target (NPC) as possible.
+- **Soft Cover (Creatures):** 
+  - Creatures (allies or enemies) provide "Soft Cover" (+4 AC bonus) if they block a line of effect between the attacker and target.
+  - Soft Cover provides **no bonus to Reflex saves**.
+  - Soft Cover does not stack with itself or other cover; the best single bonus applies.
+  - Creatures sharing the same space (e.g., Tiny creatures in a Medium space) do not provide cover to each other.
 - **Cover Grades:**
   - **No Cover:** 0% of the target's boundary pixels are obscured.
   - **Partial Cover (+2 AC, +1 Reflex):** > 0% but < 50% of target boundary pixels obscured.
@@ -26,9 +31,13 @@ The engine implements the following rules for calculating cover:
 ### 3.1 Numba-Optimized $N^2$ Algorithm
 For each visible NPC token during Exclusive Vision:
 1. Extract boundary pixels for both Attacker (PC) and Target (NPC).
-2. For each Target pixel, check if it is "visible" from **any** Attacker pixel.
-3. A line is **obscured** if it intersects a `LOW_OBJECT` and satisfies the 30ft/proximity conditions.
-4. A line is **blocked** if it intersects a `WALL` or `CLOSED_DOOR`.
+2. Create a **Tactical Blocker Mask**:
+   - Copy the static `blocker_mask`.
+   - Stamp all active tokens (excluding attacker and target) as `MASK_VALUE_SOFT_COVER = 75`.
+3. For each Target pixel, check if it is "visible" from **any** Attacker pixel using the Tactical Blocker Mask.
+4. A line is **obscured** if it intersects a `LOW_OBJECT` (val 50) and satisfies proximity conditions.
+5. A line is **blocked** if it intersects a `WALL` (val 255), `CLOSED_DOOR` (val 200), or `TALL_OBJECT` (val 100).
+6. A line has **soft cover** if it intersects a creature (val 75) without hitting a harder obstacle.
 
 ### 3.2 Tactical Overlay
 - **Floating Labels:** A dedicated rendering layer (`TacticalOverlayLayer`) displays cover bonuses below the name of each visible target token.

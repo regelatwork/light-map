@@ -241,7 +241,12 @@ def main():
     
     if failed:
         print(f"\nFailed cases: {', '.join(failed)}")
-        print(f"Bless results with: python3 scripts/bless_tactical_tests.py")
+        print("\nTo bless all cases, run:")
+        print("  .venv/bin/python3 scripts/bless_tactical_tests.py")
+        print("\nTo bless specific cases, run:")
+        for f in failed:
+            name = os.path.splitext(f)[0]
+            print(f"  .venv/bin/python3 scripts/bless_tactical_tests.py {name}")
         sys.exit(1)
     else:
         print("\nAll tactical tests passed.")

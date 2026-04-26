@@ -220,12 +220,21 @@ def run_test_case(case_path: str):
             final_img[y1:y2, x1:x2] = (ov_slice * al_slice + final_img[y1:y2, x1:x2] * (1.0 - al_slice)).astype(np.uint8)
 
     # Draw tokens as circles for clarity
-    for t in [attacker, target]:
+    for t in [attacker, target] + tokens:
         sx, sy = map_system.world_to_screen(t.world_x, t.world_y)
-        color = (0, 255, 0) if t.id == attacker.id else (0, 0, 255)
+        if t.id == attacker.id:
+            color = (0, 255, 0)
+            label = "A"
+        elif t.id == target.id:
+            color = (0, 0, 255)
+            label = "T"
+        else:
+            color = (255, 255, 0)
+            label = "M" # M for Masking token
+        
         radius = int(t.size * spacing_svg * map_scale / 2)
         cv2.circle(final_img, (int(sx), int(sy)), radius, color, 2)
-        cv2.putText(final_img, "A" if t.id == attacker.id else "T", (int(sx)-10, int(sy)+10), cv2.FONT_HERSHEY_SIMPLEX, 1, color, 2)
+        cv2.putText(final_img, label, (int(sx)-10, int(sy)+10), cv2.FONT_HERSHEY_SIMPLEX, 1, color, 2)
 
     png_path = os.path.join(res_dir, f"{case_name}.png")
     cv2.imwrite(png_path, final_img)

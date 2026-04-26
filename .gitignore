@@ -18,6 +18,7 @@ map_state.json
 *.FCBak
 light_map.log
 tests/tactical_cases/results/
+!tests/tactical_cases/golden/
 
 # LaTeX artifacts
 docs/whitepaper/*.aux

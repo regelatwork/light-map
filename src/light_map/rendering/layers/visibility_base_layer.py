@@ -38,12 +38,12 @@ class VisibilityBaseLayer(Layer):
         """Core logic to transform a vision mask to screen space patches."""
         mask_h, mask_w = mask.shape[:2]
 
-        # 1. Create shroud in "Mask Space"
-        bgra_full = np.zeros((mask_h, mask_w, 4), dtype=np.uint8)
-        bgra_full[:, :, 3] = shroud_alpha
-
-        # Punch a hole for currently visible vision (Transparent)
-        bgra_full[mask == ALPHA_OPAQUE, 3] = ALPHA_TRANSPARENT
+        # 1. Prepare a 1-channel mask for warping
+        # Value 255: Visible (Transparent)
+        # Value 127: Shroud (Dimmed)
+        # Value 0 (Border): Background
+        render_mask = np.full((mask_h, mask_w), 127, dtype=np.uint8)
+        render_mask[mask == ALPHA_OPAQUE] = 255
 
         # 2. Transform to Screen Space
         if self.state.viewport:
@@ -68,18 +68,31 @@ class VisibilityBaseLayer(Layer):
                 [[final_m.a, final_m.c, final_m.e], [final_m.b, final_m.d, final_m.f]]
             )
 
-            bgra_screen = cv2.warpAffine(
-                bgra_full,
+            mask_screen = cv2.warpAffine(
+                render_mask,
                 M,
                 (self.width, self.height),
                 flags=cv2.INTER_NEAREST,
                 borderMode=cv2.BORDER_CONSTANT,
-                borderValue=(0, 0, 0, background_alpha),
+                borderValue=0,
             )
         else:
-            bgra_screen = cv2.resize(
-                bgra_full, (self.width, self.height), interpolation=cv2.INTER_NEAREST
+            mask_screen = cv2.resize(
+                render_mask, (self.width, self.height), interpolation=cv2.INTER_NEAREST
             )
+
+        # 3. Construct BGRA output in screen space using LUT for alpha mapping
+        # lut maps: 0 -> background_alpha, 127 -> shroud_alpha, 255 -> ALPHA_TRANSPARENT
+        lut = np.zeros(256, dtype=np.uint8)
+        lut[0] = background_alpha
+        lut[127] = shroud_alpha
+        lut[255] = ALPHA_TRANSPARENT
+
+        alpha_screen = cv2.LUT(mask_screen, lut)
+
+        # Create final BGRA image (all zeros except alpha)
+        bgra_screen = np.zeros((self.height, self.width, 4), dtype=np.uint8)
+        bgra_screen[:, :, 3] = alpha_screen
 
         return [
             ImagePatch(

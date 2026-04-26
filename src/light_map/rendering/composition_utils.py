@@ -46,16 +46,30 @@ def composite_patch(
             buffer[buffer_y1:buffer_y2, buffer_x1:buffer_x2, 3] = ALPHA_OPAQUE
 
     elif mode == LayerMode.MASKED:
-        # Boolean indexing fast-path using the alpha channel for binary masks
+        # Optimized masked composition
         if patch_slice.shape[2] == 4:
             alpha_channel = patch_slice[:, :, 3]
-            mask = alpha_channel > 0
-            if np.any(mask):
-                # Use a view for the target region
-                roi = buffer[buffer_y1:buffer_y2, buffer_x1:buffer_x2]
-                roi[mask, :3] = patch_slice[mask, :3]
+            roi = buffer[buffer_y1:buffer_y2, buffer_x1:buffer_x2]
+
+            # If the patch is pure black (shroud), we zero out the visible area.
+            # We use an out-of-place bitwise_and and then assign the result back to the ROI
+            # to avoid OpenCV "dst layout" errors with non-contiguous NumPy views.
+            if not np.any(patch_slice[:, :, :3]):
+                mask_inv = cv2.bitwise_not(alpha_channel)
+                res_bgr = cv2.bitwise_and(roi[:, :, :3], roi[:, :, :3], mask=mask_inv)
+                roi[:, :, :3] = res_bgr
+
                 if buffer.shape[2] == 4:
-                    roi[mask, 3] = alpha_channel[mask]
+                    # For the alpha channel, ensure masked areas are OPAQUE (255)
+                    # Use cv2.bitwise_or into a temporary buffer then assign back
+                    res_alpha = cv2.bitwise_or(roi[:, :, 3], alpha_channel)
+                    roi[:, :, 3] = res_alpha
+            else:
+                # General case: copy colors where mask > 0
+                mask = alpha_channel > 0
+                np.copyto(roi[:, :, :3], patch_slice[:, :, :3], where=mask[:, :, np.newaxis])
+                if buffer.shape[2] == 4:
+                    np.copyto(roi[:, :, 3], alpha_channel, where=mask)
         else:
             # If no alpha, treat as blocking
             buffer[buffer_y1:buffer_y2, buffer_x1:buffer_x2, :3] = patch_slice[:, :, :3]

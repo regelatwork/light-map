@@ -1,5 +1,4 @@
-import numpy as np
-from typing import List, Optional
+from typing import List
 from light_map.core.common_types import ImagePatch, LayerMode
 from light_map.core.constants import (
     ALPHA_OPAQUE,
@@ -41,34 +40,27 @@ class ExclusiveVisionLayer(VisibilityBaseLayer):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.mask_override: Optional[np.ndarray] = None
         self.layer_mode = LayerMode.MASKED
-
-    def set_mask(self, mask: Optional[np.ndarray]):
-        self.mask_override = mask
 
     def get_current_version(self) -> int:
         if self.state is None:
             return 0
 
-        # If mask is overridden, we just render whenever the underlying mask is updated.
-        # But wait, mask is passed manually here. We need to increment version if mask changes.
-        # But the mask_override is set by someone else. We'll use system_time_version for now
-        # if there's a mask override to ensure it renders, or we could add an internal version.
-        if self.mask_override is not None:
-            return self.state.system_time_version
+        # Pull version directly from WorldState atoms
         return max(
-            self.state.visibility_version,
+            self.state.inspected_token_mask_version,
             self.state.grid_metadata_version,
             self.state.viewport_version,
         )
 
     def _generate_patches(self, current_time: float) -> List[ImagePatch]:
-        if self.mask_override is None:
+        if self.state is None or self.state.inspected_token_mask is None:
             return []
 
         # Uses ALPHA_OPAQUE (255) for shroud to create total darkness
         # Uses ALPHA_OPAQUE for background_alpha to fill area outside warped mask
         return self._render_mask_to_patches(
-            self.mask_override, shroud_alpha=ALPHA_OPAQUE, background_alpha=ALPHA_OPAQUE
+            self.state.inspected_token_mask,
+            shroud_alpha=ALPHA_OPAQUE,
+            background_alpha=ALPHA_OPAQUE,
         )

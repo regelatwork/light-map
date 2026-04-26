@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg width="200" height="200" viewBox="0 0 200 200" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape">
+  <rect id="background" width="200" height="200" x="0" y="0" style="fill:#1a1a1a;stroke:none;" />
+  <path id="wall" d="M 120,0 L 120,200" style="fill:none;stroke:#ffffff;stroke-width:2;" inkscape:label="wall" />
+</svg>

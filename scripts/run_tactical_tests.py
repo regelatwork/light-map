@@ -95,6 +95,14 @@ def run_test_case(case_path: str):
     tx = (t_cfg.get("grid_x", 0) + 0.5) * spacing_svg
     ty = (t_cfg.get("grid_y", 0) + 0.5) * spacing_svg
     
+    tokens = []
+    for i, t_data in enumerate(config.get("tokens", [])):
+        tx_val = (t_data.get("grid_x", 0) + 0.5) * spacing_svg
+        ty_val = (t_data.get("grid_y", 0) + 0.5) * spacing_svg
+        t_obj = Token(id=100+i, world_x=tx_val, world_y=ty_val, size=t_data.get("size", 1))
+        tokens.append(t_obj)
+        engine.stamp_token_footprint(engine.blocker_mask, t_obj)
+
     attacker = Token(id=1, world_x=ax, world_y=ay, size=a_cfg.get("size", 1))
     target = Token(id=2, world_x=tx, world_y=ty, size=t_cfg.get("size", 1))
 
@@ -171,7 +179,7 @@ def run_test_case(case_path: str):
     state.inspected_token_id = attacker.id
     # We need a dummy mask for the layer to render
     state.inspected_token_mask = np.full((10, 10), 255, dtype=np.uint8)
-    state.tokens = [attacker, target]
+    state.tokens = [attacker, target] + tokens
     state.tactical_bonuses = {target.id: res}
     
     # MapSystem mock

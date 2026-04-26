@@ -1,0 +1,291 @@
+{
+  "case_name": "soft_cover_basic",
+  "grid_params": {
+    "spacing_svg": 10.0,
+    "svg_to_mask_scale": 1.6,
+    "mask_resolution": [
+      320,
+      320
+    ]
+  },
+  "cover_result": {
+    "ac_bonus": 4,
+    "reflex_bonus": 0,
+    "total_ratio": 0.71875,
+    "wall_ratio": 0.0,
+    "best_apex_svg": [
+      30.0,
+      110.0
+    ],
+    "wedges": [
+      {
+        "status": "3",
+        "start_idx": 0,
+        "end_idx": 22
+      },
+      {
+        "status": "CLEAR",
+        "start_idx": 23,
+        "end_idx": 31
+      }
+    ],
+    "boundary_samples": [
+      {
+        "mask_xy": [
+          288,
+          160
+        ],
+        "angle_rad": -0.06656816377582381,
+        "status": "UNKNOWN"
+      },
+      {
+        "mask_xy": [
+          289,
+          160
+        ],
+        "angle_rad": -0.0662927575586062,
+        "status": "UNKNOWN"
+      },
+      {
+        "mask_xy": [
+          290,
+          160
+        ],
+        "angle_rad": -0.0660196174786768,
+        "status": "UNKNOWN"
+      },
+      {
+        "mask_xy": [
+          291,
+          160
+        ],
+        "angle_rad": -0.06574871572105602,
+        "status": "UNKNOWN"
+      },
+      {
+        "mask_xy": [
+          292,
+          160
+        ],
+        "angle_rad": -0.06548002492346482,
+        "status": "UNKNOWN"
+      },
+      {
+        "mask_xy": [
+          293,
+          160
+        ],
+        "angle_rad": -0.06521351816716534,
+        "status": "UNKNOWN"
+      },
+      {
+        "mask_xy": [
+          294,
+          160
+        ],
+        "angle_rad": -0.06494916896802275,
+        "status": "UNKNOWN"
+      },
+      {
+        "mask_xy": [
+          295,
+          160
+        ],
+        "angle_rad": -0.064686951267782,
+        "status": "UNKNOWN"
+      },
+      {
+        "mask_xy": [
+          288,
+          161
+        ],
+        "angle_rad": -0.06241880999595735,
+        "status": "UNKNOWN"
+      },
+      {
+        "mask_xy": [
+          288,
+          162
+        ],
+        "angle_rad": -0.0582673029695334,
+        "status": "UNKNOWN"
+      },
+      {
+        "mask_xy": [
+          288,
+          163
+        ],
+        "angle_rad": -0.05411378422907827,
+        "status": "UNKNOWN"
+      },
+      {
+        "mask_xy": [
+          288,
+          164
+        ],
+        "angle_rad": -0.04995839572194276,
+        "status": "UNKNOWN"
+      },
+      {
+        "mask_xy": [
+          288,
+          165
+        ],
+        "angle_rad": -0.04580127978157396,
+        "status": "UNKNOWN"
+      },
+      {
+        "mask_xy": [
+          288,
+          166
+        ],
+        "angle_rad": -0.04164257909858842,
+        "status": "UNKNOWN"
+      },
+      {
+        "mask_xy": [
+          288,
+          167
+        ],
+        "angle_rad": -0.037482436691661486,
+        "status": "UNKNOWN"
+      },
+      {
+        "mask_xy": [
+          288,
+          168
+        ],
+        "angle_rad": -0.033320995878247196,
+        "status": "UNKNOWN"
+      },
+      {
+        "mask_xy": [
+          288,
+          169
+        ],
+        "angle_rad": -0.029158400245143854,
+        "status": "UNKNOWN"
+      },
+      {
+        "mask_xy": [
+          288,
+          170
+        ],
+        "angle_rad": -0.02499479361892016,
+        "status": "UNKNOWN"
+      },
+      {
+        "mask_xy": [
+          288,
+          171
+        ],
+        "angle_rad": -0.020830320036217084,
+        "status": "UNKNOWN"
+      },
+      {
+        "mask_xy": [
+          288,
+          172
+        ],
+        "angle_rad": -0.016665123713940747,
+        "status": "UNKNOWN"
+      },
+      {
+        "mask_xy": [
+          288,
+          173
+        ],
+        "angle_rad": -0.012499349019361679,
+        "status": "UNKNOWN"
+      },
+      {
+        "mask_xy": [
+          288,
+          174
+        ],
+        "angle_rad": -0.008333140440135918,
+        "status": "UNKNOWN"
+      },
+      {
+        "mask_xy": [
+          288,
+          175
+        ],
+        "angle_rad": -0.004166642554263516,
+        "status": "UNKNOWN"
+      },
+      {
+        "mask_xy": [
+          295,
+          176
+        ],
+        "angle_rad": 0.0,
+        "status": "CLEAR"
+      },
+      {
+        "mask_xy": [
+          296,
+          176
+        ],
+        "angle_rad": 0.0,
+        "status": "CLEAR"
+      },
+      {
+        "mask_xy": [
+          293,
+          176
+        ],
+        "angle_rad": 0.0,
+        "status": "CLEAR"
+      },
+      {
+        "mask_xy": [
+          292,
+          176
+        ],
+        "angle_rad": 0.0,
+        "status": "CLEAR"
+      },
+      {
+        "mask_xy": [
+          291,
+          176
+        ],
+        "angle_rad": 0.0,
+        "status": "CLEAR"
+      },
+      {
+        "mask_xy": [
+          290,
+          176
+        ],
+        "angle_rad": 0.0,
+        "status": "CLEAR"
+      },
+      {
+        "mask_xy": [
+          289,
+          176
+        ],
+        "angle_rad": 0.0,
+        "status": "CLEAR"
+      },
+      {
+        "mask_xy": [
+          294,
+          176
+        ],
+        "angle_rad": 0.0,
+        "status": "CLEAR"
+      },
+      {
+        "mask_xy": [
+          288,
+          176
+        ],
+        "angle_rad": 0.0,
+        "status": "CLEAR"
+      }
+    ]
+  }
+}

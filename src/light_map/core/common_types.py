@@ -312,7 +312,7 @@ class SelectionState:
 class WedgeSegment:
     start_idx: int
     end_idx: int
-    status: int  # 0: Clear, 2: Obscured (1: Blocked is filtered out)
+    status: int  # 0: Clear, 2: Obscured, 3: Soft Cover (1: Blocked is filtered out)
 
 
 @dataclass
@@ -324,6 +324,7 @@ class CoverResult:
     npc_pixels: np.ndarray  # (x, y) in mask space, sorted relative to best_apex
     total_ratio: float = 0.0
     wall_ratio: float = 0.0
+    soft_ratio: float = 0.0
 
     def __eq__(self, other: Any) -> bool:
         if not isinstance(other, CoverResult):

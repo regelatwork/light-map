@@ -21,6 +21,7 @@ MASK_VALUE_WALL = 255
 MASK_VALUE_DOOR_CLOSED = 200
 MASK_VALUE_DOOR_OPEN = 150
 MASK_VALUE_TALL = 100
+MASK_VALUE_SOFT_COVER = 75
 MASK_VALUE_LOW = 50
 
 if TYPE_CHECKING:
@@ -69,6 +70,9 @@ if HAS_NUMBA:
                     # Flag that we found an obscuring object, but CONTINUE tracing
                     # to check for walls later in the line.
                     result = 2
+            elif val == 75:  # SOFT_COVER
+                if result == 0:
+                    result = 3
 
         return result
 
@@ -78,21 +82,23 @@ if HAS_NUMBA:
         pc_pixels: np.ndarray,
         blocker_mask: np.ndarray,
         target_center: Tuple[int, int],
-    ) -> Tuple[float, float, int]:
+    ) -> Tuple[float, float, float, int]:
         """
         Numba-optimized check of visibility from all PC boundary pixels to all NPC boundary pixels.
         Calculates:
-        1. total_ratio: percentage of NEAR-SIDE NPC boundary pixels obscured (Wall or Low).
+        1. total_ratio: percentage of NEAR-SIDE NPC boundary pixels obscured (Wall, Low, or Soft).
         2. wall_ratio: percentage of NEAR-SIDE NPC boundary pixels blocked by WALLS/DOORS.
-        3. best_apex_index: index of the PC corner that provided the best view.
+        3. soft_ratio: percentage of NEAR-SIDE NPC boundary pixels blocked by creatures/soft cover.
+        4. best_apex_index: index of the PC corner that provided the best view.
         """
         num_npc_total = len(npc_pixels)
         num_pc = len(pc_pixels)
         if num_npc_total == 0 or num_pc == 0:
-            return 0.0, 0.0, 0
+            return 0.0, 0.0, 0.0, 0
 
         min_total_ratio = 1.1
         min_wall_ratio = 1.1
+        min_soft_ratio = 1.1
         min_dist_to_target = 1e9
         found_any_loe = False
         best_index = 0
@@ -103,6 +109,7 @@ if HAS_NUMBA:
 
             obscured_count = 0
             wall_count = 0
+            soft_count = 0
             num_near_side = 0
             has_any_loe_from_this_corner = False
 
@@ -119,19 +126,22 @@ if HAS_NUMBA:
                     num_near_side += 1
                     status = _numba_trace_path(nx, ny, px, py, blocker_mask)
 
-                    # status: 0=Clear, 1=Blocked(Wall), 2=Obscured(Low)
+                    # status: 0=Clear, 1=Blocked(Wall), 2=Obscured(Low), 3=Soft Cover
                     if status != 0:
                         obscured_count += 1
                         if status == 1:
                             wall_count += 1
+                        elif status == 3:
+                            soft_count += 1
 
-                    if status != 1:  # Clear or Low Object both allow Line of Effect
+                    if status != 1:  # Clear, Low Object, or Soft Cover all allow Line of Effect
                         has_any_loe_from_this_corner = True
 
             if num_near_side > 0 and has_any_loe_from_this_corner:
                 found_any_loe = True
                 total_ratio = obscured_count / num_near_side
                 wall_ratio = wall_count / num_near_side
+                soft_ratio = soft_count / num_near_side
                 dist_to_target = math.sqrt(
                     (px - target_center[0]) ** 2 + (py - target_center[1]) ** 2
                 )
@@ -153,13 +163,14 @@ if HAS_NUMBA:
                 if is_better:
                     min_wall_ratio = wall_ratio
                     min_total_ratio = total_ratio
+                    min_soft_ratio = soft_ratio
                     min_dist_to_target = dist_to_target
                     best_index = j
 
         if not found_any_loe:
-            return -1.0, -1.0, 0
+            return -1.0, -1.0, -1.0, 0
 
-        return min_total_ratio, min_wall_ratio, best_index
+        return min_total_ratio, min_wall_ratio, min_soft_ratio, best_index
 
     @njit(cache=True)
     def _numba_is_line_obstructed(
@@ -346,6 +357,8 @@ class VisibilityEngine:
             Tuple[int, int, int, int], Tuple[np.ndarray, Set[str]]
         ] = {}
 
+        self._footprint_cache: Dict[Tuple[int, GridType], np.ndarray] = {}
+
         self.blocker_mask: Optional[np.ndarray] = None
         self.blocker_id_map: Optional[np.ndarray] = None
         self.svg_to_mask_scale = 16.0 / grid_spacing_svg
@@ -443,6 +456,122 @@ class VisibilityEngine:
                             cv2.line(self.blocker_id_map, p1, p2, idx, thickness=2)
                             cv2.circle(self.blocker_id_map, p1, 1, idx, -1)
                             cv2.circle(self.blocker_id_map, p2, 1, idx, -1)
+
+    def get_token_footprint(
+        self, size: int, grid_type: GridType = GridType.SQUARE
+    ) -> np.ndarray:
+        """
+        Returns a binary footprint mask for a given token size, cached for efficiency.
+        The footprint is a square numpy array centered on its own coordinates.
+        """
+        key = (size, grid_type)
+        if key in self._footprint_cache:
+            return self._footprint_cache[key]
+
+        # 16 pixels per grid unit.
+        r = (size * 16) // 2
+        dim = size * 16
+        cx_mask, cy_mask = r, r
+
+        temp_footprint = np.zeros((dim, dim), dtype=np.uint8)
+
+        # 1. Determine cell boundaries (Planes ax + by + c <= 0)
+        cell_planes_list = []
+        if grid_type == GridType.SQUARE:
+            cell_planes_list = [
+                [1.0, 0.0, -(cx_mask + r)],
+                [-1.0, 0.0, (cx_mask - r)],
+                [0.0, 1.0, -(cy_mask + r)],
+                [0.0, -1.0, (cy_mask - r)],
+            ]
+        else:
+            spacing = 16.0 * size
+            apothem = spacing / 2.0
+            if grid_type == GridType.HEX_POINTY:
+                s32 = math.sqrt(3) / 2.0
+                normals = [
+                    (1.0, 0.0),
+                    (-1.0, 0.0),
+                    (0.5, s32),
+                    (0.5, -s32),
+                    (-0.5, s32),
+                    (-0.5, -s32),
+                ]
+            else:
+                s32 = math.sqrt(3) / 2.0
+                normals = [
+                    (0.0, 1.0),
+                    (0.0, -1.0),
+                    (s32, 0.5),
+                    (s32, -0.5),
+                    (-s32, 0.5),
+                    (-s32, -0.5),
+                ]
+            for nx, ny in normals:
+                c = -(nx * cx_mask + ny * cy_mask) - apothem
+                cell_planes_list.append([nx, ny, c])
+
+        cell_planes = np.array(cell_planes_list, dtype=np.float32)
+
+        # 2. BFS Flood Fill within boundaries
+        queue = deque([(cy_mask, cx_mask)])
+        visited = np.zeros((dim, dim), dtype=bool)
+        if 0 <= cx_mask < dim and 0 <= cy_mask < dim:
+            visited[cy_mask, cx_mask] = True
+            temp_footprint[cy_mask, cx_mask] = 255
+
+        while queue:
+            y, x = queue.popleft()
+            for dy, dx in [(0, 1), (0, -1), (1, 0), (-1, 0)]:
+                ny, nx = y + dy, x + dx
+                if 0 <= nx < dim and 0 <= ny < dim and not visited[ny, nx]:
+                    visited[ny, nx] = True
+                    is_inside = True
+                    for i in range(cell_planes.shape[0]):
+                        if (
+                            cell_planes[i, 0] * nx
+                            + cell_planes[i, 1] * ny
+                            + cell_planes[i, 2]
+                            > 0.1
+                        ):
+                            is_inside = False
+                            break
+                    if is_inside:
+                        temp_footprint[ny, nx] = 255
+                        queue.append((ny, nx))
+
+        self._footprint_cache[key] = temp_footprint
+        return temp_footprint
+
+    def stamp_token_footprint(
+        self, mask: np.ndarray, token: Token, value: int = MASK_VALUE_SOFT_COVER
+    ):
+        """Stamps a token's footprint onto the provided mask."""
+        size = token.size if token.size is not None else 1
+        # Use SQUARE for cover logic footprint
+        footprint = self.get_token_footprint(size, GridType.SQUARE)
+
+        h, w = mask.shape
+        fh, fw = footprint.shape
+
+        # Center of the footprint on the mask
+        cx = int(token.world_x * self.svg_to_mask_scale)
+        cy = int(token.world_y * self.svg_to_mask_scale)
+
+        # Top-left corner on the mask
+        tx = cx - fw // 2
+        ty = cy - fh // 2
+
+        m_y1, m_y2 = max(0, ty), min(h, ty + fh)
+        m_x1, m_x2 = max(0, tx), min(w, tx + fw)
+
+        f_y1, f_y2 = m_y1 - ty, m_y2 - ty
+        f_x1, f_x2 = m_x1 - tx, m_x2 - tx
+
+        if m_y2 > m_y1 and m_x2 > m_x1:
+            sub_mask = mask[m_y1:m_y2, m_x1:m_x2]
+            sub_foot = footprint[f_y1:f_y2, f_x1:f_x2]
+            mask[m_y1:m_y2, m_x1:m_x2] = np.where(sub_foot > 0, value, sub_mask)
 
     def _calculate_token_footprint_with_planes(
         self,
@@ -601,13 +730,22 @@ class VisibilityEngine:
         return np.array(border_points, dtype=np.int32)
 
     def calculate_token_cover_bonuses(
-        self, source_token: Token, target_token: Token
+        self,
+        source_token: Token,
+        target_token: Token,
+        blocker_mask_override: Optional[np.ndarray] = None,
     ) -> CoverResult:
         """
         Calculates AC and Reflex save bonuses for a target token viewed from a source token.
         Returns CoverResult containing bonuses, best apex, and visual segments.
         """
-        if self.blocker_mask is None:
+        mask = (
+            blocker_mask_override
+            if blocker_mask_override is not None
+            else self.blocker_mask
+        )
+
+        if mask is None:
             return CoverResult(0, 0, (0, 0), [], np.empty((0, 2), dtype=np.int32))
 
         # 1. Get boundary pixels
@@ -623,8 +761,8 @@ class VisibilityEngine:
                 int(target_token.world_x * self.svg_to_mask_scale),
                 int(target_token.world_y * self.svg_to_mask_scale),
             )
-            total_ratio, wall_ratio, best_apex_idx = _numba_calculate_cover_grade(
-                npc_pixels, pc_pixels, self.blocker_mask, target_center
+            total_ratio, wall_ratio, soft_ratio, best_apex_idx = _numba_calculate_cover_grade(
+                npc_pixels, pc_pixels, mask, target_center
             )
         else:
             # Python fallback (not implemented for N^2, returns no cover)
@@ -635,17 +773,20 @@ class VisibilityEngine:
         ac_bonus, reflex_bonus = 0, 0
         if total_ratio < 0:
             ac_bonus, reflex_bonus = -1, -1
-        elif total_ratio >= 0.90:
-            # Improved Cover (+8) usually requires substantial fixed obstruction.
-            # We cap Low Objects at Standard Cover (+4) unless there's significant Wall/Tall blocking.
-            if wall_ratio >= 0.50:
+        else:
+            # Hard Cover calculation (Wall + Low)
+            hard_ratio = total_ratio - soft_ratio
+            if total_ratio >= 0.90 and wall_ratio >= 0.50:
                 ac_bonus, reflex_bonus = 8, 4
-            else:
+            elif hard_ratio >= 0.50:
                 ac_bonus, reflex_bonus = 4, 2
-        elif total_ratio >= 0.50:
-            ac_bonus, reflex_bonus = 4, 2
-        elif total_ratio > 0.0:
-            ac_bonus, reflex_bonus = 2, 1
+            elif hard_ratio > 0.0:
+                ac_bonus, reflex_bonus = 2, 1
+
+            # Soft Cover override: Creatures grant +4 AC but +0 Reflex.
+            # We take the best bonus from either source.
+            if soft_ratio > 0.0:
+                ac_bonus = max(ac_bonus, 4)
 
         best_apex = (int(pc_pixels[best_apex_idx, 0]), int(pc_pixels[best_apex_idx, 1]))
 
@@ -665,51 +806,66 @@ class VisibilityEngine:
                     ny - target_center[1]
                 ) * (ny - best_apex[1]) <= 1.0:
                     near_side_pts.append([nx, ny])
-            
+
             if not near_side_pts:
-                return CoverResult(ac_bonus, reflex_bonus, best_apex, [], npc_pixels, total_ratio, wall_ratio)
-            
+                return CoverResult(
+                    ac_bonus,
+                    reflex_bonus,
+                    best_apex,
+                    [],
+                    npc_pixels,
+                    total_ratio,
+                    wall_ratio,
+                    soft_ratio,
+                )
+
             near_side_pixels = np.array(near_side_pts, dtype=np.int32)
-            
+
             # 2. Calculate angles relative to apex for near-side points ONLY
             angles = np.arctan2(
-                near_side_pixels[:, 1] - best_apex[1], 
-                near_side_pixels[:, 0] - best_apex[0]
+                near_side_pixels[:, 1] - best_apex[1],
+                near_side_pixels[:, 0] - best_apex[0],
             )
-            
+
             # 3. Sort by angle to enable monotonic sweep across the silhouette
             sort_idx = np.argsort(angles)
             sorted_angles = angles[sort_idx]
             sorted_pixels = near_side_pixels[sort_idx]
-            
+
             # 4. Handle wrap-around for the subset if needed (to keep it contiguous)
             gaps = np.diff(sorted_angles)
-            last_gap = (sorted_angles[0] + 2*np.pi) - sorted_angles[-1]
+            last_gap = (sorted_angles[0] + 2 * np.pi) - sorted_angles[-1]
             all_gaps = np.concatenate([gaps, [last_gap]])
             max_gap_idx = np.argmax(all_gaps)
             shift = (max_gap_idx + 1) % len(sort_idx)
-            
+
             sorted_pixels = np.roll(sorted_pixels, -shift, axis=0)
-            
+
             # 5. Sample statuses for these points
             statuses = np.zeros(len(sorted_pixels), dtype=np.int32)
             for i in range(len(sorted_pixels)):
                 nx, ny = sorted_pixels[i, 0], sorted_pixels[i, 1]
-                statuses[i] = _numba_trace_path(
-                    nx, ny, best_apex[0], best_apex[1], self.blocker_mask
-                )
+                statuses[i] = _numba_trace_path(nx, ny, best_apex[0], best_apex[1], mask)
 
             # 6. Extract segments by looking at transitions
             if len(statuses) > 1:
                 current_start = 0
                 for i in range(1, len(statuses)):
                     if statuses[i] != statuses[current_start]:
-                        if statuses[current_start] in (0, 2):
-                            segments.append(WedgeSegment(current_start, i - 1, int(statuses[current_start])))
+                        if statuses[current_start] in (0, 2, 3):
+                            segments.append(
+                                WedgeSegment(
+                                    current_start, i - 1, int(statuses[current_start])
+                                )
+                            )
                         current_start = i
-                
-                if statuses[current_start] in (0, 2):
-                    segments.append(WedgeSegment(current_start, len(statuses) - 1, int(statuses[current_start])))
+
+                if statuses[current_start] in (0, 2, 3):
+                    segments.append(
+                        WedgeSegment(
+                            current_start, len(statuses) - 1, int(statuses[current_start])
+                        )
+                    )
 
             return CoverResult(
                 ac_bonus=ac_bonus,
@@ -719,6 +875,7 @@ class VisibilityEngine:
                 npc_pixels=sorted_pixels,
                 total_ratio=total_ratio,
                 wall_ratio=wall_ratio,
+                soft_ratio=soft_ratio,
             )
 
         return CoverResult(
@@ -729,6 +886,7 @@ class VisibilityEngine:
             npc_pixels=npc_pixels,
             total_ratio=total_ratio,
             wall_ratio=wall_ratio,
+            soft_ratio=soft_ratio,
         )
 
     def _is_line_obstructed(self, p1: Tuple[int, int], p2: Tuple[int, int]) -> bool:

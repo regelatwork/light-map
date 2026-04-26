@@ -247,7 +247,7 @@ class ExclusiveVisionScene(BaseMapScene):
                 # Ensure sizes are correct for cover calculation
                 source_token_copy = target_token.copy()
                 source_token_copy.size = inspected_profile.size
-                
+
                 target_token_copy = t.copy()
                 target_token_copy.size = other_profile.size
 
@@ -263,7 +263,17 @@ class ExclusiveVisionScene(BaseMapScene):
                     )
                     continue
 
-                cover_result = engine.calculate_token_cover_bonuses(source_token_copy, target_token_copy)
+                # --- AUGMENTED MASK FOR SOFT COVER ---
+                # Create a temporary blocker mask that includes other tokens as soft cover.
+                augmented_mask = engine.blocker_mask.copy()
+                for blocker_token in all_tokens:
+                    # Exclude the attacker and the current target to avoid self-blocking.
+                    if blocker_token.id not in (self.token_id, t.id):
+                        engine.stamp_token_footprint(augmented_mask, blocker_token)
+
+                cover_result = engine.calculate_token_cover_bonuses(
+                    source_token_copy, target_token_copy, augmented_mask
+                )
                 ac, reflex = cover_result.ac_bonus, cover_result.reflex_bonus
 
                 # Log to INFO for every enemy within tactical range to verify logic

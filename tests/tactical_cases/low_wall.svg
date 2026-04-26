@@ -9,6 +9,13 @@
    xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
    xmlns="http://www.w3.org/2000/svg"
    xmlns:svg="http://www.w3.org/2000/svg">
+  <rect
+     style="fill:#000080;stroke:none;"
+     id="background"
+     width="200"
+     height="200"
+     x="0"
+     y="0" />
   <g
      inkscape:label="low objects"
      inkscape:groupmode="layer"

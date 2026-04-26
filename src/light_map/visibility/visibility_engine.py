@@ -629,7 +629,12 @@ class VisibilityEngine:
         if total_ratio < 0:
             ac_bonus, reflex_bonus = -1, -1
         elif total_ratio >= 0.90:
-            ac_bonus, reflex_bonus = 8, 4
+            # Improved Cover (+8) usually requires substantial fixed obstruction.
+            # We cap Low Objects at Standard Cover (+4) unless there's significant Wall/Tall blocking.
+            if wall_ratio >= 0.50:
+                ac_bonus, reflex_bonus = 8, 4
+            else:
+                ac_bonus, reflex_bonus = 4, 2
         elif total_ratio >= 0.50:
             ac_bonus, reflex_bonus = 4, 2
         elif total_ratio > 0.0:

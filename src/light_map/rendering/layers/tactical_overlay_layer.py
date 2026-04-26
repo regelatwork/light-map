@@ -161,32 +161,17 @@ class TacticalOverlayLayer(Layer):
                         wedge_img[final_stipple > 0] = (255, 255, 0, 200)
 
                 # Draw the two outermost edges of the entire cone
-                if all_visible_pts:
-                    # Calculate angles of all points relative to apex
-                    # We use a simple approach: just find the two points that are 'most apart' angularly
-                    # But for tokens, we can just take the global min/max angle pixels
+                if cover.segments:
+                    # The first point of the first segment and last point of last segment
+                    # are the true extreme edges because npc_pixels is already sorted/rotated.
+                    p_start_edge = cover.npc_pixels[cover.segments[0].start_idx]
+                    p_end_edge = cover.npc_pixels[cover.segments[-1].end_idx]
                     
-                    # Compute relative vectors
-                    pts_np = np.array(all_visible_pts)
-                    vecs = pts_np - np.array(apex_screen)
-                    angles = np.arctan2(vecs[:, 1], vecs[:, 0])
+                    psx1, psy_1 = self.map_system.world_to_screen(p_start_edge[0] * inv_scale, p_start_edge[1] * inv_scale)
+                    psx2, psy_2 = self.map_system.world_to_screen(p_end_edge[0] * inv_scale, p_end_edge[1] * inv_scale)
                     
-                    # Handle wrap-around by checking the span
-                    min_ang = np.min(angles)
-                    max_ang = np.max(angles)
-                    
-                    if max_ang - min_ang > np.pi:
-                        # Wrap-around case: the 'gap' is in the middle of the angles
-                        # The edges are the points closest to each other in the 'gap'
-                        angles_shifted = (angles + np.pi) % (2 * np.pi) - np.pi
-                        idx_min = np.argmin(angles_shifted)
-                        idx_max = np.argmax(angles_shifted)
-                    else:
-                        idx_min = np.argmin(angles)
-                        idx_max = np.argmax(angles)
-                    
-                    p_edge1 = (int(all_visible_pts[idx_min][0]), int(all_visible_pts[idx_min][1]))
-                    p_edge2 = (int(all_visible_pts[idx_max][0]), int(all_visible_pts[idx_max][1]))
+                    p_edge1 = (int(psx1), int(psy_1))
+                    p_edge2 = (int(psx2), int(psy_2))
                     
                     cv2.line(wedge_img, apex_screen, p_edge1, (255, 255, 255, 255), 2)
                     cv2.line(wedge_img, apex_screen, p_edge2, (255, 255, 255, 255), 2)

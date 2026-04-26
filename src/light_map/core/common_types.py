@@ -322,6 +322,8 @@ class CoverResult:
     best_apex: Tuple[int, int]  # (x, y) in mask space
     segments: List[WedgeSegment]
     npc_pixels: np.ndarray  # (x, y) in mask space, sorted relative to best_apex
+    total_ratio: float = 0.0
+    wall_ratio: float = 0.0
 
     def __eq__(self, other: Any) -> bool:
         if not isinstance(other, CoverResult):

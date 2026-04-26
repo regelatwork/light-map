@@ -74,24 +74,27 @@ if HAS_NUMBA:
 
     @njit(cache=True)
     def _numba_calculate_cover_grade(
-        npc_pixels: np.ndarray, pc_pixels: np.ndarray, blocker_mask: np.ndarray
+        npc_pixels: np.ndarray,
+        pc_pixels: np.ndarray,
+        blocker_mask: np.ndarray,
+        target_center: Tuple[int, int],
     ) -> Tuple[float, float, int]:
         """
+        Numba-optimized check of visibility from all PC boundary pixels to all NPC boundary pixels.
         Calculates:
-        1. total_ratio: percentage of NPC boundary pixels obscured (Wall or Low).
-        2. wall_ratio: percentage of NPC boundary pixels blocked by WALLS/DOORS.
+        1. total_ratio: percentage of NEAR-SIDE NPC boundary pixels obscured (Wall or Low).
+        2. wall_ratio: percentage of NEAR-SIDE NPC boundary pixels blocked by WALLS/DOORS.
         3. best_apex_index: index of the PC corner that provided the best view.
-        Starfinder 1e: Attacker chooses ONE corner that sees as much as possible.
         """
-        num_npc = len(npc_pixels)
+        num_npc_total = len(npc_pixels)
         num_pc = len(pc_pixels)
-        if num_npc == 0 or num_pc == 0:
+        if num_npc_total == 0 or num_pc == 0:
             return 0.0, 0.0, 0
 
         min_total_ratio = 1.1
         min_wall_ratio = 1.1
         found_any_loe = False
-        
+
         best_indices = np.zeros(num_pc, dtype=np.int32)
         best_count = 0
 
@@ -101,25 +104,35 @@ if HAS_NUMBA:
 
             obscured_count = 0
             wall_count = 0
+            num_near_side = 0
             has_any_loe_from_this_corner = False
 
-            for i in range(num_npc):
+            for i in range(num_npc_total):
                 nx, ny = npc_pixels[i, 0], npc_pixels[i, 1]
-                status = _numba_trace_path(nx, ny, px, py, blocker_mask)
 
-                # status: 0=Clear, 1=Blocked(Wall), 2=Obscured(Low)
-                if status != 0:
-                    obscured_count += 1
-                    if status == 1:
-                        wall_count += 1
+                # Near-Side Filtering: (P - C) · (P - A) <= 0
+                # We use a small epsilon to ensure edge pixels aren't culled by rounding.
+                dx_cp = nx - target_center[0]
+                dy_cp = ny - target_center[1]
+                dx_ap = nx - px
+                dy_ap = ny - py
+                if (dx_cp * dx_ap + dy_cp * dy_ap) <= 1:
+                    num_near_side += 1
+                    status = _numba_trace_path(nx, ny, px, py, blocker_mask)
 
-                if status != 1:  # Clear or Low Object both allow Line of Effect
-                    has_any_loe_from_this_corner = True
+                    # status: 0=Clear, 1=Blocked(Wall), 2=Obscured(Low)
+                    if status != 0:
+                        obscured_count += 1
+                        if status == 1:
+                            wall_count += 1
 
-            if has_any_loe_from_this_corner:
+                    if status != 1:  # Clear or Low Object both allow Line of Effect
+                        has_any_loe_from_this_corner = True
+
+            if num_near_side > 0 and has_any_loe_from_this_corner:
                 found_any_loe = True
-                total_ratio = obscured_count / num_npc
-                wall_ratio = wall_count / num_npc
+                total_ratio = obscured_count / num_near_side
+                wall_ratio = wall_count / num_near_side
 
                 # Selection Logic:
                 # We want the corner that has the best view (lowest wall ratio).
@@ -599,8 +612,12 @@ class VisibilityEngine:
 
         # 2. Use Numba-optimized cover grade calculation
         if HAS_NUMBA:
+            target_center = (
+                int(target_token.world_x * self.svg_to_mask_scale),
+                int(target_token.world_y * self.svg_to_mask_scale),
+            )
             total_ratio, wall_ratio, best_apex_idx = _numba_calculate_cover_grade(
-                npc_pixels, pc_pixels, self.blocker_mask
+                npc_pixels, pc_pixels, self.blocker_mask, target_center
             )
         else:
             # Python fallback (not implemented for N^2, returns no cover)
@@ -611,9 +628,9 @@ class VisibilityEngine:
         ac_bonus, reflex_bonus = 0, 0
         if total_ratio < 0:
             ac_bonus, reflex_bonus = -1, -1
-        elif wall_ratio >= 0.90:
+        elif total_ratio >= 0.90:
             ac_bonus, reflex_bonus = 8, 4
-        elif total_ratio >= 0.20:
+        elif total_ratio >= 0.50:
             ac_bonus, reflex_bonus = 4, 2
         elif total_ratio > 0.0:
             ac_bonus, reflex_bonus = 2, 1
@@ -686,6 +703,8 @@ class VisibilityEngine:
             best_apex=best_apex,
             segments=segments,
             npc_pixels=npc_pixels,
+            total_ratio=total_ratio,
+            wall_ratio=wall_ratio,
         )
 
     def _is_line_obstructed(self, p1: Tuple[int, int], p2: Tuple[int, int]) -> bool:

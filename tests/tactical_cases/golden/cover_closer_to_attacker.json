@@ -1,0 +1,33 @@
+{
+  "case_name": "cover_closer_to_attacker",
+  "grid_params": {
+    "spacing_svg": 10.0,
+    "svg_to_mask_scale": 1.6,
+    "mask_resolution": [
+      320,
+      320
+    ]
+  },
+  "cover_result": {
+    "ac_bonus": 0,
+    "reflex_bonus": 0,
+    "total_ratio": 0.0,
+    "wall_ratio": 0.0,
+    "best_apex_svg": [
+      30.0,
+      110.0
+    ],
+    "wedges": [
+      {
+        "status": "CLEAR",
+        "start_idx": 0,
+        "end_idx": 24
+      },
+      {
+        "status": "CLEAR",
+        "start_idx": 58,
+        "end_idx": 63
+      }
+    ]
+  }
+}

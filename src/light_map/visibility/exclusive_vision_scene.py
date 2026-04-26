@@ -63,17 +63,12 @@ class ExclusiveVisionScene(BaseMapScene):
     def get_active_layers(self, app: AppContext) -> List[Layer]:
         """
         Returns the layer stack for exclusive vision.
-        Injects the ExclusiveVisionLayer above visibility/fow.
+        Injects the ExclusiveVisionLayer above the background composite.
         """
         lm = self.context.layer_manager
 
-        # Base stack
-        stack = [
-            lm.map_layer,
-            lm.door_layer,
-            lm.fow_layer,
-            lm.visibility_layer,
-        ]
+        # Start with the cached background composite (Map, FoW, Visibility, Door, Grid)
+        stack = [lm.background_composite]
 
         # Insert ExclusiveVisionLayer if we have a mask
         mask = self.context.inspected_token_mask
@@ -84,9 +79,9 @@ class ExclusiveVisionScene(BaseMapScene):
             lm.exclusive_vision_layer.set_mask(mask)
             stack.append(lm.exclusive_vision_layer)
 
+        # Standard UI stack, ensuring ArucoMaskLayer is TOPMOST
         stack.extend(
             [
-                lm.aruco_mask_layer,
                 lm.hand_mask_layer,
                 lm.token_layer,
                 lm.tactical_overlay_layer,
@@ -95,6 +90,7 @@ class ExclusiveVisionScene(BaseMapScene):
                 lm.debug_layer,
                 lm.selection_progress_layer,
                 lm.cursor_layer,
+                lm.aruco_mask_layer,  # TOPMOST to prevent interference with physical tokens
             ]
         )
         return stack

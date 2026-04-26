@@ -172,10 +172,11 @@ def test_exclusive_vision_scene_layers(mock_app, mock_context):
     scene = ExclusiveVisionScene(mock_context)
     layers = scene.get_active_layers(mock_app)
 
-    assert mock_app.map_layer in layers
-    assert mock_app.door_layer in layers
-    assert mock_app.fow_layer in layers
-    assert mock_app.visibility_layer in layers
+    assert mock_app.background_composite in layers
+    assert mock_app.map_layer not in layers  # Collapsed into composite
+    assert mock_app.door_layer not in layers
+    assert mock_app.fow_layer not in layers
+    assert mock_app.visibility_layer not in layers
     assert mock_app.notification_layer in layers  # INCLUDED in ExclusiveVisionScene
     assert mock_app.debug_layer in layers
     assert mock_app.cursor_layer in layers

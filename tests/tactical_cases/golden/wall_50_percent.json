@@ -1,0 +1,22 @@
+{
+  "case_name": "wall_50_percent",
+  "grid_params": {
+    "spacing_svg": 10.0,
+    "svg_to_mask_scale": 1.6,
+    "mask_resolution": [
+      320,
+      320
+    ]
+  },
+  "cover_result": {
+    "ac_bonus": -1,
+    "reflex_bonus": -1,
+    "total_ratio": -1.0,
+    "wall_ratio": -1.0,
+    "best_apex_svg": [
+      20.0,
+      100.0
+    ],
+    "wedges": []
+  }
+}

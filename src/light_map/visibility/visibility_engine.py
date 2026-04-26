@@ -688,6 +688,7 @@ class VisibilityEngine:
             all_gaps = np.concatenate([gaps, [last_gap]])
             max_gap_idx = np.argmax(all_gaps)
             shift = (max_gap_idx + 1) % len(sort_idx)
+            
             sorted_pixels = np.roll(sorted_pixels, -shift, axis=0)
             
             # 5. Sample statuses for these points

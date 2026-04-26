@@ -136,8 +136,10 @@ class TacticalOverlayLayer(Layer):
                     
                     # Handle wrap-around for interpolation
                     diff = ang_end - ang_start
-                    while diff > math.pi: diff -= 2 * math.pi
-                    while diff < -math.pi: diff += 2 * math.pi
+                    while diff > math.pi:
+                        diff -= 2 * math.pi
+                    while diff < -math.pi:
+                        diff += 2 * math.pi
                     ang_end_interp = ang_start + diff
                     
                     for i in range(num_arc_pts + 1):

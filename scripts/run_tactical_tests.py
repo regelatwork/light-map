@@ -6,16 +6,14 @@ import json
 import numpy as np
 import cv2
 import subprocess
-from dataclasses import asdict
-from typing import Dict, Any
 
 # Add src to path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../src")))
 
-from light_map.core.common_types import Token, GridType, AppConfig, ViewportState, CoverResult, WedgeSegment
+from light_map.core.common_types import Token, GridType, AppConfig
 from light_map.state.world_state import WorldState
 from light_map.map.map_system import MapSystem
-from light_map.visibility.visibility_engine import VisibilityEngine
+from light_map.visibility.visibility_engine import VisibilityEngine, _numba_trace_path
 from light_map.rendering.svg.loader import SVGLoader
 from light_map.rendering.layers.tactical_overlay_layer import TacticalOverlayLayer
 
@@ -36,7 +34,8 @@ def run_test_case(case_path: str):
 
     with open(yaml_path, 'r') as f:
         config = yaml.safe_all_load(f) if hasattr(yaml, 'safe_all_load') else yaml.safe_load(f)
-        if isinstance(config, list): config = config[0] # Handle cases where yaml.safe_load returns a list
+        if isinstance(config, list):
+            config = config[0]  # Handle cases where yaml.safe_load returns a list
 
     # 1. Initialize Loader and determine scaling
     loader = SVGLoader(svg_path)
@@ -70,10 +69,14 @@ def run_test_case(case_path: str):
         pts = (np.array(b.points) * engine.svg_to_mask_scale).astype(np.int32)
         val = 0
         from light_map.visibility.visibility_types import VisibilityType
-        if b.type == VisibilityType.WALL: val = 255
-        elif b.type == VisibilityType.DOOR: val = 200 # Assume closed
-        elif b.type == VisibilityType.LOW_OBJECT: val = 50
-        elif b.type == VisibilityType.TALL_OBJECT: val = 100
+        if b.type == VisibilityType.WALL:
+            val = 255
+        elif b.type == VisibilityType.DOOR:
+            val = 200  # Assume closed
+        elif b.type == VisibilityType.LOW_OBJECT:
+            val = 50
+        elif b.type == VisibilityType.TALL_OBJECT:
+            val = 100
         
         if val > 0:
             if len(pts) > 2:
@@ -118,6 +121,14 @@ def run_test_case(case_path: str):
                     "start_idx": seg.start_idx,
                     "end_idx": seg.end_idx
                 } for seg in res.segments
+            ],
+            "boundary_samples": [
+                {
+                    "mask_xy": p.tolist(),
+                    "angle_rad": float(np.arctan2(p[1] - res.best_apex[1], p[0] - res.best_apex[0])),
+                    # Recalculate status for the report (same logic as engine)
+                    "status": STATUS_MAP.get(_numba_trace_path(int(p[0]), int(p[1]), int(res.best_apex[0]), int(res.best_apex[1]), engine.blocker_mask), "UNKNOWN")
+                } for p in res.npc_pixels
             ]
         }
     }
@@ -152,7 +163,8 @@ def run_test_case(case_path: str):
         print(f"Warning: Inkscape rendering failed ({e}), using black background.")
         base_img = np.zeros((png_h, png_w, 3), dtype=np.uint8)
     finally:
-        if os.path.exists(base_map_path): os.remove(base_map_path)
+        if os.path.exists(base_map_path):
+            os.remove(base_map_path)
 
     # Setup Mock App for TacticalOverlayLayer
     state = WorldState()
@@ -191,7 +203,8 @@ def run_test_case(case_path: str):
             
             # Slice patch to match bounds if needed
             oh, ow = y2 - y1, x2 - x1
-            if oh <= 0 or ow <= 0: continue
+            if oh <= 0 or ow <= 0:
+                continue
             
             ov_slice = overlay[:oh, :ow]
             al_slice = alpha[:oh, :ow]

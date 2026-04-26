@@ -21,11 +21,6 @@
       {
         "status": "CLEAR",
         "start_idx": 0,
-        "end_idx": 24
-      },
-      {
-        "status": "CLEAR",
-        "start_idx": 58,
         "end_idx": 63
       }
     ]

@@ -21,11 +21,6 @@
       {
         "status": "OBSCURED_LOW",
         "start_idx": 0,
-        "end_idx": 24
-      },
-      {
-        "status": "OBSCURED_LOW",
-        "start_idx": 57,
         "end_idx": 63
       }
     ]

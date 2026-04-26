@@ -9,23 +9,18 @@
     ]
   },
   "cover_result": {
-    "ac_bonus": 0,
-    "reflex_bonus": 0,
-    "total_ratio": 0.0,
-    "wall_ratio": 0.0,
+    "ac_bonus": 4,
+    "reflex_bonus": 2,
+    "total_ratio": 0.6290322580645161,
+    "wall_ratio": 0.6290322580645161,
     "best_apex_svg": [
-      30.0,
+      25.0,
       110.0
     ],
     "wedges": [
       {
         "status": "CLEAR",
-        "start_idx": 0,
-        "end_idx": 47
-      },
-      {
-        "status": "CLEAR",
-        "start_idx": 114,
+        "start_idx": 82,
         "end_idx": 127
       }
     ]

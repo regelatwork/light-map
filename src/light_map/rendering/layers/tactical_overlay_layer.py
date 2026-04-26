@@ -1,6 +1,7 @@
 from typing import List, TYPE_CHECKING
 import cv2
 import numpy as np
+import math
 from light_map.core.common_types import ImagePatch, Layer, LayerMode
 from light_map.core.display_utils import draw_text_with_background
 
@@ -92,12 +93,9 @@ class TacticalOverlayLayer(Layer):
                 asx, asy = self.map_system.world_to_screen(ax * inv_scale, ay * inv_scale)
                 apex_screen = (int(asx), int(asy))
                 
-                # To find the true edges of the cone, we need to find the angular extremes
-                # relative to the apex among all visible pixels.
                 all_visible_pts = []
                 
-                # Target Center in Screen Space (to pinch the polygons)
-                # target_token.world_x/y are in SVG coordinates
+                # Target Center in Screen Space (to pinch the polygons and determine radius)
                 all_tokens = self.state.tokens + [t for t in self.map_system.ghost_tokens if t.id not in {tk.id for tk in self.state.tokens}]
                 target_tk = next((t for t in all_tokens if t.id == target_id), None)
                 if target_tk:
@@ -107,36 +105,60 @@ class TacticalOverlayLayer(Layer):
                     target_center_screen = None
 
                 for seg in cover.segments:
-                    # NPC Pixels in Screen Space
-                    seg_pixels = cover.npc_pixels[seg.start_idx : seg.end_idx + 1]
-                    poly_points = [apex_screen]
+                    # 1. Determine Angular Span from sorted npc_pixels
+                    # (Note: npc_pixels are already angularly sorted relative to best_apex)
+                    p_start = cover.npc_pixels[seg.start_idx]
+                    p_end = cover.npc_pixels[seg.end_idx]
                     
-                    for px, py in seg_pixels:
-                        psx, psy = self.map_system.world_to_screen(px * inv_scale, py * inv_scale)
-                        p_screen = (int(psx), int(psy))
-                        poly_points.append(p_screen)
-                        all_visible_pts.append(p_screen)
+                    # Convert mask coords back to world then to screen relative vectors
+                    asx_px, asy_px = cover.best_apex
                     
-                    # Add Target Center to close the polygon tightly against the boundary
+                    # Vector relative to Apex
+                    vec_start = np.array(p_start) - np.array([asx_px, asy_px])
+                    vec_end = np.array(p_end) - np.array([asx_px, asy_px])
+                    
+                    ang_start = math.atan2(vec_start[1], vec_start[0])
+                    ang_end = math.atan2(vec_end[1], vec_end[0])
+                    
+                    # 2. Determine Radius
                     if target_center_screen:
+                        dist = math.sqrt((apex_screen[0]-target_center_screen[0])**2 + (apex_screen[1]-target_center_screen[1])**2)
+                    else:
+                        # Fallback: boundary point distance
+                        psx_s, psy_s = self.map_system.world_to_screen(p_start[0] * inv_scale, p_start[1] * inv_scale)
+                        dist = math.sqrt((apex_screen[0]-psx_s)**2 + (apex_screen[1]-psy_s)**2)
+                    
+                    # 3. Build smooth arc for the sector
+                    num_arc_pts = 10
+                    arc_pts = []
+                    
+                    # Handle wrap-around for interpolation
+                    diff = ang_end - ang_start
+                    while diff > math.pi: diff -= 2 * math.pi
+                    while diff < -math.pi: diff += 2 * math.pi
+                    ang_end_interp = ang_start + diff
+                    
+                    for i in range(num_arc_pts + 1):
+                        t = i / num_arc_pts
+                        a = ang_start + t * (ang_end_interp - ang_start)
+                        px = apex_screen[0] + dist * math.cos(a)
+                        py = apex_screen[1] + dist * math.sin(a)
+                        arc_pts.append([px, py])
+                        all_visible_pts.append([px, py])
+                    
+                    poly_points = [apex_screen] + arc_pts
+                    if target_center_screen:
+                        # Add target center to "pinch" it and stop at the leading edge
                         poly_points.append(target_center_screen)
 
-                    if len(poly_points) < 3:
-                        continue
-                        
                     pts = np.array(poly_points, dtype=np.int32).reshape((-1, 1, 2))
                     
-                    if seg.status == 0:  # Clear: Cyan (High alpha for visibility)
+                    if seg.status == 0:  # Clear
                         cv2.fillPoly(wedge_img, [pts], (255, 255, 0, 80))
-                    elif seg.status == 2:  # Obscured: Stipple
-                        # Draw wedge to temp mask
+                    elif seg.status == 2:  # Obscured
                         wedge_mask = np.zeros((screen_h, screen_w), dtype=np.uint8)
                         cv2.fillPoly(wedge_mask, [pts], 255)
-                        
-                        # Apply stipple pattern
                         final_stipple = cv2.bitwise_and(wedge_mask, stipple_mask)
-                        
-                        # Apply to wedge_img (Cyan dots, high alpha)
                         wedge_img[final_stipple > 0] = (255, 255, 0, 200)
 
                 # Draw the two outermost edges of the entire cone
@@ -164,8 +186,8 @@ class TacticalOverlayLayer(Layer):
                         idx_min = np.argmin(angles)
                         idx_max = np.argmax(angles)
                     
-                    p_edge1 = tuple(all_visible_pts[idx_min])
-                    p_edge2 = tuple(all_visible_pts[idx_max])
+                    p_edge1 = (int(all_visible_pts[idx_min][0]), int(all_visible_pts[idx_min][1]))
+                    p_edge2 = (int(all_visible_pts[idx_max][0]), int(all_visible_pts[idx_max][1]))
                     
                     cv2.line(wedge_img, apex_screen, p_edge1, (255, 255, 255, 255), 2)
                     cv2.line(wedge_img, apex_screen, p_edge2, (255, 255, 255, 255), 2)

@@ -20,8 +20,8 @@
     "wedges": [
       {
         "status": "OBSCURED_LOW",
-        "start_idx": 24,
-        "end_idx": 55
+        "start_idx": 0,
+        "end_idx": 63
       }
     ]
   }

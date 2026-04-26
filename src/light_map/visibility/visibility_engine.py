@@ -60,7 +60,7 @@ if HAS_NUMBA:
                 continue
 
             val = blocker_mask[py, px]
-            if val == 255 or val == 200:  # WALL or DOOR_CLOSED
+            if val == 255 or val == 200 or val == 100:  # WALL, DOOR_CLOSED, or TALL_OBJECT
                 return 1
             if val == 50:  # LOW_OBJECT
                 # Starfinder 1e: Target within 30' (96px) AND closer than attacker
@@ -642,72 +642,53 @@ class VisibilityEngine:
 
         best_apex = (int(pc_pixels[best_apex_idx, 0]), int(pc_pixels[best_apex_idx, 1]))
 
-        # --- SEGMENT EXTRACTION ---
-        # Note: npc_pixels is already spatially ordered by _get_footprint_border_points (via findContours)
+        # --- NEW SEGMENT EXTRACTION (Angular Sampling) ---
         segments = []
+        sorted_pixels = npc_pixels.copy()
         if ac_bonus != -1:
-            # Trace paths from best apex to sorted NPC pixels
-            statuses = []
-            target_center = (
-                int(target_token.world_x * self.svg_to_mask_scale),
-                int(target_token.world_y * self.svg_to_mask_scale),
+            # 1. Calculate angles for all pixels relative to the chosen apex
+            # Angles are in range [-pi, pi]
+            angles = np.arctan2(
+                npc_pixels[:, 1] - best_apex[1], 
+                npc_pixels[:, 0] - best_apex[0]
             )
-            for i in range(len(npc_pixels)):
-                nx, ny = npc_pixels[i, 0], npc_pixels[i, 1]
-
-                # Near-Side Filtering: (P_x - C_x)*(P_x - A_x) + (P_y - C_y)*(P_y - A_y) <= 0
-                # P = (nx, ny), C = target_center, A = best_apex
-                near_side = (nx - target_center[0]) * (nx - best_apex[0]) + (
-                    ny - target_center[1]
-                ) * (ny - best_apex[1])
-
-                if near_side <= 0:
-                    status = _numba_trace_path(
-                        nx, ny, best_apex[0], best_apex[1], self.blocker_mask
-                    )
-                    statuses.append(status)
-                else:
-                    statuses.append(-1)  # Filtered out (Far side)
-
-            # Group contiguous statuses (0: Clear, 2: Obscured)
-            current_start = -1
-            current_status = -1
-
-            for i in range(len(statuses)):
-                status = statuses[i]
-
-                if status in (0, 2):
-                    if current_status == -1:
-                        current_start = i
-                        current_status = status
-                    elif status != current_status:
-                        # Close previous segment
-                        segments.append(
-                            WedgeSegment(current_start, i - 1, current_status)
-                        )
-                        current_start = i
-                        current_status = status
-                else:
-                    # Filtered or Blocked
-                    if current_status != -1:
-                        segments.append(
-                            WedgeSegment(current_start, i - 1, current_status)
-                        )
-                        current_start = -1
-                        current_status = -1
-
-            # Close final segment
-            if current_status != -1:
-                segments.append(
-                    WedgeSegment(current_start, len(statuses) - 1, current_status)
+            
+            # 2. Sort by angle to enable monotonic sweep
+            sort_idx = np.argsort(angles)
+            sorted_angles = angles[sort_idx]
+            sorted_pixels = npc_pixels[sort_idx]
+            
+            # 3. Sample statuses for all points
+            statuses = np.zeros(len(sorted_pixels), dtype=np.int32)
+            for i in range(len(sorted_pixels)):
+                nx, ny = sorted_pixels[i, 0], sorted_pixels[i, 1]
+                statuses[i] = _numba_trace_path(
+                    nx, ny, best_apex[0], best_apex[1], self.blocker_mask
                 )
+
+            # 4. Extract segments by looking at transitions
+            # A segment covers the span between samples.
+            if len(statuses) > 1:
+                current_start = 0
+                for i in range(1, len(statuses)):
+                    if statuses[i] != statuses[current_start]:
+                        # Status changed! 
+                        # Record the PREVIOUS run if it was visible
+                        if statuses[current_start] in (0, 2):
+                            # Segment from current_start to i-1
+                            segments.append(WedgeSegment(current_start, i - 1, int(statuses[current_start])))
+                        current_start = i
+                
+                # Handle final segment
+                if statuses[current_start] in (0, 2):
+                    segments.append(WedgeSegment(current_start, len(statuses) - 1, int(statuses[current_start])))
 
         return CoverResult(
             ac_bonus=ac_bonus,
             reflex_bonus=reflex_bonus,
             best_apex=best_apex,
             segments=segments,
-            npc_pixels=npc_pixels,
+            npc_pixels=sorted_pixels,
             total_ratio=total_ratio,
             wall_ratio=wall_ratio,
         )

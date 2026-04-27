@@ -856,6 +856,7 @@ class WorldState:
             "viewport_version": self.viewport_version,
             "visibility_version": self.visibility_version,
             "fow_version": self.fow_version,
+            "tactical_bonuses_version": self.tactical_bonuses_version,
             "dwell_state_version": self.dwell_state_version,
             "summon_progress_version": self.summon_progress_version,
             "selection_version": self.selection_version,

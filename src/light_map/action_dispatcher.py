@@ -247,16 +247,27 @@ def handle_set_selection(
     app: "InteractiveApp", payload: Dict[str, Any], state: Optional["WorldState"] = None
 ) -> Optional["SceneTransition"]:
     from light_map.core.common_types import SelectionState, SelectionType
+    import json
 
     if state is not None:
-        sel_type_str = payload.get("type", "NONE").upper()
-        sel_id = payload.get("id")
+        # The frontend might send fields top-level or inside a stringified 'payload'
+        data = payload
+        if "payload" in payload and isinstance(payload["payload"], str):
+            try:
+                data = json.loads(payload["payload"])
+            except json.JSONDecodeError:
+                pass
+
+        sel_type_str = data.get("type", "NONE").upper()
+        sel_id = data.get("id")
         try:
             sel_type = SelectionType[sel_type_str]
         except KeyError:
             sel_type = SelectionType.NONE
 
-        state.selection = SelectionState(type=sel_type, id=str(sel_id) if sel_id is not None else None)
+        state.selection = SelectionState(
+            type=sel_type, id=str(sel_id) if sel_id is not None else None
+        )
     return None
 
 

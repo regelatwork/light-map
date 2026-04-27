@@ -7,7 +7,7 @@ import { useSystemState } from '../hooks/useSystemState';
  * This is a GM-only layer that pulls data on demand.
  */
 export const TacticalCoverLayer: React.FC = () => {
-  const { tokens, isConnected, config } = useSystemState();
+  const { tokens, isConnected, grid_spacing_svg } = useSystemState();
   const { bonuses, attackerId } = useTacticalCover();
 
   if (!isConnected || !attackerId) {
@@ -18,9 +18,9 @@ export const TacticalCoverLayer: React.FC = () => {
   if (!attacker) return null;
 
   // The mask-to-world scale is inverse of world-to-mask scale used in the engine.
-  // Engine: svg_to_mask_scale = ppi / 16.0
-  const ppi = config.projector_ppi || 96.0;
-  const maskToSvgScale = 16.0 / ppi;
+  // Engine: svg_to_mask_scale = grid_spacing_svg / 16.0
+  const spacing = grid_spacing_svg || 16.0;
+  const maskToSvgScale = 16.0 / spacing;
 
   return (
     <g className="tactical-cover-layer">
@@ -28,7 +28,7 @@ export const TacticalCoverLayer: React.FC = () => {
       {Object.entries(bonuses).map(([targetIdStr, cover]) => {
         const targetId = parseInt(targetIdStr);
         const target = tokens.find((t) => t.id === targetId);
-        if (!target || !cover.segments || cover.segments.length === 0) return null;
+        if (!target) return null;
 
         const pApex = {
           x: cover.best_apex[0] * maskToSvgScale,
@@ -37,7 +37,7 @@ export const TacticalCoverLayer: React.FC = () => {
 
         return (
           <g key={`radar-${targetId}`} style={{ pointerEvents: 'none' }}>
-            {cover.segments.map((seg, idx) => {
+            {cover.segments && cover.segments.map((seg, idx) => {
               const pStart = {
                 x: cover.npc_pixels[seg.start_idx][0] * maskToSvgScale,
                 y: cover.npc_pixels[seg.start_idx][1] * maskToSvgScale,

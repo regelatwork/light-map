@@ -400,7 +400,7 @@ class InteractiveApp:
     ) -> Tuple[Optional[np.ndarray], List[str]]:
         from light_map.core.analytics import track_wait
 
-        self.instrument.log_and_reset_if_needed(interval_s=1.0, level=logging.INFO)
+        self.instrument.log_and_reset_if_needed(interval_s=1.0, level=logging.DEBUG)
 
         if state is None:
             state = self.state

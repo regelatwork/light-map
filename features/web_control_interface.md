@@ -39,6 +39,7 @@ The existing `Remote Driver` is extended to handle:
   - **Map Layer**: Background image or SVG representation.
   - **Grid Layer**: Draggable grid lines for visual calibration.
   - **Token Layer**: Real-time representation of detected and simulated tokens.
+  - **Tactical Cover Layer**: Visualizes vision wedges (radar) and cover bonuses for selected tokens.
   - **Interaction Layer**: Overlay for UI elements like doors and interactive zones.
 - **Configuration Sidebar**: Form-based editing for token properties and system settings with live preview.
 - **Control Modules**:

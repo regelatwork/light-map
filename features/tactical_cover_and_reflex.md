@@ -53,6 +53,13 @@ For each visible NPC token during Exclusive Vision, the engine performs a dynami
 - **GM Mode:** GMs can enter Exclusive Vision for an NPC to see cover bonuses against all PCs.
 - **Manual Overrides:** Frontend toggles allow the GM to manually set cover or concealment states for any token, overriding the geometric calculation.
 
+### 3.3 GM Dashboard View
+To allow the GM to inspect cover states privately, the web dashboard implements a **Pull-on-Demand** visualization:
+- **Reactive Pull:** The frontend fetches tactical data only when needed (e.g., token selection changes, "Tactical Mode" is enabled, or tokens move).
+- **Schematic Radar:** High-precision SVG wedges are rendered on the dashboard's canvas, mirroring the "stipple" pattern of the physical projector but with perfect digital clarity.
+- **Detailed Tooltips:** Hovering over a target token in the dashboard reveals the specific mathematical breakdown (e.g., "% obscured") and textual explanations of the ruling.
+- **Privacy:** This information is not sent to the physical table unless specifically synchronized, allowing the GM to verify rulings without alerting players.
+
 ## 4. Success Criteria
 - **Accuracy:** Cover bonuses match Starfinder 1e rules for distance and proximity.
 - **Performance:** $N^2$ calculations for visible tokens remain performant (sub-16ms) via Numba optimization.

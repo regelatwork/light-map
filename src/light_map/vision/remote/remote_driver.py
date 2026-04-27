@@ -25,6 +25,7 @@ from light_map.core.common_types import (
     GestureType,
     GridType,
 )
+from light_map.core.config_schema import CoverResultSchema
 from light_map.core.scene import HandInput
 
 
@@ -194,6 +195,7 @@ def create_app(
                 "viewport_version": "viewport_timestamp",
                 "visibility_version": "visibility_timestamp",
                 "fow_version": "fow_timestamp",
+                "tactical_bonuses_version": "tactical_timestamp",
             }
 
             for src_key, dest_key in state_mapping.items():
@@ -676,8 +678,22 @@ def create_app(
         return state_mirror.get("world", {}).get("blockers", [])
 
     @app.get("/state/dwell")
-    def get_dwell():
+    async def get_dwell_state():
         return state_mirror.get("world", {}).get("dwell_state", {})
+
+    @app.get("/tactical/cover", response_model=Dict[int, CoverResultSchema])
+    async def get_tactical_cover(attacker_id: Optional[int] = Query(None)):
+        """
+        Returns tactical cover bonuses for all targets from the perspective of the attacker_id.
+        If attacker_id matches the current selection, cached results from state_mirror are used.
+        """
+        bonuses = state_mirror.get("tactical_bonuses", {})
+        # Note: In the current implementation, tactical_bonuses in state_mirror
+        # is always calculated for the currently SELECTED token in the main loop.
+        # If attacker_id is provided and doesn't match, we return empty or could
+        # trigger a calculation (but for now we just return the current mirror).
+        return bonuses
+
 
     @app.get("/state/logs")
     def get_logs(lines: int = 100):

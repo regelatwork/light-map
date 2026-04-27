@@ -99,6 +99,25 @@ def test_dispatch_inspect_token(dispatcher, app):
     )
 
 
+def test_dispatch_set_selection(dispatcher, app):
+    from light_map.core.common_types import SelectionType
+    
+    state = MagicMock()
+    payload = {"action": "SET_SELECTION", "type": "TOKEN", "id": 123}
+    dispatcher.dispatch(payload, state)
+    
+    # We can't easily assert equality on SelectionState if it's a dataclass with no __eq__ 
+    # that matches Mock, but we can check the attributes.
+    assert state.selection.type == SelectionType.TOKEN
+    assert state.selection.id == "123"
+
+    # Test clearing selection
+    payload = {"action": "SET_SELECTION", "type": "NONE", "id": None}
+    dispatcher.dispatch(payload, state)
+    assert state.selection.type == SelectionType.NONE
+    assert state.selection.id is None
+
+
 def test_legacy_map_file_loading(dispatcher, app):
     payload = {"map_file": "new_map.svg", "load_session": True}
     dispatcher.dispatch(payload)

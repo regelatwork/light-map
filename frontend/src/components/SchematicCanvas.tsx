@@ -4,6 +4,7 @@ import { GridLayer } from './GridLayer';
 import { ViewportEditLayer } from './ViewportEditLayer';
 import { TokenLayer } from './TokenLayer';
 import { MapLayer } from './MapLayer';
+import { TacticalCoverLayer } from './TacticalCoverLayer';
 import { FowLayer } from './FowLayer';
 import { DoorLayer } from './DoorLayer';
 import { CursorLayer } from './CursorLayer';
@@ -178,6 +179,7 @@ export const SchematicCanvas: FC<SchematicCanvasProps> = ({ children }) => {
           <g transform={`rotate(${rotation} ${centerX} ${centerY})`}>
             <MapLayer />
             <FowLayer />
+            <TacticalCoverLayer />
             <DoorLayer />
             <TokenLayer />
             <GridLayer />

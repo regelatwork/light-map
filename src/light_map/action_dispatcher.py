@@ -56,6 +56,7 @@ class ActionDispatcher:
         self.register("TOGGLE_FOW", handle_toggle_fow)
         self.register("TOGGLE_HAND_MASKING", handle_toggle_hand_masking)
         self.register("SET_GM_POSITION", handle_set_gm_position)
+        self.register("SET_SELECTION", handle_set_selection)
         self.register("TOGGLE_DEBUG_MODE", handle_toggle_debug_mode)
         self.register("INSPECT_TOKEN", handle_inspect_token)
         self.register("CLEAR_INSPECTION", handle_clear_inspection)
@@ -239,6 +240,23 @@ def handle_set_gm_position(
         app.notifications.add_notification(f"GM Position: {new_pos}")
     else:
         app.notifications.add_notification("Invalid GM Position")
+    return None
+
+
+def handle_set_selection(
+    app: "InteractiveApp", payload: Dict[str, Any], state: Optional["WorldState"] = None
+) -> Optional["SceneTransition"]:
+    from light_map.core.common_types import SelectionState, SelectionType
+
+    if state is not None:
+        sel_type_str = payload.get("type", "NONE").upper()
+        sel_id = payload.get("id")
+        try:
+            sel_type = SelectionType[sel_type_str]
+        except KeyError:
+            sel_type = SelectionType.NONE
+
+        state.selection = SelectionState(type=sel_type, id=str(sel_id) if sel_id is not None else None)
     return None
 
 

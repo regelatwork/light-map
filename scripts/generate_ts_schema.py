@@ -16,6 +16,8 @@ from light_map.core.config_schema import (
     TokenSchema,
     SessionDataSchema,
     MapEntrySchema,
+    WedgeSegmentSchema,
+    CoverResultSchema,
 )
 
 OUTPUT_FILE = "frontend/src/types/schema.generated.ts"
@@ -46,6 +48,12 @@ def python_type_to_ts(py_type: Any) -> str:
     if origin is list or py_type is list:
         if args:
             return f"{python_type_to_ts(args[0])}[]"
+        return "any[]"
+
+    # Handle Tuples
+    if origin is tuple or py_type is tuple:
+        if args:
+            return f"[{', '.join([python_type_to_ts(arg) for arg in args])}]"
         return "any[]"
 
     # Handle Dicts
@@ -173,6 +181,8 @@ def main():
         ("SessionData", SessionDataSchema),
         ("MapEntry", MapEntrySchema),
         ("GlobalConfig", GlobalConfigSchema),
+        ("WedgeSegment", WedgeSegmentSchema),
+        ("CoverResult", CoverResultSchema),
     ]
 
     # Interfaces

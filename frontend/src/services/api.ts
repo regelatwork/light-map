@@ -1,4 +1,4 @@
-import type { GlobalConfig } from '../types/schema.generated';
+import type { GlobalConfig, CoverResult } from '../types/schema.generated';
 import { GridType } from '../types/system';
 
 export const injectAction = async (action: string, payload?: string) => {
@@ -206,6 +206,22 @@ export const updateSystemConfig = async (update: Partial<GlobalConfig>) => {
 
   if (!response.ok) {
     throw new Error('Failed to update system configuration');
+  }
+
+  return response.json();
+};
+
+export const getTacticalCover = async (attackerId?: number): Promise<Record<number, CoverResult>> => {
+  const host = import.meta.env.DEV ? 'http://localhost:8000' : window.location.origin;
+  const url = new URL(`${host}/tactical/cover`);
+  if (attackerId !== undefined) {
+    url.searchParams.append('attacker_id', attackerId.toString());
+  }
+
+  const response = await fetch(url.toString());
+
+  if (!response.ok) {
+    throw new Error('Failed to fetch tactical cover data');
   }
 
   return response.json();

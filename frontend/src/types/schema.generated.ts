@@ -127,6 +127,24 @@ export interface GlobalConfig {
   projector_pos_z_override?: number | null;
 }
 
+export interface WedgeSegment {
+  start_idx: number;
+  end_idx: number;
+  status: number;
+}
+
+export interface CoverResult {
+  ac_bonus: number;
+  reflex_bonus: number;
+  best_apex: [number, number];
+  segments: WedgeSegment[];
+  npc_pixels: [number, number][];
+  total_ratio: number;
+  wall_ratio: number;
+  soft_ratio: number;
+  explanation: string;
+}
+
 
 export interface FieldMetadata {
   title: string;
@@ -568,5 +586,63 @@ export const GLOBALCONFIG_METADATA: Record<keyof GlobalConfig, FieldMetadata> = 
   "projector_pos_z_override": {
     "title": "Projector Z Override",
     "description": "Manually override the projector's Z position (mm)."
+  }
+};
+
+export const WEDGESEGMENT_METADATA: Record<keyof WedgeSegment, FieldMetadata> = {
+  "start_idx": {
+    "title": "Start Index",
+    "description": ""
+  },
+  "end_idx": {
+    "title": "End Index",
+    "description": ""
+  },
+  "status": {
+    "title": "Status",
+    "description": ""
+  }
+};
+
+export const COVERRESULT_METADATA: Record<keyof CoverResult, FieldMetadata> = {
+  "ac_bonus": {
+    "title": "AC Bonus",
+    "description": ""
+  },
+  "reflex_bonus": {
+    "title": "Reflex Bonus",
+    "description": ""
+  },
+  "best_apex": {
+    "title": "Best Apex",
+    "description": ""
+  },
+  "segments": {
+    "title": "Segments",
+    "description": ""
+  },
+  "npc_pixels": {
+    "title": "NPC Pixels",
+    "description": ""
+  },
+  "total_ratio": {
+    "title": "Total Ratio",
+    "description": "",
+    "default": 0.0
+  },
+  "wall_ratio": {
+    "title": "Wall Ratio",
+    "description": "",
+    "default": 0.0
+  },
+  "soft_ratio": {
+    "title": "Soft Ratio",
+    "description": "",
+    "default": 0.0
+  },
+  "explanation": {
+    "title": "Explanation",
+    "description": "",
+    "default": ""
   }
 };

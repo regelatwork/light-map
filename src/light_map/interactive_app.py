@@ -449,6 +449,11 @@ class InteractiveApp:
             self._handle_payloads(transition.payload, state)
             self._switch_scene(transition)
 
+        # Dashboard Tactical View logic: Calculate cover for the selected token
+        # if we aren't already in ExclusiveVisionScene (which handles its own).
+        if self.current_scene_id != SceneId.EXCLUSIVE_VISION:
+            self._update_tactical_bonuses(state)
+
         state.update_menu_state(getattr(self.current_scene, "menu_state", None))
 
         # Render logic
@@ -715,3 +720,88 @@ class InteractiveApp:
         )
         self.config.projector_matrix = self.config.projector_matrix @ scale_matrix
         return new_camera_matrix, rotation_vector, translation_vector
+
+    def _update_tactical_bonuses(self, state: "WorldState"):
+        """
+        Calculates tactical cover bonuses for the currently selected token.
+        This provides the data needed for the GM Dashboard's tactical view.
+        """
+        from light_map.core.common_types import SelectionType
+
+        if state.selection.type != SelectionType.TOKEN or not state.selection.id:
+            if state.tactical_bonuses:
+                state.tactical_bonuses = {}
+            return
+
+        try:
+            attacker_id = int(state.selection.id)
+        except (ValueError, TypeError):
+            if state.tactical_bonuses:
+                state.tactical_bonuses = {}
+            return
+
+        # Optimization: Only recalculate if tokens, geometry, or selection changed
+        current_version = max(
+            state.tokens_version,
+            state.visibility_version,
+            state.fow_version,
+            state.selection_version,
+        )
+
+        if (
+            hasattr(self, "_last_tactical_calc_version")
+            and self._last_tactical_calc_version == current_version
+            and hasattr(self, "_last_tactical_attacker_id")
+            and self._last_tactical_attacker_id == attacker_id
+        ):
+            return
+
+        self._last_tactical_calc_version = current_version
+        self._last_tactical_attacker_id = attacker_id
+
+        attacker = next((t for t in state.tokens if t.id == attacker_id), None)
+        if not attacker:
+            state.tactical_bonuses = {}
+            return
+
+        # Resolve profiles for size logic
+        map_file = self.current_map_path
+        attacker_profile = self.map_config.resolve_token_profile(attacker.id, map_file)
+
+        # Check all potential targets
+        new_bonuses = {}
+        engine = self.visibility_engine
+        all_tokens = state.tokens
+
+        for target in all_tokens:
+            if target.id == attacker_id:
+                continue
+
+            # Basic range check (20 squares)
+            dist_sq = (target.world_x - attacker.world_x) ** 2 + (
+                target.world_y - attacker.world_y
+            ) ** 2
+            spacing = engine.grid_spacing_svg
+            if dist_sq > (20.0 * spacing) ** 2:
+                continue
+
+            target_profile = self.map_config.resolve_token_profile(target.id, map_file)
+
+            # Ensure sizes are correct
+            attacker_copy = attacker.copy()
+            attacker_copy.size = attacker_profile.size
+            target_copy = target.copy()
+            target_copy.size = target_profile.size
+
+            # Create augmented mask for soft cover
+            augmented_mask = engine.blocker_mask.copy()
+            for blocker in all_tokens:
+                if blocker.id not in (attacker_id, target.id):
+                    engine.stamp_token_footprint(augmented_mask, blocker)
+
+            cover_result = engine.calculate_token_cover_bonuses(
+                attacker_copy, target_copy, augmented_mask
+            )
+            new_bonuses[target.id] = cover_result
+
+        state.tactical_bonuses = new_bonuses

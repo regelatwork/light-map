@@ -832,7 +832,6 @@ class WorldState:
             "dwell_state": self.dwell_state,
             "summon_progress": self.summon_progress,
             "inspected_token_id": self.inspected_token_id,
-            "tactical_bonuses": self.tactical_bonuses,
             "grid_spacing_svg": self.grid_spacing_svg,
             "grid_origin_svg_x": self.grid_origin_svg_x,
             "grid_origin_svg_y": self.grid_origin_svg_y,

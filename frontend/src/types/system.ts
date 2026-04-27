@@ -121,6 +121,10 @@ export interface WorldState {
   fps: number;
   viewport?: ViewportState;
   blockers?: VisibilityBlocker[];
+  selection?: {
+    type: SelectionType;
+    id: string | null;
+  };
   grid_type?: GridType;
   grid_overlay_visible?: boolean;
   grid_overlay_color?: string;
@@ -130,6 +134,7 @@ export interface WorldState {
 export interface SystemConfig {
   cam_res: [number, number];
   proj_res: [number, number];
+  projector_ppi?: number;
   enable_hand_masking: boolean;
   enable_aruco_masking: boolean;
   aruco_mask_intensity?: number;
@@ -183,6 +188,7 @@ export interface SystemState {
   viewport_timestamp: number;
   visibility_timestamp: number;
   fow_timestamp: number;
+  tactical_timestamp: number;
 }
 
 export const INITIAL_STATE: SystemState = {
@@ -222,4 +228,5 @@ export const INITIAL_STATE: SystemState = {
   viewport_timestamp: 0,
   visibility_timestamp: 0,
   fow_timestamp: 0,
+  tactical_timestamp: 0,
 };

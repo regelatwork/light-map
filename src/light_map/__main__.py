@@ -449,6 +449,7 @@ def run_app(args):
                     last_aruco_intensity = -1
                     last_aruco_persistence = -1
                     last_pointer_offset = -1
+                    last_tactical_ts = -1
 
                     def render_cb(state, actions):
                         nonlocal \
@@ -467,7 +468,8 @@ def run_app(args):
                             last_config_ts, \
                             last_aruco_intensity, \
                             last_aruco_persistence, \
-                            last_pointer_offset
+                            last_pointer_offset, \
+                            last_tactical_ts
 
                         # A. Handle Startup Actions (Execute once)
                         if args.action and not startup_action_executed:
@@ -573,6 +575,10 @@ def run_app(args):
                                 else:
                                     state_mirror["menu"] = None
                                 last_menu_ts = state.menu_version
+
+                            if state.tactical_bonuses_version != last_tactical_ts:
+                                state_mirror["tactical_bonuses"] = state.tactical_bonuses
+                                last_tactical_ts = state.tactical_bonuses_version
 
                             # 2. Update Configuration (Only if changed)
                             current_map_config_version = getattr(

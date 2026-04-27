@@ -20,6 +20,7 @@ export const TokenLayer: React.FC = () => {
         return (
           <g
             key={token.id}
+            data-testid={`token-group-${token.id}`}
             transform={`translate(${token.world_x}, ${token.world_y})`}
             onClick={(e) => {
               e.stopPropagation(); // prevent canvas click from clearing
@@ -74,6 +75,7 @@ export const TokenLayer: React.FC = () => {
             <text
               y="-20"
               textAnchor="middle"
+              data-testid={`token-label-${token.id}`}
               className="fill-gray-700 font-bold text-xs select-none pointer-events-none"
             >
               {token.name || `#${token.id}`}

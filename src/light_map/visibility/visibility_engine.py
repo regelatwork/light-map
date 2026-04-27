@@ -771,22 +771,31 @@ class VisibilityEngine:
         # 3. Map cover grade to Starfinder 1e bonuses
         # Ratio -1.0 means Total Cover (No Line of Effect)
         ac_bonus, reflex_bonus = 0, 0
+        explanation = "Clear Line of Sight"
         if total_ratio < 0:
             ac_bonus, reflex_bonus = -1, -1
+            explanation = "Total Cover: No line of effect found."
         else:
             # Hard Cover calculation (Wall + Low)
             hard_ratio = total_ratio - soft_ratio
             if total_ratio >= 0.90 and wall_ratio >= 0.50:
                 ac_bonus, reflex_bonus = 8, 4
+                explanation = f"Improved Cover (+8 AC, +4 Reflex): {total_ratio*100:.1f}% obscured by walls/obstacles."
             elif hard_ratio >= 0.50:
                 ac_bonus, reflex_bonus = 4, 2
+                explanation = f"Standard Cover (+4 AC, +2 Reflex): {hard_ratio*100:.1f}% obscured by obstacles."
             elif hard_ratio > 0.0:
                 ac_bonus, reflex_bonus = 2, 1
+                explanation = f"Partial Cover (+2 AC, +1 Reflex): {hard_ratio*100:.1f}% obscured by obstacles."
 
             # Soft Cover override: Creatures grant +4 AC but +0 Reflex.
             # We take the best bonus from either source.
             if soft_ratio > 0.0:
-                ac_bonus = max(ac_bonus, 4)
+                if 4 > ac_bonus:
+                    ac_bonus = 4
+                    explanation = f"Soft Cover (+4 AC, +0 Reflex): {soft_ratio*100:.1f}% obscured by creatures."
+                elif soft_ratio > 0.1:
+                    explanation += f" (includes {soft_ratio*100:.1f}% soft cover)"
 
         best_apex = (int(pc_pixels[best_apex_idx, 0]), int(pc_pixels[best_apex_idx, 1]))
 
@@ -817,8 +826,8 @@ class VisibilityEngine:
                     total_ratio,
                     wall_ratio,
                     soft_ratio,
-                )
-
+                    explanation=explanation,
+                    )
             near_side_pixels = np.array(near_side_pts, dtype=np.int32)
 
             # 2. Calculate angles relative to apex for near-side points ONLY
@@ -876,6 +885,7 @@ class VisibilityEngine:
                 total_ratio=total_ratio,
                 wall_ratio=wall_ratio,
                 soft_ratio=soft_ratio,
+                explanation=explanation,
             )
 
         return CoverResult(
@@ -887,6 +897,7 @@ class VisibilityEngine:
             total_ratio=total_ratio,
             wall_ratio=wall_ratio,
             soft_ratio=soft_ratio,
+            explanation=explanation,
         )
 
     def _is_line_obstructed(self, p1: Tuple[int, int], p2: Tuple[int, int]) -> bool:

@@ -325,6 +325,7 @@ class CoverResult:
     total_ratio: float = 0.0
     wall_ratio: float = 0.0
     soft_ratio: float = 0.0
+    explanation: str = ""
 
     def __eq__(self, other: Any) -> bool:
         if not isinstance(other, CoverResult):

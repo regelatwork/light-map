@@ -19,7 +19,7 @@ Architecture:
 """
 
 from pydantic import BaseModel, Field
-from typing import Optional, Dict, List
+from typing import Optional, Dict, List, Tuple
 from enum import StrEnum
 
 
@@ -124,6 +124,24 @@ class ViewportStateSchema(BaseModel):
     rotation: float = Field(
         default=0.0, title="Rotation", description="Rotation in degrees."
     )
+
+
+class WedgeSegmentSchema(BaseModel):
+    start_idx: int = Field(..., title="Start Index")
+    end_idx: int = Field(..., title="End Index")
+    status: int = Field(..., title="Status")
+
+
+class CoverResultSchema(BaseModel):
+    ac_bonus: int = Field(..., title="AC Bonus")
+    reflex_bonus: int = Field(..., title="Reflex Bonus")
+    best_apex: Tuple[int, int] = Field(..., title="Best Apex")
+    segments: List[WedgeSegmentSchema] = Field(..., title="Segments")
+    npc_pixels: List[Tuple[int, int]] = Field(..., title="NPC Pixels")
+    total_ratio: float = Field(default=0.0, title="Total Ratio")
+    wall_ratio: float = Field(default=0.0, title="Wall Ratio")
+    soft_ratio: float = Field(default=0.0, title="Soft Ratio")
+    explanation: str = Field(default="", title="Explanation")
 
 
 class TokenSchema(BaseModel):

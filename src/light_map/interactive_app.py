@@ -321,6 +321,10 @@ class InteractiveApp:
         self.scene_manager.current_scene = value
 
     @property
+    def current_scene_id(self) -> SceneId:
+        return self.scene_manager.current_scene_id
+
+    @property
     def current_scene_name(self) -> str:
         return self.current_scene.__class__.__name__
 

@@ -9,6 +9,7 @@ import React, {
   type ReactNode,
 } from 'react';
 import { type SystemState, INITIAL_STATE } from '../types/system';
+import { WS_URL } from '../services/config';
 export { INITIAL_STATE };
 
 type Action =
@@ -42,12 +43,6 @@ function systemReducer(state: SystemState, action: Action): SystemState {
 
 const SystemStateContext = createContext<SystemState>(INITIAL_STATE);
 
-const getWsUrl = () => {
-  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-  const host = import.meta.env.DEV ? 'localhost:8000' : window.location.host;
-  return `${protocol}//${host}/ws/state`;
-};
-
 export const SystemStateProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [state, dispatch] = useReducer(systemReducer, INITIAL_STATE);
   const socketRef = useRef<WebSocket | null>(null);
@@ -57,7 +52,7 @@ export const SystemStateProvider: React.FC<{ children: ReactNode }> = ({ childre
   const connect = useCallback(() => {
     if (socketRef.current?.readyState === WebSocket.OPEN) return;
 
-    const url = getWsUrl();
+    const url = WS_URL;
     const socket = new WebSocket(url);
 
     socket.onopen = () => {

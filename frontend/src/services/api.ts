@@ -1,9 +1,9 @@
 import type { GlobalConfig, CoverResult } from '../types/schema.generated';
 import { GridType } from '../types/system';
+import { API_BASE_URL } from './config';
 
 export const injectAction = async (action: string, payload?: string) => {
-  const host = import.meta.env.DEV ? 'http://localhost:8000' : window.location.origin;
-  const url = new URL(`${host}/input/action`);
+  const url = new URL(`${API_BASE_URL}/input/action`);
   url.searchParams.append('action', action);
   if (payload) {
     url.searchParams.append('payload', payload);
@@ -21,8 +21,7 @@ export const injectAction = async (action: string, payload?: string) => {
 };
 
 export const getMaps = async () => {
-  const host = import.meta.env.DEV ? 'http://localhost:8000' : window.location.origin;
-  const response = await fetch(`${host}/maps`);
+  const response = await fetch(`${API_BASE_URL}/maps`);
 
   if (!response.ok) {
     throw new Error('Failed to fetch maps');
@@ -32,8 +31,7 @@ export const getMaps = async () => {
 };
 
 export const loadMap = async (path: string, loadSession: boolean = true) => {
-  const host = import.meta.env.DEV ? 'http://localhost:8000' : window.location.origin;
-  const url = new URL(`${host}/map/load`);
+  const url = new URL(`${API_BASE_URL}/map/load`);
   url.searchParams.append('path', path);
   url.searchParams.append('load_session', loadSession.toString());
 
@@ -56,8 +54,7 @@ export const saveGridConfig = async (
   visible?: boolean,
   color?: string
 ) => {
-  const host = import.meta.env.DEV ? 'http://localhost:8000' : window.location.origin;
-  const response = await fetch(`${host}/config/grid`, {
+  const response = await fetch(`${API_BASE_URL}/config/grid`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -78,8 +75,7 @@ export const setViewportConfig = async (
   zoom: number,
   rotation: number
 ) => {
-  const host = import.meta.env.DEV ? 'http://localhost:8000' : window.location.origin;
-  const response = await fetch(`${host}/config/viewport`, {
+  const response = await fetch(`${API_BASE_URL}/config/viewport`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -95,8 +91,7 @@ export const setViewportConfig = async (
 };
 
 export const interactMenu = async (index: number) => {
-  const host = import.meta.env.DEV ? 'http://localhost:8000' : window.location.origin;
-  const url = new URL(`${host}/menu/interact`);
+  const url = new URL(`${API_BASE_URL}/menu/interact`);
   url.searchParams.append('index', index.toString());
 
   const response = await fetch(url.toString(), {
@@ -122,8 +117,7 @@ export const updateToken = async (
     is_map_override?: boolean;
   },
 ) => {
-  const host = import.meta.env.DEV ? 'http://localhost:8000' : window.location.origin;
-  const response = await fetch(`${host}/state/tokens/${tokenId}`, {
+  const response = await fetch(`${API_BASE_URL}/state/tokens/${tokenId}`, {
     method: 'PUT',
     headers: {
       'Content-Type': 'application/json',
@@ -139,8 +133,7 @@ export const updateToken = async (
 };
 
 export const deleteToken = async (tokenId: number) => {
-  const host = import.meta.env.DEV ? 'http://localhost:8000' : window.location.origin;
-  const response = await fetch(`${host}/state/tokens/${tokenId}`, {
+  const response = await fetch(`${API_BASE_URL}/state/tokens/${tokenId}`, {
     method: 'DELETE',
   });
 
@@ -152,8 +145,7 @@ export const deleteToken = async (tokenId: number) => {
 };
 
 export const deleteTokenOverride = async (tokenId: number) => {
-  const host = import.meta.env.DEV ? 'http://localhost:8000' : window.location.origin;
-  const response = await fetch(`${host}/state/tokens/${tokenId}/override`, {
+  const response = await fetch(`${API_BASE_URL}/state/tokens/${tokenId}/override`, {
     method: 'DELETE',
   });
 
@@ -165,8 +157,7 @@ export const deleteTokenOverride = async (tokenId: number) => {
 };
 
 export const updateProfile = async (name: string, size: number, height_mm: number) => {
-  const host = import.meta.env.DEV ? 'http://localhost:8000' : window.location.origin;
-  const response = await fetch(`${host}/state/profiles`, {
+  const response = await fetch(`${API_BASE_URL}/state/profiles`, {
     method: 'PUT',
     headers: {
       'Content-Type': 'application/json',
@@ -182,8 +173,7 @@ export const updateProfile = async (name: string, size: number, height_mm: numbe
 };
 
 export const deleteProfile = async (name: string) => {
-  const host = import.meta.env.DEV ? 'http://localhost:8000' : window.location.origin;
-  const response = await fetch(`${host}/state/profiles/${name}`, {
+  const response = await fetch(`${API_BASE_URL}/state/profiles/${name}`, {
     method: 'DELETE',
   });
 
@@ -195,8 +185,7 @@ export const deleteProfile = async (name: string) => {
 };
 
 export const updateSystemConfig = async (update: Partial<GlobalConfig>) => {
-  const host = import.meta.env.DEV ? 'http://localhost:8000' : window.location.origin;
-  const response = await fetch(`${host}/config/system`, {
+  const response = await fetch(`${API_BASE_URL}/config/system`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -212,8 +201,7 @@ export const updateSystemConfig = async (update: Partial<GlobalConfig>) => {
 };
 
 export const getTacticalCover = async (attackerId?: number): Promise<Record<number, CoverResult>> => {
-  const host = import.meta.env.DEV ? 'http://localhost:8000' : window.location.origin;
-  const url = new URL(`${host}/tactical/cover`);
+  const url = new URL(`${API_BASE_URL}/tactical/cover`);
   if (attackerId !== undefined) {
     url.searchParams.append('attacker_id', attackerId.toString());
   }

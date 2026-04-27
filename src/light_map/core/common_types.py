@@ -327,6 +327,22 @@ class CoverResult:
     soft_ratio: float = 0.0
     explanation: str = ""
 
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "ac_bonus": self.ac_bonus,
+            "reflex_bonus": self.reflex_bonus,
+            "best_apex": list(self.best_apex),
+            "segments": [
+                {"start_idx": s.start_idx, "end_idx": s.end_idx, "status": s.status}
+                for s in self.segments
+            ],
+            "npc_pixels": self.npc_pixels.tolist(),
+            "total_ratio": self.total_ratio,
+            "wall_ratio": self.wall_ratio,
+            "soft_ratio": self.soft_ratio,
+            "explanation": self.explanation,
+        }
+
     def __eq__(self, other: Any) -> bool:
         if not isinstance(other, CoverResult):
             return False

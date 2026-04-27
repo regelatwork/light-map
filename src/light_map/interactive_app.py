@@ -731,9 +731,12 @@ class InteractiveApp:
         This provides the data needed for the GM Dashboard's tactical view.
         """
         from light_map.core.common_types import SelectionType
+        import logging
+        logger = logging.getLogger(__name__)
 
         if state.selection.type != SelectionType.TOKEN or not state.selection.id:
             if state.tactical_bonuses:
+                logger.debug("Clearing tactical bonuses (no token selected)")
                 state.tactical_bonuses = {}
             return
 
@@ -760,11 +763,15 @@ class InteractiveApp:
         ):
             return
 
+        logger.debug("Recalculating tactical bonuses for attacker %d (v%d)", attacker_id, current_version)
         self._last_tactical_calc_version = current_version
         self._last_tactical_attacker_id = attacker_id
 
-        attacker = next((t for t in state.tokens if t.id == attacker_id), None)
+        all_tokens = state.tokens
+        attacker = next((t for t in all_tokens if t.id == attacker_id), None)
         if not attacker:
+            logger.debug("Attacker %d not found in state.tokens. Available IDs: %s", 
+                         attacker_id, [t.id for t in all_tokens])
             state.tactical_bonuses = {}
             return
 
@@ -775,7 +782,8 @@ class InteractiveApp:
         # Check all potential targets
         new_bonuses = {}
         engine = self.visibility_engine
-        all_tokens = state.tokens
+        
+        logger.debug("Checking tactical cover for %d targets from attacker %d", len(all_tokens) - 1, attacker_id)
 
         for target in all_tokens:
             if target.id == attacker_id:
@@ -787,6 +795,8 @@ class InteractiveApp:
             ) ** 2
             spacing = engine.grid_spacing_svg
             if dist_sq > (20.0 * spacing) ** 2:
+                logger.debug("Skipping target %d (too far: %f > %f, spacing=%f)", 
+                             target.id, dist_sq, (20.0 * spacing)**2, spacing)
                 continue
 
             target_profile = self.map_config.resolve_token_profile(target.id, map_file)
@@ -807,5 +817,6 @@ class InteractiveApp:
                 attacker_copy, target_copy, augmented_mask
             )
             new_bonuses[target.id] = cover_result
+            logger.debug("Calculated bonuses for target %d: %d AC", target.id, cover_result.ac_bonus)
 
         state.tactical_bonuses = new_bonuses

@@ -6,7 +6,12 @@
  */
 
 const getApiHost = () => {
-  // If VITE_API_HOST is provided, use it (works in both DEV and PROD if injected)
+  // Allow E2E tests to inject the host via window
+  if ((window as any).VITE_API_HOST) {
+    return (window as any).VITE_API_HOST;
+  }
+
+  // If VITE_API_HOST is provided via env, use it
   if (import.meta.env.VITE_API_HOST) {
     return import.meta.env.VITE_API_HOST;
   }
@@ -21,6 +26,7 @@ const getApiHost = () => {
 };
 
 export const API_HOST = getApiHost();
+console.log('determined API_HOST:', API_HOST);
 export const API_BASE_URL = `${window.location.protocol}//${API_HOST}`;
 export const WS_PROTOCOL = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
 export const WS_URL = `${WS_PROTOCOL}//${API_HOST}/ws/state`;

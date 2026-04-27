@@ -63,15 +63,26 @@ def run_real_e2e(initial_config_dir=None, keep_on_failure=True):
 
     # 5. Start Backend
     log_file_path = os.path.join(xdg_state, "light_map", "backend_e2e.log")
-    
+
+    # We must allow the frontend's origin for CORS
+    allowed_origins = [
+        f"http://localhost:{frontend_port}",
+        f"http://127.0.0.1:{frontend_port}"
+    ]
+
     cmd = [
         "xvfb-run", "-a",
         python_bin, "-m", "light_map",
+        "--remote-host", "127.0.0.1",
         "--remote-port", str(backend_port),
+        "--remote-tokens", "exclusive",
+        "--remote-hands", "exclusive",
+        "--remote-origins"
+    ] + allowed_origins + [
         "--map", "maps/test_blocker.svg",
         "--log-level", "DEBUG"
     ]
-    
+
     env = os.environ.copy()
     env["MOCK_CAMERA"] = "1"
     env["PYTHONPATH"] = os.path.join(project_root, "src")
@@ -118,8 +129,22 @@ def run_real_e2e(initial_config_dir=None, keep_on_failure=True):
 
         # 7. Run Playwright
         print(f"Starting Playwright E2E on port {frontend_port}...")
-        env["VITE_API_HOST"] = f"localhost:{backend_port}"
+        
+        # CRITICAL: Clear Vite cache to ensure env vars are fresh
+        vite_cache = os.path.join(project_root, "frontend", "node_modules", ".vite")
+        if os.path.exists(vite_cache):
+            print(f"Clearing Vite cache at {vite_cache}...")
+            shutil.rmtree(vite_cache)
+
+        frontend_origin = f"http://localhost:{frontend_port}"
+        env["VITE_API_HOST"] = f"127.0.0.1:{backend_port}"
         env["PORT"] = str(frontend_port)
+        
+        # We need to restart the backend or have it allow the origin.
+        # Since we haven't started Playwright yet, we know the origin.
+        # But the backend was already started. 
+        # Actually, let's just use 127.0.0.1 consistently.
+        frontend_origin_alt = f"http://127.0.0.1:{frontend_port}"
         
         pw_cmd = [
             "npx", "playwright", "test", "e2e/tactical_real.spec.ts", 

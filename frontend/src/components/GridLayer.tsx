@@ -223,7 +223,7 @@ export const GridLayer: React.FC = () => {
   }
 
   return (
-    <g ref={groupRef}>
+    <g ref={groupRef} style={{ pointerEvents: isGridEditMode ? 'auto' : 'none' }}>
       {gridElements}
 
       {/* Handles only visible in edit mode */}

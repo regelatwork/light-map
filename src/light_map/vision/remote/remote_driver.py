@@ -144,7 +144,7 @@ class ConnectionManager:
                 self.disconnect(connection)
 
 
-def create_app(
+def start_remote_driver(
     results_queue: Queue,
     stop_event: Event,
     state_mirror: Dict[str, Any],
@@ -157,7 +157,22 @@ def create_app(
     host: str = "127.0.0.1",
     port: int = 8000,
 ):
+    # Initialize logging for the child process.
+    # We log to stdout/stderr, which are redirected to the log file by the launcher.
+    import logging
+    import os
+
+    log_level_name = os.environ.get("LIGHT_MAP_LOG_LEVEL", "INFO")
+    log_level = getattr(logging, log_level_name.upper(), logging.INFO)
+    logging.basicConfig(
+        level=log_level,
+        format="%(asctime)s - %(levelname)s - [%(filename)s:%(lineno)d] - %(message)s",
+    )
+
+    logging.info(f"Remote Driver process started (PID: {os.getpid()})")
+
     manager = ConnectionManager()
+
 
     def get_formatted_state(mirror):
         """Fetch and format state from mirror for WebSocket broadcast."""
@@ -345,6 +360,8 @@ def create_app(
         allow_methods=["*"],
         allow_headers=["*"],
     )
+
+    logging.info(f"Starting Remote Driver on {host}:{port} with allowed origins: {allowed_origins}")
 
     @app.get("/video_feed")
     async def video_feed():
@@ -688,10 +705,8 @@ def create_app(
         If attacker_id matches the current selection, cached results from state_mirror are used.
         """
         bonuses = state_mirror.get("tactical_bonuses", {})
-        # Note: In the current implementation, tactical_bonuses in state_mirror
-        # is always calculated for the currently SELECTED token in the main loop.
-        # If attacker_id is provided and doesn't match, we return empty or could
-        # trigger a calculation (but for now we just return the current mirror).
+        logging.debug("API: get_tactical_cover (attacker_id=%s) returning %d bonuses. Mirror keys: %s", 
+                      attacker_id, len(bonuses), list(state_mirror.keys()))
         return bonuses
 
 

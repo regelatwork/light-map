@@ -24,7 +24,13 @@ export function useTacticalCover() {
   const fetchCover = useCallback(async (id: number, version: number) => {
     setIsLoading(true);
     try {
+      if (import.meta.env.DEV) {
+        console.debug(`Fetching tactical cover for attacker ${id} (v${version})`);
+      }
       const data = await getTacticalCover(id);
+      if (import.meta.env.DEV) {
+        console.debug(`Received tactical cover for attacker ${id}:`, Object.keys(data).length, 'targets');
+      }
       setBonuses(data);
       lastFetchedVersion.current = version;
       lastFetchedAttackerId.current = id;
@@ -36,11 +42,15 @@ export function useTacticalCover() {
   }, []);
 
   useEffect(() => {
+    if (import.meta.env.DEV) {
+      console.debug(`useTacticalCover useEffect: attackerId=${attackerId}, ts=${tactical_timestamp}`);
+    }
     if (attackerId === null) {
       if (Object.keys(bonuses).length > 0) {
         setBonuses({});
-        lastFetchedAttackerId.current = null;
       }
+      lastFetchedAttackerId.current = null;
+      lastFetchedVersion.current = -1;
       return;
     }
 
@@ -48,7 +58,9 @@ export function useTacticalCover() {
     if (attackerId !== lastFetchedAttackerId.current || tactical_timestamp !== lastFetchedVersion.current) {
         fetchCover(attackerId, tactical_timestamp);
     }
-  }, [attackerId, tactical_timestamp, fetchCover, bonuses]);
+    // We omit 'bonuses' from deps to avoid re-triggering when we update results
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [attackerId, tactical_timestamp, fetchCover]);
 
   return { bonuses, isLoading, attackerId };
 }

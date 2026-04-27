@@ -206,11 +206,16 @@ export const getTacticalCover = async (attackerId?: number): Promise<Record<numb
     url.searchParams.append('attacker_id', attackerId.toString());
   }
 
-  const response = await fetch(url.toString());
-
-  if (!response.ok) {
-    throw new Error('Failed to fetch tactical cover data');
+  try {
+    const response = await fetch(url.toString());
+    if (!response.ok) {
+      const text = await response.text();
+      console.error(`Tactical cover fetch failed (${response.status}): ${text}`);
+      throw new Error(`Failed to fetch tactical cover data: ${response.status}`);
+    }
+    return response.json();
+  } catch (err) {
+    console.error(`Tactical cover fetch error for ${url.toString()}:`, err);
+    throw err;
   }
-
-  return response.json();
 };

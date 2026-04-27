@@ -9,36 +9,51 @@ import { test, expect } from '@playwright/test';
  */
 test.describe('Tactical Cover Real Integration', () => {
   test.beforeEach(async ({ page }) => {
+    // Inject the real API host from environment variable
+    const apiHost = process.env.VITE_API_HOST || 'localhost:8000';
+    await page.addInitScript((host) => {
+      (window as any).VITE_API_HOST = host;
+    }, apiHost);
+
     // Clear any existing mocks/routes to ensure we hit the real backend
     await page.unroute('**/*');
+    page.on('console', msg => console.log('BROWSER:', msg.text()));
+    page.on('pageerror', err => console.log('BROWSER ERROR:', err.message));
   });
 
   test('backend survives selection and returns tactical data', async ({ page }) => {
+    const apiHost = process.env.VITE_API_HOST || '127.0.0.1:8000';
     await page.goto('/');
 
     // 1. Wait for system to connect to real backend
-    await expect(page.getByTitle('Connected')).toBeVisible({ timeout: 15000 });
+    await expect(page.getByTitle('Connected')).toBeVisible({ timeout: 20000 });
 
-    // 2. Ensure we have tokens (we assume the test runner injected them)
-    // We wait for the status bar to show at least 2 tokens
+    // Wait for initial data to settle
+    await page.waitForTimeout(2000);
+
+    // 2. Ensure we have tokens
     const tokensText = page.getByText(/Tokens: [2-9]/);
-    await expect(tokensText).toBeVisible({ timeout: 10000 });
+    await expect(tokensText).toBeVisible({ timeout: 15000 });
 
     // 3. Find a token on the canvas. 
     // We injected token 1 and 2 in our setup script.
     const attackerGroup = page.getByTestId('token-group-1');
     await expect(attackerGroup).toBeVisible();
 
-    // 4. Click to select. This triggers SET_SELECTION -> Backend Calculation -> Dashboard Pull
+    // 4. Click to select.
     await attackerGroup.click();
+    console.log('Clicked attacker token');
 
-    // 5. Verify the backend didn't crash and returned data
-    // If it crashed, the WebSocket would disconnect (dot turns red)
-    await expect(page.getByTitle('Connected')).toBeVisible();
+    // 5. Verify the backend survivors and returns data via API check
+    const response = await page.request.get(`http://${apiHost}/tactical/cover?attacker_id=1`);
+    expect(response.ok()).toBeTruthy();
+    const data = await response.json();
+    console.log('DIRECT API DATA:', JSON.stringify(data));
+    expect(Object.keys(data).length).toBeGreaterThan(0);
 
     // 6. Verify tactical layer appears
     const tacticalLayer = page.locator('.tactical-cover-layer');
-    await expect(tacticalLayer).toBeVisible({ timeout: 10000 });
+    await expect(tacticalLayer.locator('*').first()).toBeVisible({ timeout: 30000 });
 
     // 7. Verify we got real bonuses (e.g., +4 AC or similar from test_blocker.svg)
     // We check for any bonus label

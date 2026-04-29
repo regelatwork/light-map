@@ -51,25 +51,38 @@ export const TacticalCoverLayer: React.FC = () => {
               const d = `M ${pApex.x} ${pApex.y} L ${pStart.x} ${pStart.y} L ${pEnd.x} ${pEnd.y} Z`;
 
               // Colors based on status (0: Clear, 2: Obscured, 3: Soft Cover)
-              let fill = 'rgba(59, 130, 246, 0.1)'; // Default blue tint
-              let stroke = 'rgba(59, 130, 246, 0.3)';
+              let fill = 'rgba(59, 130, 246, 0.05)'; // Very light blue
               
               if (seg.status === 2) { // Obscured
-                fill = 'rgba(234, 179, 8, 0.15)'; // Yellow tint
-                stroke = 'rgba(234, 179, 8, 0.4)';
+                fill = 'rgba(234, 179, 8, 0.08)'; // Light yellow
               } else if (seg.status === 3) { // Soft Cover
-                fill = 'rgba(168, 85, 247, 0.1)'; // Purple tint
-                stroke = 'rgba(168, 85, 247, 0.3)';
+                fill = 'rgba(168, 85, 247, 0.05)'; // Light purple
               }
 
               return (
-                <path
-                  key={`seg-${targetId}-${idx}`}
-                  d={d}
-                  fill={fill}
-                  stroke={stroke}
-                  strokeWidth="0.5"
-                />
+                <g key={`seg-${targetId}-${idx}`}>
+                  {/* The wedge fill */}
+                  <path
+                    d={d}
+                    fill={fill}
+                    stroke="none"
+                  />
+                  {/* The edge lines (White like the app) */}
+                  <line 
+                    x1={pApex.x} y1={pApex.y} 
+                    x2={pStart.x} y2={pStart.y} 
+                    stroke="white" 
+                    strokeWidth="0.75" 
+                    strokeOpacity="0.8" 
+                  />
+                  <line 
+                    x1={pApex.x} y1={pApex.y} 
+                    x2={pEnd.x} y2={pEnd.y} 
+                    stroke="white" 
+                    strokeWidth="0.75" 
+                    strokeOpacity="0.8" 
+                  />
+                </g>
               );
             })}
 

@@ -1,0 +1,7 @@
+<svg width="320" height="160" xmlns="http://www.w3.org/2000/svg">
+  <!-- A 16-unit (1 square) wide hallway in row 6 (y=96 to 112) -->
+  <!-- Top walls -->
+  <rect x="0" y="0" width="320" height="96" fill="black" class="visibility-wall" />
+  <!-- Bottom walls -->
+  <rect x="0" y="112" width="320" height="48" fill="black" class="visibility-wall" />
+</svg>

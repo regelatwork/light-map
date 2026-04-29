@@ -18,8 +18,9 @@ export const TacticalCoverLayer: React.FC = () => {
   if (!attacker) return null;
 
   // The mask-to-world scale is inverse of world-to-mask scale used in the engine.
-  // Engine: svg_to_mask_scale = 16.0 / grid_spacing_svg
-  const spacing = grid_spacing_svg || 16.0;
+  // Engine: svg_to_mask_scale = 16.0 / grid_spacing_svg (Default: 16px per square)
+  // Default to 10.0 to match backend EnvironmentManager.rebuild_visibility_stack default.
+  const spacing = grid_spacing_svg || 10.0;
   const maskToSvgScale = spacing / 16.0;
 
   return (

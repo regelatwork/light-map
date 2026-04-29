@@ -219,22 +219,66 @@ def run_test_case(case_path: str):
             
             final_img[y1:y2, x1:x2] = (ov_slice * al_slice + final_img[y1:y2, x1:x2] * (1.0 - al_slice)).astype(np.uint8)
 
-    # Draw tokens as circles for clarity
+    # Draw tokens as actual footprints and border points
     for t in [attacker, target] + tokens:
-        sx, sy = map_system.world_to_screen(t.world_x, t.world_y)
-        if t.id == attacker.id:
-            color = (0, 255, 0)
-            label = "A"
-        elif t.id == target.id:
-            color = (0, 0, 255)
-            label = "T"
-        else:
-            color = (255, 255, 0)
-            label = "M" # M for Masking token
+        # Get border points in mask space
+        # We re-run the footprint logic locally to get points for rendering
+        cx_mask = int(t.world_x * engine.svg_to_mask_scale)
+        cy_mask = int(t.world_y * engine.svg_to_mask_scale)
+        size = t.size if t.size is not None else 1
+        footprint, _ = engine._calculate_token_footprint_with_planes(
+            cx_mask, cy_mask, size, GridType.SQUARE, ignore_blockers=True
+        )
+        border_points = engine._get_footprint_border_points(footprint)
         
-        radius = int(t.size * spacing_svg * map_scale / 2)
-        cv2.circle(final_img, (int(sx), int(sy)), radius, color, 2)
-        cv2.putText(final_img, label, (int(sx)-10, int(sy)+10), cv2.FONT_HERSHEY_SIMPLEX, 1, color, 2)
+        # Scale mask points to screen pixels
+        # mask -> world (SVG) = 1/svg_to_mask_scale
+        # world -> screen = map_scale
+        scale = map_scale / engine.svg_to_mask_scale
+        
+        # Draw footprint (faint fill)
+        mask_indices = np.where(footprint > 0)
+        for my, mx in zip(mask_indices[0], mask_indices[1]):
+            px, py = int(mx * scale), int(my * scale)
+            if t.id == attacker.id:
+                color = (0, 40, 0)
+            elif t.id == target.id:
+                color = (0, 0, 40)
+            else:
+                color = (40, 40, 0)
+            cv2.rectangle(final_img, (px, py), (px+int(scale), py+int(scale)), color, -1)
+
+        # Draw border points
+        for p in border_points:
+            px, py = int(p[0] * scale), int(p[1] * scale)
+            if t.id == attacker.id:
+                color = (0, 255, 0)
+            elif t.id == target.id:
+                color = (0, 0, 255)
+            else:
+                color = (255, 255, 0)
+            cv2.circle(final_img, (px, py), 2, color, -1)
+
+        # Draw label
+        sx, sy = map_system.world_to_screen(t.world_x, t.world_y)
+        cv2.putText(final_img, f"{t.id}", (int(sx)-10, int(sy)+10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
+
+    # Draw raycasting lines from Best Apex to target boundary
+    apex_scale = map_scale / engine.svg_to_mask_scale
+    ax_px, ay_px = int(res.best_apex[0] * apex_scale), int(res.best_apex[1] * apex_scale)
+    
+    for p in res.npc_pixels:
+        tx_px, ty_px = int(p[0] * apex_scale), int(p[1] * apex_scale)
+        # Recalculate status for color
+        status = _numba_trace_path(int(p[0]), int(p[1]), int(res.best_apex[0]), int(res.best_apex[1]), engine.blocker_mask)
+        if status == 0: # CLEAR
+            color = (0, 255, 0, 100) # Green
+        elif status == 2: # OBSCURED
+            color = (0, 255, 255, 100) # Yellow
+        else: # BLOCKED
+            color = (0, 0, 255, 100) # Red
+        
+        cv2.line(final_img, (ax_px, ay_px), (tx_px, ty_px), color[:3], 1)
 
     png_path = os.path.join(res_dir, f"{case_name}.png")
     cv2.imwrite(png_path, final_img)

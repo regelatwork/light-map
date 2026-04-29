@@ -1,0 +1,13 @@
+grid:
+  type: "SQUARE"
+  cells: 20
+
+attacker:
+  grid_x: 3
+  grid_y: 6
+  size: 1
+
+target:
+  grid_x: 10
+  grid_y: 6
+  size: 1

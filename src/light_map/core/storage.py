@@ -1,6 +1,5 @@
 import os
 from pathlib import Path
-from typing import Optional
 
 
 class StorageManager:
@@ -9,7 +8,7 @@ class StorageManager:
     Follows XDG standards on Linux by default.
     """
 
-    def __init__(self, base_dir: Optional[str] = None):
+    def __init__(self, base_dir: str | None = None):
         """
         Initialize the StorageManager.
 

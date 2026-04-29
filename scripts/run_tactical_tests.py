@@ -1,21 +1,24 @@
 #!/usr/bin/env python3
-import os
-import sys
-import yaml
 import json
-import numpy as np
-import cv2
+import os
 import subprocess
+import sys
+
+import cv2
+import numpy as np
+import yaml
+
 
 # Add src to path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../src")))
 
-from light_map.core.common_types import Token, GridType, AppConfig
-from light_map.state.world_state import WorldState
+from light_map.core.common_types import AppConfig, GridType, Token
 from light_map.map.map_system import MapSystem
-from light_map.visibility.visibility_engine import VisibilityEngine, _numba_trace_path
-from light_map.rendering.svg.loader import SVGLoader
 from light_map.rendering.layers.tactical_overlay_layer import TacticalOverlayLayer
+from light_map.rendering.svg.loader import SVGLoader
+from light_map.state.world_state import WorldState
+from light_map.visibility.visibility_engine import VisibilityEngine, _numba_trace_path
+
 
 STATUS_MAP = {
     0: "CLEAR",
@@ -27,24 +30,24 @@ def run_test_case(case_path: str):
     case_name = os.path.splitext(os.path.basename(case_path))[0]
     yaml_path = case_path
     svg_path = case_path.replace(".yaml", ".svg")
-    
+
     if not os.path.exists(svg_path):
         print(f"Error: {svg_path} not found.")
         return False
 
-    with open(yaml_path, 'r') as f:
+    with open(yaml_path) as f:
         config = yaml.safe_all_load(f) if hasattr(yaml, 'safe_all_load') else yaml.safe_load(f)
         if isinstance(config, list):
             config = config[0]  # Handle cases where yaml.safe_load returns a list
 
     # 1. Initialize Loader and determine scaling
     loader = SVGLoader(svg_path)
-    
+
     grid_config = config.get("grid", {})
     grid_type_str = grid_config.get("type", "SQUARE")
     grid_type = GridType[grid_type_str]
     num_cells = grid_config.get("cells", 20)
-    
+
     # Scaling for 20 cells on largest dimension
     svg_w, svg_h = loader.width, loader.height
     if grid_type == GridType.SQUARE:
@@ -53,7 +56,7 @@ def run_test_case(case_path: str):
         # For HEX, assume orientation defines the 20-cell axis
         # (Simplified for now, treating like SQUARE if orientation unknown)
         spacing_svg = max(svg_w, svg_h) / num_cells
-    
+
     # 2. Setup Engine and Mask
     engine = VisibilityEngine(grid_spacing_svg=spacing_svg)
     # Mask is 16px per unit (unit = spacing_svg)
@@ -61,7 +64,7 @@ def run_test_case(case_path: str):
     mask_w = int(svg_w * engine.svg_to_mask_scale)
     mask_h = int(svg_h * engine.svg_to_mask_scale)
     engine.blocker_mask = np.zeros((mask_h, mask_w), dtype=np.uint8)
-    
+
     # Rasterize SVG geometry
     blockers = loader.get_visibility_blockers()
     for b in blockers:
@@ -77,7 +80,7 @@ def run_test_case(case_path: str):
             val = 50
         elif b.type == VisibilityType.TALL_OBJECT:
             val = 100
-        
+
         if val > 0:
             if len(pts) > 2:
                 cv2.fillPoly(engine.blocker_mask, [pts], val)
@@ -87,14 +90,14 @@ def run_test_case(case_path: str):
     # 3. Setup Tokens
     a_cfg = config.get("attacker", {})
     t_cfg = config.get("target", {})
-    
+
     # Grid -> World (SVG)
     # center = (grid_coord + 0.5) * spacing
     ax = (a_cfg.get("grid_x", 0) + 0.5) * spacing_svg
     ay = (a_cfg.get("grid_y", 0) + 0.5) * spacing_svg
     tx = (t_cfg.get("grid_x", 0) + 0.5) * spacing_svg
     ty = (t_cfg.get("grid_y", 0) + 0.5) * spacing_svg
-    
+
     tokens = []
     for i, t_data in enumerate(config.get("tokens", [])):
         tx_val = (t_data.get("grid_x", 0) + 0.5) * spacing_svg
@@ -108,7 +111,7 @@ def run_test_case(case_path: str):
 
     # 4. Run Calculation
     res = engine.calculate_token_cover_bonuses(attacker, target)
-    
+
     # 5. Generate JSON Output
     output_json = {
         "case_name": case_name,
@@ -140,7 +143,7 @@ def run_test_case(case_path: str):
             ]
         }
     }
-    
+
     res_dir = "tests/tactical_cases/results"
     json_path = os.path.join(res_dir, f"{case_name}.json")
     with open(json_path, 'w') as f:
@@ -154,14 +157,14 @@ def run_test_case(case_path: str):
     if svg_h > svg_w:
         png_h = int(num_cells * px_per_cell)
         png_w = int((svg_w / svg_h) * png_h)
-        
+
     # Render base map using Inkscape
     # We'll use a temporary file for the base map
     base_map_path = os.path.join(res_dir, f"{case_name}_base.png")
     try:
         subprocess.run([
-            "inkscape", 
-            "-o", base_map_path, 
+            "inkscape",
+            "-o", base_map_path,
             "-w", str(png_w),
             "-h", str(png_h),
             svg_path
@@ -181,7 +184,7 @@ def run_test_case(case_path: str):
     state.inspected_token_mask = np.full((10, 10), 255, dtype=np.uint8)
     state.tokens = [attacker, target] + tokens
     state.tactical_bonuses = {target.id: res}
-    
+
     # MapSystem mock
     map_system = MapSystem(AppConfig(width=png_w, height=png_h, projector_matrix=np.eye(3)))
     # Scale from SVG to Screen
@@ -190,10 +193,10 @@ def run_test_case(case_path: str):
     map_system.state.zoom = map_scale
     map_system.state.x = 0
     map_system.state.y = 0
-    
+
     layer = TacticalOverlayLayer(state, map_system, engine)
     patches, _ = layer.render(0.0)
-    
+
     # Composite result
     final_img = base_img.copy()
     for p in patches:
@@ -202,21 +205,21 @@ def run_test_case(case_path: str):
             overlay = p.data[:, :, :3]
             alpha = p.data[:, :, 3] / 255.0
             alpha = alpha[:, :, np.newaxis]
-            
+
             y1, y2 = p.y, p.y + p.height
             x1, x2 = p.x, p.x + p.width
             # Ensure coordinates are within bounds
             y1, y2 = max(0, y1), min(png_h, y2)
             x1, x2 = max(0, x1), min(png_w, x2)
-            
+
             # Slice patch to match bounds if needed
             oh, ow = y2 - y1, x2 - x1
             if oh <= 0 or ow <= 0:
                 continue
-            
+
             ov_slice = overlay[:oh, :ow]
             al_slice = alpha[:oh, :ow]
-            
+
             final_img[y1:y2, x1:x2] = (ov_slice * al_slice + final_img[y1:y2, x1:x2] * (1.0 - al_slice)).astype(np.uint8)
 
     # Draw tokens as actual footprints and border points
@@ -230,15 +233,15 @@ def run_test_case(case_path: str):
             cx_mask, cy_mask, size, GridType.SQUARE, ignore_blockers=True
         )
         border_points = engine._get_footprint_border_points(footprint)
-        
+
         # Scale mask points to screen pixels
         # mask -> world (SVG) = 1/svg_to_mask_scale
         # world -> screen = map_scale
         scale = map_scale / engine.svg_to_mask_scale
-        
+
         # Draw footprint (faint fill)
         mask_indices = np.where(footprint > 0)
-        for my, mx in zip(mask_indices[0], mask_indices[1]):
+        for my, mx in zip(mask_indices[0], mask_indices[1], strict=False):
             px, py = int(mx * scale), int(my * scale)
             if t.id == attacker.id:
                 color = (0, 40, 0)
@@ -266,7 +269,7 @@ def run_test_case(case_path: str):
     # Draw raycasting lines from Best Apex to target boundary
     apex_scale = map_scale / engine.svg_to_mask_scale
     ax_px, ay_px = int(res.best_apex[0] * apex_scale), int(res.best_apex[1] * apex_scale)
-    
+
     for p in res.npc_pixels:
         tx_px, ty_px = int(p[0] * apex_scale), int(p[1] * apex_scale)
         # Recalculate status for color
@@ -277,21 +280,21 @@ def run_test_case(case_path: str):
             color = (0, 255, 255, 100) # Yellow
         else: # BLOCKED
             color = (0, 0, 255, 100) # Red
-        
+
         cv2.line(final_img, (ax_px, ay_px), (tx_px, ty_px), color[:3], 1)
 
     png_path = os.path.join(res_dir, f"{case_name}.png")
     cv2.imwrite(png_path, final_img)
-    
+
     # Comparison
     golden_path = os.path.join("tests/tactical_cases/golden", f"{case_name}.json")
     if not os.path.exists(golden_path):
         print(f"MISSING GOLDEN: {case_name}. Run bless script to create.")
         return False
-    
-    with open(golden_path, 'r') as f:
+
+    with open(golden_path) as f:
         golden_json = json.load(f)
-    
+
     if output_json == golden_json:
         print(f"PASS: {case_name}")
         return True
@@ -312,7 +315,7 @@ def main():
             success = run_test_case(os.path.join(cases_dir, f))
             if not success:
                 failed.append(f)
-    
+
     if failed:
         print(f"\nFailed cases: {', '.join(failed)}")
         print("\nTo bless all cases, run:")

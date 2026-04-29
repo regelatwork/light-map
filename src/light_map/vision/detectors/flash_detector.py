@@ -1,15 +1,18 @@
+import math
+from typing import TYPE_CHECKING, Optional
+
 import cv2
 import numpy as np
-import math
-from typing import List, Tuple, Optional, TYPE_CHECKING
+
 from light_map.core.common_types import Token
 from light_map.map.map_system import MapSystem
-from light_map.vision.infrastructure.debug_utils import DebugVisualizer
 from light_map.rendering.projection import CameraProjectionModel
+from light_map.vision.infrastructure.debug_utils import DebugVisualizer
+
 
 if TYPE_CHECKING:
-    from light_map.rendering.projector import ProjectorDistortionModel
     from light_map.rendering.projection import Projector3DModel
+    from light_map.rendering.projector import ProjectorDistortionModel
 
 
 class FlashTokenDetector:
@@ -28,11 +31,11 @@ class FlashTokenDetector:
 
     def __init__(self, debug_mode: bool = False):
         self.debug_mode = debug_mode
-        self.camera_matrix: Optional[np.ndarray] = None
-        self.distortion_coefficients: Optional[np.ndarray] = None
-        self.rotation_vector: Optional[np.ndarray] = None
-        self.translation_vector: Optional[np.ndarray] = None
-        self.projection_model: Optional[CameraProjectionModel] = None
+        self.camera_matrix: np.ndarray | None = None
+        self.distortion_coefficients: np.ndarray | None = None
+        self.rotation_vector: np.ndarray | None = None
+        self.translation_vector: np.ndarray | None = None
+        self.projection_model: CameraProjectionModel | None = None
 
     def set_calibration(
         self, camera_matrix: np.ndarray, distortion_coefficients: np.ndarray
@@ -70,12 +73,12 @@ class FlashTokenDetector:
         grid_spacing_svg: float,
         grid_origin_x: float,
         grid_origin_y: float,
-        mask_rois: Optional[List[Tuple[int, int, int, int]]],
+        mask_rois: list[tuple[int, int, int, int]] | None,
         ppi: float = 96.0,
         default_height_mm: float = 0.0,
         distortion_model: Optional["ProjectorDistortionModel"] = None,
         projector_3d_model: Optional["Projector3DModel"] = None,
-    ) -> List[Token]:
+    ) -> list[Token]:
         warped_image, markers = self._preprocess_and_find_markers(
             frame_white,
             projector_matrix,

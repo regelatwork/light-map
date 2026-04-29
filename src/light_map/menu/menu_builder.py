@@ -1,10 +1,10 @@
 import os
-from typing import List, Optional
-from light_map.core.common_types import MenuItem, MenuActions
+
+from light_map.core.common_types import MenuActions, MenuItem
 from light_map.map.map_config import MapConfigManager
 
 
-def build_map_actions_submenu(filename: str, has_session: bool) -> List[MenuItem]:
+def build_map_actions_submenu(filename: str, has_session: bool) -> list[MenuItem]:
     items = []
 
     # Load Map
@@ -49,7 +49,7 @@ def build_map_actions_submenu(filename: str, has_session: bool) -> List[MenuItem
 
 def build_root_menu(
     map_config: MapConfigManager,
-    selected_door: Optional[str] = None,
+    selected_door: str | None = None,
     door_is_open: bool = False,
     show_tokens: bool = True,
     grid_overlay_visible: bool = False,

@@ -1,5 +1,7 @@
-import pytest
 from unittest.mock import MagicMock
+
+import pytest
+
 from light_map.action_dispatcher import ActionDispatcher
 
 
@@ -101,12 +103,12 @@ def test_dispatch_inspect_token(dispatcher, app):
 
 def test_dispatch_set_selection(dispatcher, app):
     from light_map.core.common_types import SelectionType
-    
+
     state = MagicMock()
     payload = {"action": "SET_SELECTION", "type": "TOKEN", "id": 123}
     dispatcher.dispatch(payload, state)
-    
-    # We can't easily assert equality on SelectionState if it's a dataclass with no __eq__ 
+
+    # We can't easily assert equality on SelectionState if it's a dataclass with no __eq__
     # that matches Mock, but we can check the attributes.
     assert state.selection.type == SelectionType.TOKEN
     assert state.selection.id == "123"

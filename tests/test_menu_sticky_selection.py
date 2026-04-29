@@ -1,6 +1,7 @@
 import pytest
+
+from light_map.core.common_types import GestureType, MenuItem
 from light_map.menu.menu_system import MenuSystem, MenuSystemState
-from light_map.core.common_types import MenuItem, GestureType
 
 
 @pytest.fixture

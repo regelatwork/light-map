@@ -1,41 +1,42 @@
-import os
-import glob
 import datetime
-import time
-import logging
+import glob
 import hashlib
 import json
-import cv2
+import logging
+import os
+import time
 from dataclasses import asdict, dataclass, field
-from typing import Dict, Optional, List, Any
-from light_map.core.common_types import (
-    ViewportState,
-    TokenDetectionAlgorithm,
-    GmPosition,
-    NamingStyle,
-    GridType,
-)
-from light_map.core.constants import (
-    DEFAULT_TOKEN_HEIGHT_MM,
-    DEFAULT_ARUCO_MASK_PADDING,
-    DEFAULT_ARUCO_MASK_INTENSITY,
-    DEFAULT_ARUCO_MASK_PERSISTENCE_S,
-    DEFAULT_POINTER_OFFSET_MM,
-)
-from light_map.map.session_manager import SessionManager
-from light_map.core.storage import StorageManager
-from light_map.core.config_store import ConfigStore
-from light_map.core.token_naming import generate_token_name
-
-from light_map.core.config_schema import (
-    GlobalConfigSchema,
-    TokenConfigSchema,
-    MapEntrySchema,
-)
-from light_map.core.config_utils import sync_pydantic_to_dataclass
 
 # Add TYPE_CHECKING to avoid circular import with FogOfWarManager
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
+
+import cv2
+
+from light_map.core.common_types import (
+    GmPosition,
+    GridType,
+    NamingStyle,
+    TokenDetectionAlgorithm,
+    ViewportState,
+)
+from light_map.core.config_schema import (
+    GlobalConfigSchema,
+    MapEntrySchema,
+    TokenConfigSchema,
+)
+from light_map.core.config_store import ConfigStore
+from light_map.core.config_utils import sync_pydantic_to_dataclass
+from light_map.core.constants import (
+    DEFAULT_ARUCO_MASK_INTENSITY,
+    DEFAULT_ARUCO_MASK_PADDING,
+    DEFAULT_ARUCO_MASK_PERSISTENCE_S,
+    DEFAULT_POINTER_OFFSET_MM,
+    DEFAULT_TOKEN_HEIGHT_MM,
+)
+from light_map.core.storage import StorageManager
+from light_map.core.token_naming import generate_token_name
+from light_map.map.session_manager import SessionManager
+
 
 if TYPE_CHECKING:
     from light_map.map.fow_manager import FogOfWarManager
@@ -54,10 +55,10 @@ class SizeProfile:
 class ArucoDefinition:
     name: str
     type: str = "NPC"
-    profile: Optional[str] = None
-    size: Optional[int] = None
-    height_mm: Optional[float] = None
-    color: Optional[str] = None
+    profile: str | None = None
+    size: int | None = None
+    height_mm: float | None = None
+    color: str | None = None
 
 
 @dataclass
@@ -67,7 +68,7 @@ class ResolvedToken:
     size: int
     height_mm: float
     is_known: bool = True
-    color: Optional[str] = None
+    color: str | None = None
 
 
 @dataclass
@@ -82,7 +83,7 @@ class MapEntry:
     physical_unit_inches: float = 1.0  # e.g. 1.0 for 1 inch
     scale_factor_1to1: float = 1.0  # Calculated zoom level for 1:1 scale
     last_seen: str = ""  # ISO 8601 timestamp
-    aruco_overrides: Dict[int, ArucoDefinition] = field(default_factory=dict)
+    aruco_overrides: dict[int, ArucoDefinition] = field(default_factory=dict)
     fow_disabled: bool = False
     grid_overlay_visible: bool = False
     grid_overlay_color: str = "rgba(255, 255, 255, 0.5)"
@@ -92,9 +93,9 @@ class MapEntry:
 class GlobalMapConfig:
     projector_ppi: float = 96.0
     flash_intensity: int = 255
-    last_used_map: Optional[str] = None
+    last_used_map: str | None = None
     detection_algorithm: TokenDetectionAlgorithm = TokenDetectionAlgorithm.FLASH
-    token_profiles: Dict[str, SizeProfile] = field(
+    token_profiles: dict[str, SizeProfile] = field(
         default_factory=lambda: {
             "small": SizeProfile(1, 15.0),
             "medium": SizeProfile(1, 25.0),
@@ -102,7 +103,7 @@ class GlobalMapConfig:
             "huge": SizeProfile(3, DEFAULT_TOKEN_HEIGHT_MM),
         }
     )
-    aruco_defaults: Dict[int, ArucoDefinition] = field(default_factory=dict)
+    aruco_defaults: dict[int, ArucoDefinition] = field(default_factory=dict)
     # Masking Settings
     enable_hand_masking: bool = False
     hand_mask_padding: int = 30
@@ -114,9 +115,9 @@ class GlobalMapConfig:
     calibration_box_width_mm: float = 188.0
     calibration_box_length_mm: float = 295.0
     use_projector_3d_model: bool = True
-    projector_pos_x_override: Optional[float] = None
-    projector_pos_y_override: Optional[float] = None
-    projector_pos_z_override: Optional[float] = None
+    projector_pos_x_override: float | None = None
+    projector_pos_y_override: float | None = None
+    projector_pos_z_override: float | None = None
     gm_position: GmPosition = GmPosition.NONE
     naming_style: NamingStyle = NamingStyle.SCI_FI
     pointer_offset_mm: float = DEFAULT_POINTER_OFFSET_MM
@@ -127,11 +128,11 @@ class GlobalMapConfig:
 @dataclass
 class MapConfigData:
     global_settings: GlobalMapConfig = field(default_factory=GlobalMapConfig)
-    maps: Dict[str, MapEntry] = field(default_factory=dict)
+    maps: dict[str, MapEntry] = field(default_factory=dict)
 
 
 class MapConfigManager:
-    def __init__(self, filename: Optional[str] = None, storage: Optional[Any] = None):
+    def __init__(self, filename: str | None = None, storage: Any | None = None):
         self.storage = storage or _DEFAULT_STORAGE
         if filename:
             self.filename = filename
@@ -160,7 +161,7 @@ class MapConfigManager:
     def version(self, value: int):
         self._version = value
 
-    def update_global_settings(self, payload: Dict[str, Any]) -> None:
+    def update_global_settings(self, payload: dict[str, Any]) -> None:
         """
         Validates the payload against GlobalConfigSchema and updates both
         the in-memory data and the on-disk storage.
@@ -200,7 +201,7 @@ class MapConfigManager:
                         f"MapConfig: Primary tokens.json empty, trying root fallback: {root_tokens_path}"
                     )
                     try:
-                        with open(root_tokens_path, "r") as f:
+                        with open(root_tokens_path) as f:
                             root_tokens = json.load(f)
                             if root_tokens and root_tokens.get("token_profiles"):
                                 tokens_raw = root_tokens
@@ -399,7 +400,7 @@ class MapConfigManager:
         entry.scale_factor_1to1 = scale_factor_1to1
         self.save()
 
-    def scan_for_maps(self, patterns: List[str]) -> List[str]:
+    def scan_for_maps(self, patterns: list[str]) -> list[str]:
         """
         Expands globs in patterns, checks for existence,
         adds new maps to config, and removes missing maps.
@@ -459,7 +460,7 @@ class MapConfigManager:
             del self.data.maps[filename]
             self.save()
 
-    def get_map_status(self, filename: str) -> Dict[str, bool]:
+    def get_map_status(self, filename: str) -> dict[str, bool]:
         """
         Returns {'calibrated': bool, 'has_session': bool, 'has_fow': bool}
         """
@@ -532,7 +533,7 @@ class MapConfigManager:
         door_path = os.path.join(storage_dir, "discovered_doors.json")
         if os.path.exists(door_path):
             try:
-                with open(door_path, "r") as f:
+                with open(door_path) as f:
                     data = json.load(f)
                     if isinstance(data, list):
                         fow_manager.discovered_ids = set(data)
@@ -571,7 +572,7 @@ class MapConfigManager:
             del self.data.global_settings.token_profiles[name]
             self.save()
 
-    def get_aruco_configs(self, map_name: Optional[str] = None) -> Dict[int, Dict]:
+    def get_aruco_configs(self, map_name: str | None = None) -> dict[int, dict]:
         """
         Returns a dictionary of all known ArUco IDs and their resolved properties
         for the current map (if provided) and global defaults.
@@ -592,7 +593,7 @@ class MapConfigManager:
         return configs
 
     def resolve_token_profile(
-        self, aruco_id: int, map_name: Optional[str] = None
+        self, aruco_id: int, map_name: str | None = None
     ) -> ResolvedToken:
         """
         Resolves the full token profile for a given ArUco ID, considering:
@@ -600,7 +601,7 @@ class MapConfigManager:
         2. Global defaults
         3. Fallback to generic defaults
         """
-        definition: Optional[ArucoDefinition] = None
+        definition: ArucoDefinition | None = None
 
         # 1. Check Map Override
         if map_name:
@@ -661,10 +662,10 @@ class MapConfigManager:
         aruco_id: int,
         name: str,
         type: str = "NPC",
-        profile: Optional[str] = None,
-        size: Optional[int] = None,
-        height_mm: Optional[float] = None,
-        color: Optional[str] = None,
+        profile: str | None = None,
+        size: int | None = None,
+        height_mm: float | None = None,
+        color: str | None = None,
     ):
         """Helper to set a global definition. Enforces profile vs custom dimension exclusivity."""
         if profile:
@@ -697,10 +698,10 @@ class MapConfigManager:
         aruco_id: int,
         name: str,
         type: str = "NPC",
-        profile: Optional[str] = None,
-        size: Optional[int] = None,
-        height_mm: Optional[float] = None,
-        color: Optional[str] = None,
+        profile: str | None = None,
+        size: int | None = None,
+        height_mm: float | None = None,
+        color: str | None = None,
     ):
         """Helper to set a map override. Enforces profile vs custom dimension exclusivity."""
         map_name = os.path.abspath(map_name)

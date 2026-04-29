@@ -1,13 +1,16 @@
 from __future__ import annotations
-import cv2
-import numpy as np
-import mediapipe as mp
+
 import logging
-from typing import List, Tuple, Any, Dict, TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING, Any
+
+import cv2
+import mediapipe as mp
+import numpy as np
 
 from light_map.core.scene import HandInput
 from light_map.input.gestures import detect_gesture
 from light_map.vision.processing.hand_masker import HandMasker
+
 
 if TYPE_CHECKING:
     from light_map.core.common_types import AppConfig, ProjectorPose
@@ -18,8 +21,8 @@ class DummyResults:
 
     def __init__(
         self,
-        hands_list: List[List[Dict[str, float]]],
-        handedness_list: List[Dict[str, Any]],
+        hands_list: list[list[dict[str, float]]],
+        handedness_list: list[dict[str, Any]],
     ):
         self.multi_hand_landmarks = []
         self.multi_handedness = []
@@ -62,8 +65,8 @@ class InputProcessor:
     def _project_to_projector(
         self,
         camera_points: np.ndarray,
-        frame_shape: Tuple[int, int, int],
-        projector_pose: Optional[ProjectorPose] = None,
+        frame_shape: tuple[int, int, int],
+        projector_pose: ProjectorPose | None = None,
     ) -> np.ndarray:
         """Helper to project camera pixels to projector space."""
         # 1. 3D Model Projection
@@ -117,9 +120,9 @@ class InputProcessor:
     def convert_mediapipe_to_inputs(
         self,
         results: Any,
-        frame_shape: Tuple[int, int, int],
-        projector_pose: Optional[ProjectorPose] = None,
-    ) -> List[HandInput]:
+        frame_shape: tuple[int, int, int],
+        projector_pose: ProjectorPose | None = None,
+    ) -> list[HandInput]:
         """Converts raw MediaPipe results to a list of HandInput objects."""
         inputs = []
         if not results.multi_hand_landmarks or not results.multi_handedness:

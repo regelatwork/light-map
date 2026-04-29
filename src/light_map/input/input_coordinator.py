@@ -1,6 +1,9 @@
 from __future__ import annotations
+
 from typing import TYPE_CHECKING
+
 from light_map.vision.processing.input_processor import DummyResults
+
 
 if TYPE_CHECKING:
     from light_map.interactive_app import InteractiveApp
@@ -13,13 +16,13 @@ class InputCoordinator:
      and manages their lifecycle/expiration.
     """
 
-    def __init__(self, app: "InteractiveApp"):
+    def __init__(self, app: InteractiveApp):
         self.app = app
         self.config = app.config
         self.input_processor = app.input_processor
         self.flicker_timeout = 0.5
 
-    def update(self, state: "WorldState", current_time: float):
+    def update(self, state: WorldState, current_time: float):
         """Standardizes vision inputs and manages their lifecycle."""
         # Determine frame shape for normalization
         if state.background is not None:

@@ -1,9 +1,11 @@
+import os
+
 import cv2
 import numpy as np
-import os
 import pytest
-from light_map.vision.detectors.aruco_detector import ArucoTokenDetector
+
 from light_map.map.map_system import MapSystem
+from light_map.vision.detectors.aruco_detector import ArucoTokenDetector
 
 
 def test_aruco_fov_masking():

@@ -1,8 +1,8 @@
-from typing import List
+
 from light_map.core.common_types import (
-    Token,
-    ResultType,
     DetectionResult,
+    ResultType,
+    Token,
     TokenMergePolicy,
 )
 
@@ -15,10 +15,10 @@ class TokenMergeManager:
 
     def __init__(self, policy: TokenMergePolicy = TokenMergePolicy.PHYSICAL_PRIORITY):
         self.policy = policy
-        self._physical_tokens: List[Token] = []
-        self._remote_tokens: List[Token] = []
-        self._physical_raw_tokens: List[Token] = []
-        self._remote_raw_tokens: List[Token] = []
+        self._physical_tokens: list[Token] = []
+        self._remote_tokens: list[Token] = []
+        self._physical_raw_tokens: list[Token] = []
+        self._remote_raw_tokens: list[Token] = []
 
     def set_policy(self, policy: TokenMergePolicy):
         """Updates the current merging policy."""
@@ -54,7 +54,7 @@ class TokenMergeManager:
 
         return changed
 
-    def get_merged_tokens(self) -> List[Token]:
+    def get_merged_tokens(self) -> list[Token]:
         """
         Merges tokens based on the current policy.
         """
@@ -79,7 +79,7 @@ class TokenMergeManager:
 
         return list(merged.values())
 
-    def get_merged_raw_tokens(self) -> List[Token]:
+    def get_merged_raw_tokens(self) -> list[Token]:
         """
         Merges raw tokens based on the current policy.
         """
@@ -102,7 +102,7 @@ class TokenMergeManager:
 
         return list(merged.values())
 
-    def _tokens_equal(self, list1: List[Token], list2: List[Token]) -> bool:
+    def _tokens_equal(self, list1: list[Token], list2: list[Token]) -> bool:
         """
         Compares two token lists for semantic equality (positions and status).
         """
@@ -113,7 +113,7 @@ class TokenMergeManager:
         s1 = sorted(list1, key=lambda t: t.id)
         s2 = sorted(list2, key=lambda t: t.id)
 
-        for t1, t2 in zip(s1, s2):
+        for t1, t2 in zip(s1, s2, strict=False):
             if t1.id != t2.id:
                 return False
 

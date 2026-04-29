@@ -1,11 +1,12 @@
+import math
+
 import cv2
 import numpy as np
-import math
 import svgelements
-from typing import List
-from light_map.core.common_types import Layer, ImagePatch, LayerMode
-from light_map.state.world_state import WorldState
+
+from light_map.core.common_types import ImagePatch, Layer, LayerMode
 from light_map.core.constants import ALPHA_OPAQUE, ALPHA_TRANSPARENT, GRID_MASK_PPI
+from light_map.state.world_state import WorldState
 
 
 class FogOfWarLayer(Layer):
@@ -40,7 +41,7 @@ class FogOfWarLayer(Layer):
             self.state.grid_metadata_version,
         )
 
-    def _generate_patches(self, current_time: float) -> List[ImagePatch]:
+    def _generate_patches(self, current_time: float) -> list[ImagePatch]:
         """
         Produces a 4-channel (BGRA) mask patch covering the full screen.
         """

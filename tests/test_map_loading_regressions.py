@@ -1,6 +1,8 @@
-import pytest
-import numpy as np
 import os
+
+import numpy as np
+import pytest
+
 from light_map.core.common_types import AppConfig
 from light_map.interactive_app import InteractiveApp
 
@@ -54,8 +56,8 @@ def test_load_map_updates_base_scale_even_with_session(app, tmp_path):
     session_dir = os.path.join(str(tmp_path), "sessions")
     os.makedirs(session_dir, exist_ok=True)
 
+    from light_map.core.common_types import SessionData, ViewportState
     from light_map.map.session_manager import SessionManager
-    from light_map.core.common_types import ViewportState, SessionData
 
     session = SessionData(
         map_file=map_path,

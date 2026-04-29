@@ -1,10 +1,12 @@
-import pytest
-import numpy as np
 from unittest.mock import MagicMock
-from light_map.state.world_state import WorldState
-from light_map.rendering.layers.tactical_overlay_layer import TacticalOverlayLayer
-from light_map.core.common_types import Token, CoverResult, WedgeSegment
+
+import numpy as np
+import pytest
+
+from light_map.core.common_types import CoverResult, Token, WedgeSegment
 from light_map.map.map_system import MapSystem
+from light_map.rendering.layers.tactical_overlay_layer import TacticalOverlayLayer
+from light_map.state.world_state import WorldState
 from light_map.visibility.visibility_engine import VisibilityEngine
 
 

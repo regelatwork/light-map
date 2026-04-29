@@ -1,7 +1,8 @@
 import numpy as np
-from light_map.state.world_state import WorldState
-from light_map.rendering.layers.map_grid_layer import MapGridLayer
+
 from light_map.core.common_types import ViewportState
+from light_map.rendering.layers.map_grid_layer import MapGridLayer
+from light_map.state.world_state import WorldState
 
 
 def test_map_grid_layer_basic_rendering():

@@ -1,6 +1,7 @@
 import time
-from light_map.state.temporal_event_manager import TemporalEventManager
+
 from light_map.core.common_types import Action
+from light_map.state.temporal_event_manager import TemporalEventManager
 
 
 def test_schedule_and_check():

@@ -1,6 +1,8 @@
-import cv2
-import sys
 import os
+import sys
+
+import cv2
+
 
 # Add src to path so we can import light_map
 sys.path.append(os.path.join(os.path.dirname(__file__), "..", "src"))

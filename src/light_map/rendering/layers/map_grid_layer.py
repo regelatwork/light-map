@@ -1,10 +1,11 @@
+import math
+
 import cv2
 import numpy as np
-import math
-from typing import List, Tuple
-from light_map.core.common_types import Layer, LayerMode, ImagePatch, GridType
+
+from light_map.core.common_types import GridType, ImagePatch, Layer, LayerMode
+from light_map.core.geometry import FlatTopHex, PointyTopHex
 from light_map.state.world_state import WorldState
-from light_map.core.geometry import PointyTopHex, FlatTopHex
 
 
 class MapGridLayer(Layer):
@@ -25,7 +26,7 @@ class MapGridLayer(Layer):
             return 0
         return max(self.state.grid_metadata_version, self.state.viewport_version)
 
-    def _generate_patches(self, current_time: float) -> List[ImagePatch]:
+    def _generate_patches(self, current_time: float) -> list[ImagePatch]:
         """
         Logic ported from MapGridCalibrationScene.render.
         Updated to account for viewport rotation and visibility/color config.
@@ -219,7 +220,7 @@ class MapGridLayer(Layer):
             )
         ]
 
-    def _parse_color(self, color_str: str) -> Tuple[int, int, int, int]:
+    def _parse_color(self, color_str: str) -> tuple[int, int, int, int]:
         """Parses CSS-style colors into BGRA tuple."""
         import re
 

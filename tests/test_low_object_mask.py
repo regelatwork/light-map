@@ -1,4 +1,4 @@
-from light_map.visibility.visibility_engine import VisibilityEngine, MASK_VALUE_LOW
+from light_map.visibility.visibility_engine import MASK_VALUE_LOW, VisibilityEngine
 from light_map.visibility.visibility_types import VisibilityBlocker, VisibilityType
 
 

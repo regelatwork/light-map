@@ -1,16 +1,18 @@
-import pytest
 from unittest.mock import MagicMock
+
+import pytest
+
 from light_map.calibration.calibration_scenes import (
     ExtrinsicsCalibrationScene,
-    PpiCalibrationScene,
-    IntrinsicsCalibrationScene,
     FlashCalibrationScene,
+    IntrinsicsCalibrationScene,
     MapGridCalibrationScene,
-    ProjectorCalibrationScene,
+    PpiCalibrationScene,
     Projector3DCalibrationScene,
+    ProjectorCalibrationScene,
 )
-from light_map.vision.scanning_scene import ScanningScene, ScanStage
 from light_map.visibility.exclusive_vision_scene import ExclusiveVisionScene
+from light_map.vision.scanning_scene import ScanningScene, ScanStage
 
 
 @pytest.fixture

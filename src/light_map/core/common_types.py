@@ -1,30 +1,33 @@
 from __future__ import annotations
 
+from abc import ABC, abstractmethod
+from dataclasses import dataclass, field, replace
+
 # NOTE: Many enums in this file are mirrored in frontend/src/types/system.ts
 # Changes here MUST be kept in sync with the frontend.
 # This is enforced by tests/test_enum_sync.py.
 from enum import StrEnum
-from dataclasses import dataclass, field, replace
-from typing import Any, List, Optional, Tuple, Dict, TYPE_CHECKING
-from abc import ABC, abstractmethod
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
-from light_map.core.storage import StorageManager
+
 from light_map.core.constants import (
-    DEFAULT_PROJECTOR_RESOLUTION,
-    DEFAULT_HAND_MASK_PADDING,
-    DEFAULT_PROJECTOR_PPI,
-    DEFAULT_POINTER_OFFSET_MM,
     DEFAULT_ARUCO_MASK_INTENSITY,
-    DEFAULT_ARUCO_MASK_PERSISTENCE_S,
-    DEFAULT_INSPECTION_LINGER_DURATION,
-    DEFAULT_DOOR_THICKNESS_MULTIPLIER,
     DEFAULT_ARUCO_MASK_PADDING,
+    DEFAULT_ARUCO_MASK_PERSISTENCE_S,
+    DEFAULT_DOOR_THICKNESS_MULTIPLIER,
+    DEFAULT_HAND_MASK_PADDING,
+    DEFAULT_INSPECTION_LINGER_DURATION,
+    DEFAULT_POINTER_OFFSET_MM,
+    DEFAULT_PROJECTOR_PPI,
+    DEFAULT_PROJECTOR_RESOLUTION,
 )
+from light_map.core.storage import StorageManager
+
 
 if TYPE_CHECKING:
+    from light_map.rendering.projection import CameraProjectionModel, Projector3DModel
     from light_map.state.world_state import WorldState
-    from light_map.rendering.projection import Projector3DModel, CameraProjectionModel
 
 
 class LayerMode(StrEnum):
@@ -49,10 +52,10 @@ class CalibrationState:
     """Stores transient state for calibration scenes to avoid manual version bumps."""
 
     stage: str = ""
-    target_status: List[str] = field(default_factory=list)
-    target_info: List[Dict[str, Any]] = field(default_factory=list)
+    target_status: list[str] = field(default_factory=list)
+    target_info: list[dict[str, Any]] = field(default_factory=list)
     reprojection_error: float = 0.0
-    animation_start_times: Dict[int, float] = field(default_factory=dict)
+    animation_start_times: dict[int, float] = field(default_factory=dict)
     last_camera_frame_ts: int = 0
     captured_count: int = 0
     total_required: int = 0
@@ -60,12 +63,12 @@ class CalibrationState:
     step_index: int = 0
     flash_intensity: int = 0
     instruction_text: str = ""
-    instruction_pos: Tuple[int, int] = (50, 50)
-    pattern_image: Optional[np.ndarray] = None
-    object_points: Optional[np.ndarray] = None
-    image_points: Optional[np.ndarray] = None
-    rotation_vector: Optional[np.ndarray] = None
-    translation_vector: Optional[np.ndarray] = None
+    instruction_pos: tuple[int, int] = (50, 50)
+    pattern_image: np.ndarray | None = None
+    object_points: np.ndarray | None = None
+    image_points: np.ndarray | None = None
+    rotation_vector: np.ndarray | None = None
+    translation_vector: np.ndarray | None = None
 
 
 class Layer(ABC):
@@ -76,14 +79,14 @@ class Layer(ABC):
 
     def __init__(
         self,
-        state: Optional["WorldState"] = None,
+        state: WorldState | None = None,
         is_static: bool = False,
         layer_mode: LayerMode = LayerMode.NORMAL,
     ):
         self.state = state
         self.is_static = is_static
         self.layer_mode = layer_mode
-        self._cached_patches: Optional[List[ImagePatch]] = None
+        self._cached_patches: list[ImagePatch] | None = None
         self._last_rendered_version: int = -1  # Consumer-side version tracking
 
     @abstractmethod
@@ -94,7 +97,7 @@ class Layer(ABC):
         """
         pass
 
-    def render(self, current_time: float = 0.0) -> Tuple[List[ImagePatch], int]:
+    def render(self, current_time: float = 0.0) -> tuple[list[ImagePatch], int]:
         """
         Handles caching and calls _generate_patches if any dependency version changed.
         Returns the cached or newly generated patches and the version they satisfy.
@@ -111,7 +114,7 @@ class Layer(ABC):
         return self._cached_patches, self._last_rendered_version
 
     @abstractmethod
-    def _generate_patches(self, current_time: float) -> List[ImagePatch]:
+    def _generate_patches(self, current_time: float) -> list[ImagePatch]:
         """Actual rendering logic implemented by subclasses."""
         pass
 
@@ -122,7 +125,7 @@ class CompositeLayer(Layer):
     This optimizes rendering by treating a sub-stack of layers as one unit.
     """
 
-    def __init__(self, layers: List[Layer], is_static: bool = True):
+    def __init__(self, layers: list[Layer], is_static: bool = True):
         super().__init__(state=None, is_static=is_static, layer_mode=LayerMode.NORMAL)
         self.layers = layers
 
@@ -132,13 +135,13 @@ class CompositeLayer(Layer):
             return 0
         return max(layer.get_current_version() for layer in self.layers)
 
-    def _generate_patches(self, current_time: float) -> List[ImagePatch]:
+    def _generate_patches(self, current_time: float) -> list[ImagePatch]:
         if not self.layers:
             return []
 
         # 1. Render all layers and collect their patches
-        rendered_layers: List[Tuple[Layer, List[ImagePatch]]] = []
-        all_patches: List[ImagePatch] = []
+        rendered_layers: list[tuple[Layer, list[ImagePatch]]] = []
+        all_patches: list[ImagePatch] = []
         for layer in self.layers:
             patches, _ = layer.render(current_time)
             if patches:
@@ -304,8 +307,8 @@ class MapRenderState:
 @dataclass
 class SelectionState:
     type: SelectionType = SelectionType.NONE
-    id: Optional[str] = None
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    id: str | None = None
+    metadata: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
@@ -319,15 +322,15 @@ class WedgeSegment:
 class CoverResult:
     ac_bonus: int
     reflex_bonus: int
-    best_apex: Tuple[int, int]  # (x, y) in mask space
-    segments: List[WedgeSegment]
+    best_apex: tuple[int, int]  # (x, y) in mask space
+    segments: list[WedgeSegment]
     npc_pixels: np.ndarray  # (x, y) in mask space, sorted relative to best_apex
     total_ratio: float = 0.0
     wall_ratio: float = 0.0
     soft_ratio: float = 0.0
     explanation: str = ""
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "ac_bonus": self.ac_bonus,
             "reflex_bonus": self.reflex_bonus,
@@ -390,7 +393,7 @@ class DetectionResult:
     timestamp: int
     type: ResultType
     data: Any
-    metadata: Dict[str, int] = field(default_factory=dict)
+    metadata: dict[str, int] = field(default_factory=dict)
 
 
 class GmPosition(StrEnum):
@@ -416,7 +419,7 @@ class ProjectorPose:
     y: float
     z: float
 
-    def to_list(self) -> List[float]:
+    def to_list(self) -> list[float]:
         return [self.x, self.y, self.z]
 
 
@@ -425,17 +428,17 @@ class AppConfig:
     width: int
     height: int
     projector_matrix: np.ndarray
-    projector_matrix_resolution: Tuple[int, int] = DEFAULT_PROJECTOR_RESOLUTION
-    camera_resolution: Tuple[int, int] = (0, 0)  # Runtime camera resolution
-    camera_matrix: Optional[np.ndarray] = None
-    distortion_coefficients: Optional[np.ndarray] = None
-    rotation_vector: Optional[np.ndarray] = None
-    translation_vector: Optional[np.ndarray] = None
-    map_search_patterns: List[str] = field(default_factory=list)
-    distortion_model: Optional[Any] = None
-    storage_manager: Optional[Any] = None
-    projector_3d_model: Optional[Projector3DModel] = None
-    camera_projection_model: Optional[CameraProjectionModel] = None
+    projector_matrix_resolution: tuple[int, int] = DEFAULT_PROJECTOR_RESOLUTION
+    camera_resolution: tuple[int, int] = (0, 0)  # Runtime camera resolution
+    camera_matrix: np.ndarray | None = None
+    distortion_coefficients: np.ndarray | None = None
+    rotation_vector: np.ndarray | None = None
+    translation_vector: np.ndarray | None = None
+    map_search_patterns: list[str] = field(default_factory=list)
+    distortion_model: Any | None = None
+    storage_manager: Any | None = None
+    projector_3d_model: Projector3DModel | None = None
+    camera_projection_model: CameraProjectionModel | None = None
     log_level: str = "INFO"
     log_file: str = _DEFAULT_STORAGE.get_state_path("light_map.log")
 
@@ -454,12 +457,12 @@ class AppConfig:
     use_projector_3d_model: bool = True
 
     # Manual Projector Position Overrides
-    projector_pos_x_override: Optional[float] = None
-    projector_pos_y_override: Optional[float] = None
-    projector_pos_z_override: Optional[float] = None
+    projector_pos_x_override: float | None = None
+    projector_pos_y_override: float | None = None
+    projector_pos_z_override: float | None = None
 
-    aruco_defaults: Dict[int, Any] = field(default_factory=dict)
-    token_profiles: Dict[str, Any] = field(default_factory=dict)
+    aruco_defaults: dict[int, Any] = field(default_factory=dict)
+    token_profiles: dict[str, Any] = field(default_factory=dict)
     pointer_offset_mm: float = DEFAULT_POINTER_OFFSET_MM
     inspection_linger_duration: float = DEFAULT_INSPECTION_LINGER_DURATION
     door_thickness_multiplier: float = DEFAULT_DOOR_THICKNESS_MULTIPLIER
@@ -532,7 +535,7 @@ class ViewportState:
     zoom: float = 1.0
     rotation: float = 0.0
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "x": self.x,
             "y": self.y,
@@ -547,29 +550,29 @@ class Token:
     world_x: float  # SVG coordinates (Vertical projection to Z=0)
     world_y: float
     world_z: float = 0.0  # Height of the base on the map (typically 0.0)
-    marker_x: Optional[float] = (
+    marker_x: float | None = (
         None  # SVG coordinates of the physical marker (at height Z=h)
     )
-    marker_y: Optional[float] = None
+    marker_y: float | None = None
     marker_z: float = 0.0  # Height of the marker in mm (h)
-    grid_x: Optional[int] = None
-    grid_y: Optional[int] = None
-    screen_x: Optional[float] = None
-    screen_y: Optional[float] = None
+    grid_x: int | None = None
+    grid_y: int | None = None
+    screen_x: float | None = None
+    screen_y: float | None = None
     confidence: float = 1.0
     is_occluded: bool = False
     is_duplicate: bool = False
-    name: Optional[str] = None
-    color: Optional[str] = None
+    name: str | None = None
+    color: str | None = None
     type: str = "NPC"
-    profile: Optional[str] = None
-    size: Optional[int] = None
-    height_mm: Optional[float] = None
+    profile: str | None = None
+    size: int | None = None
+    height_mm: float | None = None
 
-    def copy(self) -> "Token":
+    def copy(self) -> Token:
         return replace(self)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "id": self.id,
             "world_x": self.world_x,
@@ -598,15 +601,15 @@ class Token:
 class SessionData:
     map_file: str
     viewport: ViewportState
-    tokens: List[Token]
-    door_states: Dict[str, bool] = field(default_factory=dict)
+    tokens: list[Token]
+    door_states: dict[str, bool] = field(default_factory=dict)
     timestamp: str = ""
 
 
 @dataclass
 class MenuItem:
     title: str
-    action_id: Optional[str] = None  # Leaf if set
-    children: List["MenuItem"] = field(default_factory=list)  # Node if set
+    action_id: str | None = None  # Leaf if set
+    children: list[MenuItem] = field(default_factory=list)  # Node if set
     should_close_on_trigger: bool = True
     # NOTE: 'toggled' state is NOT stored here. It is immutable config.

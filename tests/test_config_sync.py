@@ -1,5 +1,7 @@
 import os
+
 import pytest
+
 from scripts.generate_ts_schema import OUTPUT_FILE
 
 
@@ -14,7 +16,7 @@ def test_ts_schema_is_synchronized():
         )
 
     # Read current content on disk
-    with open(OUTPUT_FILE, "r") as f:
+    with open(OUTPUT_FILE) as f:
         on_disk_content = f.read()
 
     # Generate in-memory content (we'll capture it by temporarily mocking the open/write if necessary,
@@ -32,7 +34,7 @@ def test_ts_schema_is_synchronized():
     try:
         generator.main()
 
-        with open(temp_output, "r") as f:
+        with open(temp_output) as f:
             generated_content = f.read()
 
         if on_disk_content != generated_content:
@@ -68,9 +70,9 @@ def test_config_validation():
 
 def test_recursive_sync_to_dataclass():
     """Verifies that nested Pydantic models correctly sync to nested dataclasses."""
-    from light_map.core.config_schema import ViewportStateSchema, MapEntrySchema
-    from light_map.map.map_config import MapEntry
+    from light_map.core.config_schema import MapEntrySchema, ViewportStateSchema
     from light_map.core.config_utils import sync_pydantic_to_dataclass
+    from light_map.map.map_config import MapEntry
 
     # Initial state
     entry = MapEntry()

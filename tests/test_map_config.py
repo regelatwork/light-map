@@ -1,5 +1,7 @@
-import pytest
 import json
+
+import pytest
+
 from light_map.map.map_config import MapConfigManager
 
 
@@ -36,7 +38,7 @@ def test_persistence_format(temp_config_file):
     manager.set_ppi(100.0)
 
     # Check file content directly
-    with open(temp_config_file, "r") as f:
+    with open(temp_config_file) as f:
         data = json.load(f)
 
     assert data["global"]["projector_ppi"] == 100.0

@@ -1,14 +1,17 @@
-import cv2
-import time
 import logging
-from typing import Optional, List, Callable, Dict, Any
-from light_map.state.world_state import WorldState
-from light_map.state.temporal_event_manager import TemporalEventManager
-from light_map.vision.infrastructure.process_manager import VisionProcessManager
-from light_map.vision.infrastructure.frame_producer import FrameProducer
-from light_map.input.input_manager import InputManager
-from light_map.core.common_types import DetectionResult, ResultType, Action, Token
+import time
+from collections.abc import Callable
+from typing import Any
+
+import cv2
+
 from light_map.core.analytics import LatencyInstrument, track_wait
+from light_map.core.common_types import Action, DetectionResult, ResultType, Token
+from light_map.input.input_manager import InputManager
+from light_map.state.temporal_event_manager import TemporalEventManager
+from light_map.state.world_state import WorldState
+from light_map.vision.infrastructure.frame_producer import FrameProducer
+from light_map.vision.infrastructure.process_manager import VisionProcessManager
 
 
 class MainLoopController:
@@ -22,11 +25,11 @@ class MainLoopController:
         world_state: WorldState,
         process_manager: VisionProcessManager,
         input_manager: InputManager,
-        frame_producer: Optional[FrameProducer] = None,
+        frame_producer: FrameProducer | None = None,
         target_fps: int = 60,
-        aruco_mapper: Optional[Callable[[Dict[str, Any]], List[Token]]] = None,
-        state_mirror: Optional[Dict[str, Any]] = None,
-        events: Optional[TemporalEventManager] = None,
+        aruco_mapper: Callable[[dict[str, Any]], list[Token]] | None = None,
+        state_mirror: dict[str, Any] | None = None,
+        events: TemporalEventManager | None = None,
         time_provider=time.monotonic,
     ):
         self.state = world_state
@@ -46,7 +49,7 @@ class MainLoopController:
         self._last_report_time = 0.0
         self._last_raw_aruco_ts = -1
 
-    def tick(self) -> List[Action]:
+    def tick(self) -> list[Action]:
         """Performs one iteration of the main loop."""
         current_mono = self.time_provider()
 

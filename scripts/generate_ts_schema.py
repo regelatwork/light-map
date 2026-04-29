@@ -1,24 +1,27 @@
 import json
 from enum import Enum
-from typing import Any, Type, get_args, get_origin, Union
+from typing import Any, Union, get_args, get_origin
+
 from pydantic import BaseModel
 from pydantic_core import PydanticUndefined
+
 from light_map.core.config_schema import (
+    ArucoDefinitionSchema,
+    CoverResultSchema,
     GlobalConfigSchema,
     GmPosition,
-    TokenDetectionAlgorithm,
-    NamingStyle,
     GridType,
-    SizeProfileSchema,
-    ArucoDefinitionSchema,
-    TokenConfigSchema,
-    ViewportStateSchema,
-    TokenSchema,
-    SessionDataSchema,
     MapEntrySchema,
+    NamingStyle,
+    SessionDataSchema,
+    SizeProfileSchema,
+    TokenConfigSchema,
+    TokenDetectionAlgorithm,
+    TokenSchema,
+    ViewportStateSchema,
     WedgeSegmentSchema,
-    CoverResultSchema,
 )
+
 
 OUTPUT_FILE = "frontend/src/types/schema.generated.ts"
 
@@ -78,7 +81,7 @@ def python_type_to_ts(py_type: Any) -> str:
     return "any"
 
 
-def generate_ts_interface(model_name: str, model: Type[BaseModel]) -> str:
+def generate_ts_interface(model_name: str, model: type[BaseModel]) -> str:
     lines = [f"export interface {model_name} {{"]
     for field_name, field in model.model_fields.items():
         ts_type = python_type_to_ts(field.annotation)
@@ -93,7 +96,7 @@ def generate_ts_interface(model_name: str, model: Type[BaseModel]) -> str:
     return "\n".join(lines)
 
 
-def generate_ts_enum(enum_class: Type[Enum]) -> str:
+def generate_ts_enum(enum_class: type[Enum]) -> str:
     lines = [f"export enum {enum_class.__name__} {{"]
     for member in enum_class:
         # Assuming StrEnum values for simplicity in this project
@@ -102,7 +105,7 @@ def generate_ts_enum(enum_class: Type[Enum]) -> str:
     return "\n".join(lines)
 
 
-def generate_metadata_registry(model_name: str, model: Type[BaseModel]) -> str:
+def generate_metadata_registry(model_name: str, model: type[BaseModel]) -> str:
     metadata = {}
     for field_name, field in model.model_fields.items():
         field_meta = {

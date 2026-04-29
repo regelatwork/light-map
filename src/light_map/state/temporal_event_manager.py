@@ -1,10 +1,11 @@
 import heapq
-import time
 import logging
-from typing import Callable, Any, List, Tuple, Dict, Optional, Hashable
+import time
+from collections.abc import Callable, Hashable
+from typing import Any
 
-from light_map.state.world_state import WorldState
 from light_map.state.versioned_atom import VersionedAtom
+from light_map.state.world_state import WorldState
 
 
 class TemporalEventManager:
@@ -17,14 +18,14 @@ class TemporalEventManager:
     def __init__(
         self,
         time_provider: Callable[[], float] = time.monotonic,
-        state: Optional[WorldState] = None,
+        state: WorldState | None = None,
     ):
         self.time_provider = time_provider
         self.state = state
         # Priority queue: (target_time, callback, key)
-        self._events: List[Tuple[float, Callable[[], Any], Optional[Hashable]]] = []
+        self._events: list[tuple[float, Callable[[], Any], Hashable | None]] = []
         # Index for cancellation: key -> target_time (to detect stale heap entries)
-        self._keys: Dict[Hashable, float] = {}
+        self._keys: dict[Hashable, float] = {}
 
     def advance(self, dt: float):
         """
@@ -35,7 +36,7 @@ class TemporalEventManager:
             self.state._system_time_atom.update(new_time)
 
     def schedule(
-        self, delay: float, callback: Callable[[], Any], key: Optional[Hashable] = None
+        self, delay: float, callback: Callable[[], Any], key: Hashable | None = None
     ):
         """
         Schedules a callback to be executed after `delay` seconds.
@@ -55,7 +56,7 @@ class TemporalEventManager:
         atom: VersionedAtom,
         new_value: Any,
         delay: float,
-        key: Optional[Hashable] = None,
+        key: Hashable | None = None,
     ):
         """
         Schedules an update to a VersionedAtom in the future.
@@ -87,7 +88,7 @@ class TemporalEventManager:
             return 0.0
         return max(0.0, self._keys[key] - self.time_provider())
 
-    def check(self) -> List[Any]:
+    def check(self) -> list[Any]:
         """
         Checks for expired events and executes them.
         Returns a list of values returned by the callbacks.

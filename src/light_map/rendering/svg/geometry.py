@@ -1,12 +1,13 @@
-import svgelements
-import numpy as np
-from typing import List, Tuple, Any
 from collections import Counter
+from typing import Any
+
+import numpy as np
+import svgelements
 
 
 def sample_segment(
     segment: Any, points_per_unit: float = 1.0
-) -> List[Tuple[float, float]]:
+) -> list[tuple[float, float]]:
     """Samples a curve segment adaptively based on its length."""
     if isinstance(segment, svgelements.Line):
         return [(segment.end.x, segment.end.y)]
@@ -28,7 +29,7 @@ def sample_segment(
 def process_segment(
     segment: Any,
     ppu: float,
-    current_points: List[Tuple[int, int]],
+    current_points: list[tuple[int, int]],
 ) -> bool:
     """Processes a single segment and adds points to current_points. Returns True if segment was a Close."""
     if isinstance(segment, svgelements.Line):
@@ -48,7 +49,7 @@ def convert_path_to_points(
     transformed_path: svgelements.Path,
     element_naturally_closed: bool,
     ppu: float,
-) -> Tuple[List[np.ndarray], List[np.ndarray]]:
+) -> tuple[list[np.ndarray], list[np.ndarray]]:
     """Converts an SVG path to a list of OpenCV-compatible point arrays."""
     closed_subpaths, open_subpaths = [], []
     current_points, is_current_closed = [], False
@@ -81,7 +82,7 @@ def convert_path_to_points(
 
 
 def collect_path_grid_coords(
-    element: svgelements.Path, x_coords: List[float], y_coords: List[float]
+    element: svgelements.Path, x_coords: list[float], y_coords: list[float]
 ):
     """Collects grid lines from path segments."""
     for segment in element:
@@ -94,7 +95,7 @@ def collect_path_grid_coords(
 
 
 def collect_line_grid_coords(
-    element: Any, x_coords: List[float], y_coords: List[float]
+    element: Any, x_coords: list[float], y_coords: list[float]
 ):
     """Collects grid lines from line elements."""
     if hasattr(element, "x1"):
@@ -112,7 +113,7 @@ def collect_line_grid_coords(
         y_coords.append(p1y)
 
 
-def collect_grid_coordinates(svg: svgelements.SVG) -> Tuple[List[float], List[float]]:
+def collect_grid_coordinates(svg: svgelements.SVG) -> tuple[list[float], list[float]]:
     """Collects candidate grid coordinates from SVG elements."""
     x_coords = []
     y_coords = []
@@ -127,7 +128,7 @@ def collect_grid_coordinates(svg: svgelements.SVG) -> Tuple[List[float], List[fl
     return x_coords, y_coords
 
 
-def analyze_spacing_and_origin(coords: List[float]) -> Tuple[float, float]:
+def analyze_spacing_and_origin(coords: list[float]) -> tuple[float, float]:
     """Heuristic to find the most likely grid spacing and origin from coordinates."""
     if not coords:
         return 0.0, 0.0

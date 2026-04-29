@@ -1,5 +1,5 @@
+from light_map.core.common_types import Action, GestureType
 from light_map.input.input_manager import InputManager
-from light_map.core.common_types import GestureType, Action
 
 
 def test_input_manager_semantic_actions():

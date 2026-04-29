@@ -1,10 +1,12 @@
-import pytest
-import numpy as np
 from unittest.mock import patch
+
+import numpy as np
+import pytest
+
 from light_map.calibration.calibration import (
-    load_calibration_images,
-    find_corners,
     calibrate_camera_from_images,
+    find_corners,
+    load_calibration_images,
 )
 
 

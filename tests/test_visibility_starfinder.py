@@ -1,6 +1,7 @@
 import numpy as np
+
 from light_map.visibility.visibility_engine import VisibilityEngine
-from light_map.visibility.visibility_types import VisibilityType, VisibilityBlocker
+from light_map.visibility.visibility_types import VisibilityBlocker, VisibilityType
 
 
 def test_starfinder_see_around_corners():

@@ -4,8 +4,8 @@ import numpy as np
 import pytest
 
 from light_map.core.common_types import Action, AppConfig, GestureType, TimerKey
-from light_map.state.temporal_event_manager import TemporalEventManager
 from light_map.input.dwell_tracker import DwellTracker
+from light_map.state.temporal_event_manager import TemporalEventManager
 from light_map.vision.processing.input_processor import DummyResults, InputProcessor
 
 

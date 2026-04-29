@@ -1,16 +1,19 @@
+from typing import TYPE_CHECKING, Optional
+
 import numpy as np
-from typing import List, Optional, Tuple, Dict, TYPE_CHECKING
+
 from light_map.core.common_types import Token, TokenDetectionAlgorithm
 from light_map.map.map_system import MapSystem
+from light_map.vision.detectors.aruco_detector import ArucoTokenDetector
 from light_map.vision.detectors.flash_detector import FlashTokenDetector
 from light_map.vision.detectors.structured_light_detector import (
     StructuredLightTokenDetector,
 )
-from light_map.vision.detectors.aruco_detector import ArucoTokenDetector
+
 
 if TYPE_CHECKING:
+    from light_map.rendering.projection import ProjectionService, Projector3DModel
     from light_map.rendering.projector import ProjectorDistortionModel
-    from light_map.rendering.projection import Projector3DModel, ProjectionService
 
 
 class TokenTracker:
@@ -42,7 +45,7 @@ class TokenTracker:
 
     def get_scan_pattern(
         self, width: int, height: int, ppi: float
-    ) -> Tuple[np.ndarray, List[Tuple[int, int]]]:
+    ) -> tuple[np.ndarray, list[tuple[int, int]]]:
         """
         Generates a jittered staggered (hexagonal) dot grid pattern for optimal coverage.
         Delegates to StructuredLightDetector.
@@ -51,10 +54,10 @@ class TokenTracker:
 
     def set_aruco_calibration(
         self,
-        camera_matrix: Optional[np.ndarray] = None,
-        distortion_coefficients: Optional[np.ndarray] = None,
-        rotation_vector: Optional[np.ndarray] = None,
-        translation_vector: Optional[np.ndarray] = None,
+        camera_matrix: np.ndarray | None = None,
+        distortion_coefficients: np.ndarray | None = None,
+        rotation_vector: np.ndarray | None = None,
+        translation_vector: np.ndarray | None = None,
     ):
         if camera_matrix is not None and distortion_coefficients is not None:
             self._aruco_detector.set_calibration(camera_matrix, distortion_coefficients)
@@ -67,23 +70,23 @@ class TokenTracker:
 
     def detect_tokens(
         self,
-        frame_white: Optional[np.ndarray] = None,
-        frame_pattern: Optional[np.ndarray] = None,
-        frame_dark: Optional[np.ndarray] = None,
-        projector_matrix: Optional[np.ndarray] = None,
-        map_system: Optional[MapSystem] = None,
+        frame_white: np.ndarray | None = None,
+        frame_pattern: np.ndarray | None = None,
+        frame_dark: np.ndarray | None = None,
+        projector_matrix: np.ndarray | None = None,
+        map_system: MapSystem | None = None,
         grid_spacing_svg: float = 0.0,
         grid_origin_x: float = 0.0,
         grid_origin_y: float = 0.0,
-        mask_rois: Optional[List[Tuple[int, int, int, int]]] = None,
+        mask_rois: list[tuple[int, int, int, int]] | None = None,
         ppi: float = 96.0,
         algorithm: TokenDetectionAlgorithm = TokenDetectionAlgorithm.FLASH,
-        token_configs: Optional[Dict[int, Dict]] = None,
+        token_configs: dict[int, dict] | None = None,
         default_height_mm: float = 0.0,
         distortion_model: Optional["ProjectorDistortionModel"] = None,
         projector_3d_model: Optional["Projector3DModel"] = None,
         projection_service: Optional["ProjectionService"] = None,
-    ) -> List[Token]:
+    ) -> list[Token]:
         # Handle case where only one frame is passed (default to frame_pattern for SL or frame_white for Flash)
         if frame_pattern is None and frame_white is not None:
             frame_pattern = frame_white

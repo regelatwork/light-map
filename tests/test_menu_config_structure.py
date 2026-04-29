@@ -1,8 +1,10 @@
-import pytest
 from unittest.mock import MagicMock
+
+import pytest
+
 from light_map.core.common_types import MenuActions
-from light_map.menu.menu_builder import build_root_menu
 from light_map.map.map_config import MapConfigManager
+from light_map.menu.menu_builder import build_root_menu
 
 
 @pytest.fixture

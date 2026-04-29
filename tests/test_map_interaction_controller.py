@@ -1,10 +1,11 @@
-import pytest
 from unittest.mock import MagicMock
-import numpy as np
 
-from light_map.input.map_interaction import MapInteractionController
+import numpy as np
+import pytest
+
 from light_map.core.scene import HandInput
 from light_map.input.gestures import GestureType
+from light_map.input.map_interaction import MapInteractionController
 from light_map.map.map_system import MapSystem
 
 

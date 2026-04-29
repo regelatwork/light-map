@@ -1,12 +1,14 @@
-from typing import Any, Callable, Dict, Optional, TYPE_CHECKING
 import logging
+from collections.abc import Callable
+from typing import TYPE_CHECKING, Any, Optional
+
 
 if TYPE_CHECKING:
-    from light_map.interactive_app import InteractiveApp
     from light_map.core.scene import SceneTransition, WorldState
+    from light_map.interactive_app import InteractiveApp
 
 ActionHandler = Callable[
-    ["InteractiveApp", Dict[str, Any], Optional["WorldState"]],
+    ["InteractiveApp", dict[str, Any], Optional["WorldState"]],
     Optional["SceneTransition"],
 ]
 
@@ -14,7 +16,7 @@ ActionHandler = Callable[
 class ActionDispatcher:
     def __init__(self, app: "InteractiveApp"):
         self.app = app
-        self._handlers: Dict[str, ActionHandler] = {}
+        self._handlers: dict[str, ActionHandler] = {}
         self._register_default_handlers()
 
     def register(self, action_name: str, handler: ActionHandler):
@@ -104,14 +106,14 @@ class ActionDispatcher:
 
 
 def handle_sync_vision(
-    app: "InteractiveApp", payload: Dict[str, Any], state: Optional["WorldState"] = None
+    app: "InteractiveApp", payload: dict[str, Any], state: Optional["WorldState"] = None
 ) -> Optional["SceneTransition"]:
     app.environment_manager.sync_vision(state)
     return None
 
 
 def handle_trigger_menu(
-    app: "InteractiveApp", payload: Dict[str, Any], state: Optional["WorldState"] = None
+    app: "InteractiveApp", payload: dict[str, Any], state: Optional["WorldState"] = None
 ) -> Optional["SceneTransition"]:
     from light_map.core.common_types import SceneId
 
@@ -120,7 +122,7 @@ def handle_trigger_menu(
 
 
 def handle_reset_zoom(
-    app: "InteractiveApp", payload: Dict[str, Any], state: Optional["WorldState"] = None
+    app: "InteractiveApp", payload: dict[str, Any], state: Optional["WorldState"] = None
 ) -> Optional["SceneTransition"]:
     app.map_system.reset_zoom_to_base()
     app.notifications.add_notification("Zoom Reset to 1:1")
@@ -128,7 +130,7 @@ def handle_reset_zoom(
 
 
 def handle_update_grid(
-    app: "InteractiveApp", payload: Dict[str, Any], state: Optional["WorldState"] = None
+    app: "InteractiveApp", payload: dict[str, Any], state: Optional["WorldState"] = None
 ) -> Optional["SceneTransition"]:
     if app.current_map_path:
         app.persistence_service.update_grid(app.current_map_path, **payload)
@@ -137,7 +139,7 @@ def handle_update_grid(
 
 
 def handle_toggle_grid(
-    app: "InteractiveApp", payload: Dict[str, Any], state: Optional["WorldState"] = None
+    app: "InteractiveApp", payload: dict[str, Any], state: Optional["WorldState"] = None
 ) -> Optional["SceneTransition"]:
     if app.current_map_path:
         visible = app.persistence_service.toggle_grid(app.current_map_path)
@@ -149,7 +151,7 @@ def handle_toggle_grid(
 
 
 def handle_set_grid_color(
-    app: "InteractiveApp", payload: Dict[str, Any], state: Optional["WorldState"] = None
+    app: "InteractiveApp", payload: dict[str, Any], state: Optional["WorldState"] = None
 ) -> Optional["SceneTransition"]:
     color = payload.get("color") or payload.get("payload")
     if app.current_map_path and color:
@@ -159,10 +161,10 @@ def handle_set_grid_color(
 
 
 def handle_inject_hands_world(
-    app: "InteractiveApp", payload: Dict[str, Any], state: Optional["WorldState"] = None
+    app: "InteractiveApp", payload: dict[str, Any], state: Optional["WorldState"] = None
 ) -> Optional["SceneTransition"]:
-    from light_map.core.scene import HandInput
     from light_map.core.common_types import GestureType
+    from light_map.core.scene import HandInput
 
     hands_data = payload.get("hands", [])
     processed_hands = []
@@ -187,7 +189,7 @@ def handle_inject_hands_world(
 
 
 def handle_set_viewport(
-    app: "InteractiveApp", payload: Dict[str, Any], state: Optional["WorldState"] = None
+    app: "InteractiveApp", payload: dict[str, Any], state: Optional["WorldState"] = None
 ) -> Optional["SceneTransition"]:
     if "zoom" in payload:
         app.map_system.state.zoom = payload["zoom"]
@@ -200,7 +202,7 @@ def handle_set_viewport(
 
 
 def handle_reset_fow(
-    app: "InteractiveApp", payload: Dict[str, Any], state: Optional["WorldState"] = None
+    app: "InteractiveApp", payload: dict[str, Any], state: Optional["WorldState"] = None
 ) -> Optional["SceneTransition"]:
     if app.current_map_path:
         app.environment_manager.reset_fow(app.current_map_path, state)
@@ -208,7 +210,7 @@ def handle_reset_fow(
 
 
 def handle_toggle_fow(
-    app: "InteractiveApp", payload: Dict[str, Any], state: Optional["WorldState"] = None
+    app: "InteractiveApp", payload: dict[str, Any], state: Optional["WorldState"] = None
 ) -> Optional["SceneTransition"]:
     if app.current_map_path:
         app.environment_manager.toggle_fow(app.current_map_path, state)
@@ -216,7 +218,7 @@ def handle_toggle_fow(
 
 
 def handle_update_system_config(
-    app: "InteractiveApp", payload: Dict[str, Any], state: Optional["WorldState"] = None
+    app: "InteractiveApp", payload: dict[str, Any], state: Optional["WorldState"] = None
 ) -> Optional["SceneTransition"]:
     if app.persistence_service.update_system_config(payload):
         app.notifications.add_notification("System Settings Updated")
@@ -224,7 +226,7 @@ def handle_update_system_config(
 
 
 def handle_toggle_hand_masking(
-    app: "InteractiveApp", payload: Dict[str, Any], state: Optional["WorldState"] = None
+    app: "InteractiveApp", payload: dict[str, Any], state: Optional["WorldState"] = None
 ) -> Optional["SceneTransition"]:
     visible = app.persistence_service.toggle_hand_masking()
     state_str = "ON" if visible else "OFF"
@@ -233,7 +235,7 @@ def handle_toggle_hand_masking(
 
 
 def handle_set_gm_position(
-    app: "InteractiveApp", payload: Dict[str, Any], state: Optional["WorldState"] = None
+    app: "InteractiveApp", payload: dict[str, Any], state: Optional["WorldState"] = None
 ) -> Optional["SceneTransition"]:
     new_pos = app.persistence_service.set_gm_position(payload.get("payload", "None"))
     if new_pos:
@@ -244,10 +246,11 @@ def handle_set_gm_position(
 
 
 def handle_set_selection(
-    app: "InteractiveApp", payload: Dict[str, Any], state: Optional["WorldState"] = None
+    app: "InteractiveApp", payload: dict[str, Any], state: Optional["WorldState"] = None
 ) -> Optional["SceneTransition"]:
-    from light_map.core.common_types import SelectionState, SelectionType
     import json
+
+    from light_map.core.common_types import SelectionState, SelectionType
 
     if state is not None:
         # The frontend might send fields top-level or inside a stringified 'payload'
@@ -272,7 +275,7 @@ def handle_set_selection(
 
 
 def handle_toggle_debug_mode(
-    app: "InteractiveApp", payload: Dict[str, Any], state: Optional["WorldState"] = None
+    app: "InteractiveApp", payload: dict[str, Any], state: Optional["WorldState"] = None
 ) -> Optional["SceneTransition"]:
     app.app_context.debug_mode = not app.app_context.debug_mode
     state_str = "ON" if app.app_context.debug_mode else "OFF"
@@ -281,7 +284,7 @@ def handle_toggle_debug_mode(
 
 
 def handle_inspect_token(
-    app: "InteractiveApp", payload: Dict[str, Any], state: Optional["WorldState"] = None
+    app: "InteractiveApp", payload: dict[str, Any], state: Optional["WorldState"] = None
 ) -> Optional["SceneTransition"]:
     from light_map.core.common_types import SceneId
 
@@ -298,7 +301,7 @@ def handle_inspect_token(
 
 
 def handle_clear_inspection(
-    app: "InteractiveApp", payload: Dict[str, Any], state: Optional["WorldState"] = None
+    app: "InteractiveApp", payload: dict[str, Any], state: Optional["WorldState"] = None
 ) -> Optional["SceneTransition"]:
     app.app_context.inspected_token_id = None
     app.app_context.inspected_token_mask = None
@@ -306,7 +309,7 @@ def handle_clear_inspection(
 
 
 def handle_toggle_door(
-    app: "InteractiveApp", payload: Dict[str, Any], state: Optional["WorldState"] = None
+    app: "InteractiveApp", payload: dict[str, Any], state: Optional["WorldState"] = None
 ) -> Optional["SceneTransition"]:
     door_id = payload.get("door_id") or payload.get("payload")
     app.environment_manager.toggle_door(door_id, state)
@@ -314,7 +317,7 @@ def handle_toggle_door(
 
 
 def handle_zoom(
-    app: "InteractiveApp", payload: Dict[str, Any], state: Optional["WorldState"] = None
+    app: "InteractiveApp", payload: dict[str, Any], state: Optional["WorldState"] = None
 ) -> Optional["SceneTransition"]:
     delta = payload.get("delta", 0.0)
     app.map_system.zoom_pinned(
@@ -324,7 +327,7 @@ def handle_zoom(
 
 
 def handle_update_token(
-    app: "InteractiveApp", payload: Dict[str, Any], state: Optional["WorldState"] = None
+    app: "InteractiveApp", payload: dict[str, Any], state: Optional["WorldState"] = None
 ) -> Optional["SceneTransition"]:
     token_id = payload.get("id")
     if token_id is not None:
@@ -333,7 +336,7 @@ def handle_update_token(
 
 
 def handle_delete_token_override(
-    app: "InteractiveApp", payload: Dict[str, Any], state: Optional["WorldState"] = None
+    app: "InteractiveApp", payload: dict[str, Any], state: Optional["WorldState"] = None
 ) -> Optional["SceneTransition"]:
     token_id = payload.get("id")
     if token_id is not None:
@@ -342,7 +345,7 @@ def handle_delete_token_override(
 
 
 def handle_delete_token(
-    app: "InteractiveApp", payload: Dict[str, Any], state: Optional["WorldState"] = None
+    app: "InteractiveApp", payload: dict[str, Any], state: Optional["WorldState"] = None
 ) -> Optional["SceneTransition"]:
     token_id = payload.get("id")
     if token_id is not None:
@@ -351,7 +354,7 @@ def handle_delete_token(
 
 
 def handle_update_token_profile(
-    app: "InteractiveApp", payload: Dict[str, Any], state: Optional["WorldState"] = None
+    app: "InteractiveApp", payload: dict[str, Any], state: Optional["WorldState"] = None
 ) -> Optional["SceneTransition"]:
     name = payload.get("name")
     size = payload.get("size")
@@ -361,7 +364,7 @@ def handle_update_token_profile(
 
 
 def handle_delete_token_profile(
-    app: "InteractiveApp", payload: Dict[str, Any], state: Optional["WorldState"] = None
+    app: "InteractiveApp", payload: dict[str, Any], state: Optional["WorldState"] = None
 ) -> Optional["SceneTransition"]:
     name = payload.get("name")
     app.persistence_service.delete_token_profile(name)
@@ -369,7 +372,7 @@ def handle_delete_token_profile(
 
 
 def handle_menu_interact(
-    app: "InteractiveApp", payload: Dict[str, Any], state: Optional["WorldState"] = None
+    app: "InteractiveApp", payload: dict[str, Any], state: Optional["WorldState"] = None
 ) -> Optional["SceneTransition"]:
     is_menu_scene = app.scene_manager.current_scene_id.value == "MENU"
     if is_menu_scene:
@@ -382,7 +385,7 @@ def handle_menu_interact(
 
 
 def handle_quit(
-    app: "InteractiveApp", payload: Dict[str, Any], state: Optional["WorldState"] = None
+    app: "InteractiveApp", payload: dict[str, Any], state: Optional["WorldState"] = None
 ) -> Optional["SceneTransition"]:
     if state is not None:
         state.is_running = False

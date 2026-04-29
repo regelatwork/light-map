@@ -1,10 +1,12 @@
-import pytest
 from unittest.mock import MagicMock, patch
-from light_map.map.map_scene import MapScene, ScreenCenteredMapAdapter
+
+import pytest
+
 from light_map.core.app_context import AppContext
-from light_map.map.map_system import MapSystem
 from light_map.core.scene import HandInput
 from light_map.input.gestures import GestureType
+from light_map.map.map_scene import MapScene, ScreenCenteredMapAdapter
+from light_map.map.map_system import MapSystem
 
 
 @pytest.fixture

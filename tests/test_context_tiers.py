@@ -1,13 +1,14 @@
 import pickle
 import unittest
 from unittest.mock import MagicMock
+
 import numpy as np
 
 from light_map.core.app_context import (
-    MainContext,
-    VisionContext,
-    RemoteContext,
     AppContext,
+    MainContext,
+    RemoteContext,
+    VisionContext,
 )
 from light_map.core.common_types import AppConfig
 from light_map.rendering.projection import CameraProjectionModel

@@ -1,5 +1,6 @@
-import random
 import hashlib
+import random
+
 from light_map.core.common_types import NamingStyle
 
 

@@ -1,16 +1,19 @@
 from __future__ import annotations
-import numpy as np
-import logging
-from typing import TYPE_CHECKING, Optional
 
-from light_map.core.common_types import TokenDetectionAlgorithm, GridType
+import logging
+from typing import TYPE_CHECKING
+
+import numpy as np
+
+from light_map.core.common_types import GridType, TokenDetectionAlgorithm
 from light_map.vision.processing.token_filter import TokenFilter
 from light_map.vision.processing.token_tracker import TokenTracker
 
+
 if TYPE_CHECKING:
-    from light_map.map.map_system import MapSystem
-    from light_map.map.map_config import MapConfigManager
     from light_map.core.common_types import AppConfig
+    from light_map.map.map_config import MapConfigManager
+    from light_map.map.map_system import MapSystem
     from light_map.rendering.projection import ProjectionService
 
 
@@ -28,7 +31,7 @@ class TrackingCoordinator:
         map_system: MapSystem,
         map_config: MapConfigManager,
         projector_config: AppConfig,
-        projection_service: Optional["ProjectionService"] = None,
+        projection_service: ProjectionService | None = None,
     ) -> dict:
         """
         Maps raw ArUco detections (corners, ids) to filtered and snapped Token objects.
@@ -144,12 +147,12 @@ class TrackingCoordinator:
         config: AppConfig,
         map_system: MapSystem,
         map_config: MapConfigManager,
-        camera_matrix: Optional[np.ndarray] = None,
-        distortion_coefficients: Optional[np.ndarray] = None,
-        rotation_vector: Optional[np.ndarray] = None,
-        translation_vector: Optional[np.ndarray] = None,
+        camera_matrix: np.ndarray | None = None,
+        distortion_coefficients: np.ndarray | None = None,
+        rotation_vector: np.ndarray | None = None,
+        translation_vector: np.ndarray | None = None,
         debug_mode: bool = False,
-        projection_service: Optional["ProjectionService"] = None,
+        projection_service: ProjectionService | None = None,
     ):
         """Performs background ArUco tracking and updates the map system tokens."""
         if map_config.get_detection_algorithm() != TokenDetectionAlgorithm.ARUCO:

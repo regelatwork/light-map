@@ -1,7 +1,7 @@
+import logging
+
 import cv2
 import numpy as np
-import logging
-from typing import Tuple
 
 
 def generate_calibration_pattern(
@@ -217,14 +217,14 @@ class ProjectorDistortionModel:
 
         return np.array(corrected_pts, dtype=np.float32).reshape(-1, 1, 2)
 
-    def correct_theoretical_point(self, px: float, py: float) -> Tuple[float, float]:
+    def correct_theoretical_point(self, px: float, py: float) -> tuple[float, float]:
         """
         Corrects a point that is already in theoretical projector space (e.g. from warped image).
         """
         rx, ry = self._interpolate_residual(px, py)
         return px + rx, py + ry
 
-    def _interpolate_residual(self, px: float, py: float) -> Tuple[float, float]:
+    def _interpolate_residual(self, px: float, py: float) -> tuple[float, float]:
         """Performs bilinear interpolation of the residual at screen pixel (px, py)."""
         # 1. Find the cell in the projector grid
         # self.unique_proj_x/y are sorted

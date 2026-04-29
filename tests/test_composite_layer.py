@@ -1,5 +1,6 @@
 import numpy as np
-from light_map.core.common_types import Layer, ImagePatch, CompositeLayer, LayerMode
+
+from light_map.core.common_types import CompositeLayer, ImagePatch, Layer, LayerMode
 
 
 class MockLayer(Layer):

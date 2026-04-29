@@ -1,7 +1,6 @@
 import numpy as np
+
 from light_map.rendering.layers.fow_layer import FogOfWarLayer
-
-
 from light_map.state.world_state import WorldState
 
 

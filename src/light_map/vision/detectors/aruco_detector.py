@@ -1,12 +1,15 @@
+import logging
+import os
+from typing import TYPE_CHECKING, Any, Optional
+
 import cv2
 import numpy as np
-import os
-import logging
-from typing import List, Tuple, Optional, Dict, Any, TYPE_CHECKING
+
 from light_map.core.common_types import Token
+from light_map.core.constants import DEFAULT_TOKEN_HEIGHT_MM
 from light_map.map.map_system import MapSystem
 from light_map.rendering.projection import CameraProjectionModel
-from light_map.core.constants import DEFAULT_TOKEN_HEIGHT_MM
+
 
 if TYPE_CHECKING:
     from light_map.rendering.projection import ProjectionService
@@ -15,17 +18,17 @@ if TYPE_CHECKING:
 class ArucoTokenDetector:
     def __init__(
         self,
-        calibration_file: Optional[str] = None,
-        extrinsics_file: Optional[str] = None,
+        calibration_file: str | None = None,
+        extrinsics_file: str | None = None,
         dictionary_type: int = cv2.aruco.DICT_4X4_50,
         debug_mode: bool = False,
     ):
         self.debug_mode = debug_mode
-        self.camera_matrix: Optional[np.ndarray] = None
-        self.distortion_coefficients: Optional[np.ndarray] = None
-        self.rotation_vector: Optional[np.ndarray] = None
-        self.translation_vector: Optional[np.ndarray] = None
-        self.projection_model: Optional[CameraProjectionModel] = None
+        self.camera_matrix: np.ndarray | None = None
+        self.distortion_coefficients: np.ndarray | None = None
+        self.rotation_vector: np.ndarray | None = None
+        self.translation_vector: np.ndarray | None = None
+        self.projection_model: CameraProjectionModel | None = None
 
         # Performance optimization
         self.target_width = 1920
@@ -104,11 +107,11 @@ class ArucoTokenDetector:
 
     def get_fov_roi(
         self,
-        frame_shape: Tuple[int, int],
+        frame_shape: tuple[int, int],
         scale: float,
         projector_matrix: np.ndarray,
-        map_dims: Tuple[int, int],
-    ) -> Optional[Tuple[int, int, int, int]]:
+        map_dims: tuple[int, int],
+    ) -> tuple[int, int, int, int] | None:
         """Returns (x, y, w, h) bounding box of the FOV mask."""
         mask = self._get_fov_mask(frame_shape, scale, projector_matrix, map_dims)
         if mask is None:
@@ -118,10 +121,10 @@ class ArucoTokenDetector:
     def detect_raw(
         self,
         frame: np.ndarray,
-        projector_matrix: Optional[np.ndarray] = None,
-        map_dims: Optional[Tuple[int, int]] = None,
-        crop_offset: Optional[Tuple[int, int]] = None,
-    ) -> Tuple[List[np.ndarray], List[int]]:
+        projector_matrix: np.ndarray | None = None,
+        map_dims: tuple[int, int] | None = None,
+        crop_offset: tuple[int, int] | None = None,
+    ) -> tuple[list[np.ndarray], list[int]]:
         """
         Detects ArUco markers, handles resizing, FOV masking, and duplicate resolution.
         If crop_offset=(x, y) is provided, it assumes frame is already cropped.
@@ -197,13 +200,13 @@ class ArucoTokenDetector:
 
     def map_to_tokens(
         self,
-        raw_data: Dict[str, Any],
+        raw_data: dict[str, Any],
         map_system: MapSystem,
-        token_configs: Dict[int, Dict] = None,
+        token_configs: dict[int, dict] = None,
         ppi: float = 55.0,
         default_height_mm: float = DEFAULT_TOKEN_HEIGHT_MM,
         projection_service: Optional["ProjectionService"] = None,
-    ) -> List[Token]:
+    ) -> list[Token]:
         """
         Maps raw ArUco detections (corners, ids) to Token objects in world coordinates.
         """
@@ -277,12 +280,12 @@ class ArucoTokenDetector:
         self,
         frame: np.ndarray,
         map_system: MapSystem,
-        token_configs: Dict[int, Dict] = None,
+        token_configs: dict[int, dict] = None,
         ppi: float = 55.0,
         default_height_mm: float = DEFAULT_TOKEN_HEIGHT_MM,
-        projector_matrix: Optional[np.ndarray] = None,
+        projector_matrix: np.ndarray | None = None,
         projection_service: Optional["ProjectionService"] = None,
-    ) -> List[Token]:
+    ) -> list[Token]:
         """
         Legacy/Combined method for single-threaded use.
         """
@@ -302,11 +305,11 @@ class ArucoTokenDetector:
 
     def _get_fov_mask(
         self,
-        gray_shape: Tuple[int, int],
+        gray_shape: tuple[int, int],
         scale: float,
         projector_matrix: np.ndarray,
-        map_dims: Tuple[int, int],
-    ) -> Optional[np.ndarray]:
+        map_dims: tuple[int, int],
+    ) -> np.ndarray | None:
         """Caches and returns the projector FOV mask."""
         h, w = gray_shape
         params = (h, w, scale, hash(projector_matrix.tobytes()), map_dims)

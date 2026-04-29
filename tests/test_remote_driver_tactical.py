@@ -1,7 +1,10 @@
+from multiprocessing import Event, Queue
+
 import pytest
 from fastapi.testclient import TestClient
+
 from light_map.vision.remote.remote_driver import create_app
-from multiprocessing import Queue, Event
+
 
 @pytest.fixture
 def client():

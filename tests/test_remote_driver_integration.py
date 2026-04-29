@@ -1,9 +1,11 @@
-import pytest
-import httpx
-import time
 import multiprocessing as mp
+import time
+
+import httpx
+import pytest
+
+from light_map.core.common_types import GestureType, ResultType
 from light_map.vision.infrastructure.process_manager import VisionProcessManager
-from light_map.core.common_types import ResultType, GestureType
 
 
 def test_remote_driver_e2e_mocked_loop():

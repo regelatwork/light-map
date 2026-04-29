@@ -6,15 +6,16 @@ from unittest.mock import MagicMock, patch
 import numpy as np
 import pytest
 
-from light_map.core.common_types import AppConfig, MenuActions, SceneId
 from light_map.core.app_context import AppContext
+from light_map.core.common_types import AppConfig, MenuActions, SceneId
 from light_map.core.notification import NotificationManager
 from light_map.core.scene import SceneTransition
 from light_map.map.map_config import MapConfigManager
 from light_map.map.map_system import MapSystem
+from light_map.menu.menu_scene import MenuScene
 from light_map.menu.menu_system import MenuState
 from light_map.rendering.renderer import Renderer
-from light_map.menu.menu_scene import MenuScene
+
 
 if TYPE_CHECKING:
     from light_map.core.app_context import AppContext

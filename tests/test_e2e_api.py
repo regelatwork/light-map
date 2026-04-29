@@ -1,11 +1,12 @@
-import httpx
-import time
-import subprocess
 import os
 import signal
-import pytest
 import socket as socket_lib
+import subprocess
+import time
+
+import httpx
 import numpy as np
+import pytest
 
 
 def find_free_port():

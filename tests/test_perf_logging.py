@@ -1,9 +1,10 @@
 import time
 from unittest.mock import MagicMock, patch
+
 from light_map.core.main_loop import MainLoopController
+from light_map.input.input_manager import InputManager
 from light_map.state.world_state import WorldState
 from light_map.vision.infrastructure.process_manager import VisionProcessManager
-from light_map.input.input_manager import InputManager
 
 
 def test_perf_logging_when_debug_active():

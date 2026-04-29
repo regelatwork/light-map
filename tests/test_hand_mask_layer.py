@@ -1,9 +1,11 @@
-import pytest
 from unittest.mock import MagicMock, patch
+
 import numpy as np
+import pytest
+
+from light_map.core.common_types import AppConfig
 from light_map.rendering.layers.hand_mask_layer import HandMaskLayer
 from light_map.state.world_state import WorldState
-from light_map.core.common_types import AppConfig
 
 
 @pytest.fixture
@@ -76,8 +78,8 @@ def test_hand_mask_layer_caching(mock_config):
         assert mock_hulls.call_count == 1
 
         # Change timestamp
-        from light_map.core.scene import HandInput
         from light_map.core.common_types import GestureType
+        from light_map.core.scene import HandInput
 
         new_input = [HandInput(GestureType.POINTING, (100, 100), (0.0, 0.0), None)]
         ws.update_inputs(new_input)  # increments hands_version

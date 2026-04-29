@@ -1,8 +1,10 @@
-import numpy as np
 import os
-from light_map.visibility.fow_manager import FogOfWarManager
-from light_map.map.map_config import MapConfigManager
+
+import numpy as np
+
 from light_map.core.storage import StorageManager
+from light_map.map.map_config import MapConfigManager
+from light_map.visibility.fow_manager import FogOfWarManager
 
 
 def test_fow_manager_initialization():

@@ -1,11 +1,12 @@
-import os
 import logging
-from typing import TYPE_CHECKING, Any, Dict
+import os
 from dataclasses import replace
+from typing import TYPE_CHECKING, Any
 
 from light_map.core.common_types import MapRenderState, SessionData, ViewportState
 from light_map.map.session_manager import SessionManager
 from light_map.rendering.svg.loader import SVGLoader
+
 
 if TYPE_CHECKING:
     from light_map.interactive_app import InteractiveApp
@@ -363,7 +364,7 @@ class PersistenceService:
             logging.info(f"PersistenceService: Deleted profile '{name}'")
             self.state.config_data += 1
 
-    def update_system_config(self, payload: Dict[str, Any]):
+    def update_system_config(self, payload: dict[str, Any]):
         """Updates global system configuration."""
         from light_map.core.config_schema import GlobalConfigSchema
         from light_map.core.config_utils import sync_pydantic_to_dataclass

@@ -1,7 +1,9 @@
-import pytest
 from unittest.mock import MagicMock, patch
-from light_map.core.scene_manager import SceneManager
+
+import pytest
+
 from light_map.core.common_types import SceneId
+from light_map.core.scene_manager import SceneManager
 from light_map.state.world_state import WorldState
 
 

@@ -1,11 +1,13 @@
-from unittest.mock import MagicMock
 import time
+from unittest.mock import MagicMock
+
 import numpy as np
-from light_map.core.main_loop import MainLoopController
-from light_map.state.world_state import WorldState
-from light_map.core.common_types import DetectionResult, ResultType, Token
-from light_map.rendering.layers.overlay_layer import TokenLayer
+
 from light_map.core.app_context import AppContext
+from light_map.core.common_types import DetectionResult, ResultType, Token
+from light_map.core.main_loop import MainLoopController
+from light_map.rendering.layers.overlay_layer import TokenLayer
+from light_map.state.world_state import WorldState
 
 
 def test_tokens_persist_when_none_detected():

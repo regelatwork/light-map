@@ -1,13 +1,13 @@
+import logging
 import multiprocessing as mp
 import time
-import logging
+
 import cv2
 import numpy as np
-from typing import Optional, Tuple
 
-from light_map.vision.infrastructure.frame_producer import FrameProducer
-from light_map.vision.detectors.aruco_detector import ArucoTokenDetector
 from light_map.core.common_types import DetectionResult, ResultType
+from light_map.vision.detectors.aruco_detector import ArucoTokenDetector
+from light_map.vision.infrastructure.frame_producer import FrameProducer
 
 
 def aruco_worker(
@@ -19,12 +19,12 @@ def aruco_worker(
     height: int = 1080,
     num_consumers: int = 2,
     aruco_dict_type: int = cv2.aruco.DICT_4X4_50,
-    projector_matrix: Optional[np.ndarray] = None,
-    map_dims: Optional[Tuple[int, int]] = None,
-    intrinsics_path: Optional[str] = None,
-    extrinsics_path: Optional[str] = None,
-    camera_matrix: Optional[np.ndarray] = None,
-    distortion_coefficients: Optional[np.ndarray] = None,
+    projector_matrix: np.ndarray | None = None,
+    map_dims: tuple[int, int] | None = None,
+    intrinsics_path: str | None = None,
+    extrinsics_path: str | None = None,
+    camera_matrix: np.ndarray | None = None,
+    distortion_coefficients: np.ndarray | None = None,
 ):
     """
     Worker function for ArUco detection. Consumes frames from shared memory,
@@ -138,14 +138,15 @@ def hand_worker(
     width: int = 1920,
     height: int = 1080,
     num_consumers: int = 2,
-    projector_matrix: Optional[np.ndarray] = None,
-    map_dims: Optional[Tuple[int, int]] = None,
+    projector_matrix: np.ndarray | None = None,
+    map_dims: tuple[int, int] | None = None,
 ):
     """
     Worker function for hand detection. Consumes frames from shared memory,
     runs MediaPipe Hands, and pushes results to a queue.
     """
     import mediapipe as mp_lib
+
     from light_map.vision.detectors.aruco_detector import ArucoTokenDetector
 
     # 1. Initialize Producer

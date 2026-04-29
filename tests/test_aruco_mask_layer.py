@@ -1,11 +1,13 @@
+from unittest.mock import MagicMock
+
+import cv2
 import numpy as np
 import pytest
-import cv2
-from unittest.mock import MagicMock
-from light_map.rendering.layers.aruco_mask_layer import ArucoMaskLayer
+
 from light_map.core.common_types import AppConfig
-from light_map.state.world_state import WorldState
+from light_map.rendering.layers.aruco_mask_layer import ArucoMaskLayer
 from light_map.rendering.projection import CameraProjectionModel
+from light_map.state.world_state import WorldState
 
 
 @pytest.fixture
@@ -174,7 +176,7 @@ def test_aruco_mask_layer_parallax_rendering(mock_state, mock_config):
         mock_config.translation_vector,
     )
     # Also need Projector3DModel and ProjectionService for it to work
-    from light_map.rendering.projection import Projector3DModel, ProjectionService
+    from light_map.rendering.projection import ProjectionService, Projector3DModel
 
     # Use a mock 3D projector model that just returns world points
     mock_config.projector_3d_model = Projector3DModel(

@@ -1,34 +1,36 @@
-import sys
-import os
-import cv2
-import signal
-import numpy as np
 import argparse
-import time
 import logging
 import multiprocessing as mp
+import os
+import signal
+import sys
 import threading
+import time
 
-from light_map.vision.infrastructure.camera import Camera
+import cv2
+import numpy as np
+
 from light_map.core.common_types import (
     Action,
     MenuActions,
     SceneId,
     TokenDetectionAlgorithm,
 )
-from light_map.interactive_app import InteractiveApp, AppConfig
-from light_map.map.map_config import MapConfigManager
 from light_map.core.display_utils import (
+    ProjectorWindow,
     get_screen_resolution,
     setup_logging,
-    ProjectorWindow,
 )
-from light_map.core.storage import StorageManager
-from light_map.rendering.projector import ProjectorDistortionModel
-from light_map.vision.infrastructure.process_manager import VisionProcessManager
 from light_map.core.main_loop import MainLoopController
-from light_map.vision.infrastructure.frame_producer import FrameProducer
+from light_map.core.storage import StorageManager
 from light_map.input.input_manager import InputManager
+from light_map.interactive_app import AppConfig, InteractiveApp
+from light_map.map.map_config import MapConfigManager
+from light_map.rendering.projector import ProjectorDistortionModel
+from light_map.vision.infrastructure.camera import Camera
+from light_map.vision.infrastructure.frame_producer import FrameProducer
+from light_map.vision.infrastructure.process_manager import VisionProcessManager
+
 
 # Import calibration functions from scripts (these will be renamed/moved later)
 # For now we use relative imports if possible, or we might need to add scripts to path

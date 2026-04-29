@@ -1,6 +1,7 @@
+import cv2
 import numpy as np
 import pytest
-import cv2
+
 from light_map.rendering.projector import compute_projector_homography
 
 

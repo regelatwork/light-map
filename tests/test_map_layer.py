@@ -1,6 +1,8 @@
-import pytest
 from unittest.mock import MagicMock
+
 import numpy as np
+import pytest
+
 from light_map.rendering.layers.map_layer import MapLayer
 from light_map.state.world_state import WorldState
 

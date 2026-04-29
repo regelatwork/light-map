@@ -1,6 +1,8 @@
-import numpy as np
-from light_map.vision.infrastructure.camera_operator import CameraOperator
 import time
+
+import numpy as np
+
+from light_map.vision.infrastructure.camera_operator import CameraOperator
 
 
 def test_camera_operator_shm_init():

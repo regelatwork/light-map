@@ -1,9 +1,10 @@
-import pytest
 from unittest.mock import MagicMock, patch
-import numpy as np
 
-from light_map.core.app_context import AppContext
+import numpy as np
+import pytest
+
 from light_map.calibration.calibration_scenes import ProjectorCalibrationScene
+from light_map.core.app_context import AppContext
 from light_map.core.common_types import AppConfig, SceneId
 from light_map.core.scene import SceneTransition
 

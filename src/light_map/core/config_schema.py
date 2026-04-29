@@ -18,9 +18,9 @@ Architecture:
 - UI: Generic components in `frontend/src/components/common/ConfigInputs.tsx` use this metadata.
 """
 
-from pydantic import BaseModel, Field
-from typing import Optional, Dict, List, Tuple
 from enum import StrEnum
+
+from pydantic import BaseModel, Field
 
 
 class GmPosition(StrEnum):
@@ -74,37 +74,37 @@ class ArucoDefinitionSchema(BaseModel):
     type: str = Field(
         default="NPC", title="Type", description="Token type (e.g., PC, NPC, Enemy)."
     )
-    profile: Optional[str] = Field(
+    profile: str | None = Field(
         default=None,
         title="Profile",
         description="Reference to a SizeProfileSchema by name.",
     )
-    size: Optional[int] = Field(
+    size: int | None = Field(
         default=None,
         ge=1,
         le=10,
         title="Custom Size",
         description="Override size in grid units.",
     )
-    height_mm: Optional[float] = Field(
+    height_mm: float | None = Field(
         default=None,
         ge=0.0,
         le=500.0,
         title="Custom Height (mm)",
         description="Override physical height in mm.",
     )
-    color: Optional[str] = Field(
+    color: str | None = Field(
         default=None, title="Color", description="CSS color override for the token."
     )
 
 
 class TokenConfigSchema(BaseModel):
-    token_profiles: Dict[str, SizeProfileSchema] = Field(
+    token_profiles: dict[str, SizeProfileSchema] = Field(
         default_factory=dict,
         title="Token Profiles",
         description="Named size and height presets.",
     )
-    aruco_defaults: Dict[int, ArucoDefinitionSchema] = Field(
+    aruco_defaults: dict[int, ArucoDefinitionSchema] = Field(
         default_factory=dict,
         title="ArUco Defaults",
         description="Global default settings for specific ArUco IDs.",
@@ -135,9 +135,9 @@ class WedgeSegmentSchema(BaseModel):
 class CoverResultSchema(BaseModel):
     ac_bonus: int = Field(..., title="AC Bonus")
     reflex_bonus: int = Field(..., title="Reflex Bonus")
-    best_apex: Tuple[int, int] = Field(..., title="Best Apex")
-    segments: List[WedgeSegmentSchema] = Field(..., title="Segments")
-    npc_pixels: List[Tuple[int, int]] = Field(..., title="NPC Pixels")
+    best_apex: tuple[int, int] = Field(..., title="Best Apex")
+    segments: list[WedgeSegmentSchema] = Field(..., title="Segments")
+    npc_pixels: list[tuple[int, int]] = Field(..., title="NPC Pixels")
     total_ratio: float = Field(default=0.0, title="Total Ratio")
     wall_ratio: float = Field(default=0.0, title="Wall Ratio")
     soft_ratio: float = Field(default=0.0, title="Soft Ratio")
@@ -155,12 +155,12 @@ class TokenSchema(BaseModel):
     world_z: float = Field(
         default=0.0, title="World Z", description="Height above the map surface."
     )
-    marker_x: Optional[float] = Field(
+    marker_x: float | None = Field(
         default=None,
         title="Marker X",
         description="Horizontal marker position at its actual height.",
     )
-    marker_y: Optional[float] = Field(
+    marker_y: float | None = Field(
         default=None,
         title="Marker Y",
         description="Vertical marker position at its actual height.",
@@ -168,18 +168,18 @@ class TokenSchema(BaseModel):
     marker_z: float = Field(
         default=0.0, title="Marker Z", description="Physical height of the marker."
     )
-    grid_x: Optional[int] = Field(
+    grid_x: int | None = Field(
         default=None, title="Grid X", description="Snapped horizontal grid coordinate."
     )
-    grid_y: Optional[int] = Field(
+    grid_y: int | None = Field(
         default=None, title="Grid Y", description="Snapped vertical grid coordinate."
     )
-    screen_x: Optional[float] = Field(
+    screen_x: float | None = Field(
         default=None,
         title="Screen X",
         description="Horizontal projector pixel position.",
     )
-    screen_y: Optional[float] = Field(
+    screen_y: float | None = Field(
         default=None, title="Screen Y", description="Vertical projector pixel position."
     )
     confidence: float = Field(
@@ -197,22 +197,22 @@ class TokenSchema(BaseModel):
         title="Is Duplicate",
         description="True if this is a ghost detection.",
     )
-    name: Optional[str] = Field(
+    name: str | None = Field(
         default=None, title="Name", description="Assigned name of the token."
     )
-    color: Optional[str] = Field(
+    color: str | None = Field(
         default=None, title="Color", description="Assigned color for the token ring."
     )
     type: str = Field(
         default="NPC", title="Type", description="Token type (e.g., PC, NPC)."
     )
-    profile: Optional[str] = Field(
+    profile: str | None = Field(
         default=None, title="Profile", description="The size profile name used."
     )
-    size: Optional[int] = Field(
+    size: int | None = Field(
         default=None, title="Size", description="Resolved size in grid units."
     )
-    height_mm: Optional[float] = Field(
+    height_mm: float | None = Field(
         default=None, title="Height (mm)", description="Resolved height in mm."
     )
 
@@ -224,10 +224,10 @@ class SessionDataSchema(BaseModel):
     viewport: ViewportStateSchema = Field(
         ..., title="Viewport", description="Saved pan and zoom state."
     )
-    tokens: List[TokenSchema] = Field(
+    tokens: list[TokenSchema] = Field(
         default_factory=list, title="Tokens", description="List of active tokens."
     )
-    door_states: Dict[str, bool] = Field(
+    door_states: dict[str, bool] = Field(
         default_factory=dict,
         title="Door States",
         description="Map of door IDs to their open/closed status.",
@@ -277,7 +277,7 @@ class MapEntrySchema(BaseModel):
     last_seen: str = Field(
         default="", title="Last Seen", description="ISO 8601 timestamp of last usage."
     )
-    aruco_overrides: Dict[int, ArucoDefinitionSchema] = Field(
+    aruco_overrides: dict[int, ArucoDefinitionSchema] = Field(
         default_factory=dict,
         title="ArUco Overrides",
         description="Map-specific marker definitions.",
@@ -372,17 +372,17 @@ class GlobalConfigSchema(BaseModel):
         title="Naming Style",
         description="Aesthetic style for automatically generated token names.",
     )
-    projector_pos_x_override: Optional[float] = Field(
+    projector_pos_x_override: float | None = Field(
         default=None,
         title="Projector X Override",
         description="Manually override the projector's X position (mm).",
     )
-    projector_pos_y_override: Optional[float] = Field(
+    projector_pos_y_override: float | None = Field(
         default=None,
         title="Projector Y Override",
         description="Manually override the projector's Y position (mm).",
     )
-    projector_pos_z_override: Optional[float] = Field(
+    projector_pos_z_override: float | None = Field(
         default=None,
         title="Projector Z Override",
         description="Manually override the projector's Z position (mm).",

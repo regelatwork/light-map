@@ -1,6 +1,7 @@
-import pytest
-import numpy as np
 import cv2
+import numpy as np
+import pytest
+
 from light_map.calibration.calibration_logic import calibrate_extrinsics
 
 
@@ -29,7 +30,7 @@ def test_calibrate_extrinsics_synthetic():
     token_sizes = {1: 1.0, 2: 1.0, 3: 1.0, 4: 1.0}
 
     object_points = []
-    for i, (px, py) in enumerate(projector_coords):
+    for _i, (px, py) in enumerate(projector_coords):
         wx = px / ppi_mm
         wy = py / ppi_mm
         wz = 25.0
@@ -70,7 +71,7 @@ def test_calibrate_extrinsics_synthetic():
                     [-size_px / 2, size_px / 2],
                 ]
 
-                for i, (px_c, py_c) in enumerate(projector_coords):
+                for _i, (px_c, py_c) in enumerate(projector_coords):
                     # Derive world corners for this token
                     w_corners = []
                     for dx, dy in offsets:

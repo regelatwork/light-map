@@ -1,6 +1,8 @@
-from unittest.mock import patch, MagicMock
 import os
+from unittest.mock import MagicMock, patch
+
 import pytest
+
 from light_map.map.map_config import MapConfigManager
 from light_map.map.session_manager import SessionManager
 

@@ -1,5 +1,6 @@
 import pytest
-from light_map.core.geometry import PointyTopHex, FlatTopHex
+
+from light_map.core.geometry import FlatTopHex, PointyTopHex
 
 
 def test_pointy_top_conversions():

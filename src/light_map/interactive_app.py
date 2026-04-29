@@ -1,67 +1,67 @@
 from __future__ import annotations
-import numpy as np
-import time
+
+import logging
 import os
 import sys
-import logging
-from typing import List, Tuple, Any, Dict, Optional, TYPE_CHECKING, Callable
+import time
+from collections.abc import Callable
+from typing import TYPE_CHECKING, Any
 
+import numpy as np
+
+from light_map.core.analytics import AnalyticsManager
 from light_map.core.common_types import (
     AppConfig,
     Layer,
+    MapRenderState,
     SceneId,
     TimerKey,
-    MapRenderState,
 )
-from light_map.rendering.renderer import Renderer
-from light_map.map.map_system import MapSystem
-from light_map.map.map_config import MapConfigManager
-from light_map.visibility.fow_manager import FogOfWarManager
-from light_map.visibility.visibility_engine import VisibilityEngine
-
-from light_map.core.analytics import AnalyticsManager
-from light_map.core.notification import NotificationManager
 from light_map.core.layer_stack_manager import LayerStackManager
+from light_map.core.notification import NotificationManager
 from light_map.core.scene import Scene
 from light_map.core.scene_manager import SceneManager
-
-
-from light_map.vision.infrastructure.tracking_coordinator import TrackingCoordinator
-from light_map.vision.processing.input_processor import InputProcessor
-from light_map.vision.detectors.aruco_detector import ArucoTokenDetector
-from light_map.vision.environment_manager import EnvironmentManager
+from light_map.map.map_config import MapConfigManager
+from light_map.map.map_system import MapSystem
 from light_map.rendering.projection import (
-    Projector3DModel,
     CameraProjectionModel,
     ProjectionService,
+    Projector3DModel,
 )
-
+from light_map.rendering.renderer import Renderer
 from light_map.state.world_state import WorldState
+from light_map.visibility.fow_manager import FogOfWarManager
+from light_map.visibility.visibility_engine import VisibilityEngine
+from light_map.vision.detectors.aruco_detector import ArucoTokenDetector
+from light_map.vision.environment_manager import EnvironmentManager
+from light_map.vision.infrastructure.tracking_coordinator import TrackingCoordinator
+from light_map.vision.processing.input_processor import InputProcessor
+
 
 if TYPE_CHECKING:
+    from light_map.core.app_context import MainContext
     from light_map.core.common_types import Action, Token
     from light_map.core.scene import SceneTransition
-    from light_map.core.app_context import MainContext
 
 
-from light_map.state.temporal_event_manager import TemporalEventManager
 from light_map.action_dispatcher import ActionDispatcher
+from light_map.calibration.calibration_scenes import (
+    ExtrinsicsCalibrationScene,
+    FlashCalibrationScene,
+    IntrinsicsCalibrationScene,
+    MapGridCalibrationScene,
+    PpiCalibrationScene,
+    Projector3DCalibrationScene,
+    ProjectorCalibrationScene,
+)
 from light_map.input.input_coordinator import InputCoordinator
+from light_map.map.map_scene import MapScene, ViewingScene
 
 # Re-added for backward compatibility with tests
 from light_map.menu.menu_scene import MenuScene
-from light_map.map.map_scene import MapScene, ViewingScene
-from light_map.vision.scanning_scene import ScanningScene
+from light_map.state.temporal_event_manager import TemporalEventManager
 from light_map.visibility.exclusive_vision_scene import ExclusiveVisionScene
-from light_map.calibration.calibration_scenes import (
-    FlashCalibrationScene,
-    PpiCalibrationScene,
-    MapGridCalibrationScene,
-    IntrinsicsCalibrationScene,
-    ProjectorCalibrationScene,
-    ExtrinsicsCalibrationScene,
-    Projector3DCalibrationScene,
-)
+from light_map.vision.scanning_scene import ScanningScene
 
 
 class InteractiveApp:
@@ -69,7 +69,7 @@ class InteractiveApp:
         self,
         config: AppConfig,
         time_provider=time.monotonic,
-        events: Optional[TemporalEventManager] = None,
+        events: TemporalEventManager | None = None,
     ):
         self.config = config
         self.time_provider = time_provider
@@ -104,7 +104,7 @@ class InteractiveApp:
         # Visibility and FoW Systems - Temporary engines until map is loaded
         self.visibility_engine = VisibilityEngine(grid_spacing_svg=10.0)
         self.fow_manager = FogOfWarManager(config.width, config.height)
-        self.current_map_path: Optional[str] = None
+        self.current_map_path: str | None = None
 
         # New Modular Coordinators
         self.tracking_coordinator = TrackingCoordinator(time_provider)
@@ -123,8 +123,8 @@ class InteractiveApp:
             self.map_config.scan_for_maps(config.map_search_patterns)
 
         # Initialize Managers and Contexts
-        from light_map.persistence.persistence_service import PersistenceService
         from light_map.core.scene_manager import SceneManager
+        from light_map.persistence.persistence_service import PersistenceService
 
         # AppContext (shared state for scenes)
         self.app_context = self._create_main_context()
@@ -336,15 +336,15 @@ class InteractiveApp:
         self.state.current_scene_name = value
 
     @property
-    def scenes(self) -> Dict[SceneId, Scene]:
+    def scenes(self) -> dict[SceneId, Scene]:
         return self.scene_manager.scenes
 
-    def get_layer_stack(self) -> List[Layer]:
+    def get_layer_stack(self) -> list[Layer]:
         return self.scene_manager.get_layer_stack()
 
     # Delegate properties to layer_manager for backward compatibility
     @property
-    def layer_stack(self) -> List[Layer]:
+    def layer_stack(self) -> list[Layer]:
         return self.layer_manager.layer_stack
 
     @property
@@ -396,8 +396,8 @@ class InteractiveApp:
         return self.layer_manager.exclusive_vision_layer
 
     def process_state(
-        self, state: Optional["WorldState"] = None, actions: List["Action"] = None
-    ) -> Tuple[Optional[np.ndarray], List[str]]:
+        self, state: WorldState | None = None, actions: list[Action] = None
+    ) -> tuple[np.ndarray | None, list[str]]:
         from light_map.core.analytics import track_wait
 
         self.instrument.log_and_reset_if_needed(interval_s=1.0, level=logging.DEBUG)
@@ -521,7 +521,7 @@ class InteractiveApp:
     def _switch_scene(self, transition: SceneTransition):
         self.scene_manager.handle_transition(transition)
 
-    def _sync_vision(self, state: "WorldState"):
+    def _sync_vision(self, state: WorldState):
         self.environment_manager.sync_vision(state)
 
     def _rebuild_visibility_stack(self, entry: Any):
@@ -529,12 +529,12 @@ class InteractiveApp:
             entry, self.current_map_path, self.scene_manager.scenes
         )
 
-    def _sync_blockers_to_state(self, state: Optional["WorldState"] = None):
+    def _sync_blockers_to_state(self, state: WorldState | None = None):
         self.environment_manager.sync_blockers_to_state(state)
 
     def _handle_payloads(
-        self, payload: Any, state: Optional["WorldState"] = None
-    ) -> Optional["SceneTransition"]:
+        self, payload: Any, state: WorldState | None = None
+    ) -> SceneTransition | None:
         return self.action_dispatcher.dispatch(payload, state)
 
     def load_map(self, filename: str, load_session: bool = False):
@@ -602,7 +602,7 @@ class InteractiveApp:
         self.scene_manager.transition_to(SceneId.VIEWING)
 
     @property
-    def aruco_mapper(self) -> Optional[Callable[[Dict[str, Any]], List[Token]]]:
+    def aruco_mapper(self) -> Callable[[dict[str, Any]], list[Token]] | None:
         if not self.app_context.aruco_detector:
             return None
 
@@ -637,11 +637,11 @@ class InteractiveApp:
 
     def _load_camera_calibration(
         self,
-    ) -> Tuple[
-        Optional[np.ndarray],
-        Optional[np.ndarray],
-        Optional[np.ndarray],
-        Optional[np.ndarray],
+    ) -> tuple[
+        np.ndarray | None,
+        np.ndarray | None,
+        np.ndarray | None,
+        np.ndarray | None,
     ]:
         camera_matrix = None
         distortion_coefficients = None
@@ -704,7 +704,7 @@ class InteractiveApp:
         camera_matrix: np.ndarray,
         rotation_vector: np.ndarray,
         translation_vector: np.ndarray,
-    ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+    ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
         cam_w, cam_h = self.config.camera_resolution
         calib_w, calib_h = self.config.projector_matrix_resolution
         if cam_w == 0 or calib_w == 0 or (cam_w == calib_w and cam_h == calib_h):
@@ -725,13 +725,12 @@ class InteractiveApp:
         self.config.projector_matrix = self.config.projector_matrix @ scale_matrix
         return new_camera_matrix, rotation_vector, translation_vector
 
-    def _update_tactical_bonuses(self, state: "WorldState"):
+    def _update_tactical_bonuses(self, state: WorldState):
         """
         Calculates tactical cover bonuses for the currently selected token.
         This provides the data needed for the GM Dashboard's tactical view.
         """
         from light_map.core.common_types import SelectionType
-        import numpy as np
 
         if state.selection.type != SelectionType.TOKEN or not state.selection.id:
             if state.tactical_bonuses:

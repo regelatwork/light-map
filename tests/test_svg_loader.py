@@ -1,5 +1,6 @@
-import pytest
 import numpy as np
+import pytest
+
 from light_map.rendering.svg import SVGLoader
 
 

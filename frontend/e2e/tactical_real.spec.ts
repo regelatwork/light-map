@@ -12,7 +12,7 @@ test.describe('Tactical Cover Real Integration', () => {
     // Inject the real API host from environment variable
     const apiHost = process.env.VITE_API_HOST || 'localhost:8000';
     await page.addInitScript((host) => {
-      (window as any).VITE_API_HOST = host;
+      (window as unknown as { VITE_API_HOST: string }).VITE_API_HOST = host;
     }, apiHost);
 
     // Clear any existing mocks/routes to ensure we hit the real backend
@@ -45,11 +45,11 @@ test.describe('Tactical Cover Real Integration', () => {
     console.log('Clicked attacker token');
 
     // 5. Verify the backend survives and returns data via API check (with retries for calculation time)
-    let data: any = {};
+    let data: Record<string, unknown> = {};
     for (let i = 0; i < 10; i++) {
         const response = await page.request.get(`http://${apiHost}/tactical/cover?attacker_id=1`);
         expect(response.ok()).toBeTruthy();
-        data = await response.json();
+        data = await response.json() as Record<string, unknown>;
         console.log(`POLL ${i} API DATA keys:`, Object.keys(data));
         if (Object.keys(data).length > 0) break;
         await page.waitForTimeout(2000);

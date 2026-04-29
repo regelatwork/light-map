@@ -1,9 +1,10 @@
-from typing import Any, List, Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Optional
 
 import numpy as np
 
-from light_map.core.common_types import Layer, AppConfig
 from light_map.core.analytics import LatencyInstrument, track_wait
+from light_map.core.common_types import AppConfig, Layer
+
 
 if TYPE_CHECKING:
     from light_map.rendering.projection import Projector3DModel
@@ -31,7 +32,7 @@ class Renderer:
 
         # Version tracking: Dict[Layer, int]
         self.last_layer_versions = {}
-        self._last_layer_stack: List[Layer] = []
+        self._last_layer_stack: list[Layer] = []
 
     @property
     def width(self) -> int:
@@ -52,10 +53,10 @@ class Renderer:
     def render(
         self,
         state: Any,
-        layers: List[Layer],
+        layers: list[Layer],
         current_time: float = 0.0,
-        instrument: Optional[LatencyInstrument] = None,
-    ) -> Optional[np.ndarray]:
+        instrument: LatencyInstrument | None = None,
+    ) -> np.ndarray | None:
         """
         Composites all provided layers into the final output buffer.
         Returns None if no layers requested a new render and compositing was skipped.
@@ -84,7 +85,7 @@ class Renderer:
 
         # 2. Composite All Layers
         self.output_buffer.fill(0)
-        for i, layer in enumerate(layers):
+        for _i, layer in enumerate(layers):
             layer_name = layer.__class__.__name__
             with track_wait(f"layer_render_{layer_name}", instrument):
                 layer_patches, layer_version = layer.render(current_time)

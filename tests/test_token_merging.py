@@ -1,6 +1,7 @@
 import time
-from light_map.state.world_state import WorldState
+
 from light_map.core.common_types import DetectionResult, ResultType, Token
+from light_map.state.world_state import WorldState
 
 
 def test_token_merging_physical_and_remote():

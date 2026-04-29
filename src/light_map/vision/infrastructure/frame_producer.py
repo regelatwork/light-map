@@ -1,8 +1,8 @@
-import numpy as np
 import logging
 import multiprocessing as mp
 from multiprocessing.shared_memory import SharedMemory
-from typing import Optional
+
+import numpy as np
 
 
 class FrameProducer:
@@ -39,8 +39,8 @@ class FrameProducer:
         )  # Note: In a real system, this Lock would be shared from the manager
 
         # Internal state
-        self._current_buffer_id: Optional[int] = None
-        self._current_frame_view: Optional[np.ndarray] = None
+        self._current_buffer_id: int | None = None
+        self._current_frame_view: np.ndarray | None = None
 
         # Persistent views for control block
         self._ref_counts = np.frombuffer(
@@ -61,7 +61,7 @@ class FrameProducer:
 
         logging.info(f"FrameProducer attached to shared memory: {shm_name}")
 
-    def get_latest_timestamp(self) -> Optional[int]:
+    def get_latest_timestamp(self) -> int | None:
         """Returns the timestamp of the most recently published frame."""
         if not hasattr(self, "_latest_id") or self._latest_id is None:
             return None
@@ -77,7 +77,7 @@ class FrameProducer:
                 return None
             return int(self._timestamps[latest_id])
 
-    def get_shm_pushed_timestamp(self) -> Optional[int]:
+    def get_shm_pushed_timestamp(self) -> int | None:
         """Returns the timestamp of when the most recent frame was pushed to SHM."""
         if not hasattr(self, "_latest_id") or self._latest_id is None:
             return None
@@ -89,7 +89,7 @@ class FrameProducer:
                 return None
             return int(self._shm_pushed_ts[latest_id])
 
-    def get_latest_frame(self) -> Optional[np.ndarray]:
+    def get_latest_frame(self) -> np.ndarray | None:
         """
         Acquires a lease on the latest frame and returns it as a numpy view.
         MUST call release() before calling this again.

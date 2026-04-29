@@ -1,8 +1,10 @@
-import pytest
-import numpy as np
 from unittest.mock import MagicMock, patch
-from light_map.interactive_app import InteractiveApp
+
+import numpy as np
+import pytest
+
 from light_map.core.common_types import AppConfig, SessionData, ViewportState
+from light_map.interactive_app import InteractiveApp
 from light_map.visibility.visibility_types import VisibilityBlocker, VisibilityType
 
 

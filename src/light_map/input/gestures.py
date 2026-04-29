@@ -1,19 +1,20 @@
 import numpy as np
+
 from light_map.core.common_types import GestureType
 from light_map.core.constants import (
-    WRIST,
-    THUMB_TIP,
-    THUMB_IP,
-    INDEX_TIP,
-    INDEX_PIP,
     INDEX_MCP,
-    MIDDLE_TIP,
+    INDEX_PIP,
+    INDEX_TIP,
     MIDDLE_PIP,
-    RING_TIP,
-    RING_PIP,
-    PINKY_TIP,
-    PINKY_PIP,
+    MIDDLE_TIP,
     PINKY_MCP,
+    PINKY_PIP,
+    PINKY_TIP,
+    RING_PIP,
+    RING_TIP,
+    THUMB_IP,
+    THUMB_TIP,
+    WRIST,
 )
 
 

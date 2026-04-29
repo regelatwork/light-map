@@ -1,9 +1,11 @@
-import pytest
-import numpy as np
 from unittest.mock import MagicMock
-from light_map.interactive_app import InteractiveApp
-from light_map.core.common_types import AppConfig, TimerKey
+
+import numpy as np
+import pytest
+
 import light_map.menu.menu_config as config_vars
+from light_map.core.common_types import AppConfig, TimerKey
+from light_map.interactive_app import InteractiveApp
 
 
 @pytest.fixture

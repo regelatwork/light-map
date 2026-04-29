@@ -1,8 +1,10 @@
-import pytest
-import numpy as np
 from unittest.mock import MagicMock
-from light_map.vision.processing.input_processor import InputProcessor
+
+import numpy as np
+import pytest
+
 from light_map.core.common_types import AppConfig, GestureType
+from light_map.vision.processing.input_processor import InputProcessor
 
 
 @pytest.fixture

@@ -1,10 +1,12 @@
-import pytest
-import numpy as np
-import cv2
 import os
 from unittest.mock import patch
-from light_map.vision.detectors.aruco_detector import ArucoTokenDetector
+
+import cv2
+import numpy as np
+import pytest
+
 from light_map.map.map_system import MapSystem
+from light_map.vision.detectors.aruco_detector import ArucoTokenDetector
 
 
 def test_token_vertical_projection():

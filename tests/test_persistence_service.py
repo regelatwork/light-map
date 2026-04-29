@@ -1,9 +1,11 @@
-import pytest
 import os
 from unittest.mock import MagicMock, patch
+
+import pytest
+
+from light_map.core.common_types import GridType, MapRenderState
 from light_map.persistence.persistence_service import PersistenceService
 from light_map.state.world_state import WorldState
-from light_map.core.common_types import MapRenderState, GridType
 
 
 @pytest.fixture

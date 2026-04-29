@@ -1,12 +1,13 @@
 import os
-from light_map.map.map_config import MapConfigManager
+
 from light_map.core.common_types import NamingStyle
 from light_map.core.token_naming import (
-    generate_token_name,
-    NAMES_SCI_FI,
-    NAMES_FANTASY,
     NAMES_AMERICAN,
+    NAMES_FANTASY,
+    NAMES_SCI_FI,
+    generate_token_name,
 )
+from light_map.map.map_config import MapConfigManager
 
 
 def test_generate_token_name_stability():

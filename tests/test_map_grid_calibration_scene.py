@@ -1,17 +1,18 @@
-import pytest
-from unittest.mock import MagicMock, patch
-import numpy as np
 import os
+from unittest.mock import MagicMock, patch
 
-from light_map.core.app_context import AppContext
+import numpy as np
+import pytest
+
 from light_map.calibration.calibration_scenes import (
-    MapGridCalibrationScene,
     GridOverlay,
+    MapGridCalibrationScene,
 )
+from light_map.core.app_context import AppContext
 from light_map.core.common_types import AppConfig, GestureType, SceneId
 from light_map.core.scene import HandInput, SceneTransition
-from light_map.map.map_system import MapSystem, MapState
 from light_map.map.map_config import MapEntry
+from light_map.map.map_system import MapState, MapSystem
 
 
 @pytest.fixture

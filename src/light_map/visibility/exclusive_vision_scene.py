@@ -1,22 +1,25 @@
 from __future__ import annotations
+
 import logging
-from typing import TYPE_CHECKING, List, Optional
+from typing import TYPE_CHECKING
 
 import numpy as np
-from light_map.core.scene import SceneTransition
+
 from light_map.core.common_types import (
-    SceneId,
     Action,
-    TimerKey,
     MapRenderState,
+    SceneId,
+    TimerKey,
 )
+from light_map.core.scene import SceneTransition
 from light_map.input.gestures import GestureType
 from light_map.map.map_scene import BaseMapScene
 
+
 if TYPE_CHECKING:
     from light_map.core.app_context import AppContext
-    from light_map.core.scene import HandInput
     from light_map.core.common_types import Layer
+    from light_map.core.scene import HandInput
 
 
 class ExclusiveVisionScene(BaseMapScene):
@@ -27,7 +30,7 @@ class ExclusiveVisionScene(BaseMapScene):
 
     def __init__(self, context: AppContext):
         super().__init__(context)
-        self.token_id: Optional[int] = None
+        self.token_id: int | None = None
         self.last_update_time = 0.0
 
     def on_enter(self, payload: dict | None = None) -> None:
@@ -60,7 +63,7 @@ class ExclusiveVisionScene(BaseMapScene):
         self.context.events.cancel(TimerKey.INSPECTION_LINGER)
         logging.info("Exited ExclusiveVisionScene")
 
-    def get_active_layers(self, app: AppContext) -> List[Layer]:
+    def get_active_layers(self, app: AppContext) -> list[Layer]:
         """
         Returns the layer stack for exclusive vision.
         Injects the ExclusiveVisionLayer above the background composite.
@@ -96,8 +99,8 @@ class ExclusiveVisionScene(BaseMapScene):
         return stack
 
     def update(
-        self, inputs: List[HandInput], actions: List[Action], current_time: float
-    ) -> Optional[SceneTransition]:
+        self, inputs: list[HandInput], actions: list[Action], current_time: float
+    ) -> SceneTransition | None:
         # ALWAYS update mask and tactical bonuses
         self._update_inspection_mask()
 

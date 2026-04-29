@@ -1,11 +1,15 @@
 from __future__ import annotations
-import cv2
-import numpy as np
+
 import math
 from collections import deque
-from typing import List, Tuple, Dict, Optional, TYPE_CHECKING, Set
-from light_map.visibility.visibility_types import VisibilityType, VisibilityBlocker
-from light_map.core.common_types import Token, GridType, CoverResult, WedgeSegment
+from typing import TYPE_CHECKING
+
+import cv2
+import numpy as np
+
+from light_map.core.common_types import CoverResult, GridType, Token, WedgeSegment
+from light_map.visibility.visibility_types import VisibilityBlocker, VisibilityType
+
 
 # Optional Numba support
 try:
@@ -81,8 +85,8 @@ if HAS_NUMBA:
         npc_pixels: np.ndarray,
         pc_pixels: np.ndarray,
         blocker_mask: np.ndarray,
-        target_center: Tuple[int, int],
-    ) -> Tuple[float, float, float, int]:
+        target_center: tuple[int, int],
+    ) -> tuple[float, float, float, int]:
         """
         Numba-optimized check of visibility from all PC boundary pixels to all NPC boundary pixels.
         Calculates:
@@ -249,7 +253,7 @@ if HAS_NUMBA:
         cy: float,
         num_blockers: int,
         viewer_starts_in_tall: bool,
-    ) -> Tuple[np.ndarray, np.ndarray]:
+    ) -> tuple[np.ndarray, np.ndarray]:
         """
         Numba-optimized BFS visibility propagation.
         Tracks which blocker IDs were 'discovered' during the fill.
@@ -346,21 +350,21 @@ class VisibilityEngine:
     """
 
     def __init__(
-        self, grid_spacing_svg: float, grid_origin: Tuple[float, float] = (0.0, 0.0)
+        self, grid_spacing_svg: float, grid_origin: tuple[float, float] = (0.0, 0.0)
     ):
         self.grid_spacing_svg = grid_spacing_svg
         self.grid_origin = grid_origin
-        self.blockers: List[VisibilityBlocker] = []
+        self.blockers: list[VisibilityBlocker] = []
 
         # Mask Cache: (token_id, grid_x, grid_y, size) -> (vis_mask, discovered_ids)
-        self.mask_cache: Dict[
-            Tuple[int, int, int, int], Tuple[np.ndarray, Set[str]]
+        self.mask_cache: dict[
+            tuple[int, int, int, int], tuple[np.ndarray, set[str]]
         ] = {}
 
-        self._footprint_cache: Dict[Tuple[int, GridType], np.ndarray] = {}
+        self._footprint_cache: dict[tuple[int, GridType], np.ndarray] = {}
 
-        self.blocker_mask: Optional[np.ndarray] = None
-        self.blocker_id_map: Optional[np.ndarray] = None
+        self.blocker_mask: np.ndarray | None = None
+        self.blocker_id_map: np.ndarray | None = None
         self.svg_to_mask_scale = 16.0 / grid_spacing_svg
 
     @property
@@ -371,12 +375,12 @@ class VisibilityEngine:
     def height(self) -> int:
         return self.blocker_mask.shape[0] if self.blocker_mask is not None else 0
 
-    def calculate_mask_dimensions(self, svg_w: float, svg_h: float) -> Tuple[int, int]:
+    def calculate_mask_dimensions(self, svg_w: float, svg_h: float) -> tuple[int, int]:
         return int(svg_w * self.svg_to_mask_scale), int(svg_h * self.svg_to_mask_scale)
 
     def update_blockers(
         self,
-        blockers: List[VisibilityBlocker],
+        blockers: list[VisibilityBlocker],
         mask_width: int = 0,
         mask_height: int = 0,
     ):
@@ -580,7 +584,7 @@ class VisibilityEngine:
         size: int,
         grid_type: GridType = GridType.SQUARE,
         ignore_blockers: bool = False,
-    ) -> Tuple[np.ndarray, np.ndarray]:
+    ) -> tuple[np.ndarray, np.ndarray]:
         """
         Calculates the token's 'light source' footprint.
         Uses BFS constrained by grid cell boundaries (square or hex).
@@ -685,7 +689,7 @@ class VisibilityEngine:
 
     def _get_footprint_border_points(
         self, footprint: np.ndarray
-    ) -> List[Tuple[int, int]]:
+    ) -> list[tuple[int, int]]:
         """
         Extracts the (x, y) coordinates of all pixels on the perimeter of the footprint.
         Uses cv2.findContours to ensure they are returned in a spatially ordered path.
@@ -702,7 +706,7 @@ class VisibilityEngine:
 
         # Pick the largest contour (the token itself)
         main_contour = max(contours, key=cv2.contourArea)
-        
+
         # Reshape (N, 1, 2) to (N, 2)
         points = main_contour.reshape((-1, 2))
         return [(int(p[0]), int(p[1])) for p in points]
@@ -733,7 +737,7 @@ class VisibilityEngine:
         self,
         source_token: Token,
         target_token: Token,
-        blocker_mask_override: Optional[np.ndarray] = None,
+        blocker_mask_override: np.ndarray | None = None,
     ) -> CoverResult:
         """
         Calculates AC and Reflex save bonuses for a target token viewed from a source token.
@@ -900,7 +904,7 @@ class VisibilityEngine:
             explanation=explanation,
         )
 
-    def _is_line_obstructed(self, p1: Tuple[int, int], p2: Tuple[int, int]) -> bool:
+    def _is_line_obstructed(self, p1: tuple[int, int], p2: tuple[int, int]) -> bool:
         """
         Checks if any pixel on the line between p1 and p2 is a blocker.
         Returns True if a blocker is found at p1 or any point in between EXCEPT p2.
@@ -937,10 +941,10 @@ class VisibilityEngine:
 
     def _find_visible_source(
         self,
-        target_p: Tuple[int, int],
-        border_points: List[Tuple[int, int]],
-        hint_source: Optional[Tuple[int, int]] = None,
-    ) -> Optional[Tuple[int, int]]:
+        target_p: tuple[int, int],
+        border_points: list[tuple[int, int]],
+        hint_source: tuple[int, int] | None = None,
+    ) -> tuple[int, int] | None:
         """
         Finds a point in border_points that has LOS to target_p.
         Checks the hint_source first for optimization.
@@ -963,7 +967,7 @@ class VisibilityEngine:
         vision_range_px: int,
         mask_w: int,
         mask_h: int,
-    ) -> Tuple[np.ndarray, Set[str]]:
+    ) -> tuple[np.ndarray, set[str]]:
         """
         Calculates visibility using a BFS constrained by Line-of-Sight.
         Returns (vision_mask, discovered_ids).
@@ -1067,7 +1071,7 @@ class VisibilityEngine:
         mask_width: int,
         mask_height: int,
         grid_type: GridType = GridType.SQUARE,
-    ) -> Tuple[np.ndarray, Set[str]]:
+    ) -> tuple[np.ndarray, set[str]]:
         """
         Calculates a unioned LOS mask and discovered door IDs.
         """
@@ -1094,13 +1098,13 @@ class VisibilityEngine:
 
     def get_aggregate_vision_mask(
         self,
-        tokens: List[Token],
+        tokens: list[Token],
         map_config: MapConfigManager,
         mask_width: int,
         mask_height: int,
         vision_range_grid: float = 25.0,
         grid_type: GridType = GridType.SQUARE,
-    ) -> Tuple[Optional[np.ndarray], Set[str]]:
+    ) -> tuple[np.ndarray | None, set[str]]:
         """
         Calculates combined vision mask and set of discovered door IDs for all PC tokens.
         """

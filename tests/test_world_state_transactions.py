@@ -1,5 +1,5 @@
-from light_map.state.world_state import WorldState
 from light_map.state.versioned_atom import VersionedAtom
+from light_map.state.world_state import WorldState
 
 
 def test_world_state_transaction_batches_timestamps():

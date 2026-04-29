@@ -1,6 +1,8 @@
-import pytest
-from light_map.vision.infrastructure.process_manager import VisionProcessManager
 from multiprocessing.shared_memory import SharedMemory
+
+import pytest
+
+from light_map.vision.infrastructure.process_manager import VisionProcessManager
 
 
 def test_process_manager_lifecycle():

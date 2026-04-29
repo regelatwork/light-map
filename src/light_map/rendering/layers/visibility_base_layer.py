@@ -1,16 +1,17 @@
+import math
+
 import cv2
 import numpy as np
-import math
 import svgelements
-from typing import List
-from light_map.core.common_types import Layer, ImagePatch
-from light_map.state.world_state import WorldState
+
+from light_map.core.common_types import ImagePatch, Layer
 from light_map.core.constants import (
-    VISIBILITY_SHROUD_ALPHA,
     ALPHA_OPAQUE,
     ALPHA_TRANSPARENT,
     GRID_MASK_PPI,
+    VISIBILITY_SHROUD_ALPHA,
 )
+from light_map.state.world_state import WorldState
 
 
 class VisibilityBaseLayer(Layer):
@@ -34,7 +35,7 @@ class VisibilityBaseLayer(Layer):
         mask: np.ndarray,
         shroud_alpha: int = VISIBILITY_SHROUD_ALPHA,
         background_alpha: int = 0,
-    ) -> List[ImagePatch]:
+    ) -> list[ImagePatch]:
         """Core logic to transform a vision mask to screen space patches."""
         mask_h, mask_w = mask.shape[:2]
 

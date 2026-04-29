@@ -1,8 +1,12 @@
 from __future__ import annotations
+
 import time
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import List, Callable, TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
+
 from light_map.core.common_types import TimerKey
+
 
 if TYPE_CHECKING:
     from light_map.state.temporal_event_manager import TemporalEventManager
@@ -28,8 +32,8 @@ class NotificationManager:
     def __init__(
         self,
         time_provider: Callable[[], float] = time.monotonic,
-        events: Optional[TemporalEventManager] = None,
-        atom: Optional[VersionedAtom] = None,
+        events: TemporalEventManager | None = None,
+        atom: VersionedAtom | None = None,
     ):
         self.time_provider = time_provider
         self.events = events
@@ -95,7 +99,7 @@ class NotificationManager:
         if len(new_list) != len(original):
             self.atom.update(new_list)
 
-    def get_active_notifications(self) -> List[str]:
+    def get_active_notifications(self) -> list[str]:
         """Returns a list of messages for currently active notifications."""
         self._prune_expired()
         return [n.message for n in self.atom.value] if self.atom else []

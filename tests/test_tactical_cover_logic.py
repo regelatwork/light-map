@@ -1,10 +1,11 @@
 import numpy as np
+
+from light_map.core.common_types import Token
 from light_map.visibility.visibility_engine import (
-    VisibilityEngine,
     MASK_VALUE_LOW,
     MASK_VALUE_WALL,
+    VisibilityEngine,
 )
-from light_map.core.common_types import Token
 
 
 def test_calculate_cover_bonuses_starfinder_rules():
@@ -129,7 +130,7 @@ def test_token_size_impact():
     engine.blocker_mask = np.zeros((100, 100), dtype=np.uint8)
 
     source = Token(id=1, world_x=10, world_y=10, size=1)
-    
+
     # Target size 1
     target1 = Token(id=2, world_x=50, world_y=50, size=1)
     res1 = engine.calculate_token_cover_bonuses(source, target1)

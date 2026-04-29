@@ -1,9 +1,10 @@
+from unittest.mock import MagicMock
+
+from light_map.core.common_types import Action, DetectionResult, ResultType
 from light_map.core.main_loop import MainLoopController
+from light_map.input.input_manager import InputManager
 from light_map.state.world_state import WorldState
 from light_map.vision.infrastructure.process_manager import VisionProcessManager
-from light_map.input.input_manager import InputManager
-from light_map.core.common_types import DetectionResult, ResultType, Action
-from unittest.mock import MagicMock
 
 
 def test_main_loop_iteration():

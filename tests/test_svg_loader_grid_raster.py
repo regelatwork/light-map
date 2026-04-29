@@ -1,7 +1,9 @@
-import pytest
 import base64
+
 import cv2
 import numpy as np
+import pytest
+
 from light_map.rendering.svg import SVGLoader
 
 

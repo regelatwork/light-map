@@ -1,5 +1,5 @@
-from light_map.visibility.visibility_engine import VisibilityEngine, MASK_VALUE_WALL
-from light_map.visibility.visibility_types import VisibilityType, VisibilityBlocker
+from light_map.visibility.visibility_engine import MASK_VALUE_WALL, VisibilityEngine
+from light_map.visibility.visibility_types import VisibilityBlocker, VisibilityType
 
 
 def test_wall_priority_over_tall_object():

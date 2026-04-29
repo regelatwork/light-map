@@ -1,5 +1,6 @@
-import py_compile
 import os
+import py_compile
+
 import pytest
 
 

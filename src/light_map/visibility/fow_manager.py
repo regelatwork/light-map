@@ -1,7 +1,7 @@
-import numpy as np
-import cv2
 import logging
-from typing import Optional, Set
+
+import cv2
+import numpy as np
 
 
 class FogOfWarManager:
@@ -21,7 +21,7 @@ class FogOfWarManager:
         self.visible_mask = np.zeros((height, width), dtype=np.uint8)
 
         # Persistent discovered object IDs (doors, tall objects, etc.)
-        self.discovered_ids: Set[str] = set()
+        self.discovered_ids: set[str] = set()
 
         # GM Override: If True, everything is visible
         self.is_disabled = False
@@ -44,7 +44,7 @@ class FogOfWarManager:
                 interpolation=cv2.INTER_NEAREST,
             )
 
-    def reveal_area(self, mask: np.ndarray, discovered_ids: Optional[Set[str]] = None):
+    def reveal_area(self, mask: np.ndarray, discovered_ids: set[str] | None = None):
         """Unions the provided mask into the explored state and updates discovered objects."""
         if mask.shape != self.explored_mask.shape:
             mask = cv2.resize(

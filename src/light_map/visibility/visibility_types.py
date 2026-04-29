@@ -4,7 +4,6 @@ from dataclasses import dataclass
 # Changes here MUST be kept in sync with the frontend.
 # This is enforced by tests/test_enum_sync.py.
 from enum import StrEnum
-from typing import List, Tuple
 
 
 class VisibilityType(StrEnum):
@@ -21,7 +20,7 @@ class VisibilityBlocker:
     Represents a physical or visual obstacle extracted from an SVG map.
     """
 
-    points: List[Tuple[float, float]]  # Coordinate pairs (x, y)
+    points: list[tuple[float, float]]  # Coordinate pairs (x, y)
     type: VisibilityType
     layer_name: str
     id: str = ""

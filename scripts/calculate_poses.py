@@ -1,7 +1,8 @@
-import numpy as np
-import cv2
 import json
 from pathlib import Path
+
+import cv2
+import numpy as np
 
 
 def get_position(rotation_vector, translation_vector):
@@ -26,7 +27,7 @@ def main():
     overrides = {"x": None, "y": None, "z": None}
     if config_file.exists():
         try:
-            with open(config_file, "r") as f:
+            with open(config_file) as f:
                 config_data = json.load(f)
                 global_settings = config_data.get("global", {})
                 overrides["x"] = global_settings.get("projector_pos_x_override")

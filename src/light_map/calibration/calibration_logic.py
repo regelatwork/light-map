@@ -1,15 +1,15 @@
-import cv2
-import numpy as np
 import logging
 import time
-from typing import Optional, Tuple, Dict, List
 
-from light_map.vision.infrastructure.camera import Camera
-from light_map.rendering.projector import (
-    generate_calibration_pattern,
-    compute_projector_homography,
-)
+import cv2
+import numpy as np
+
 from light_map.core.display_utils import ProjectorWindow
+from light_map.rendering.projector import (
+    compute_projector_homography,
+    generate_calibration_pattern,
+)
+from light_map.vision.infrastructure.camera import Camera
 
 
 def run_calibration_sequence(
@@ -18,7 +18,7 @@ def run_calibration_sequence(
     projector_height: int = 1080,
     rows: int = 13,
     cols: int = 18,
-) -> Optional[Tuple[np.ndarray, np.ndarray, np.ndarray]]:
+) -> tuple[np.ndarray, np.ndarray, np.ndarray] | None:
     """
     Runs the projector calibration sequence using an existing camera instance.
     Returns (matrix, cam_pts, proj_pts) or None.
@@ -81,9 +81,9 @@ def calculate_ppi_from_frame(
     frame: np.ndarray,
     projector_matrix: np.ndarray,
     target_dist_mm: float = 100.0,
-    aruco_corners: Optional[Tuple[np.ndarray, ...]] = None,
-    aruco_ids: Optional[np.ndarray] = None,
-) -> Optional[float]:
+    aruco_corners: tuple[np.ndarray, ...] | None = None,
+    aruco_ids: np.ndarray | None = None,
+) -> float | None:
     """
     Calculates Projector PPI using pre-detected ArUco markers or internal detection from frame.
     """
@@ -139,15 +139,15 @@ def calibrate_extrinsics(
     projector_matrix: np.ndarray,
     camera_matrix: np.ndarray,
     distortion_coefficients: np.ndarray,
-    token_heights: Dict[int, float],
+    token_heights: dict[int, float],
     ppi: float,
-    ground_points_camera: Optional[np.ndarray] = None,
-    ground_points_projector: Optional[np.ndarray] = None,
-    known_targets: Optional[Dict[int, Tuple[float, float]]] = None,
-    aruco_corners: Optional[Tuple[np.ndarray, ...]] = None,
-    aruco_ids: Optional[np.ndarray] = None,
-    token_sizes: Optional[Dict[int, int]] = None,
-) -> Optional[Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]]:
+    ground_points_camera: np.ndarray | None = None,
+    ground_points_projector: np.ndarray | None = None,
+    known_targets: dict[int, tuple[float, float]] | None = None,
+    aruco_corners: tuple[np.ndarray, ...] | None = None,
+    aruco_ids: np.ndarray | None = None,
+    token_sizes: dict[int, int] | None = None,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray] | None:
     """
     Estimates Camera Extrinsics (R, t) using pre-detected ArUco markers or internal detection.
 
@@ -319,11 +319,11 @@ def calibrate_extrinsics(
 
 
 def calibrate_projector_3d(
-    correspondences: List[Tuple[np.ndarray, np.ndarray]],
-    projector_resolution: Tuple[int, int],
-    initial_intrinsic_matrix: Optional[np.ndarray] = None,
-    initial_distortion_coefficients: Optional[np.ndarray] = None,
-) -> Optional[Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, float]]:
+    correspondences: list[tuple[np.ndarray, np.ndarray]],
+    projector_resolution: tuple[int, int],
+    initial_intrinsic_matrix: np.ndarray | None = None,
+    initial_distortion_coefficients: np.ndarray | None = None,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, float] | None:
     """
     Computes Projector Intrinsics and Extrinsics using 3D-to-2D correspondences.
 

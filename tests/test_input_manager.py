@@ -1,6 +1,7 @@
 import pytest
-from light_map.input.input_manager import InputManager
+
 from light_map.core.common_types import GestureType
+from light_map.input.input_manager import InputManager
 from light_map.state.temporal_event_manager import TemporalEventManager
 
 

@@ -1,4 +1,5 @@
 import os
+
 from light_map.map.map_config import MapConfigManager
 
 

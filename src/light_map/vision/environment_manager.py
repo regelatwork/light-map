@@ -1,11 +1,13 @@
 from __future__ import annotations
-from typing import Any, Dict, Optional, TYPE_CHECKING
-from dataclasses import replace
 
+from dataclasses import replace
+from typing import TYPE_CHECKING, Any
+
+from light_map.core.common_types import GridMetadata, SceneId, SelectionType
+from light_map.state.world_state import SelectionState
 from light_map.visibility.fow_manager import FogOfWarManager
 from light_map.visibility.visibility_engine import VisibilityEngine
-from light_map.core.common_types import GridMetadata, SelectionType, SceneId
-from light_map.state.world_state import SelectionState
+
 
 if TYPE_CHECKING:
     from light_map.core.app_context import MainContext
@@ -17,9 +19,9 @@ class EnvironmentManager:
         self.context = context
         self.state = state
         self.visibility_engine = context.visibility_engine
-        self.fow_manager: Optional[FogOfWarManager] = None
+        self.fow_manager: FogOfWarManager | None = None
 
-    def sync_vision(self, state: Optional[WorldState] = None):
+    def sync_vision(self, state: WorldState | None = None):
         """Forces a line-of-sight visibility sync."""
         state = state or self.state
         map_path = state.map_render_state.filepath
@@ -65,7 +67,7 @@ class EnvironmentManager:
         self,
         entry: Any,
         current_map_path: str,
-        scenes: Optional[Dict[SceneId, Any]] = None,
+        scenes: dict[SceneId, Any] | None = None,
     ):
         """Re-initializes visibility engine and layers based on map configuration."""
         spacing = entry.grid_spacing_svg if entry.grid_spacing_svg > 0 else 10.0
@@ -121,7 +123,7 @@ class EnvironmentManager:
         # Sync blockers to state
         self.sync_blockers_to_state()
 
-    def sync_blockers_to_state(self, state: Optional[WorldState] = None):
+    def sync_blockers_to_state(self, state: WorldState | None = None):
         """Synchronizes visibility engine blockers to the public state."""
         state = state or self.state
         # Use list() to create a NEW instance, ensuring VersionedAtom detects the change
@@ -132,7 +134,7 @@ class EnvironmentManager:
         if state.visibility_mask is not None:
             state.visibility_mask = state.visibility_mask.copy()
 
-    def toggle_door(self, door_id: str, state: Optional[WorldState] = None):
+    def toggle_door(self, door_id: str, state: WorldState | None = None):
         """Safely toggles doors and triggers vision sync."""
         state = state or self.state
         if door_id:
@@ -161,7 +163,7 @@ class EnvironmentManager:
         else:
             self.context.notifications.add_notification("No door selected to toggle")
 
-    def reset_fow(self, current_map_path: str, state: Optional[WorldState] = None):
+    def reset_fow(self, current_map_path: str, state: WorldState | None = None):
         """Resets the Fog of War for the current map."""
         state = state or self.state
         if self.fow_manager and current_map_path:
@@ -172,7 +174,7 @@ class EnvironmentManager:
             state.fow_mask = self.fow_manager.explored_mask.copy()
             self.context.notifications.add_notification("Fog of War Reset")
 
-    def toggle_fow(self, current_map_path: str, state: Optional[WorldState] = None):
+    def toggle_fow(self, current_map_path: str, state: WorldState | None = None):
         """Toggles Fog of War enabled/disabled state."""
         state = state or self.state
         if self.fow_manager:

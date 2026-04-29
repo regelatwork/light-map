@@ -1,10 +1,12 @@
-import pytest
-import numpy as np
 from unittest.mock import MagicMock
-from light_map.menu.menu_scene import MenuScene
+
+import numpy as np
+import pytest
+
 from light_map.core.app_context import AppContext
 from light_map.core.common_types import MenuActions
 from light_map.map.map_system import MapSystem
+from light_map.menu.menu_scene import MenuScene
 from light_map.state.world_state import WorldState
 
 

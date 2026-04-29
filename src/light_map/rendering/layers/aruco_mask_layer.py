@@ -1,10 +1,12 @@
-from typing import List, Any, Optional
+from typing import Any
+
 import cv2
 import numpy as np
-from light_map.core.common_types import Layer, LayerMode, ImagePatch, AppConfig
-from light_map.state.world_state import WorldState
+
+from light_map.core.common_types import AppConfig, ImagePatch, Layer, LayerMode
 from light_map.core.constants import DEFAULT_TOKEN_HEIGHT_MM
 from light_map.rendering.projection import ProjectionService
+from light_map.state.world_state import WorldState
 
 
 class ArucoMaskLayer(Layer):
@@ -18,7 +20,7 @@ class ArucoMaskLayer(Layer):
         self,
         state: WorldState,
         config: AppConfig,
-        projection_service: Optional[ProjectionService] = None,
+        projection_service: ProjectionService | None = None,
     ):
         super().__init__(state=state, is_static=False, layer_mode=LayerMode.MASKED)
         self.config = config
@@ -91,7 +93,7 @@ class ArucoMaskLayer(Layer):
             )
         return proj_pts.reshape(-1, 2)
 
-    def _generate_patches(self, current_time: float) -> List[ImagePatch]:
+    def _generate_patches(self, current_time: float) -> list[ImagePatch]:
         if not self.config.enable_aruco_masking or self.state is None:
             return []
 

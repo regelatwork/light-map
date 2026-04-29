@@ -1,6 +1,8 @@
 import dataclasses
-from typing import Any, Dict, TypeVar
+from typing import Any, TypeVar
+
 from pydantic import BaseModel
+
 
 T = TypeVar("T")
 
@@ -20,7 +22,7 @@ def sync_pydantic_to_dataclass(pydantic_obj: BaseModel, dataclass_obj: Any) -> N
     _sync_dict_to_dataclass(data, dataclass_obj)
 
 
-def _sync_dict_to_dataclass(data: Dict[str, Any], dataclass_obj: Any) -> None:
+def _sync_dict_to_dataclass(data: dict[str, Any], dataclass_obj: Any) -> None:
     for key, value in data.items():
         if not hasattr(dataclass_obj, key):
             continue
@@ -39,7 +41,7 @@ def _sync_dict_to_dataclass(data: Dict[str, Any], dataclass_obj: Any) -> None:
             setattr(dataclass_obj, key, value)
 
 
-def sync_pydantic_to_dict(pydantic_obj: BaseModel, target_dict: Dict[str, Any]) -> None:
+def sync_pydantic_to_dict(pydantic_obj: BaseModel, target_dict: dict[str, Any]) -> None:
     """
     Synchronizes values from a Pydantic model to a plain dictionary.
     """

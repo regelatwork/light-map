@@ -1,13 +1,15 @@
-import pytest
-import numpy as np
 from unittest.mock import MagicMock
-from light_map.vision.environment_manager import EnvironmentManager
-from light_map.state.world_state import WorldState, Token
+
+import numpy as np
+import pytest
+
 from light_map.core.app_context import MainContext
 from light_map.core.common_types import AppConfig, MapRenderState
-from light_map.visibility.visibility_types import VisibilityBlocker, VisibilityType
+from light_map.state.world_state import Token, WorldState
 from light_map.visibility.fow_manager import FogOfWarManager
 from light_map.visibility.visibility_engine import VisibilityEngine
+from light_map.visibility.visibility_types import VisibilityBlocker, VisibilityType
+from light_map.vision.environment_manager import EnvironmentManager
 
 
 @pytest.fixture

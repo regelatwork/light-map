@@ -1,9 +1,11 @@
-import pytest
-import numpy as np
 from unittest.mock import MagicMock, patch
+
+import numpy as np
+import pytest
+
 from light_map.calibration.calibration_logic import (
-    run_calibration_sequence,
     calibrate_extrinsics,
+    run_calibration_sequence,
 )
 from light_map.vision.infrastructure.camera import Camera
 

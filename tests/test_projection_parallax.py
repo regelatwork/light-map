@@ -1,10 +1,11 @@
-import numpy as np
 import cv2
+import numpy as np
 import pytest
+
 from light_map.rendering.projection import (
     CameraProjectionModel,
-    Projector3DModel,
     ProjectionService,
+    Projector3DModel,
 )
 
 

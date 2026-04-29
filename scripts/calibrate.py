@@ -1,16 +1,18 @@
-import sys
 import os
+import sys
+
 
 # Ensure we can import the local package
 sys.path.insert(
     0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "src"))
 )
 
-import logging
 import argparse
+import logging
+
 from light_map.calibration.calibration import (
-    load_calibration_images,
     calibrate_camera_from_images,
+    load_calibration_images,
     save_camera_calibration,
 )
 from light_map.core.display_utils import setup_logging

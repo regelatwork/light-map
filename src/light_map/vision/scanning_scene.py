@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 import os
 from enum import Enum, auto
-from typing import TYPE_CHECKING, List, Optional
+from typing import TYPE_CHECKING
 
 import numpy as np
 
@@ -11,19 +11,20 @@ from light_map.core.common_types import (
     Action,
     SceneId,
     SessionData,
-    ViewportState,
-    TokenDetectionAlgorithm,
     TimerKey,
+    TokenDetectionAlgorithm,
+    ViewportState,
 )
 from light_map.core.scene import Scene, SceneTransition
 from light_map.map.session_manager import SessionManager
 from light_map.vision.processing.token_tracker import TokenTracker
 
+
 if TYPE_CHECKING:
     from light_map.core.app_context import AppContext
+    from light_map.core.common_types import Layer
     from light_map.core.scene import HandInput
     from light_map.interactive_app import InteractiveApp
-    from light_map.core.common_types import Layer
 
 
 class ScanStage(Enum):
@@ -72,9 +73,9 @@ class ScanningScene(Scene):
         self._last_scan_result_count = 0
 
         # Data for Structured Light
-        self._dark_frame: Optional[np.ndarray] = None
-        self._pattern_frame: Optional[np.ndarray] = None
-        self._pattern_image: Optional[np.ndarray] = None  # The image to project
+        self._dark_frame: np.ndarray | None = None
+        self._pattern_frame: np.ndarray | None = None
+        self._pattern_image: np.ndarray | None = None  # The image to project
         self._cached_pattern_points = []
 
     def on_enter(self, payload: dict | None = None) -> None:
@@ -93,8 +94,8 @@ class ScanningScene(Scene):
         self.context.events.cancel(TimerKey.SCANNING_STAGE)
 
     def update(
-        self, inputs: List[HandInput], actions: List[Action], current_time: float
-    ) -> Optional[SceneTransition]:
+        self, inputs: list[HandInput], actions: list[Action], current_time: float
+    ) -> SceneTransition | None:
         """Runs the state machine for the scanning sequence."""
         algorithm = self.context.map_config_manager.get_detection_algorithm()
 
@@ -325,7 +326,7 @@ class ScanningScene(Scene):
         """Tokens should only be visible during results view."""
         return self._stage in [ScanStage.SHOW_RESULT, ScanStage.DONE]
 
-    def get_active_layers(self, app: InteractiveApp) -> List[Layer]:
+    def get_active_layers(self, app: InteractiveApp) -> list[Layer]:
         """
         Scanning needs a black background during capture stages to avoid interference,
         but needs the map background to show results at the end.

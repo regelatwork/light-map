@@ -1,19 +1,18 @@
-from typing import List, Tuple, Optional, Deque
-from collections import deque
 import time
+from collections import deque
 from dataclasses import dataclass, field
 from enum import StrEnum
 
-from light_map.core.common_types import MenuItem, MenuActions, GestureType
+from light_map.core.common_types import GestureType, MenuActions, MenuItem
 from light_map.menu.menu_config import (
-    LOCK_DELAY,
     GRACE_PERIOD,
-    PRIMING_TIME,
-    SUMMON_TIME,
+    ITEM_WIDTH_PCT,
+    LOCK_DELAY,
     MAX_VISIBLE_ITEMS,
+    PRIMING_TIME,
     SELECT_GESTURE,
     SUMMON_GESTURE,
-    ITEM_WIDTH_PCT,
+    SUMMON_TIME,
 )
 
 
@@ -27,16 +26,16 @@ class MenuSystemState(StrEnum):
 @dataclass
 class MenuState:
     current_menu_title: str
-    active_items: List[MenuItem]
-    item_rects: List[Tuple[int, int, int, int]]  # (x, y, w, h)
-    hovered_item_index: Optional[int]
-    feedback_item_index: Optional[int]  # Item to show as "Confirmed"
+    active_items: list[MenuItem]
+    item_rects: list[tuple[int, int, int, int]]  # (x, y, w, h)
+    hovered_item_index: int | None
+    feedback_item_index: int | None  # Item to show as "Confirmed"
     prime_progress: float  # 0.0 to 1.0
     summon_progress: float  # 0.0 to 1.0
-    just_triggered_action: Optional[str]
-    cursor_pos: Optional[Tuple[int, int]]
+    just_triggered_action: str | None
+    cursor_pos: tuple[int, int] | None
     is_visible: bool
-    node_stack_titles: List[str] = field(default_factory=list)
+    node_stack_titles: list[str] = field(default_factory=list)
     debug_info: str = ""
 
 
@@ -51,7 +50,7 @@ class MenuSystem:
 
         # Navigation State
         self.current_node: MenuItem = root_item
-        self.node_stack: List[MenuItem] = []  # Stack of parents
+        self.node_stack: list[MenuItem] = []  # Stack of parents
         self.page_index: int = 0
 
         # Interaction State
@@ -59,22 +58,22 @@ class MenuSystem:
         self.summon_start_time: float = 0.0
         self.prime_start_time: float = 0.0
         self.last_selection_gesture_time: float = 0.0
-        self.last_hovered_index: Optional[int] = None
+        self.last_hovered_index: int | None = None
 
         # Feedback State
-        self.feedback_item_index: Optional[int] = None
+        self.feedback_item_index: int | None = None
         self.feedback_start_time: float = 0.0
         self.awaiting_release: bool = False
 
         # Input History for Pinning
-        self.history: Deque[Tuple[float, int, int]] = deque(maxlen=40)
-        self.pinned_cursor: Optional[Tuple[int, int]] = None
+        self.history: deque[tuple[float, int, int]] = deque(maxlen=40)
+        self.pinned_cursor: tuple[int, int] | None = None
         self.is_pinning: bool = False
 
-        self.pending_external_index: Optional[int] = None
+        self.pending_external_index: int | None = None
 
         # Populate initial state so get_current_state() returns valid data immediately
-        self._last_state: Optional[MenuState] = None
+        self._last_state: MenuState | None = None
         self._last_state = self.get_current_state()
 
     def get_current_state(self) -> MenuState:
@@ -120,7 +119,7 @@ class MenuSystem:
         # 2. Traverse new tree
         self.root = new_root
 
-        new_node_stack: List[MenuItem] = []
+        new_node_stack: list[MenuItem] = []
         curr = new_root
 
         # Verify root matches first item in path
@@ -317,7 +316,7 @@ class MenuSystem:
 
     def _calculate_layout(
         self,
-    ) -> Tuple[List[MenuItem], List[Tuple[int, int, int, int]]]:
+    ) -> tuple[list[MenuItem], list[tuple[int, int, int, int]]]:
         all_items = []
         if self.node_stack:
             back_item = MenuItem(title="< Back", action_id=MenuActions.NAV_BACK)
@@ -375,7 +374,7 @@ class MenuSystem:
 
         return display_items, rects
 
-    def _trigger_selection(self) -> Optional[str]:
+    def _trigger_selection(self) -> str | None:
         active_items, _ = self._calculate_layout()
 
         # Use sticky selection index instead of cursor hit testing

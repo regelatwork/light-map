@@ -1,6 +1,7 @@
 import numpy as np
-from light_map.rendering.renderer import Renderer
+
 from light_map.core.common_types import ImagePatch, Layer
+from light_map.rendering.renderer import Renderer
 
 
 class MockLayer(Layer):

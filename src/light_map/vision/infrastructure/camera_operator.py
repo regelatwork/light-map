@@ -1,8 +1,9 @@
-import numpy as np
 import logging
 import multiprocessing as mp
 import time
 from multiprocessing.shared_memory import SharedMemory
+
+import numpy as np
 
 
 class CameraOperator:

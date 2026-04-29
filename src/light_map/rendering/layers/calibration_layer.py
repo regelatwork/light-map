@@ -1,9 +1,10 @@
+
 import cv2
 import numpy as np
-from typing import List
-from light_map.core.common_types import Layer, LayerMode, ImagePatch, AppConfig
-from light_map.state.world_state import WorldState
+
+from light_map.core.common_types import AppConfig, ImagePatch, Layer, LayerMode
 from light_map.core.display_utils import draw_text_with_background
+from light_map.state.world_state import WorldState
 
 
 class CalibrationLayer(Layer):
@@ -29,7 +30,7 @@ class CalibrationLayer(Layer):
             return 0
         return max(self.state.calibration_version, self.state.system_time_version)
 
-    def _generate_patches(self, current_time: float) -> List[ImagePatch]:
+    def _generate_patches(self, current_time: float) -> list[ImagePatch]:
         if self.state is None:
             return []
 

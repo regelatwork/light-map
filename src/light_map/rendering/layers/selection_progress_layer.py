@@ -1,13 +1,14 @@
+
 import cv2
 import numpy as np
-from typing import List
-from light_map.core.common_types import Layer, ImagePatch
-from light_map.state.world_state import WorldState
+
 from light_map.core.app_context import AppContext
+from light_map.core.common_types import ImagePatch, Layer
 from light_map.core.constants import (
-    CURSOR_RADIUS,
     CURSOR_COLOR_BGRA,
+    CURSOR_RADIUS,
 )
+from light_map.state.world_state import WorldState
 
 
 class SelectionProgressLayer(Layer):
@@ -30,7 +31,7 @@ class SelectionProgressLayer(Layer):
             self.state.summon_progress_version,
         )
 
-    def _generate_patches(self, current_time: float) -> List[ImagePatch]:
+    def _generate_patches(self, current_time: float) -> list[ImagePatch]:
         if self.state is None or not self.state.inputs:
             return []
 

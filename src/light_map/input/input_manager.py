@@ -1,7 +1,10 @@
 from __future__ import annotations
+
 import time
-from typing import List, Set, Optional, TYPE_CHECKING
-from light_map.core.common_types import GestureType, Action, TimerKey
+from typing import TYPE_CHECKING
+
+from light_map.core.common_types import Action, GestureType, TimerKey
+
 
 if TYPE_CHECKING:
     from light_map.state.temporal_event_manager import TemporalEventManager
@@ -16,7 +19,7 @@ class InputManager:
         self,
         flicker_timeout: float = 0.5,
         time_provider=time.monotonic,
-        events: Optional[TemporalEventManager] = None,
+        events: TemporalEventManager | None = None,
     ):
         self.flicker_timeout = flicker_timeout
         self.time_provider = time_provider
@@ -26,7 +29,7 @@ class InputManager:
         self._x: int = 0
         self._y: int = 0
         self._gesture: GestureType = GestureType.NONE
-        self._pending_actions: Set[Action] = set()
+        self._pending_actions: set[Action] = set()
 
     def update(self, x: int, y: int, gesture: GestureType, is_present: bool):
         """Updates the internal state from vision detection."""
@@ -95,7 +98,7 @@ class InputManager:
         elif char == ord("d") or char == ord("D"):
             self._pending_actions.add(Action.TOGGLE_DEBUG)
 
-    def _map_gesture_to_action(self, gesture: GestureType) -> Optional[Action]:
+    def _map_gesture_to_action(self, gesture: GestureType) -> Action | None:
         if gesture in [GestureType.VICTORY, GestureType.OPEN_PALM]:
             return Action.SELECT
         elif gesture == GestureType.CLOSED_FIST:
@@ -104,7 +107,7 @@ class InputManager:
             return Action.MOVE
         return None
 
-    def get_actions(self) -> List[Action]:
+    def get_actions(self) -> list[Action]:
         """Returns the current pending actions and clears the set."""
         actions = list(self._pending_actions)
         self._pending_actions.clear()

@@ -1,7 +1,9 @@
-import pytest
-import numpy as np
 from unittest.mock import MagicMock
-from light_map.interactive_app import InteractiveApp, AppConfig
+
+import numpy as np
+import pytest
+
+from light_map.interactive_app import AppConfig, InteractiveApp
 
 
 @pytest.fixture

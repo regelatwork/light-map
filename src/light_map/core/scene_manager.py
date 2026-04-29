@@ -1,27 +1,29 @@
 from __future__ import annotations
-import logging
-from typing import Dict, List, Optional, TYPE_CHECKING, Any
 
-from light_map.core.common_types import SceneId
-from light_map.visibility.exclusive_vision_scene import ExclusiveVisionScene
-from light_map.menu.menu_scene import MenuScene
-from light_map.map.map_scene import MapScene, ViewingScene
-from light_map.vision.scanning_scene import ScanningScene
+import logging
+from typing import TYPE_CHECKING, Any
+
 from light_map.calibration.calibration_scenes import (
+    ExtrinsicsCalibrationScene,
     FlashCalibrationScene,
+    IntrinsicsCalibrationScene,
     MapGridCalibrationScene,
     PpiCalibrationScene,
-    IntrinsicsCalibrationScene,
-    ProjectorCalibrationScene,
-    ExtrinsicsCalibrationScene,
     Projector3DCalibrationScene,
+    ProjectorCalibrationScene,
 )
+from light_map.core.common_types import SceneId
+from light_map.map.map_scene import MapScene, ViewingScene
+from light_map.menu.menu_scene import MenuScene
+from light_map.visibility.exclusive_vision_scene import ExclusiveVisionScene
+from light_map.vision.scanning_scene import ScanningScene
+
 
 if TYPE_CHECKING:
-    from light_map.core.scene import Scene, SceneTransition
     from light_map.core.app_context import AppContext
-    from light_map.state.world_state import WorldState
     from light_map.core.common_types import Layer
+    from light_map.core.scene import Scene, SceneTransition
+    from light_map.state.world_state import WorldState
 
 
 class SceneManager:
@@ -31,16 +33,16 @@ class SceneManager:
         self,
         context: AppContext,
         state: WorldState,
-        scene_classes: Optional[Dict[SceneId, type]] = None,
+        scene_classes: dict[SceneId, type] | None = None,
     ):
         self.context = context
         self.state = state
         self.scene_classes = scene_classes
-        self.scenes: Dict[SceneId, Scene] = self._initialize_scenes()
+        self.scenes: dict[SceneId, Scene] = self._initialize_scenes()
         self.current_scene_id: SceneId = SceneId.MENU
         self.current_scene: Scene = self.scenes[self.current_scene_id]
 
-    def _initialize_scenes(self) -> Dict[SceneId, Scene]:
+    def _initialize_scenes(self) -> dict[SceneId, Scene]:
         """Initializes all Scene objects with the shared AppContext."""
         if self.scene_classes:
             return {
@@ -94,7 +96,7 @@ class SceneManager:
         """Returns the string identifier of the current scene."""
         return self.current_scene_id.value
 
-    def get_layer_stack(self) -> List[Layer]:
+    def get_layer_stack(self) -> list[Layer]:
         """Returns the ordered list of layers for the current scene from the LayerStackManager."""
         if not self.context.layer_manager:
             logging.warning("No layer_manager found in context. Returning empty stack.")

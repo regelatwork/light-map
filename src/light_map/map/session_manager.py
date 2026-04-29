@@ -1,14 +1,15 @@
-import os
 import datetime
 import hashlib
 import logging
+import os
 from dataclasses import asdict
-from typing import Optional
+
 from light_map.core.common_types import SessionData, Token, ViewportState
-from light_map.core.storage import StorageManager
-from light_map.core.config_store import ConfigStore
 from light_map.core.config_schema import SessionDataSchema
+from light_map.core.config_store import ConfigStore
 from light_map.core.config_utils import sync_pydantic_to_dataclass
+from light_map.core.storage import StorageManager
+
 
 _DEFAULT_STORAGE = StorageManager()
 SESSION_DIR = os.path.join(_DEFAULT_STORAGE.get_data_dir(), "sessions")
@@ -16,13 +17,13 @@ SESSION_DIR = os.path.join(_DEFAULT_STORAGE.get_data_dir(), "sessions")
 
 class SessionManager:
     @staticmethod
-    def _ensure_session_dir(session_dir: Optional[str] = None):
+    def _ensure_session_dir(session_dir: str | None = None):
         target = session_dir or SESSION_DIR
         if not os.path.exists(target):
             os.makedirs(target, exist_ok=True)
 
     @staticmethod
-    def get_session_path(map_path: str, session_dir: Optional[str] = None) -> str:
+    def get_session_path(map_path: str, session_dir: str | None = None) -> str:
         """Generates a unique session filename based on map path."""
         stem = os.path.splitext(os.path.basename(map_path))[0]
         # Use absolute path for stable hashing
@@ -32,13 +33,13 @@ class SessionManager:
         return os.path.join(session_dir or SESSION_DIR, filename)
 
     @staticmethod
-    def has_session(map_path: str, session_dir: Optional[str] = None) -> bool:
+    def has_session(map_path: str, session_dir: str | None = None) -> bool:
         path = SessionManager.get_session_path(map_path, session_dir)
         return os.path.exists(path)
 
     @staticmethod
     def save_for_map(
-        map_path: str, data: SessionData, session_dir: Optional[str] = None
+        map_path: str, data: SessionData, session_dir: str | None = None
     ) -> bool:
         SessionManager._ensure_session_dir(session_dir)
         path = SessionManager.get_session_path(map_path, session_dir)
@@ -48,8 +49,8 @@ class SessionManager:
 
     @staticmethod
     def load_for_map(
-        map_path: str, session_dir: Optional[str] = None
-    ) -> Optional[SessionData]:
+        map_path: str, session_dir: str | None = None
+    ) -> SessionData | None:
         path = SessionManager.get_session_path(map_path, session_dir)
         return SessionManager.load_session(path)
 
@@ -74,7 +75,7 @@ class SessionManager:
             return False
 
     @staticmethod
-    def load_session(filepath: str) -> Optional[SessionData]:
+    def load_session(filepath: str) -> SessionData | None:
         store = ConfigStore(filepath)
         raw = store.load(dict)
 

@@ -1,19 +1,20 @@
 import os
 import re
+
 from light_map.core.common_types import (
     GestureType,
+    GmPosition,
+    GridType,
+    MenuActions,
     ResultType,
     SceneId,
     SelectionType,
-    MenuActions,
-    GmPosition,
-    GridType,
 )
 from light_map.visibility.visibility_types import VisibilityType
 
 
 def parse_ts_enums(file_path):
-    with open(file_path, "r") as f:
+    with open(file_path) as f:
         content = f.read()
 
     # Find all export enum Blocks

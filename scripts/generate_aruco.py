@@ -1,8 +1,9 @@
-import cv2
-import base64
-from PIL import Image
-from io import BytesIO
 import argparse
+import base64
+from io import BytesIO
+
+import cv2
+from PIL import Image
 
 
 def img_to_b64(img):

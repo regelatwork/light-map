@@ -1,6 +1,7 @@
-import cv2
 import logging
 import os
+
+import cv2
 import numpy as np
 
 
@@ -29,7 +30,7 @@ class Camera:
     def _is_raspberry_pi(self):
         """Check if the script is running on a Raspberry Pi."""
         try:
-            with open("/sys/firmware/devicetree/base/model", "r") as f:
+            with open("/sys/firmware/devicetree/base/model") as f:
                 return "raspberry pi" in f.read().lower()
         except Exception:
             return False

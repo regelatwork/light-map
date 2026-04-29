@@ -1,25 +1,28 @@
 import time
+from collections.abc import Callable
 from contextlib import contextmanager
+from typing import Any
+
 import numpy as np
-from typing import List, Optional, Callable, Any, Dict, Set
+
 from light_map.core.common_types import (
-    Token,
-    DetectionResult,
-    ResultType,
-    ViewportState,
-    SelectionState,
-    GridMetadata,
-    MapRenderState,
     CalibrationState,
-    ProjectorPose,
-    GridType,
     CoverResult,
+    DetectionResult,
+    GridMetadata,
+    GridType,
+    MapRenderState,
+    ProjectorPose,
+    ResultType,
+    SelectionState,
+    Token,
+    ViewportState,
 )
-from light_map.menu.menu_system import MenuState
 from light_map.core.scene import HandInput
-from light_map.vision.processing.token_merge_manager import TokenMergeManager
+from light_map.menu.menu_system import MenuState
 from light_map.state.versioned_atom import VersionedAtom
 from light_map.visibility.visibility_types import VisibilityBlocker
+from light_map.vision.processing.token_merge_manager import TokenMergeManager
 
 
 class Transaction:
@@ -38,12 +41,12 @@ class WorldState:
     """
 
     def __init__(
-        self, frame_processor: Optional[Callable[[np.ndarray], np.ndarray]] = None
+        self, frame_processor: Callable[[np.ndarray], np.ndarray] | None = None
     ):
         self.frame_processor = frame_processor
 
         # State Data
-        self.background: Optional[np.ndarray] = None
+        self.background: np.ndarray | None = None
         self.last_frame_timestamp: int = 0
 
         # Atoms
@@ -105,7 +108,7 @@ class WorldState:
         self.is_running = True
 
         # Remote Action Queuing
-        self.pending_actions: List[Dict[str, Any]] = []
+        self.pending_actions: list[dict[str, Any]] = []
 
         # Hand Expiration tracking
         self.last_hand_timestamp: float = 0.0
@@ -121,35 +124,35 @@ class WorldState:
         self._viewport_atom.update(value)
 
     @property
-    def menu_state(self) -> Optional[MenuState]:
+    def menu_state(self) -> MenuState | None:
         return self._menu_state_atom.value
 
     @menu_state.setter
-    def menu_state(self, value: Optional[MenuState]):
+    def menu_state(self, value: MenuState | None):
         self._menu_state_atom.update(value)
 
     @property
-    def tokens(self) -> List[Token]:
+    def tokens(self) -> list[Token]:
         return self._tokens_atom.value
 
     @tokens.setter
-    def tokens(self, value: List[Token]):
+    def tokens(self, value: list[Token]):
         self._tokens_atom.update(value)
 
     @property
-    def raw_tokens(self) -> List[Token]:
+    def raw_tokens(self) -> list[Token]:
         return self._raw_tokens_atom.value
 
     @raw_tokens.setter
-    def raw_tokens(self, value: List[Token]):
+    def raw_tokens(self, value: list[Token]):
         self._raw_tokens_atom.update(value)
 
     @property
-    def blockers(self) -> List[VisibilityBlocker]:
+    def blockers(self) -> list[VisibilityBlocker]:
         return self._blockers_atom.value
 
     @blockers.setter
-    def blockers(self, value: List[VisibilityBlocker]):
+    def blockers(self, value: list[VisibilityBlocker]):
         self._blockers_atom.update(value)
 
     @property
@@ -161,43 +164,43 @@ class WorldState:
         self._system_time_atom.update(value)
 
     @property
-    def raw_aruco(self) -> Dict[str, Any]:
+    def raw_aruco(self) -> dict[str, Any]:
         return self._raw_aruco_atom.value
 
     @raw_aruco.setter
-    def raw_aruco(self, value: Dict[str, Any]):
+    def raw_aruco(self, value: dict[str, Any]):
         self._raw_aruco_atom.update(value)
 
     @property
-    def inputs(self) -> List[HandInput]:
+    def inputs(self) -> list[HandInput]:
         return self._inputs_atom.value
 
     @inputs.setter
-    def inputs(self, value: List[HandInput]):
+    def inputs(self, value: list[HandInput]):
         self._inputs_atom.update(value)
 
     @property
-    def hands(self) -> List[Any]:
+    def hands(self) -> list[Any]:
         return self._landmarks_atom.value
 
     @hands.setter
-    def hands(self, value: List[Any]):
+    def hands(self, value: list[Any]):
         self._landmarks_atom.update(value)
 
     @property
-    def handedness(self) -> List[Any]:
+    def handedness(self) -> list[Any]:
         return self._handedness_atom.value
 
     @handedness.setter
-    def handedness(self, value: List[Any]):
+    def handedness(self, value: list[Any]):
         self._handedness_atom.update(value)
 
     @property
-    def gesture(self) -> Optional[str]:
+    def gesture(self) -> str | None:
         return self._gesture_atom.value
 
     @gesture.setter
-    def gesture(self, value: Optional[str]):
+    def gesture(self, value: str | None):
         self._gesture_atom.update(value)
 
     @property
@@ -225,19 +228,19 @@ class WorldState:
         self._map_render_state_atom.update(value)
 
     @property
-    def fow_mask(self) -> Optional[np.ndarray]:
+    def fow_mask(self) -> np.ndarray | None:
         return self._fow_mask_atom.value
 
     @fow_mask.setter
-    def fow_mask(self, value: Optional[np.ndarray]):
+    def fow_mask(self, value: np.ndarray | None):
         self._fow_mask_atom.update(value)
 
     @property
-    def discovered_ids(self) -> Set[str]:
+    def discovered_ids(self) -> set[str]:
         return self._discovered_ids_atom.value
 
     @discovered_ids.setter
-    def discovered_ids(self, value: Set[str]):
+    def discovered_ids(self, value: set[str]):
         self._discovered_ids_atom.update(value)
 
     @property
@@ -289,19 +292,19 @@ class WorldState:
         return self._notifications_atom.timestamp
 
     @property
-    def visibility_mask(self) -> Optional[np.ndarray]:
+    def visibility_mask(self) -> np.ndarray | None:
         return self._visibility_mask_atom.value
 
     @visibility_mask.setter
-    def visibility_mask(self, value: Optional[np.ndarray]):
+    def visibility_mask(self, value: np.ndarray | None):
         self._visibility_mask_atom.update(value)
 
     @property
-    def inspected_token_mask(self) -> Optional[np.ndarray]:
+    def inspected_token_mask(self) -> np.ndarray | None:
         return self._inspected_token_mask_atom.value
 
     @inspected_token_mask.setter
-    def inspected_token_mask(self, value: Optional[np.ndarray]):
+    def inspected_token_mask(self, value: np.ndarray | None):
         self._inspected_token_mask_atom.update(value)
 
     @property
@@ -317,11 +320,11 @@ class WorldState:
         self._show_tokens_atom.update(value)
 
     @property
-    def dwell_state(self) -> Dict[str, Any]:
+    def dwell_state(self) -> dict[str, Any]:
         return self._dwell_state_atom.value
 
     @dwell_state.setter
-    def dwell_state(self, value: Dict[str, Any]):
+    def dwell_state(self, value: dict[str, Any]):
         self._dwell_state_atom.update(value)
 
     @property
@@ -341,11 +344,11 @@ class WorldState:
         self._selection_atom.update(value)
 
     @property
-    def inspected_token_id(self) -> Optional[int]:
+    def inspected_token_id(self) -> int | None:
         return self._inspected_token_id_atom.value
 
     @inspected_token_id.setter
-    def inspected_token_id(self, value: Optional[int]):
+    def inspected_token_id(self, value: int | None):
         self._inspected_token_id_atom.update(value)
 
     @property
@@ -353,11 +356,11 @@ class WorldState:
         return self._inspected_token_id_atom.timestamp
 
     @property
-    def tactical_bonuses(self) -> Dict[int, CoverResult]:
+    def tactical_bonuses(self) -> dict[int, CoverResult]:
         return self._tactical_bonuses_atom.value
 
     @tactical_bonuses.setter
-    def tactical_bonuses(self, value: Dict[int, CoverResult]):
+    def tactical_bonuses(self, value: dict[int, CoverResult]):
         self._tactical_bonuses_atom.update(value)
 
     @property
@@ -600,7 +603,7 @@ class WorldState:
         """Updates the LOS visibility mask and increments version if changed."""
         self.visibility_mask = mask
 
-    def update_menu_state(self, new_menu_state: Optional[MenuState]):
+    def update_menu_state(self, new_menu_state: MenuState | None):
         """Updates the menu state and increments its version if changed."""
         self.menu_state = new_menu_state
 
@@ -616,14 +619,14 @@ class WorldState:
         """Updates the FPS metric and triggers a version update."""
         self._fps_atom.update(fps)
 
-    def update_inputs(self, inputs: List[HandInput], current_time: float = 0.0):
+    def update_inputs(self, inputs: list[HandInput], current_time: float = 0.0):
         """Updates the standardized hand inputs and increments hands_version if changed."""
         if inputs:
             self.last_hand_timestamp = current_time
 
         self.inputs = inputs
 
-    def apply(self, result: DetectionResult, current_time: Optional[float] = None):
+    def apply(self, result: DetectionResult, current_time: float | None = None):
         """
         Applies a detection result from a worker process to the state.
         Ensures synchronization via timestamp.
@@ -715,14 +718,14 @@ class WorldState:
 
         return True
 
-    def _inputs_equal(self, i1: List[HandInput], i2: List[HandInput]) -> bool:
+    def _inputs_equal(self, i1: list[HandInput], i2: list[HandInput]) -> bool:
         """Checks for semantic equality between two lists of hand inputs."""
         if len(i1) != len(i2):
             return False
         if len(i1) == 0:
             return True
 
-        for h1, h2 in zip(i1, i2):
+        for h1, h2 in zip(i1, i2, strict=False):
             if h1.gesture != h2.gesture:
                 return False
             if h1.proj_pos != h2.proj_pos:
@@ -735,7 +738,7 @@ class WorldState:
                 return False
         return True
 
-    def _landmarks_equal(self, h1: List[Any], h2: List[Any]) -> bool:
+    def _landmarks_equal(self, h1: list[Any], h2: list[Any]) -> bool:
         """Heuristic check for hand landmark equality."""
         if len(h1) != len(h2):
             return False
@@ -743,7 +746,7 @@ class WorldState:
             return True
         return False
 
-    def _tokens_equal(self, list1: List[Token], list2: List[Token]) -> bool:
+    def _tokens_equal(self, list1: list[Token], list2: list[Token]) -> bool:
         """Compares two token lists for semantic equality (positions and status)."""
         if len(list1) != len(list2):
             return False
@@ -752,7 +755,7 @@ class WorldState:
         s1 = sorted(list1, key=lambda t: t.id)
         s2 = sorted(list2, key=lambda t: t.id)
 
-        for t1, t2 in zip(s1, s2):
+        for t1, t2 in zip(s1, s2, strict=False):
             if t1.id != t2.id:
                 return False
 
@@ -773,7 +776,7 @@ class WorldState:
         return True
 
     def _blockers_equal(
-        self, b1: List[VisibilityBlocker], b2: List[VisibilityBlocker]
+        self, b1: list[VisibilityBlocker], b2: list[VisibilityBlocker]
     ) -> bool:
         """Checks if two lists of blockers are semantically equal."""
         if len(b1) != len(b2):
@@ -782,7 +785,7 @@ class WorldState:
         if b1 is b2:
             return False
 
-        for blocker1, blocker2 in zip(b1, b2):
+        for blocker1, blocker2 in zip(b1, b2, strict=False):
             if (
                 blocker1.id != blocker2.id
                 or blocker1.is_open != blocker2.is_open
@@ -792,7 +795,7 @@ class WorldState:
                 return False
         return True
 
-    def _raw_aruco_equal(self, d1: Dict[str, Any], d2: Dict[str, Any]) -> bool:
+    def _raw_aruco_equal(self, d1: dict[str, Any], d2: dict[str, Any]) -> bool:
         """Compares raw ArUco results for equality."""
         if d1["ids"] != d2["ids"]:
             return False
@@ -800,13 +803,13 @@ class WorldState:
         if len(d1["corners"]) != len(d2["corners"]):
             return False
 
-        for old_c, new_c in zip(d1["corners"], d2["corners"]):
+        for old_c, new_c in zip(d1["corners"], d2["corners"], strict=False):
             if not np.array_equal(old_c, new_c):
                 return False
 
         return True
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Serializes the WorldState into a dictionary for the Remote Driver."""
         return {
             "scene": self.current_scene_name,

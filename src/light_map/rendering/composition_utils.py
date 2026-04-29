@@ -1,6 +1,7 @@
 import cv2
 import numpy as np
-from light_map.core.common_types import LayerMode, ImagePatch
+
+from light_map.core.common_types import ImagePatch, LayerMode
 from light_map.core.constants import ALPHA_OPAQUE
 
 

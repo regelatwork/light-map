@@ -1,14 +1,16 @@
-import pytest
 from unittest.mock import MagicMock, patch
+
 import numpy as np
-from light_map.rendering.layers.overlay_layer import (
-    TokenLayer,
-    NotificationLayer,
-    DebugLayer,
-)
-from light_map.state.world_state import WorldState
+import pytest
+
 from light_map.core.app_context import AppContext
 from light_map.core.common_types import AppConfig
+from light_map.rendering.layers.overlay_layer import (
+    DebugLayer,
+    NotificationLayer,
+    TokenLayer,
+)
+from light_map.state.world_state import WorldState
 
 
 @pytest.fixture
@@ -75,8 +77,8 @@ def test_token_layer_render(mock_app_context):
 
 
 def test_debug_layer_render(mock_app_context):
-    from light_map.core.scene import HandInput
     from light_map.core.common_types import GestureType
+    from light_map.core.scene import HandInput
 
     ws = WorldState()
     # Trigger hands_version change by setting an input

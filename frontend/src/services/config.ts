@@ -5,10 +5,16 @@
  * Can be overridden by the VITE_API_HOST environment variable.
  */
 
+declare global {
+  interface Window {
+    VITE_API_HOST?: string;
+  }
+}
+
 const getApiHost = () => {
   // Allow E2E tests to inject the host via window
-  if ((window as any).VITE_API_HOST) {
-    return (window as any).VITE_API_HOST;
+  if (window.VITE_API_HOST) {
+    return window.VITE_API_HOST;
   }
 
   // If VITE_API_HOST is provided via env, use it

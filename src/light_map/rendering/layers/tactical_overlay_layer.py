@@ -1,13 +1,16 @@
-from typing import List, TYPE_CHECKING
+import math
+from typing import TYPE_CHECKING
+
 import cv2
 import numpy as np
-import math
+
 from light_map.core.common_types import ImagePatch, Layer, LayerMode
 from light_map.core.display_utils import draw_text_with_background
 
+
 if TYPE_CHECKING:
-    from light_map.state.world_state import WorldState
     from light_map.map.map_system import MapSystem
+    from light_map.state.world_state import WorldState
     from light_map.visibility.visibility_engine import VisibilityEngine
 
 
@@ -39,7 +42,7 @@ class TacticalOverlayLayer(Layer):
             self.state.tactical_bonuses_version,
         )
 
-    def _generate_patches(self, current_time: float) -> List[ImagePatch]:
+    def _generate_patches(self, current_time: float) -> list[ImagePatch]:
         if (
             self.state is None
             or self.state.inspected_token_id is None
@@ -48,53 +51,53 @@ class TacticalOverlayLayer(Layer):
             return []
 
         patches = []
-        
+
         # 1. Render Visual Wedges (Polygons)
         bonuses = self.state.tactical_bonuses
         if bonuses:
             screen_w = self.map_system.config.width if self.map_system.config else 1920
             screen_h = self.map_system.config.height if self.map_system.config else 1080
-            
+
             # Create a single large patch for all wedges
             wedge_img = np.zeros((screen_h, screen_w, 4), dtype=np.uint8)
-            
+
             # Create stipple mask (2x2 dots in a 4x4 tile for high visibility)
             tile = np.zeros((4, 4), dtype=np.uint8)
             tile[0:2, 0:2] = 255
             tile[2:4, 2:4] = 255
             stipple_mask = np.tile(tile, (screen_h // 4 + 1, screen_w // 4 + 1))[:screen_h, :screen_w]
-            
+
             svg_to_mask_scale = self.visibility_engine.svg_to_mask_scale
             inv_scale = 1.0 / svg_to_mask_scale
-            
+
             drawn_any_wedge = False
             for target_id, cover in bonuses.items():
                 if target_id == self.state.inspected_token_id:
                     continue
-                
+
                 if not cover.segments:
                     continue
-                
+
                 # Apex in Screen Space
                 ax, ay = cover.best_apex
                 asx, asy = self.map_system.world_to_screen(ax * inv_scale, ay * inv_scale)
                 apex_screen = (int(asx), int(asy))
-                
+
             drawn_any_wedge = False
             for target_id, cover in bonuses.items():
                 if target_id == self.state.inspected_token_id:
                     continue
-                
+
                 if not cover.segments:
                     continue
-                
+
                 # Apex in Screen Space
                 ax, ay = cover.best_apex
                 asx, asy = self.map_system.world_to_screen(ax * inv_scale, ay * inv_scale)
                 apex_screen = (int(asx), int(asy))
-                
+
                 all_visible_pts = []
-                
+
                 # Target Center in Screen Space (to pinch the polygons and determine radius)
                 all_tokens = self.state.tokens + [t for t in self.map_system.ghost_tokens if t.id not in {tk.id for tk in self.state.tokens}]
                 target_tk = next((t for t in all_tokens if t.id == target_id), None)
@@ -109,17 +112,17 @@ class TacticalOverlayLayer(Layer):
                     # (Note: npc_pixels are already angularly sorted relative to best_apex)
                     p_start = cover.npc_pixels[seg.start_idx]
                     p_end = cover.npc_pixels[seg.end_idx]
-                    
+
                     # Convert mask coords back to world then to screen relative vectors
                     asx_px, asy_px = cover.best_apex
-                    
+
                     # Vector relative to Apex
                     vec_start = np.array(p_start) - np.array([asx_px, asy_px])
                     vec_end = np.array(p_end) - np.array([asx_px, asy_px])
-                    
+
                     ang_start = math.atan2(vec_start[1], vec_start[0])
                     ang_end = math.atan2(vec_end[1], vec_end[0])
-                    
+
                     # 2. Determine Radius
                     # Use distance from apex to target center for a consistent "radar sweep" length
                     if target_center_screen:
@@ -128,12 +131,12 @@ class TacticalOverlayLayer(Layer):
                         # Fallback: boundary point distance
                         psx_s, psy_s = self.map_system.world_to_screen(p_start[0] * inv_scale, p_start[1] * inv_scale)
                         dist = math.sqrt((apex_screen[0]-psx_s)**2 + (apex_screen[1]-psy_s)**2)
-                    
+
                     # 3. Build smooth arc for the sector
                     # Using 20 points for a very smooth high-res curve
                     num_arc_pts = 20
                     arc_pts = []
-                    
+
                     # Handle wrap-around for interpolation
                     diff = ang_end - ang_start
                     while diff > math.pi:
@@ -141,7 +144,7 @@ class TacticalOverlayLayer(Layer):
                     while diff < -math.pi:
                         diff += 2 * math.pi
                     ang_end_interp = ang_start + diff
-                    
+
                     for i in range(num_arc_pts + 1):
                         t = i / num_arc_pts
                         a = ang_start + t * (ang_end_interp - ang_start)
@@ -149,11 +152,11 @@ class TacticalOverlayLayer(Layer):
                         py = apex_screen[1] + dist * math.sin(a)
                         arc_pts.append([px, py])
                         all_visible_pts.append([px, py])
-                    
+
                     # A pure circular sector polygon is [Apex, P1, P2, ..., PN]
                     poly_points = [apex_screen] + arc_pts
                     pts = np.array(poly_points, dtype=np.int32).reshape((-1, 1, 2))
-                    
+
                     if seg.status == 0:  # Clear
                         cv2.fillPoly(wedge_img, [pts], (255, 255, 0, 80))
                     elif seg.status == 2:  # Obscured
@@ -168,17 +171,17 @@ class TacticalOverlayLayer(Layer):
                     # are the true extreme edges because npc_pixels is already sorted/rotated.
                     p_start_edge = cover.npc_pixels[cover.segments[0].start_idx]
                     p_end_edge = cover.npc_pixels[cover.segments[-1].end_idx]
-                    
+
                     psx1, psy_1 = self.map_system.world_to_screen(p_start_edge[0] * inv_scale, p_start_edge[1] * inv_scale)
                     psx2, psy_2 = self.map_system.world_to_screen(p_end_edge[0] * inv_scale, p_end_edge[1] * inv_scale)
-                    
+
                     p_edge1 = (int(psx1), int(psy_1))
                     p_edge2 = (int(psx2), int(psy_2))
-                    
+
                     cv2.line(wedge_img, apex_screen, p_edge1, (255, 255, 255, 255), 2)
                     cv2.line(wedge_img, apex_screen, p_edge2, (255, 255, 255, 255), 2)
                     drawn_any_wedge = True
-            
+
             if drawn_any_wedge:
                 patches.append(
                     ImagePatch(x=0, y=0, width=screen_w, height=screen_h, data=wedge_img)
@@ -206,7 +209,7 @@ class TacticalOverlayLayer(Layer):
             cover = bonuses.get(token.id)
             if cover is None:
                 continue
-            
+
             ac_bonus = cover.ac_bonus
             reflex_bonus = cover.reflex_bonus
 

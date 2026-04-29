@@ -1,9 +1,9 @@
-from light_map.core.common_types import AppConfig
-from light_map.interactive_app import InteractiveApp
-
+from unittest.mock import MagicMock, patch
 
 import numpy as np
-from unittest.mock import MagicMock, patch
+
+from light_map.core.common_types import AppConfig
+from light_map.interactive_app import InteractiveApp
 
 
 def test_interactive_app_advances_system_time():

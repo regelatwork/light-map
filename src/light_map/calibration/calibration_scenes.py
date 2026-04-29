@@ -1,34 +1,36 @@
 from __future__ import annotations
-import logging
-from enum import Enum, auto
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
 
+import logging
 import math
-import numpy as np
 import os
 from collections import Counter
-import cv2
+from enum import Enum, auto
+from typing import TYPE_CHECKING, Any
 
-from light_map.core.scene import Scene, SceneTransition
-from light_map.input.map_interaction import MapInteractionController
-from light_map.input.gestures import GestureType
-from light_map.vision.processing.token_tracker import TokenTracker
-from light_map.calibration.calibration_logic import (
-    calculate_ppi_from_frame,
-    calibrate_extrinsics,
-)
-from light_map.core.common_types import SceneId, Action, AppConfig, TimerKey
+import cv2
+import numpy as np
+
 from light_map.calibration.calibration import (
     process_chessboard_images,
     save_camera_calibration,
     save_camera_extrinsics,
 )
+from light_map.calibration.calibration_logic import (
+    calculate_ppi_from_frame,
+    calibrate_extrinsics,
+)
+from light_map.core.common_types import Action, AppConfig, SceneId, TimerKey
+from light_map.core.scene import Scene, SceneTransition
+from light_map.input.gestures import GestureType
+from light_map.input.map_interaction import MapInteractionController
+from light_map.vision.processing.token_tracker import TokenTracker
+
 
 if TYPE_CHECKING:
     from light_map.core.app_context import AppContext
+    from light_map.core.common_types import Layer
     from light_map.core.scene import HandInput
     from light_map.interactive_app import InteractiveApp
-    from light_map.core.common_types import Layer
 
 # --- Calibration Scene Colors (BGR) ---
 SCENE_BG_COLOR = (204, 204, 204)
@@ -58,7 +60,7 @@ class FlashCalibrationScene(Scene):
         self._stage = FlashCalibStage.IDLE
         self._test_levels = [255, 225, 195, 165, 135, 105, 75, 45]
         self._current_level_idx = 0
-        self._results: Dict[int, int] = {}
+        self._results: dict[int, int] = {}
         self._capture_frame = False
 
     def on_enter(self, payload: dict | None = None) -> None:
@@ -92,8 +94,8 @@ class FlashCalibrationScene(Scene):
         )
 
     def update(
-        self, inputs: List[HandInput], actions: List[Action], current_time: float
-    ) -> Optional[SceneTransition]:
+        self, inputs: list[HandInput], actions: list[Action], current_time: float
+    ) -> SceneTransition | None:
         if self._stage == FlashCalibStage.IDLE:
             self._change_stage(FlashCalibStage.FLASH, current_time)
 
@@ -137,7 +139,7 @@ class FlashCalibrationScene(Scene):
         """Calibration scenes should not show ghost tokens."""
         return False
 
-    def get_active_layers(self, app: InteractiveApp) -> List[Layer]:
+    def get_active_layers(self, app: InteractiveApp) -> list[Layer]:
         """
         Calibration scenes need standard UI but NOT vision masks,
         as masks interfere with pattern detection and feedback.
@@ -279,8 +281,8 @@ class IntrinsicsCalibrationScene(Scene):
         )
 
     def update(
-        self, inputs: List[HandInput], actions: List[Action], current_time: float
-    ) -> Optional[SceneTransition]:
+        self, inputs: list[HandInput], actions: list[Action], current_time: float
+    ) -> SceneTransition | None:
         if self._stage == "CAPTURE":
             if inputs and inputs[0].gesture == GestureType.CLOSED_FIST:
                 # Capture image
@@ -343,7 +345,7 @@ class IntrinsicsCalibrationScene(Scene):
         """Calibration scenes should not show ghost tokens."""
         return False
 
-    def get_active_layers(self, app: InteractiveApp) -> List[Layer]:
+    def get_active_layers(self, app: InteractiveApp) -> list[Layer]:
         """
         Intrinsics calibration needs instructions and standard UI.
         """
@@ -361,8 +363,8 @@ class ProjectorCalibrationScene(Scene):
     def __init__(self, context: AppContext):
         super().__init__(context)
         self._stage = "DISPLAY_PATTERN"  # DISPLAY_PATTERN | SETTLE | CAPTURE | PROCESSING | DONE | ERROR
-        self._pattern_image: Optional[np.ndarray] = None
-        self._pattern_params: Optional[Dict] = None
+        self._pattern_image: np.ndarray | None = None
+        self._pattern_params: dict | None = None
 
     def on_enter(self, payload: Any = None) -> None:
         from light_map.rendering.projector import generate_calibration_pattern
@@ -382,8 +384,8 @@ class ProjectorCalibrationScene(Scene):
         self.context.events.cancel(TimerKey.CALIBRATION_STAGE)
 
     def update(
-        self, inputs: List[HandInput], actions: List[Action], current_time: float
-    ) -> Optional[SceneTransition]:
+        self, inputs: list[HandInput], actions: list[Action], current_time: float
+    ) -> SceneTransition | None:
         if self._stage == "CAPTURE":
             frame = self.context.last_camera_frame
             if frame is not None:
@@ -501,7 +503,7 @@ class ProjectorCalibrationScene(Scene):
         """Calibration scenes should not show ghost tokens."""
         return False
 
-    def get_active_layers(self, app: InteractiveApp) -> List[Layer]:
+    def get_active_layers(self, app: InteractiveApp) -> list[Layer]:
         """
         Calibration scenes use the specialized CalibrationLayer.
         """
@@ -519,26 +521,26 @@ class ExtrinsicsCalibrationScene(Scene):
     def __init__(self, context: AppContext):
         super().__init__(context)
         self._stage = "PLACEMENT"  # PLACEMENT | CAPTURE | VERIFY | DONE | ERROR
-        self._target_zones: List[Tuple[int, int, int]] = []  # x, y, suggested_id
-        self._detected_ids: Dict[int, Tuple[float, float]] = {}  # id -> (u, v) cam
-        self._known_targets: Dict[int, Tuple[float, float]] = {}  # id -> (px, py) proj
+        self._target_zones: list[tuple[int, int, int]] = []  # x, y, suggested_id
+        self._detected_ids: dict[int, tuple[float, float]] = {}  # id -> (u, v) cam
+        self._known_targets: dict[int, tuple[float, float]] = {}  # id -> (px, py) proj
         self._ppi = 0.0
-        self._rotation_vector: Optional[np.ndarray] = None
-        self._translation_vector: Optional[np.ndarray] = None
-        self._token_heights: Dict[int, float] = {}
-        self._token_sizes: Dict[int, int] = {}
-        self._ground_points_camera: Optional[np.ndarray] = None
-        self._ground_points_projector: Optional[np.ndarray] = None
+        self._rotation_vector: np.ndarray | None = None
+        self._translation_vector: np.ndarray | None = None
+        self._token_heights: dict[int, float] = {}
+        self._token_sizes: dict[int, int] = {}
+        self._ground_points_camera: np.ndarray | None = None
+        self._ground_points_projector: np.ndarray | None = None
         self._reprojection_error: float = 0.0
-        self._object_points: Optional[np.ndarray] = None
-        self._image_points: Optional[np.ndarray] = None
-        self._target_status: List[str] = []
-        self._target_info: List[Dict[str, Any]] = []
-        self._animation_start_times: Dict[int, float] = {}
-        self._token_names: Dict[int, str] = {}
+        self._object_points: np.ndarray | None = None
+        self._image_points: np.ndarray | None = None
+        self._target_status: list[str] = []
+        self._target_info: list[dict[str, Any]] = []
+        self._animation_start_times: dict[int, float] = {}
+        self._token_names: dict[int, str] = {}
         self._current_time: float = 0.0
-        self._cached_canvas: Optional[np.ndarray] = None
-        self._last_render_params: Dict[str, Any] = {}
+        self._cached_canvas: np.ndarray | None = None
+        self._last_render_params: dict[str, Any] = {}
 
     def on_enter(self, payload: Any = None) -> None:
         self._stage = "PLACEMENT"
@@ -577,7 +579,7 @@ class ExtrinsicsCalibrationScene(Scene):
         self._token_sizes = {}
         for (
             aid,
-            defn,
+            _defn,
         ) in (
             self.context.map_config_manager.data.global_settings.aruco_defaults.items()
         ):
@@ -668,8 +670,8 @@ class ExtrinsicsCalibrationScene(Scene):
         self._sync_calibration_state()
 
     def update(
-        self, inputs: List[HandInput], actions: List[Action], current_time: float
-    ) -> Optional[SceneTransition]:
+        self, inputs: list[HandInput], actions: list[Action], current_time: float
+    ) -> SceneTransition | None:
         self._current_time = current_time
 
         if self._stage == "PLACEMENT":
@@ -883,7 +885,7 @@ class ExtrinsicsCalibrationScene(Scene):
         """Calibration scenes should not show ghost tokens."""
         return False
 
-    def get_active_layers(self, app: InteractiveApp) -> List[Layer]:
+    def get_active_layers(self, app: InteractiveApp) -> list[Layer]:
         """
         Calibration scenes use the specialized CalibrationLayer.
         """
@@ -937,8 +939,8 @@ class PpiCalibrationScene(Scene):
         )
 
     def update(
-        self, inputs: List[HandInput], actions: List[Action], current_time: float
-    ) -> Optional[SceneTransition]:
+        self, inputs: list[HandInput], actions: list[Action], current_time: float
+    ) -> SceneTransition | None:
         if self._stage == "DETECTING":
             raw = self.context.raw_aruco
             flat_ids = []
@@ -1024,7 +1026,7 @@ class PpiCalibrationScene(Scene):
         """Calibration scenes should not show ghost tokens."""
         return False
 
-    def get_active_layers(self, app: InteractiveApp) -> List[Layer]:
+    def get_active_layers(self, app: InteractiveApp) -> list[Layer]:
         """
         Calibration scenes use the specialized CalibrationLayer.
         """
@@ -1057,7 +1059,7 @@ class GridOverlay:
         self.offset_x += dx
         self.offset_y += dy
 
-    def zoom_pinned(self, factor: float, center_point: Tuple[int, int]) -> None:
+    def zoom_pinned(self, factor: float, center_point: tuple[int, int]) -> None:
         # Ignore gesture center, always pivot around the grid origin (offset_x, offset_y)
         # This keeps the "anchor" stationary while scaling the grid.
         self.spacing *= factor
@@ -1071,7 +1073,7 @@ class MapGridCalibrationScene(Scene):
         self.interaction_controller = MapInteractionController()
         self.is_interacting = False
         self.calib_map_grid_size_inches = 1.0
-        self.grid_overlay: Optional[GridOverlay] = None
+        self.grid_overlay: GridOverlay | None = None
 
         self._save_triggered = False
 
@@ -1155,8 +1157,8 @@ class MapGridCalibrationScene(Scene):
         self._sync_calibration_state()
 
     def update(
-        self, inputs: List[HandInput], actions: List[Action], current_time: float
-    ) -> Optional[SceneTransition]:
+        self, inputs: list[HandInput], actions: list[Action], current_time: float
+    ) -> SceneTransition | None:
         if self._save_triggered:
             return SceneTransition(SceneId.MENU)
 
@@ -1275,7 +1277,7 @@ class MapGridCalibrationScene(Scene):
         """Calibration scenes should not show ghost tokens."""
         return False
 
-    def get_active_layers(self, app: InteractiveApp) -> List[Layer]:
+    def get_active_layers(self, app: InteractiveApp) -> list[Layer]:
         """
         Map grid calibration needs map + standard UI but NOT vision masks.
         """
@@ -1311,8 +1313,8 @@ class Projector3DCalibrationScene(Scene):
         self._transition_to_menu = False
 
         from light_map.rendering.layers.projector_3d_layer import (
-            Projector3DPatternLayer,
             Projector3DFeedbackLayer,
+            Projector3DPatternLayer,
         )
 
         self.pattern_layer = Projector3DPatternLayer(
@@ -1345,7 +1347,7 @@ class Projector3DCalibrationScene(Scene):
     def blocking(self) -> bool:
         return True
 
-    def get_active_layers(self, app: InteractiveApp) -> List[Layer]:
+    def get_active_layers(self, app: InteractiveApp) -> list[Layer]:
         return [
             self.pattern_layer,
             self.feedback_layer,
@@ -1355,8 +1357,8 @@ class Projector3DCalibrationScene(Scene):
         ]
 
     def update(
-        self, inputs: List[HandInput], actions: List[Action], current_time: float
-    ) -> Optional[SceneTransition]:
+        self, inputs: list[HandInput], actions: list[Action], current_time: float
+    ) -> SceneTransition | None:
         if self._transition_to_menu:
             return SceneTransition(SceneId.MENU)
 

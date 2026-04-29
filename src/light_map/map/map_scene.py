@@ -1,24 +1,24 @@
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING, List, Optional, Tuple
+from typing import TYPE_CHECKING
 
 import numpy as np
 
 import light_map.menu.menu_config as config_vars
-from light_map.input.map_interaction import MapInteractionController
-from light_map.core.scene import Scene, SceneTransition
-from light_map.input.gestures import GestureType
 from light_map.core.common_types import (
+    Action,
     SceneId,
+    SelectionState,
     SelectionType,
     TimerKey,
-    Action,
-    SelectionState,
 )
+from light_map.core.scene import Scene, SceneTransition
 from light_map.input.dwell_tracker import DwellTracker
-
+from light_map.input.gestures import GestureType
+from light_map.input.map_interaction import MapInteractionController
 from light_map.map.map_system import MapSystem
+
 
 if TYPE_CHECKING:
     from light_map.core.app_context import AppContext
@@ -34,7 +34,7 @@ class ScreenCenteredMapAdapter:
     def pan(self, dx: float, dy: float) -> None:
         self.map_system.pan(dx, dy)
 
-    def zoom_pinned(self, factor: float, center_point: Tuple[int, int]) -> None:
+    def zoom_pinned(self, factor: float, center_point: tuple[int, int]) -> None:
         # Ignore the gesture center, use screen center
         cx = self.map_system.width / 2
         cy = self.map_system.height / 2
@@ -55,8 +55,8 @@ class BaseMapScene(Scene):
         )
 
     def _handle_dwell_trigger(
-        self, cursor_pos: Tuple[int, int]
-    ) -> Tuple[SelectionType, Optional[str]]:
+        self, cursor_pos: tuple[int, int]
+    ) -> tuple[SelectionType, str | None]:
         """Detects if we are pointing at a token or a door. Returns (type, id)."""
         world_x, world_y = self.context.map_system.screen_to_world(
             cursor_pos[0], cursor_pos[1]
@@ -140,7 +140,7 @@ class BaseMapScene(Scene):
 
         return (SelectionType.NONE, None)
 
-    def _check_door_collision(self, wx: float, wy: float) -> Optional[str]:
+    def _check_door_collision(self, wx: float, wy: float) -> str | None:
         """Checks if world coordinate (wx, wy) is near any door segment."""
         if not self.context.map_system.svg_loader:
             return None
@@ -185,7 +185,7 @@ class BaseMapScene(Scene):
         closest_y = y1 + t * dy
         return np.sqrt((px - closest_x) ** 2 + (py - closest_y) ** 2)
 
-    def _find_target_at_point(self, cursor_pos: Tuple[int, int]) -> Optional[str]:
+    def _find_target_at_point(self, cursor_pos: tuple[int, int]) -> str | None:
         """Finds the ID of a token or door at the given screen point."""
         world_x, world_y = self.context.map_system.screen_to_world(
             cursor_pos[0], cursor_pos[1]
@@ -228,7 +228,7 @@ class BaseMapScene(Scene):
     def _update_dwell_and_linger(
         self,
         primary_gesture: GestureType,
-        cursor_pos: Optional[Tuple[int, int]],
+        cursor_pos: tuple[int, int] | None,
         dt: float,
         current_time: float,
     ) -> bool:
@@ -276,8 +276,8 @@ class ViewingScene(BaseMapScene):
         return False
 
     def update(
-        self, inputs: List[HandInput], actions: List[Action], current_time: float
-    ) -> Optional[SceneTransition]:
+        self, inputs: list[HandInput], actions: list[Action], current_time: float
+    ) -> SceneTransition | None:
         """In Viewing mode, we only check for the gesture to summon the menu."""
         if Action.TRIGGER_MENU in actions:
             return SceneTransition(SceneId.MENU)
@@ -386,8 +386,8 @@ class MapScene(BaseMapScene):
         return False
 
     def update(
-        self, inputs: List[HandInput], actions: List[Action], current_time: float
-    ) -> Optional[SceneTransition]:
+        self, inputs: list[HandInput], actions: list[Action], current_time: float
+    ) -> SceneTransition | None:
         """Processes gestures for map interaction and menu summoning."""
         if Action.TRIGGER_MENU in actions:
             return SceneTransition(SceneId.MENU)

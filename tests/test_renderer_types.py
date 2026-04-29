@@ -1,7 +1,8 @@
-from light_map.core.common_types import Layer, ImagePatch
-from light_map.state.world_state import WorldState
-from typing import List
+
 import numpy as np
+
+from light_map.core.common_types import ImagePatch, Layer
+from light_map.state.world_state import WorldState
 
 
 class MockLayer(Layer):
@@ -13,7 +14,7 @@ class MockLayer(Layer):
         # For testing, version is map_version
         return self.state.map_version
 
-    def _generate_patches(self, current_time: float) -> List[ImagePatch]:
+    def _generate_patches(self, current_time: float) -> list[ImagePatch]:
         self.generate_count += 1
         return [
             ImagePatch(

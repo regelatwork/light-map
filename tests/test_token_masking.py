@@ -1,6 +1,7 @@
 import pytest
-from light_map.vision.processing.token_filter import TokenFilter
+
 from light_map.core.common_types import Token
+from light_map.vision.processing.token_filter import TokenFilter
 
 
 def test_token_filter_masking_within_bounds():

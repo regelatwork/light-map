@@ -1,10 +1,12 @@
-from typing import List, Any, Dict, Optional
+from typing import Any
+
 import cv2
 import numpy as np
-from light_map.core.common_types import Layer, LayerMode, ImagePatch
+
+from light_map.core.common_types import ImagePatch, Layer, LayerMode
+from light_map.map.map_system import MapSystem
 from light_map.state.versioned_atom import VersionedAtom
 from light_map.state.world_state import WorldState
-from light_map.map.map_system import MapSystem
 
 
 class MapLayer(Layer):
@@ -26,9 +28,9 @@ class MapLayer(Layer):
         self._quality_atom = VersionedAtom(1.0, "quality")
 
         # Cache Tracking
-        self._last_render_params: Dict[str, Any] = {}
+        self._last_render_params: dict[str, Any] = {}
         self._last_opacity: float = 1.0
-        self._cached_map_bgra: Optional[np.ndarray] = None
+        self._cached_map_bgra: np.ndarray | None = None
 
     @property
     def opacity(self) -> float:
@@ -62,7 +64,7 @@ class MapLayer(Layer):
             self._quality_atom.timestamp,
         )
 
-    def _generate_patches(self, current_time: float) -> List[ImagePatch]:
+    def _generate_patches(self, current_time: float) -> list[ImagePatch]:
         if not self.map_system.is_map_loaded():
             return []
 

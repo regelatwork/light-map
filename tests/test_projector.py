@@ -1,4 +1,5 @@
 import numpy as np
+
 from light_map.rendering.projector import generate_calibration_pattern
 
 

@@ -1,10 +1,11 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, List, Optional, Tuple, Protocol
+from typing import TYPE_CHECKING, Protocol
 
 import numpy as np
 
 from light_map.input.gestures import GestureType
+
 
 if TYPE_CHECKING:
     from light_map.input.scene import HandInput
@@ -12,22 +13,22 @@ if TYPE_CHECKING:
 
 class Transformable(Protocol):
     def pan(self, dx: float, dy: float) -> None: ...
-    def zoom_pinned(self, factor: float, center_point: Tuple[int, int]) -> None: ...
+    def zoom_pinned(self, factor: float, center_point: tuple[int, int]) -> None: ...
 
 
 class MapInteractionController:
     """A helper class to centralize pan/zoom math for map manipulation."""
 
     def __init__(self):
-        self.panning_hand: Optional[Tuple[int, int]] = None
-        self.zooming_hands: Optional[Tuple[float, Tuple[int, int]]] = None
-        self.pan_accumulator: Tuple[float, float] = (0.0, 0.0)
+        self.panning_hand: tuple[int, int] | None = None
+        self.zooming_hands: tuple[float, tuple[int, int]] | None = None
+        self.pan_accumulator: tuple[float, float] = (0.0, 0.0)
 
     def process_gestures(
         self,
-        inputs: List[HandInput],
+        inputs: list[HandInput],
         target: Transformable,
-        grid_size: Optional[float] = None,
+        grid_size: float | None = None,
     ) -> bool:
         """
         Processes hand inputs to perform map interactions like pan and zoom.

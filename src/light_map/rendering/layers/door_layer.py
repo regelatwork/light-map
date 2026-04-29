@@ -1,9 +1,10 @@
+import math
+
 import cv2
 import numpy as np
-import math
 import svgelements
-from typing import List
-from light_map.core.common_types import Layer, ImagePatch, LayerMode
+
+from light_map.core.common_types import ImagePatch, Layer, LayerMode
 from light_map.state.world_state import WorldState
 from light_map.visibility.visibility_types import VisibilityType
 
@@ -36,7 +37,7 @@ class DoorLayer(Layer):
             self.state.fow_version,  # To pick up door discovery
         )
 
-    def _generate_patches(self, current_time: float) -> List[ImagePatch]:
+    def _generate_patches(self, current_time: float) -> list[ImagePatch]:
         image = np.zeros((self.height, self.width, 4), dtype=np.uint8)
         if not self.state or not self.state.viewport:
             return []

@@ -1,7 +1,9 @@
 import time
+
 import pytest
-from light_map.state.temporal_event_manager import TemporalEventManager
+
 from light_map.input.dwell_tracker import DwellTracker
+from light_map.state.temporal_event_manager import TemporalEventManager
 
 
 def test_temporal_event_manager_remaining_time():

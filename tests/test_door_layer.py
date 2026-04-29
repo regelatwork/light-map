@@ -1,9 +1,10 @@
-import pytest
 import numpy as np
+import pytest
+
+from light_map.core.common_types import GridMetadata
 from light_map.rendering.layers.door_layer import DoorLayer
 from light_map.state.world_state import WorldState
 from light_map.visibility.visibility_types import VisibilityBlocker, VisibilityType
-from light_map.core.common_types import GridMetadata
 
 
 @pytest.fixture

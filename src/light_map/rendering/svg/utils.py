@@ -1,10 +1,12 @@
-import svgelements
 import math
-from typing import Any, Optional, Tuple
+from typing import Any
+
+import svgelements
+
 from light_map.visibility.visibility_types import VisibilityType
 
 
-def get_element_label(element: Any) -> Optional[str]:
+def get_element_label(element: Any) -> str | None:
     """Extracts the label or ID from an SVG element."""
     keys = [
         "inkscape:label",
@@ -50,7 +52,7 @@ def get_viewport_matrix(
     return vp_matrix * q_matrix
 
 
-def get_visibility_type(label: str) -> Tuple[Optional[VisibilityType], bool]:
+def get_visibility_type(label: str) -> tuple[VisibilityType | None, bool]:
     """Maps an element label to a VisibilityType and unbreakable status."""
     id_lower = label.lower()
     if "wall" in id_lower:

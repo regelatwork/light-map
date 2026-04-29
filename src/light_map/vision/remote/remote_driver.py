@@ -1,32 +1,34 @@
 from __future__ import annotations
-import time
-import logging
-import uvicorn
+
 import asyncio
+import logging
 import os
-from contextlib import asynccontextmanager
-from fastapi import FastAPI, WebSocket, Header, Response, Query
-from fastapi.staticfiles import StaticFiles
-from fastapi.responses import StreamingResponse
 import threading
+import time
+from contextlib import asynccontextmanager
+from multiprocessing import Event, Queue
+from typing import Any
+
 import cv2
-import numpy as np
 import fastapi.encoders
 import fastapi.routing
-from light_map.vision.infrastructure.frame_producer import FrameProducer
+import numpy as np
+import uvicorn
+from fastapi import FastAPI, Header, Query, Response, WebSocket
+from fastapi.responses import StreamingResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
-from typing import List, Dict, Any, Optional
-from multiprocessing import Queue, Event
 
 from light_map.core.common_types import (
     DetectionResult,
-    ResultType,
-    Token,
     GestureType,
     GridType,
+    ResultType,
+    Token,
 )
 from light_map.core.config_schema import CoverResultSchema
 from light_map.core.scene import HandInput
+from light_map.vision.infrastructure.frame_producer import FrameProducer
 
 
 # --- Global monkeypatch for FastAPI to handle NumPy types ---
@@ -69,13 +71,13 @@ class RemoteToken(BaseModel):
 
 
 class TokenUpdate(BaseModel):
-    name: Optional[str] = None
-    color: Optional[str] = None
-    type: Optional[str] = None
-    profile: Optional[str] = None
-    size: Optional[int] = None
-    height_mm: Optional[float] = None
-    is_map_override: Optional[bool] = None
+    name: str | None = None
+    color: str | None = None
+    type: str | None = None
+    profile: str | None = None
+    size: int | None = None
+    height_mm: float | None = None
+    is_map_override: bool | None = None
 
 
 class ProfileUpdate(BaseModel):
@@ -85,31 +87,31 @@ class ProfileUpdate(BaseModel):
 
 
 class ViewportConfig(BaseModel):
-    zoom: Optional[float] = None
-    x: Optional[float] = None
-    y: Optional[float] = None
-    rotation: Optional[float] = None
+    zoom: float | None = None
+    x: float | None = None
+    y: float | None = None
+    rotation: float | None = None
 
 
 class GridConfig(BaseModel):
     offset_x: float
     offset_y: float
-    spacing: Optional[float] = None
-    grid_type: Optional[GridType] = None
-    visible: Optional[bool] = None
-    color: Optional[str] = None
+    spacing: float | None = None
+    grid_type: GridType | None = None
+    visible: bool | None = None
+    color: str | None = None
 
 
 class SystemConfigUpdate(BaseModel):
-    enable_hand_masking: Optional[bool] = None
-    enable_aruco_masking: Optional[bool] = None
-    aruco_mask_intensity: Optional[int] = None
-    pointer_offset_mm: Optional[float] = None
-    gm_position: Optional[str] = None
-    use_projector_3d_model: Optional[bool] = None
-    projector_pos_x_override: Optional[float] = None
-    projector_pos_y_override: Optional[float] = None
-    projector_pos_z_override: Optional[float] = None
+    enable_hand_masking: bool | None = None
+    enable_aruco_masking: bool | None = None
+    aruco_mask_intensity: int | None = None
+    pointer_offset_mm: float | None = None
+    gm_position: str | None = None
+    use_projector_3d_model: bool | None = None
+    projector_pos_x_override: float | None = None
+    projector_pos_y_override: float | None = None
+    projector_pos_z_override: float | None = None
 
 
 def numpy_to_python(obj: Any) -> Any:
@@ -147,20 +149,19 @@ class ConnectionManager:
 def create_app(
     results_queue: Queue,
     stop_event: Event,
-    state_mirror: Dict[str, Any],
+    state_mirror: dict[str, Any],
     shm_name: str = None,
     lock: Any = None,
     width: int = 1920,
     height: int = 1080,
     num_consumers: int = 2,
-    allowed_origins: Optional[List[str]] = None,
+    allowed_origins: list[str] | None = None,
     host: str = "127.0.0.1",
     port: int = 8000,
 ):
     # Initialize logging for the child process.
     # We log to stdout/stderr, which are redirected to the log file by the launcher.
     import logging
-    import os
 
     log_level_name = os.environ.get("LIGHT_MAP_LOG_LEVEL", "INFO")
     log_level = getattr(logging, log_level_name.upper(), logging.INFO)
@@ -216,7 +217,7 @@ def create_app(
             for src_key, dest_key in state_mapping.items():
                 if src_key in world:
                     state[dest_key] = world[src_key]
-            
+
             return numpy_to_python(state)
         except Exception as e:
             if not stop_event.is_set():
@@ -412,7 +413,7 @@ def create_app(
             manager.disconnect(websocket)
 
     @app.post("/input/hands")
-    def inject_hands(hands: List[RemoteHandInput]):
+    def inject_hands(hands: list[RemoteHandInput]):
         """Injects virtual hand inputs into the results queue."""
         processed_hands = []
         for hand in hands:
@@ -434,7 +435,7 @@ def create_app(
         return {"status": "injected", "count": len(processed_hands)}
 
     @app.post("/input/hands/world")
-    def inject_hands_world(hands: List[RemoteWorldHandInput]):
+    def inject_hands_world(hands: list[RemoteWorldHandInput]):
         """Injects virtual hand inputs using world coordinates."""
         hands_data = [
             hand.model_dump() if hasattr(hand, "model_dump") else hand.dict()
@@ -449,7 +450,7 @@ def create_app(
         return {"status": "injected", "count": len(hands)}
 
     @app.post("/input/tokens")
-    def inject_tokens(tokens: List[RemoteToken]):
+    def inject_tokens(tokens: list[RemoteToken]):
         """Injects virtual ArUco tokens into the results queue."""
         processed_tokens = []
         for token in tokens:
@@ -474,7 +475,7 @@ def create_app(
         return {"status": "injected", "count": len(processed_tokens)}
 
     @app.post("/input/aruco_corners")
-    def inject_aruco_corners(corners: List[List[List[float]]], ids: List[int]):
+    def inject_aruco_corners(corners: list[list[list[float]]], ids: list[int]):
         """Injects raw ArUco corners for testing mask rendering."""
         try:
             # Convert list of lists to list of numpy arrays for consistency
@@ -570,7 +571,7 @@ def create_app(
         return {"status": "delete_queued", "name": name}
 
     @app.post("/input/action")
-    def inject_action(action: str, payload: Optional[str] = None):
+    def inject_action(action: str, payload: str | None = None):
         """Injects a manual application action (like SYNC_VISION)."""
         res = DetectionResult(
             timestamp=time.monotonic_ns(),
@@ -699,8 +700,8 @@ def create_app(
     async def get_dwell_state():
         return state_mirror.get("world", {}).get("dwell_state", {})
 
-    @app.get("/tactical/cover", response_model=Dict[int, CoverResultSchema])
-    async def get_tactical_cover(attacker_id: Optional[int] = Query(None)):
+    @app.get("/tactical/cover", response_model=dict[int, CoverResultSchema])
+    async def get_tactical_cover(attacker_id: int | None = Query(None)):
         """
         Returns tactical cover bonuses for all targets from the perspective of the attacker_id.
         If attacker_id matches the current selection, cached results from state_mirror are used.
@@ -717,7 +718,7 @@ def create_app(
             log_path = StorageManager().get_state_path("light_map.log")
             if not os.path.exists(log_path):
                 return {"logs": []}
-            with open(log_path, "r") as f:
+            with open(log_path) as f:
                 all_lines = f.readlines()
                 return {"logs": [line.strip() for line in all_lines[-lines:]]}
         except Exception as e:
@@ -745,8 +746,9 @@ def create_app(
     def get_map_fow(if_none_match: str = Header(None)):
         current_map = state_mirror.get("config", {}).get("current_map_path")
         if current_map:
-            from light_map.core.storage import StorageManager
             import hashlib
+
+            from light_map.core.storage import StorageManager
 
             stem = os.path.splitext(os.path.basename(current_map))[0]
             path_hash = hashlib.md5(current_map.encode()).hexdigest()[:8]
@@ -815,7 +817,7 @@ def create_app(
 def remote_driver_worker(
     results_queue: Queue,
     stop_event: Event,
-    state_mirror: Dict[str, Any],
+    state_mirror: dict[str, Any],
     shm_name: str = None,
     lock: Any = None,
     port: int = 8000,
@@ -823,7 +825,7 @@ def remote_driver_worker(
     width: int = 1920,
     height: int = 1080,
     num_consumers: int = 2,
-    allowed_origins: Optional[List[str]] = None,
+    allowed_origins: list[str] | None = None,
 ):
     """Worker process entry point for the Remote Driver."""
     logging.info(f"Starting Remote Driver on {host}:{port}")

@@ -1,6 +1,9 @@
+from collections.abc import Callable
+from typing import Any
+
 import cv2
 import numpy as np
-from typing import List, Tuple, Any, Callable
+
 from light_map.core.common_types import GmPosition
 
 
@@ -9,14 +12,14 @@ class HandMasker:
 
     def __init__(self, persistence_seconds: float = 1.0):
         self.persistence_seconds = persistence_seconds
-        self.last_hulls: List[np.ndarray] = []
+        self.last_hulls: list[np.ndarray] = []
         self.last_detection_time = 0.0
         self._cached_mask: Any = None
         self._cached_hulls_hash: int = -1
-        self._cached_params: Tuple[int, int, int, int] = (-1, -1, -1, -1)
+        self._cached_params: tuple[int, int, int, int] = (-1, -1, -1, -1)
 
     def is_point_masked(
-        self, x: int, y: int, gm_position: GmPosition, resolution: Tuple[int, int]
+        self, x: int, y: int, gm_position: GmPosition, resolution: tuple[int, int]
     ) -> bool:
         """
         Checks if a point (in projector space) should be masked (ignored)
@@ -60,10 +63,10 @@ class HandMasker:
 
     def get_mask_hulls(
         self,
-        multi_hand_landmarks: List[Any],
+        multi_hand_landmarks: list[Any],
         transformation_fn: Callable[[np.ndarray], np.ndarray],
         current_time: float,
-    ) -> List[np.ndarray]:
+    ) -> list[np.ndarray]:
         """
         High-level API for HandMaskLayer.
         Returns hulls in projector space, respecting persistence.
@@ -72,10 +75,10 @@ class HandMasker:
 
     def compute_hulls(
         self,
-        multi_hand_landmarks: List[Any],
+        multi_hand_landmarks: list[Any],
         transformation_fn: Callable[[np.ndarray], np.ndarray],
         current_time: float,
-    ) -> List[np.ndarray]:
+    ) -> list[np.ndarray]:
         """
         Computes convex hulls for multiple hands in projector space.
         transformation_fn: maps (N, 2) normalized landmarks to (N, 2) projector pixels.
@@ -122,7 +125,7 @@ class HandMasker:
         self.last_hulls = hulls
         return hulls
 
-    def _hash_hulls(self, hulls: List[np.ndarray]) -> int:
+    def _hash_hulls(self, hulls: list[np.ndarray]) -> int:
         if not hulls:
             return 0
         h_val = 0
@@ -132,7 +135,7 @@ class HandMasker:
 
     def generate_mask_image(
         self,
-        hulls: List[np.ndarray],
+        hulls: list[np.ndarray],
         width: int,
         height: int,
         padding: int = 0,

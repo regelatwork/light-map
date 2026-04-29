@@ -1,8 +1,9 @@
+
 import svgelements
-from typing import List, Tuple, Dict, Optional
-from light_map.visibility.visibility_types import VisibilityType, VisibilityBlocker
-from light_map.rendering.svg.utils import get_element_label, get_visibility_type
+
 from light_map.rendering.svg.geometry import sample_segment
+from light_map.rendering.svg.utils import get_element_label, get_visibility_type
+from light_map.visibility.visibility_types import VisibilityBlocker, VisibilityType
 
 
 def extract_visibility_blocker(
@@ -10,8 +11,8 @@ def extract_visibility_blocker(
     v_type: VisibilityType,
     layer_name: str,
     is_unbreakable: bool,
-    id_counts: Dict[str, int],
-) -> Optional[VisibilityBlocker]:
+    id_counts: dict[str, int],
+) -> VisibilityBlocker | None:
     """Extracts a VisibilityBlocker from a shape element."""
     element_id = get_element_label(element)
 
@@ -23,7 +24,7 @@ def extract_visibility_blocker(
         final_id = element_id
 
     path = svgelements.Path(element)
-    points: List[Tuple[float, float]] = []
+    points: list[tuple[float, float]] = []
     for segment in path:
         if isinstance(segment, svgelements.Move):
             continue
@@ -57,7 +58,7 @@ def extract_visibility_blocker(
     )
 
 
-def get_visibility_blockers(svg: svgelements.SVG) -> List[VisibilityBlocker]:
+def get_visibility_blockers(svg: svgelements.SVG) -> list[VisibilityBlocker]:
     """Extracts walls, doors, and windows from the SVG based on layer names."""
     if not svg:
         return []

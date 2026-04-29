@@ -1,10 +1,12 @@
 import os
 import shutil
+
 import pytest
+
+from light_map.core.common_types import SessionData, ViewportState
 from light_map.core.storage import StorageManager
 from light_map.map.map_config import MapConfigManager
 from light_map.map.session_manager import SessionManager
-from light_map.core.common_types import SessionData, ViewportState
 
 
 @pytest.fixture

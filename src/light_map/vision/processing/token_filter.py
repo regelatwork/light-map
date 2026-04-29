@@ -1,7 +1,7 @@
 import math
-from typing import Dict, List, Optional, Tuple
-from light_map.core.common_types import Token, GridType
-from light_map.core.geometry import PointyTopHex, FlatTopHex
+
+from light_map.core.common_types import GridType, Token
+from light_map.core.geometry import FlatTopHex, PointyTopHex
 
 
 class TokenFilter:
@@ -12,20 +12,20 @@ class TokenFilter:
     def __init__(self, occlusion_timeout_ms: float = 2000.0, alpha: float = 0.3):
         self.occlusion_timeout_s = occlusion_timeout_ms / 1000.0
         self.alpha = alpha  # Smoothing factor for position
-        self.last_seen_tokens: Dict[int, Token] = {}
-        self.last_seen_times: Dict[int, float] = {}
+        self.last_seen_tokens: dict[int, Token] = {}
+        self.last_seen_times: dict[int, float] = {}
 
     def update(
         self,
-        detected_tokens: List[Token],
+        detected_tokens: list[Token],
         current_time: float,
         grid_spacing: float = 0.0,
         grid_origin_x: float = 0.0,
         grid_origin_y: float = 0.0,
-        token_configs: Dict[int, Dict] = None,
-        map_bounds: Optional[Tuple[float, float, float, float]] = None,
+        token_configs: dict[int, dict] = None,
+        map_bounds: tuple[float, float, float, float] | None = None,
         grid_type: GridType = GridType.SQUARE,
-    ) -> List[Token]:
+    ) -> list[Token]:
         """
         Updates the filter with new detections and returns the filtered tokens.
 
@@ -128,7 +128,7 @@ class TokenFilter:
         grid_spacing: float,
         grid_origin_x: float,
         grid_origin_y: float,
-        token_configs: Dict[int, Dict] = None,
+        token_configs: dict[int, dict] = None,
         grid_type: GridType = GridType.SQUARE,
     ) -> Token:
         if grid_spacing <= 0:
@@ -154,7 +154,7 @@ class TokenFilter:
         grid_spacing: float,
         grid_origin_x: float,
         grid_origin_y: float,
-        token_configs: Dict[int, Dict] = None,
+        token_configs: dict[int, dict] = None,
     ) -> Token:
         # Get token size from config
         token_size = 1
@@ -194,7 +194,7 @@ class TokenFilter:
         grid_spacing: float,
         grid_origin_x: float,
         grid_origin_y: float,
-        token_configs: Dict[int, Dict] = None,
+        token_configs: dict[int, dict] = None,
         grid_type: GridType = GridType.HEX_POINTY,
     ) -> Token:
         hex_geo = (

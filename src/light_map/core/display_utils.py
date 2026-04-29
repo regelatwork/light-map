@@ -1,19 +1,21 @@
-import cv2
-import tkinter as tk
 import logging
-import sys
 import os
-import numpy as np
+import sys
+import tkinter as tk
 from logging.handlers import RotatingFileHandler
-from typing import Tuple, Optional
-from light_map.core.storage import StorageManager
+
+import cv2
+import numpy as np
+
 from light_map.core.constants import (
-    LOG_MAX_BYTES,
-    LOG_BACKUP_COUNT,
-    WINDOW_CLOSE_CHECK_DELAY_FRAMES,
-    FALLBACK_SCREEN_RESOLUTION,
     DASHED_CIRCLE_DASH_DEG,
+    FALLBACK_SCREEN_RESOLUTION,
+    LOG_BACKUP_COUNT,
+    LOG_MAX_BYTES,
+    WINDOW_CLOSE_CHECK_DELAY_FRAMES,
 )
+from light_map.core.storage import StorageManager
+
 
 _DEFAULT_STORAGE = StorageManager()
 
@@ -95,7 +97,7 @@ class ProjectorWindow:
 def draw_text_with_background(
     img: np.ndarray,
     text: str,
-    pos: Tuple[int, int],
+    pos: tuple[int, int],
     font=cv2.FONT_HERSHEY_SIMPLEX,
     scale=0.5,
     color=(255, 255, 255),
@@ -167,7 +169,7 @@ def draw_text_with_background(
     cv2.putText(img, text, (x, y), font, scale, full_text_color, thickness)
 
 
-def setup_logging(level=logging.INFO, log_file: Optional[str] = None):
+def setup_logging(level=logging.INFO, log_file: str | None = None):
     """
     Configures the root logger with console and file handlers.
 
@@ -211,7 +213,7 @@ def setup_logging(level=logging.INFO, log_file: Optional[str] = None):
     logging.info("Logging initialized at level %s", logging.getLevelName(level))
 
 
-def get_screen_resolution() -> Tuple[int, int]:
+def get_screen_resolution() -> tuple[int, int]:
     """
     Detects the current screen resolution using tkinter.
     Returns (width, height).
@@ -250,8 +252,8 @@ def draw_dashed_circle(
 
 
 def parse_color(
-    color_str: Optional[str], default=(255, 255, 0)
-) -> Tuple[int, int, int]:
+    color_str: str | None, default=(255, 255, 0)
+) -> tuple[int, int, int]:
     """
     Parses a color string (e.g. '#RRGGBB' or 'red') into a BGR tuple.
     Returns default if parsing fails or input is None.

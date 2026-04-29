@@ -1,6 +1,8 @@
-import time
 import operator
-from typing import TypeVar, Generic, Optional, Callable
+import time
+from collections.abc import Callable
+from typing import Generic, TypeVar
+
 
 T = TypeVar("T")
 
@@ -10,7 +12,7 @@ class VersionedAtom(Generic[T]):
         self,
         initial_value: T,
         name: str,
-        equality_fn: Optional[Callable[[T, T], bool]] = None,
+        equality_fn: Callable[[T, T], bool] | None = None,
     ):
         self._value = initial_value
         self._name = name
@@ -29,7 +31,7 @@ class VersionedAtom(Generic[T]):
         """Checks if the new value is different from the current value."""
         return not self._equality_fn(self._value, new_value)
 
-    def update(self, new_value: T, force_timestamp: Optional[int] = None) -> bool:
+    def update(self, new_value: T, force_timestamp: int | None = None) -> bool:
         if force_timestamp is not None or not self._equality_fn(self._value, new_value):
             self._value = new_value
             self._timestamp = force_timestamp or time.monotonic_ns()

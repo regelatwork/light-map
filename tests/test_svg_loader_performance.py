@@ -1,8 +1,10 @@
-import unittest
-import numpy as np
 import os
-from unittest.mock import patch
 import sys
+import unittest
+from unittest.mock import patch
+
+import numpy as np
+
 
 # Ensure we can import the local package
 sys.path.insert(0, os.path.abspath("src"))

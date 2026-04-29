@@ -1,6 +1,7 @@
-from typing import Tuple
 from dataclasses import dataclass
+
 from light_map.core.common_types import GestureType
+
 
 # --- Constants ---
 LOCK_DELAY: float = 0.3  # Seconds to pin cursor history
@@ -31,14 +32,14 @@ PAN_GESTURE = GestureType.CLOSED_FIST
 # --- Colors (BGR) ---
 @dataclass
 class MenuColors:
-    NORMAL: Tuple[int, int, int] = (20, 20, 20)  # Very Dark Gray
-    HOVER: Tuple[int, int, int] = (60, 60, 60)  # Dark Gray
-    SELECTED: Tuple[int, int, int] = (0, 100, 0)  # Dark Green
-    CONFIRM: Tuple[int, int, int] = (0, 255, 0)  # Bright Green
-    BACKGROUND: Tuple[int, int, int] = (
+    NORMAL: tuple[int, int, int] = (20, 20, 20)  # Very Dark Gray
+    HOVER: tuple[int, int, int] = (60, 60, 60)  # Dark Gray
+    SELECTED: tuple[int, int, int] = (0, 100, 0)  # Dark Green
+    CONFIRM: tuple[int, int, int] = (0, 255, 0)  # Bright Green
+    BACKGROUND: tuple[int, int, int] = (
         0,
         0,
         0,
     )  # Black (unused by renderer for item fill)
-    TEXT: Tuple[int, int, int] = (200, 200, 200)  # Light Gray
-    BORDER: Tuple[int, int, int] = (100, 100, 100)  # Gray
+    TEXT: tuple[int, int, int] = (200, 200, 200)  # Light Gray
+    BORDER: tuple[int, int, int] = (100, 100, 100)  # Gray

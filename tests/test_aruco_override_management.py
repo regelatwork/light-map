@@ -1,9 +1,11 @@
-import pytest
-import numpy as np
 import os
 from unittest.mock import MagicMock
-from light_map.interactive_app import InteractiveApp
+
+import numpy as np
+import pytest
+
 from light_map.core.common_types import AppConfig
+from light_map.interactive_app import InteractiveApp
 
 
 @pytest.fixture

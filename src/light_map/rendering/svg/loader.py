@@ -1,22 +1,23 @@
-import os
 import functools
 import logging
-import svgelements
-import numpy as np
+import os
+
 import cv2
-from typing import List
-from light_map.rendering.svg.utils import get_element_label, get_viewport_matrix
+import numpy as np
+import svgelements
+
+from light_map.rendering.svg.blockers import get_visibility_blockers as extract_blockers
 from light_map.rendering.svg.geometry import (
-    collect_grid_coordinates,
     analyze_spacing_and_origin,
+    collect_grid_coordinates,
 )
 from light_map.rendering.svg.renderer import (
-    render_image_element,
-    render_text_element,
-    render_shape_element,
     detect_grid_spacing_raster,
+    render_image_element,
+    render_shape_element,
+    render_text_element,
 )
-from light_map.rendering.svg.blockers import get_visibility_blockers as extract_blockers
+from light_map.rendering.svg.utils import get_element_label, get_viewport_matrix
 from light_map.visibility.visibility_types import VisibilityBlocker
 
 
@@ -315,6 +316,6 @@ class SVGLoader:
             cv2.resize(image, (target_width, target_height)) if quality < 1.0 else image
         )
 
-    def get_visibility_blockers(self) -> List[VisibilityBlocker]:
+    def get_visibility_blockers(self) -> list[VisibilityBlocker]:
         """Extracts walls, doors, and windows from the SVG based on layer names."""
         return extract_blockers(self.svg) if self.svg else []

@@ -1,11 +1,13 @@
 import logging
 import math
 from dataclasses import dataclass
-from typing import Dict, Any, Optional, Tuple, List, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
+
 import svgelements
 
+from light_map.core.common_types import AppConfig, Token
 from light_map.rendering.svg import SVGLoader
-from light_map.core.common_types import Token, AppConfig
+
 
 if TYPE_CHECKING:
     from light_map.core.common_types import ViewportState
@@ -28,15 +30,15 @@ class MapSystem:
     def __init__(self, config: "AppConfig"):
         self.config = config
         self.state = MapState()
-        self.svg_loader: Optional[SVGLoader] = None
+        self.svg_loader: SVGLoader | None = None
         self.base_scale: float = 1.0
-        self.ghost_tokens: List[Token] = []
-        self._cached_matrix: Optional[svgelements.Matrix] = None
-        self._cached_state_tuple: Optional[Tuple[float, float, float, float]] = None
+        self.ghost_tokens: list[Token] = []
+        self._cached_matrix: svgelements.Matrix | None = None
+        self._cached_state_tuple: tuple[float, float, float, float] | None = None
 
         # Undo/Redo stacks
-        self.undo_stack: List[MapState] = []
-        self.redo_stack: List[MapState] = []
+        self.undo_stack: list[MapState] = []
+        self.redo_stack: list[MapState] = []
         self.max_stack_size = 50
 
     @property
@@ -97,8 +99,8 @@ class MapSystem:
     def zoom(
         self,
         factor: float,
-        center_x: Optional[float] = None,
-        center_y: Optional[float] = None,
+        center_x: float | None = None,
+        center_y: float | None = None,
     ):
         """
         Adjust zoom level relative to a screen point.
@@ -164,14 +166,14 @@ class MapSystem:
         """Resets the view to the default state but using the base scale."""
         self.state = MapState(zoom=self.base_scale)
 
-    def zoom_pinned(self, factor: float, center_point: Tuple[int, int]):
+    def zoom_pinned(self, factor: float, center_point: tuple[int, int]):
         """Adjusts zoom relative to a fixed screen point."""
         center_x, center_y = center_point
         wx, wy = self.screen_to_world(center_x, center_y)
         new_zoom = self.state.zoom * factor
         self.set_zoom_around_pivot(new_zoom, center_x, center_y, wx, wy)
 
-    def get_render_params(self) -> Dict[str, Any]:
+    def get_render_params(self) -> dict[str, Any]:
         """Returns parameters for SVGLoader.render()."""
         return {
             "scale_factor": self.state.zoom,
@@ -204,7 +206,7 @@ class MapSystem:
         self._cached_state_tuple = current_state
         return m
 
-    def screen_to_world(self, sx: float, sy: float) -> Tuple[float, float]:
+    def screen_to_world(self, sx: float, sy: float) -> tuple[float, float]:
         """Converts screen coordinates to world (map) coordinates."""
         m = self._get_matrix()
         # Invert matrix to go Screen -> World
@@ -212,7 +214,7 @@ class MapSystem:
         p = im.point_in_matrix_space((sx, sy))
         return p.x, p.y
 
-    def world_to_screen(self, wx: float, wy: float) -> Tuple[float, float]:
+    def world_to_screen(self, wx: float, wy: float) -> tuple[float, float]:
         """Converts world coordinates to screen coordinates."""
         m = self._get_matrix()
         p = m.point_in_matrix_space((wx, wy))
@@ -222,8 +224,8 @@ class MapSystem:
         return p.x, p.y
 
     def world_mm_to_svg(
-        self, wx_mm: float, wy_mm: float, ppi: Optional[float] = None
-    ) -> Tuple[float, float]:
+        self, wx_mm: float, wy_mm: float, ppi: float | None = None
+    ) -> tuple[float, float]:
         """
         Converts physical world coordinates (mm) to map (SVG) coordinates.
         This assumes the projector's PPI and that origin (0,0) in mm

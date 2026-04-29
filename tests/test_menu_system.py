@@ -1,13 +1,14 @@
 import pytest
-from light_map.menu.menu_system import MenuSystem, MenuSystemState
-from light_map.core.common_types import MenuItem, MenuActions, GestureType
+
+from light_map.core.common_types import GestureType, MenuActions, MenuItem
 from light_map.menu.menu_config import (
     LOCK_DELAY,
-    SUMMON_TIME,
     PRIMING_TIME,
     SELECT_GESTURE,
     SUMMON_GESTURE,
+    SUMMON_TIME,
 )
+from light_map.menu.menu_system import MenuSystem, MenuSystemState
 
 
 # --- Mock Time Provider ---

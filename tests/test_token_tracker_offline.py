@@ -1,9 +1,12 @@
 import json
 import os
+
 import cv2
 import numpy as np
-from light_map.vision.processing.token_tracker import TokenTracker
+
 from light_map.map.map_system import MapSystem
+from light_map.vision.processing.token_tracker import TokenTracker
+
 
 # Path to samples
 SAMPLES_DIR = os.path.join(os.path.dirname(__file__), "../samples")
@@ -11,7 +14,7 @@ SAMPLE_JSON = os.path.join(SAMPLES_DIR, "token_capture_20260211_235147_L255.json
 
 
 def load_sample_data():
-    with open(SAMPLE_JSON, "r") as f:
+    with open(SAMPLE_JSON) as f:
         data = json.load(f)
 
     image_path = os.path.join(SAMPLES_DIR, data["image_file"])

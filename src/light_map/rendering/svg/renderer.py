@@ -1,12 +1,13 @@
-import svgelements
-import numpy as np
-import cv2
 import base64
 from io import BytesIO
-from typing import List, Tuple
+
+import cv2
+import numpy as np
+import svgelements
 from PIL import Image
-from light_map.rendering.svg.utils import get_element_opacity
+
 from light_map.rendering.svg.geometry import convert_path_to_points
+from light_map.rendering.svg.utils import get_element_opacity
 
 
 def blend_bgra(dst: np.ndarray, src_bgra: np.ndarray):
@@ -165,7 +166,7 @@ def render_text_element(
 def apply_fill(
     element: svgelements.Shape,
     image: np.ndarray,
-    all_subpaths: List[np.ndarray],
+    all_subpaths: list[np.ndarray],
     element_opacity: float,
     svg: svgelements.SVG,
     current_matrix: svgelements.Matrix,
@@ -235,9 +236,9 @@ def apply_fill(
 def draw_dashed_polyline(
     image: np.ndarray,
     polyline: np.ndarray,
-    color: Tuple[int, int, int],
+    color: tuple[int, int, int],
     thickness: int,
-    dash_array: List[float],
+    dash_array: list[float],
     is_closed: bool = False,
 ):
     """Draws a dashed polyline using OpenCV."""
@@ -290,8 +291,8 @@ def draw_dashed_polyline(
 def apply_stroke(
     element: svgelements.Shape,
     image: np.ndarray,
-    closed_subpaths: List[np.ndarray],
-    open_subpaths: List[np.ndarray],
+    closed_subpaths: list[np.ndarray],
+    open_subpaths: list[np.ndarray],
     current_matrix: svgelements.Matrix,
     element_opacity: float,
     svg: svgelements.SVG,
@@ -395,7 +396,7 @@ def resolve_gradient_coord(val_str, total_val, default_val, viewbox_total=None):
 
 def render_linear_gradient(
     image: np.ndarray,
-    all_subpaths: List[np.ndarray],
+    all_subpaths: list[np.ndarray],
     gradient_elem: svgelements.Group,
     svg: svgelements.SVG,
     final_vp_matrix: svgelements.Matrix,
@@ -560,7 +561,7 @@ def get_gradient_stops(gradient_elem: svgelements.Group, svg: svgelements.SVG):
 
 def render_radial_gradient(
     image: np.ndarray,
-    all_subpaths: List[np.ndarray],
+    all_subpaths: list[np.ndarray],
     gradient_elem: svgelements.Group,
     svg: svgelements.SVG,
     final_vp_matrix: svgelements.Matrix,

@@ -1,6 +1,7 @@
 from unittest.mock import MagicMock
-from light_map.state.world_state import WorldState
+
 from light_map.rendering.layers.map_layer import MapLayer
+from light_map.state.world_state import WorldState
 
 
 def test_map_layer_uses_atomic_timestamps():

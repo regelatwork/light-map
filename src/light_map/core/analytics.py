@@ -2,9 +2,11 @@ import json
 import logging
 import os
 import time
-from typing import Dict, Optional, Any, List
 from contextlib import contextmanager
+from typing import Any
+
 import numpy as np
+
 
 logger = logging.getLogger(__name__)
 
@@ -14,10 +16,10 @@ class AnalyticsManager:
 
     def __init__(self, storage_manager=None):
         self.storage_manager = storage_manager
-        self.menu_stats: Dict[str, int] = {}
+        self.menu_stats: dict[str, int] = {}
         self._load()
 
-    def _get_stats_path(self) -> Optional[str]:
+    def _get_stats_path(self) -> str | None:
         if not self.storage_manager:
             return None
         return os.path.join(self.storage_manager.get_data_dir(), "menu_stats.json")
@@ -26,7 +28,7 @@ class AnalyticsManager:
         path = self._get_stats_path()
         if path and os.path.exists(path):
             try:
-                with open(path, "r", encoding="utf-8") as f:
+                with open(path, encoding="utf-8") as f:
                     self.menu_stats = json.load(f)
             except Exception as e:
                 logger.error(f"Failed to load menu stats: {e}")
@@ -55,12 +57,12 @@ class LatencyInstrument:
 
     def __init__(self, window_size: int = 1000):
         self.window_size = window_size
-        self.history: Dict[str, List[int]] = {}
+        self.history: dict[str, list[int]] = {}
         self._last_report_time = time.perf_counter()
 
         # Backward compatibility maps
-        self.captures: Dict[int, int] = {}  # ts_capture -> ts_recorded
-        self.detections: Dict[int, int] = {}  # ts_capture -> ts_detected
+        self.captures: dict[int, int] = {}  # ts_capture -> ts_recorded
+        self.detections: dict[int, int] = {}  # ts_capture -> ts_detected
 
     def record_interval(self, name: str, duration_ns: int):
         """Records an arbitrary timing interval in nanoseconds."""
@@ -82,13 +84,13 @@ class LatencyInstrument:
                 for k in keys[:1000]:
                     del self.captures[k]
 
-    def record_detection(self, ts_capture: int, ts_detected: Optional[int] = None):
+    def record_detection(self, ts_capture: int, ts_detected: int | None = None):
         """Backward compatibility for recording detection."""
         if ts_detected is None:
             ts_detected = time.perf_counter_ns()
         self.detections[ts_capture] = ts_detected
 
-    def record_render(self, ts_capture: int, ts_rendered: Optional[int] = None):
+    def record_render(self, ts_capture: int, ts_rendered: int | None = None):
         """Backward compatibility for recording render and calculating intervals."""
         if ts_rendered is None:
             ts_rendered = time.perf_counter_ns()
@@ -101,7 +103,7 @@ class LatencyInstrument:
             self.record_interval("detect_to_render", ts_rendered - detect_time)
             self.record_interval("total_latency", ts_rendered - baseline)
 
-    def get_report(self) -> Dict[str, Any]:
+    def get_report(self) -> dict[str, Any]:
         """Returns statistical report for all tracked intervals."""
         report = {}
         for name, samples in self.history.items():
@@ -145,7 +147,7 @@ class LatencyInstrument:
 
 
 @contextmanager
-def track_wait(name: str, instrument: Optional[LatencyInstrument] = None):
+def track_wait(name: str, instrument: LatencyInstrument | None = None):
     """Context manager to measure and record duration of an operation."""
     start_ns = time.perf_counter_ns()
     try:

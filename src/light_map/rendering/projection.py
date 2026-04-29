@@ -1,8 +1,10 @@
-import numpy as np
-import cv2
 import logging
 import os
-from typing import Optional, Any
+from typing import Any
+
+import cv2
+import numpy as np
+
 from light_map.core.common_types import ProjectorPose
 
 
@@ -106,11 +108,11 @@ class Projector3DModel:
 
     def __init__(
         self,
-        intrinsic_matrix: Optional[np.ndarray] = None,
-        distortion_coefficients: Optional[np.ndarray] = None,
-        rotation_vector: Optional[np.ndarray] = None,
-        translation_vector: Optional[np.ndarray] = None,
-        homography_matrix: Optional[np.ndarray] = None,
+        intrinsic_matrix: np.ndarray | None = None,
+        distortion_coefficients: np.ndarray | None = None,
+        rotation_vector: np.ndarray | None = None,
+        translation_vector: np.ndarray | None = None,
+        homography_matrix: np.ndarray | None = None,
         use_3d: bool = False,
     ):
         self.intrinsic_matrix = intrinsic_matrix
@@ -128,15 +130,15 @@ class Projector3DModel:
             )
 
     def get_projector_center(
-        self, override: Optional[ProjectorPose] = None
-    ) -> Optional[np.ndarray]:
+        self, override: ProjectorPose | None = None
+    ) -> np.ndarray | None:
         """Returns the absolute 3D position of the projector center."""
         if override is not None:
             return np.array([override.x, override.y, override.z], dtype=np.float32)
         return self.calibrated_projector_center
 
     @property
-    def projector_center(self) -> Optional[np.ndarray]:
+    def projector_center(self) -> np.ndarray | None:
         """Legacy property for backward compatibility (no override)."""
         return self.calibrated_projector_center
 
@@ -148,7 +150,7 @@ class Projector3DModel:
     def project_world_to_projector(
         self,
         world_points: np.ndarray,
-        projector_pose: Optional[ProjectorPose] = None,
+        projector_pose: ProjectorPose | None = None,
     ) -> np.ndarray:
         """
         Maps (N, 3) World points to (N, 2) Projector pixels.
@@ -255,7 +257,7 @@ class ProjectionService:
         camera_model: CameraProjectionModel,
         projector_model: Projector3DModel,
         ppi: float = 0.0,
-        distortion_model: Optional[Any] = None,
+        distortion_model: Any | None = None,
     ):
         self.camera_model = camera_model
         self.projector_model = projector_model
@@ -266,9 +268,9 @@ class ProjectionService:
         self,
         camera_pixels: np.ndarray,
         height_mm: float = 0.0,
-        target_z: Optional[float] = None,
+        target_z: float | None = None,
         prefer_homography: bool = True,
-        projector_pose: Optional[ProjectorPose] = None,
+        projector_pose: ProjectorPose | None = None,
     ) -> np.ndarray:
         """
         Maps camera pixel coordinates to projector pixel coordinates with parallax correction.

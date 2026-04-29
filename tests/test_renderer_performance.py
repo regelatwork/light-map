@@ -1,10 +1,10 @@
-import numpy as np
 import time
-from light_map.rendering.renderer import Renderer
-from light_map.core.common_types import ImagePatch, LayerMode, AppConfig
 
+import numpy as np
 
+from light_map.core.common_types import AppConfig, ImagePatch, LayerMode
 from light_map.rendering.composition_utils import composite_patch
+from light_map.rendering.renderer import Renderer
 
 
 def test_renderer_correctness():

@@ -1,7 +1,8 @@
 import math
-from typing import Tuple, Optional, Callable
+from collections.abc import Callable
+
+from light_map.core.common_types import Action, TimerKey
 from light_map.state.temporal_event_manager import TemporalEventManager
-from light_map.core.common_types import TimerKey, Action
 
 
 class DwellTracker:
@@ -15,18 +16,18 @@ class DwellTracker:
         radius_pixels: float,
         events: TemporalEventManager,
         dwell_time_threshold: float = 2.0,
-        on_trigger: Optional[Callable[[], None]] = None,
+        on_trigger: Callable[[], None] | None = None,
     ):
         self.radius_pixels = radius_pixels
         self.dwell_time_threshold = dwell_time_threshold
         self.events = events
         self.on_trigger = on_trigger
 
-        self.last_point: Optional[Tuple[float, float]] = None
+        self.last_point: tuple[float, float] | None = None
         self.is_triggered = False
         self._just_triggered = False
         self._event_key = (TimerKey.DWELL, id(self))
-        self.target_id: Optional[str] = None
+        self.target_id: str | None = None
 
     @property
     def accumulated_time(self) -> float:
@@ -46,9 +47,9 @@ class DwellTracker:
 
     def update(
         self,
-        point: Optional[Tuple[float, float]],
+        point: tuple[float, float] | None,
         dt: float,
-        target_id: Optional[str] = None,
+        target_id: str | None = None,
     ) -> bool:
         """
         Updates the tracker with a new point.

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import sys
-from typing import TYPE_CHECKING, Any, List, Optional
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
@@ -17,10 +17,11 @@ from light_map.input.input_manager import InputManager
 from light_map.menu.menu_builder import build_root_menu
 from light_map.menu.menu_system import MenuState, MenuSystem, MenuSystemState
 
+
 if TYPE_CHECKING:
     from light_map.core.app_context import AppContext
-    from light_map.interactive_app import InteractiveApp
     from light_map.core.common_types import Layer
+    from light_map.interactive_app import InteractiveApp
 
 
 class MenuScene(Scene):
@@ -94,8 +95,8 @@ class MenuScene(Scene):
         self.menu_system.set_root_menu(new_root)
 
     def update(
-        self, inputs: List[HandInput], actions: List[Action], current_time: float
-    ) -> Optional[SceneTransition]:
+        self, inputs: list[HandInput], actions: list[Action], current_time: float
+    ) -> SceneTransition | None:
         if Action.QUIT in actions:
             sys.exit(0)
         px, py = -1, -1
@@ -317,7 +318,7 @@ class MenuScene(Scene):
         """Menu should not show ghost tokens."""
         return False
 
-    def get_active_layers(self, app: InteractiveApp) -> List[Layer]:
+    def get_active_layers(self, app: InteractiveApp) -> list[Layer]:
         """Menu only needs the menu itself and standard UI overlay layers (no masks/tokens)."""
         return [
             app.menu_layer,

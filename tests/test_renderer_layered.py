@@ -1,16 +1,17 @@
+
 import numpy as np
+
+from light_map.core.common_types import AppConfig, ImagePatch, Layer, LayerMode
 from light_map.rendering.renderer import Renderer
-from light_map.core.common_types import Layer, LayerMode, ImagePatch, AppConfig
 from light_map.state.world_state import WorldState
-from typing import List, Optional
 
 
 class MockLayer(Layer):
     def __init__(
         self,
-        state: Optional[WorldState] = None,
+        state: WorldState | None = None,
         mode: LayerMode = LayerMode.NORMAL,
-        patches: Optional[List[ImagePatch]] = None,
+        patches: list[ImagePatch] | None = None,
         is_static: bool = False,
     ):
         super().__init__(state=state, is_static=is_static, layer_mode=mode)
@@ -20,7 +21,7 @@ class MockLayer(Layer):
     def get_current_version(self) -> int:
         return self._version
 
-    def _generate_patches(self, current_time: float = 0.0) -> List[ImagePatch]:
+    def _generate_patches(self, current_time: float = 0.0) -> list[ImagePatch]:
         return self.patches
 
 

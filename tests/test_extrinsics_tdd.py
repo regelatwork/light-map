@@ -1,6 +1,8 @@
-import pytest
-import numpy as np
 from unittest.mock import MagicMock, patch
+
+import numpy as np
+import pytest
+
 from light_map.calibration.calibration_scenes import ExtrinsicsCalibrationScene
 from light_map.core.scene import HandInput
 from light_map.input.gestures import GestureType

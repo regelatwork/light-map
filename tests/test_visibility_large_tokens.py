@@ -1,4 +1,5 @@
 import numpy as np
+
 from light_map.visibility.visibility_engine import VisibilityEngine
 from light_map.visibility.visibility_types import VisibilityBlocker, VisibilityType
 

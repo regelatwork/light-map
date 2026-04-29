@@ -1,4 +1,5 @@
 import numpy as np
+
 from light_map.rendering.layers.visibility_layer import VisibilityLayer
 from light_map.state.world_state import WorldState
 

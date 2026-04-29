@@ -1,5 +1,7 @@
-from multiprocessing import Queue, Event
+from multiprocessing import Event, Queue
+
 from fastapi.testclient import TestClient
+
 from light_map.vision.remote.remote_driver import create_app
 
 

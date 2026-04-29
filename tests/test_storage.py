@@ -1,5 +1,6 @@
 import os
 from unittest.mock import patch
+
 from light_map.core.storage import StorageManager
 
 

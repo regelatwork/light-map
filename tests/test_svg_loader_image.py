@@ -1,8 +1,10 @@
-import pytest
-import numpy as np
 import base64
-from PIL import Image
 from io import BytesIO
+
+import numpy as np
+import pytest
+from PIL import Image
+
 from light_map.rendering.svg import SVGLoader
 
 

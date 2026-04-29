@@ -1,15 +1,17 @@
-import numpy as np
 from unittest.mock import MagicMock
-from light_map.vision.infrastructure.tracking_coordinator import TrackingCoordinator
-from light_map.state.world_state import WorldState
+
+import numpy as np
+
 from light_map.core.common_types import (
-    Token,
     AppConfig,
     DetectionResult,
     ResultType,
+    Token,
 )
-from light_map.map.map_system import MapSystem
 from light_map.map.map_config import MapConfigManager
+from light_map.map.map_system import MapSystem
+from light_map.state.world_state import WorldState
+from light_map.vision.infrastructure.tracking_coordinator import TrackingCoordinator
 
 
 def test_token_movement_propagation():

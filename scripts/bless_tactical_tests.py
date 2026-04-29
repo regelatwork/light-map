@@ -3,10 +3,11 @@ import os
 import shutil
 import sys
 
+
 def bless(case_name=None):
     results_dir = "tests/tactical_cases/results"
     golden_dir = "tests/tactical_cases/golden"
-    
+
     if not os.path.exists(results_dir):
         print(f"Results directory {results_dir} not found.")
         return

@@ -1,15 +1,16 @@
+
 import cv2
 import numpy as np
-from typing import List, Tuple
-from light_map.core.common_types import Layer, ImagePatch
-from light_map.state.world_state import WorldState
+
 from light_map.core.app_context import AppContext
+from light_map.core.common_types import ImagePatch, Layer
 from light_map.core.constants import (
-    CURSOR_RADIUS,
     CURSOR_COLOR_BGRA,
-    CURSOR_THICKNESS,
     CURSOR_CROSSHAIR_SIZE,
+    CURSOR_RADIUS,
+    CURSOR_THICKNESS,
 )
+from light_map.state.world_state import WorldState
 
 
 class CursorLayer(Layer):
@@ -21,14 +22,14 @@ class CursorLayer(Layer):
     def __init__(self, state: WorldState, context: AppContext):
         super().__init__(state=state, is_static=False)
         self.context = context
-        self._last_cursor_positions: List[Tuple[int, int]] = []
+        self._last_cursor_positions: list[tuple[int, int]] = []
 
     def get_current_version(self) -> int:
         if self.state is None:
             return 0
         return max(self.state.hands_version, self.state.projector_pose_version)
 
-    def _generate_patches(self, current_time: float) -> List[ImagePatch]:
+    def _generate_patches(self, current_time: float) -> list[ImagePatch]:
         if self.state is None or not self.state.inputs:
             self._last_cursor_positions = []
             return []

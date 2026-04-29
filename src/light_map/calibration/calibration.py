@@ -1,8 +1,10 @@
+import glob
+import logging
+import os
+
 import cv2
 import numpy as np
-import glob
-import os
-import logging
+
 from light_map.core.constants import DEFAULT_CHECKERBOARD_DIMS
 
 

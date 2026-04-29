@@ -1,8 +1,11 @@
-from typing import List, Tuple, Set, TYPE_CHECKING
-import numpy as np
+from typing import TYPE_CHECKING
+
 import cv2
-from light_map.core.common_types import Layer, ImagePatch, LayerMode
+import numpy as np
+
+from light_map.core.common_types import ImagePatch, Layer, LayerMode
 from light_map.core.display_utils import draw_text_with_background
+
 
 if TYPE_CHECKING:
     from light_map.state.world_state import WorldState
@@ -26,8 +29,8 @@ class Projector3DPatternLayer(Layer):
         state: "WorldState",
         width: int,
         height: int,
-        box_markers: List[Tuple[int, np.ndarray]] = None,
-        table_markers: List[Tuple[int, np.ndarray]] = None,
+        box_markers: list[tuple[int, np.ndarray]] = None,
+        table_markers: list[tuple[int, np.ndarray]] = None,
         box_outline: np.ndarray = None,
     ):
         # is_static=True means it uses the versioning system to cache its output
@@ -42,7 +45,7 @@ class Projector3DPatternLayer(Layer):
     def get_current_version(self) -> int:
         return self.state.calibration_version if self.state else 0
 
-    def _generate_patches(self, current_time: float) -> List[ImagePatch]:
+    def _generate_patches(self, current_time: float) -> list[ImagePatch]:
         if self.width <= 0 or self.height <= 0:
             return []
 
@@ -150,10 +153,10 @@ class Projector3DFeedbackLayer(Layer):
         state: "WorldState",
         width: int,
         height: int,
-        box_markers: List[Tuple[int, np.ndarray]] = None,
-        table_markers: List[Tuple[int, np.ndarray]] = None,
+        box_markers: list[tuple[int, np.ndarray]] = None,
+        table_markers: list[tuple[int, np.ndarray]] = None,
         instructions: str = "",
-        instruction_pos: Tuple[int, int] = (100, 100),
+        instruction_pos: tuple[int, int] = (100, 100),
     ):
         super().__init__(state=state, is_static=False, layer_mode=LayerMode.NORMAL)
         self.width = width
@@ -162,14 +165,14 @@ class Projector3DFeedbackLayer(Layer):
         self.table_markers = table_markers or []
         self.instructions = instructions
         self.instruction_pos = instruction_pos
-        self.detected_ids: Set[int] = set()
+        self.detected_ids: set[int] = set()
 
     def get_current_version(self) -> int:
         if self.state is None:
             return 0
         return max(self.state.scene_version, self.state.system_time_version)
 
-    def _generate_patches(self, current_time: float) -> List[ImagePatch]:
+    def _generate_patches(self, current_time: float) -> list[ImagePatch]:
         if self.width <= 0 or self.height <= 0:
             return []
 

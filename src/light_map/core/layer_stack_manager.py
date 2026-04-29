@@ -1,33 +1,35 @@
 from __future__ import annotations
-from typing import List, TYPE_CHECKING, Any
 
-from light_map.rendering.layers.map_layer import MapLayer
-from light_map.rendering.layers.door_layer import DoorLayer
-from light_map.rendering.layers.menu_layer import MenuLayer
-from light_map.rendering.layers.hand_mask_layer import HandMaskLayer
+from typing import TYPE_CHECKING, Any
+
+from light_map.core.common_types import CompositeLayer, Layer
 from light_map.rendering.layers.aruco_mask_layer import ArucoMaskLayer
-from light_map.rendering.layers.overlay_layer import (
-    TokenLayer,
-    NotificationLayer,
-    DebugLayer,
-)
-from light_map.rendering.layers.fow_layer import FogOfWarLayer
-from light_map.rendering.layers.visibility_layer import (
-    VisibilityLayer,
-    ExclusiveVisionLayer,
-)
-from light_map.rendering.layers.cursor_layer import CursorLayer
-from light_map.rendering.layers.selection_progress_layer import SelectionProgressLayer
-from light_map.rendering.layers.flash_layer import FlashLayer
-from light_map.rendering.layers.map_grid_layer import MapGridLayer
 from light_map.rendering.layers.calibration_layer import CalibrationLayer
+from light_map.rendering.layers.cursor_layer import CursorLayer
+from light_map.rendering.layers.door_layer import DoorLayer
+from light_map.rendering.layers.flash_layer import FlashLayer
+from light_map.rendering.layers.fow_layer import FogOfWarLayer
+from light_map.rendering.layers.hand_mask_layer import HandMaskLayer
+from light_map.rendering.layers.map_grid_layer import MapGridLayer
+from light_map.rendering.layers.map_layer import MapLayer
+from light_map.rendering.layers.menu_layer import MenuLayer
+from light_map.rendering.layers.overlay_layer import (
+    DebugLayer,
+    NotificationLayer,
+    TokenLayer,
+)
+from light_map.rendering.layers.selection_progress_layer import SelectionProgressLayer
 from light_map.rendering.layers.tactical_overlay_layer import TacticalOverlayLayer
-from light_map.core.common_types import Layer, CompositeLayer
+from light_map.rendering.layers.visibility_layer import (
+    ExclusiveVisionLayer,
+    VisibilityLayer,
+)
+
 
 if TYPE_CHECKING:
     from light_map.core.app_context import AppContext
-    from light_map.state.world_state import WorldState
     from light_map.core.scene import Scene
+    from light_map.state.world_state import WorldState
     from light_map.visibility.fow_manager import FogOfWarManager
 
 
@@ -92,7 +94,7 @@ class LayerStackManager:
         )
 
     @property
-    def layer_stack(self) -> List[Layer]:
+    def layer_stack(self) -> list[Layer]:
         """
         Default layer stack ordering (Bottom to Top).
         Used by Scenes that don't override get_active_layers.
@@ -123,7 +125,7 @@ class LayerStackManager:
         """
         pass
 
-    def get_stack(self, current_scene: Scene) -> List[Layer]:
+    def get_stack(self, current_scene: Scene) -> list[Layer]:
         """
         Returns the optimized layer stack for the current scene and state.
         Ensures correct ordering and applies transformations.

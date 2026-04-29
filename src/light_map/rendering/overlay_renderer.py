@@ -1,15 +1,18 @@
 from __future__ import annotations
-import cv2
-import math
-import numpy as np
-from typing import List, TYPE_CHECKING
 
+import math
+from typing import TYPE_CHECKING
+
+import cv2
+import numpy as np
+
+from light_map.core.common_types import ImagePatch
 from light_map.core.display_utils import (
     draw_dashed_circle,
     draw_text_with_background,
     parse_color,
 )
-from light_map.core.common_types import ImagePatch
+
 
 if TYPE_CHECKING:
     from light_map.core.app_context import AppContext
@@ -36,7 +39,7 @@ class OverlayRenderer:
 
         return ImagePatch(x=x, y=y, width=w, height=h, data=patch_data)
 
-    def draw_ghost_tokens(self, time_provider) -> List[ImagePatch]:
+    def draw_ghost_tokens(self, time_provider) -> list[ImagePatch]:
         patches = []
         ppi = self.context.map_config_manager.get_ppi()
         map_system = self.context.map_system
@@ -129,8 +132,8 @@ class OverlayRenderer:
         self,
         fps: float,
         current_scene_name: str,
-        inputs: List[HandInput],
-    ) -> List[ImagePatch]:
+        inputs: list[HandInput],
+    ) -> list[ImagePatch]:
         patches = []
 
         # 1. Main Debug info (Top Left)
@@ -187,7 +190,7 @@ class OverlayRenderer:
 
         return patches
 
-    def draw_notifications(self) -> List[ImagePatch]:
+    def draw_notifications(self) -> list[ImagePatch]:
         patches = []
         notifications = self.context.notifications.get_active_notifications()
         if not notifications:

@@ -1,7 +1,9 @@
-import multiprocessing as mp
 import logging
+import multiprocessing as mp
+from typing import Any
+
 import numpy as np
-from typing import List, Optional, Tuple, Dict, Any
+
 from light_map.vision.infrastructure.camera_operator import CameraOperator
 from light_map.vision.infrastructure.workers import aruco_worker, hand_worker
 from light_map.vision.remote.remote_driver import remote_driver_worker
@@ -18,18 +20,18 @@ class VisionProcessManager:
         width: int = 1920,
         height: int = 1080,
         num_consumers: int = 2,
-        projector_matrix: Optional[np.ndarray] = None,
-        map_dims: Optional[Tuple[int, int]] = None,
-        intrinsics_path: Optional[str] = None,
-        extrinsics_path: Optional[str] = None,
-        camera_matrix: Optional[np.ndarray] = None,
-        distortion_coefficients: Optional[np.ndarray] = None,
+        projector_matrix: np.ndarray | None = None,
+        map_dims: tuple[int, int] | None = None,
+        intrinsics_path: str | None = None,
+        extrinsics_path: str | None = None,
+        camera_matrix: np.ndarray | None = None,
+        distortion_coefficients: np.ndarray | None = None,
         remote_mode_hands: str = "ignore",
         remote_mode_tokens: str = "ignore",
         remote_host: str = "127.0.0.1",
         remote_port: int = 8000,
-        remote_origins: Optional[List[str]] = None,
-        state_mirror: Optional[Dict[str, Any]] = None,
+        remote_origins: list[str] | None = None,
+        state_mirror: dict[str, Any] | None = None,
     ):
         self.width = width
         self.height = height
@@ -48,9 +50,9 @@ class VisionProcessManager:
         self.remote_origins = remote_origins
         self.state_mirror = state_mirror
 
-        self.operator: Optional[CameraOperator] = None
-        self.shm_name: Optional[str] = None
-        self.processes: List[mp.Process] = []
+        self.operator: CameraOperator | None = None
+        self.shm_name: str | None = None
+        self.processes: list[mp.Process] = []
 
         # Shared Queues
         self.results_queue = mp.Queue()

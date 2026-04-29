@@ -1,7 +1,8 @@
-import httpx
-import time
-import subprocess
 import argparse
+import subprocess
+import time
+
+import httpx
 
 
 def main():

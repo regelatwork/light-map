@@ -1,9 +1,10 @@
-from typing import List
+
 import cv2
 import numpy as np
-from light_map.core.common_types import Layer, LayerMode, ImagePatch
-from light_map.state.world_state import WorldState
+
+from light_map.core.common_types import ImagePatch, Layer, LayerMode
 from light_map.menu.menu_config import MenuColors
+from light_map.state.world_state import WorldState
 
 
 class MenuLayer(Layer):
@@ -23,7 +24,7 @@ class MenuLayer(Layer):
             return 0
         return self.state.menu_version
 
-    def _generate_patches(self, current_time: float) -> List[ImagePatch]:
+    def _generate_patches(self, current_time: float) -> list[ImagePatch]:
         if self.state is None:
             return []
 

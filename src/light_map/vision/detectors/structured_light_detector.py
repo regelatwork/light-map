@@ -1,19 +1,21 @@
-import cv2
-import numpy as np
+import logging
 import math
 import random
-import logging
-from typing import List, Tuple, Optional, TYPE_CHECKING
 from datetime import datetime
+from typing import TYPE_CHECKING, Optional
+
+import cv2
+import numpy as np
 
 from light_map.core.common_types import Token
 from light_map.map.map_system import MapSystem
-from light_map.vision.infrastructure.debug_utils import DebugVisualizer
 from light_map.rendering.projection import CameraProjectionModel
+from light_map.vision.infrastructure.debug_utils import DebugVisualizer
+
 
 if TYPE_CHECKING:
-    from light_map.rendering.projector import ProjectorDistortionModel
     from light_map.rendering.projection import Projector3DModel
+    from light_map.rendering.projector import ProjectorDistortionModel
 
 
 class StructuredLightTokenDetector:
@@ -39,11 +41,11 @@ class StructuredLightTokenDetector:
 
     def __init__(self, debug_mode: bool = False):
         self.debug_mode = debug_mode
-        self.camera_matrix: Optional[np.ndarray] = None
-        self.distortion_coefficients: Optional[np.ndarray] = None
-        self.rotation_vector: Optional[np.ndarray] = None
-        self.translation_vector: Optional[np.ndarray] = None
-        self.projection_model: Optional[CameraProjectionModel] = None
+        self.camera_matrix: np.ndarray | None = None
+        self.distortion_coefficients: np.ndarray | None = None
+        self.rotation_vector: np.ndarray | None = None
+        self.translation_vector: np.ndarray | None = None
+        self.projection_model: CameraProjectionModel | None = None
 
         # Performance optimization
         self._fov_mask = None
@@ -79,7 +81,7 @@ class StructuredLightTokenDetector:
 
     def get_scan_pattern(
         self, width: int, height: int, ppi: float
-    ) -> Tuple[np.ndarray, List[Tuple[int, int]]]:
+    ) -> tuple[np.ndarray, list[tuple[int, int]]]:
         """
         Generates a jittered staggered (hexagonal) dot grid pattern for optimal coverage.
         Returns: (pattern_image, list_of_expected_points_projector_space)
@@ -123,18 +125,18 @@ class StructuredLightTokenDetector:
         self,
         frame_pattern: np.ndarray,
         frame_dark: np.ndarray,
-        expected_points: List[Tuple[int, int]],
+        expected_points: list[tuple[int, int]],
         projector_matrix: np.ndarray,
         map_system: MapSystem,
         grid_spacing_svg: float,
         grid_origin_x: float,
         grid_origin_y: float,
-        mask_rois: Optional[List[Tuple[int, int, int, int]]],
+        mask_rois: list[tuple[int, int, int, int]] | None,
         ppi: float = 96.0,
         default_height_mm: float = 0.0,
         distortion_model: Optional["ProjectorDistortionModel"] = None,
         projector_3d_model: Optional["Projector3DModel"] = None,
-    ) -> List[Token]:
+    ) -> list[Token]:
         h, w = frame_pattern.shape[:2]
 
         # 1. Difference and Threshold
@@ -562,10 +564,10 @@ class StructuredLightTokenDetector:
 
     def _get_fov_mask(
         self,
-        gray_shape: Tuple[int, int],
+        gray_shape: tuple[int, int],
         projector_matrix: np.ndarray,
-        map_dims: Tuple[int, int],
-    ) -> Optional[np.ndarray]:
+        map_dims: tuple[int, int],
+    ) -> np.ndarray | None:
         """Caches and returns the projector FOV mask."""
         h, w = gray_shape
         params = (h, w, hash(projector_matrix.tobytes()), map_dims)

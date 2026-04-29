@@ -1,5 +1,7 @@
-import pytest
 import time
+
+import pytest
+
 from light_map.core.analytics import LatencyInstrument, track_wait
 
 

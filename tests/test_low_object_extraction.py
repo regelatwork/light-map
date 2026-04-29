@@ -1,6 +1,7 @@
 import svgelements
-from light_map.visibility.visibility_types import VisibilityType
+
 from light_map.rendering.svg.blockers import get_visibility_blockers
+from light_map.visibility.visibility_types import VisibilityType
 
 
 def test_low_object_extraction_basic():

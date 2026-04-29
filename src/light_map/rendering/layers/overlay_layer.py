@@ -1,9 +1,9 @@
-from typing import List
 import time
-from light_map.core.common_types import Layer, LayerMode, ImagePatch
-from light_map.state.world_state import WorldState
+
 from light_map.core.app_context import AppContext
+from light_map.core.common_types import ImagePatch, Layer, LayerMode
 from light_map.rendering.overlay_renderer import OverlayRenderer
+from light_map.state.world_state import WorldState
 
 
 class TokenLayer(Layer):
@@ -54,7 +54,7 @@ class TokenLayer(Layer):
         # Nanosecond timestamps are ~10^15, so 10^18 is safe.
         return v * 10**18 + pulse_version
 
-    def _generate_patches(self, current_time: float) -> List[ImagePatch]:
+    def _generate_patches(self, current_time: float) -> list[ImagePatch]:
         if self.state is None:
             return []
 
@@ -84,7 +84,7 @@ class NotificationLayer(Layer):
             return 0
         return self.state.notifications_version
 
-    def _generate_patches(self, current_time: float) -> List[ImagePatch]:
+    def _generate_patches(self, current_time: float) -> list[ImagePatch]:
         if self.state is None:
             return []
         return self.overlay_renderer.draw_notifications()
@@ -114,7 +114,7 @@ class DebugLayer(Layer):
         version = max(version, self.state.fps_version)
         return version
 
-    def _generate_patches(self, current_time: float) -> List[ImagePatch]:
+    def _generate_patches(self, current_time: float) -> list[ImagePatch]:
         if self.state is None or not self.context.debug_mode:
             self._last_debug_mode = self.context.debug_mode
             return []

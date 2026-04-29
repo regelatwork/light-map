@@ -1,5 +1,7 @@
 import os
+
 import numpy as np
+
 from light_map.core.common_types import AppConfig
 from light_map.interactive_app import InteractiveApp
 
@@ -84,8 +86,8 @@ def test_token_tracker_determinism():
 
 
 def test_interactive_app_load_map_normalization(tmp_path):
-    from light_map.map.map_config import MapEntry
     from light_map.core.storage import StorageManager
+    from light_map.map.map_config import MapEntry
 
     storage = StorageManager(base_dir=str(tmp_path))
     storage.ensure_dirs()

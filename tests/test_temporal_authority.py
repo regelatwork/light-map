@@ -1,5 +1,5 @@
-from light_map.state.world_state import WorldState
 from light_map.state.temporal_event_manager import TemporalEventManager
+from light_map.state.world_state import WorldState
 
 
 def test_temporal_manager_updates_system_time():

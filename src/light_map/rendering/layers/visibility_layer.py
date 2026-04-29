@@ -1,4 +1,4 @@
-from typing import List
+
 from light_map.core.common_types import ImagePatch, LayerMode
 from light_map.core.constants import (
     ALPHA_OPAQUE,
@@ -21,7 +21,7 @@ class VisibilityLayer(VisibilityBaseLayer):
             self.state.grid_metadata_version,
         )
 
-    def _generate_patches(self, current_time: float) -> List[ImagePatch]:
+    def _generate_patches(self, current_time: float) -> list[ImagePatch]:
         if (
             self.state is None
             or self.state.fow_disabled
@@ -53,7 +53,7 @@ class ExclusiveVisionLayer(VisibilityBaseLayer):
             self.state.viewport_version,
         )
 
-    def _generate_patches(self, current_time: float) -> List[ImagePatch]:
+    def _generate_patches(self, current_time: float) -> list[ImagePatch]:
         if self.state is None or self.state.inspected_token_mask is None:
             return []
 

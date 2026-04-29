@@ -1,15 +1,17 @@
-import unittest
-import numpy as np
-from unittest.mock import MagicMock
-import sys
 import os
+import sys
+import unittest
+from unittest.mock import MagicMock
+
+import numpy as np
+
 
 # Ensure we can import the local package
 sys.path.insert(0, os.path.abspath("src"))
 
-from light_map.vision.detectors.aruco_detector import ArucoTokenDetector
 from light_map.map.map_system import MapSystem
 from light_map.rendering.projection import CameraProjectionModel
+from light_map.vision.detectors.aruco_detector import ArucoTokenDetector
 
 
 class TestArucoResizing(unittest.TestCase):

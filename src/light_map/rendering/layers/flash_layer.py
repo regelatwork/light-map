@@ -1,6 +1,7 @@
+
 import numpy as np
-from typing import List
-from light_map.core.common_types import Layer, LayerMode, ImagePatch
+
+from light_map.core.common_types import ImagePatch, Layer, LayerMode
 from light_map.state.world_state import WorldState
 
 
@@ -14,7 +15,7 @@ class FlashLayer(Layer):
         # Returns the timestamp of the calibration atom to trigger re-renders
         return self.state.calibration_version
 
-    def _generate_patches(self, current_time: float) -> List[ImagePatch]:
+    def _generate_patches(self, current_time: float) -> list[ImagePatch]:
         # Use flash_intensity from the calibration state
         intensity = self.state.calibration.flash_intensity
         # Create a full-screen patch with the specified intensity (BGR)

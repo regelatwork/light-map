@@ -1,7 +1,9 @@
 import os
 import subprocess
+
 import cv2
 import numpy as np
+
 from light_map.rendering.svg.loader import SVGLoader
 
 
@@ -9,7 +11,7 @@ def capture_reference(svg_path, out_path):
     # Headless chromium command
     # Create a temporary HTML to ensure zero margins
     html_path = out_path + ".html"
-    with open(svg_path, "r") as f:
+    with open(svg_path) as f:
         svg_content = f.read()
     # Inject style to ensure SVG fills the container
     svg_content = svg_content.replace(

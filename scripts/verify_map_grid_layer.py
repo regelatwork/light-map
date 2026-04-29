@@ -1,13 +1,15 @@
 import os
 import sys
+
 import numpy as np
+
 
 # Add src to path to allow imports
 sys.path.append(os.path.join(os.path.dirname(__file__), "..", "src"))
 
-from light_map.state.world_state import WorldState
-from light_map.rendering.layers.map_grid_layer import MapGridLayer
 from light_map.core.common_types import GridMetadata, ViewportState
+from light_map.rendering.layers.map_grid_layer import MapGridLayer
+from light_map.state.world_state import WorldState
 
 
 def verify_map_grid_layer():

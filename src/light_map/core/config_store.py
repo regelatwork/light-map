@@ -1,7 +1,8 @@
 import json
 import logging
 import os
-from typing import Any, Dict
+from typing import Any
+
 import numpy as np
 
 
@@ -14,19 +15,19 @@ class ConfigStore:
     def __init__(self, filepath: str):
         self.filepath = filepath
 
-    def load(self, default_factory=dict) -> Dict[str, Any]:
+    def load(self, default_factory=dict) -> dict[str, Any]:
         """Loads JSON from file. Returns a default if file doesn't exist or is invalid."""
         if not os.path.exists(self.filepath):
             return default_factory()
 
         try:
-            with open(self.filepath, "r") as f:
+            with open(self.filepath) as f:
                 return json.load(f)
         except Exception as e:
             logging.error("Error loading config from %s: %s", self.filepath, e)
             return default_factory()
 
-    def save(self, data: Dict[str, Any]) -> bool:
+    def save(self, data: dict[str, Any]) -> bool:
         """Saves data to JSON file with indentation and numpy type handling."""
         try:
             # Ensure directory exists

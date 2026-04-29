@@ -1,8 +1,10 @@
+from unittest.mock import MagicMock, patch
+
 import numpy as np
 import pytest
-from unittest.mock import MagicMock, patch
-from light_map.interactive_app import InteractiveApp
+
 from light_map.core.common_types import AppConfig, Token
+from light_map.interactive_app import InteractiveApp
 
 
 @pytest.fixture

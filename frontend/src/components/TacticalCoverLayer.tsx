@@ -51,12 +51,12 @@ export const TacticalCoverLayer: React.FC = () => {
               const d = `M ${pApex.x} ${pApex.y} L ${pStart.x} ${pStart.y} L ${pEnd.x} ${pEnd.y} Z`;
 
               // Colors based on status (0: Clear, 2: Obscured, 3: Soft Cover)
-              let fill = 'rgba(59, 130, 246, 0.2)'; // More visible blue
+              let fill = 'rgba(59, 130, 246, 0.8)'; // Opaque blue
               
               if (seg.status === 2) { // Obscured
-                fill = 'rgba(234, 179, 8, 0.25)'; // More visible yellow
+                fill = 'rgba(234, 179, 8, 0.8)'; // Opaque yellow
               } else if (seg.status === 3) { // Soft Cover
-                fill = 'rgba(168, 85, 247, 0.2)'; // More visible purple
+                fill = 'rgba(168, 85, 247, 0.8)'; // Opaque purple
               }
 
               return (

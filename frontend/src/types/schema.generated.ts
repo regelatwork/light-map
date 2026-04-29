@@ -44,10 +44,10 @@ export interface SizeProfile {
 export interface ArucoDefinition {
   name: string;
   type: string;
-  profile?: string | null;
-  size?: number | null;
-  height_mm?: number | null;
-  color?: string | null;
+  profile: any;
+  size: any;
+  height_mm: any;
+  color: any;
 }
 
 export interface TokenConfig {
@@ -67,22 +67,22 @@ export interface Token {
   world_x: number;
   world_y: number;
   world_z: number;
-  marker_x?: number | null;
-  marker_y?: number | null;
+  marker_x: any;
+  marker_y: any;
   marker_z: number;
-  grid_x?: number | null;
-  grid_y?: number | null;
-  screen_x?: number | null;
-  screen_y?: number | null;
+  grid_x: any;
+  grid_y: any;
+  screen_x: any;
+  screen_y: any;
   confidence: number;
   is_occluded: boolean;
   is_duplicate: boolean;
-  name?: string | null;
-  color?: string | null;
+  name: any;
+  color: any;
   type: string;
-  profile?: string | null;
-  size?: number | null;
-  height_mm?: number | null;
+  profile: any;
+  size: any;
+  height_mm: any;
 }
 
 export interface SessionData {
@@ -122,9 +122,9 @@ export interface GlobalConfig {
   door_thickness_multiplier: number;
   detection_algorithm: TokenDetectionAlgorithm;
   naming_style: NamingStyle;
-  projector_pos_x_override?: number | null;
-  projector_pos_y_override?: number | null;
-  projector_pos_z_override?: number | null;
+  projector_pos_x_override: any;
+  projector_pos_y_override: any;
+  projector_pos_z_override: any;
 }
 
 export interface WedgeSegment {

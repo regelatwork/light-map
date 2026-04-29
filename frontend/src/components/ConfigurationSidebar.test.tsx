@@ -309,7 +309,14 @@ describe('ConfigurationSidebar', () => {
         fow_disabled: false,
         use_projector_3d_model: true,
         aruco_defaults: {
-          42: { name: 'Deep Thought', type: 'NPC', color: '#0000ff' },
+          42: { 
+            name: 'Deep Thought', 
+            type: 'NPC', 
+            color: '#0000ff',
+            profile: 'medium',
+            size: 25.0,
+            height_mm: 50.0
+          },
         },
       },
       maps: {},

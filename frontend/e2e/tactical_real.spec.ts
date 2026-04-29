@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { E2EWindow } from './types/e2e';
 
 /**
  * Real Backend E2E Test
@@ -12,7 +13,7 @@ test.describe('Tactical Cover Real Integration', () => {
     // Inject the real API host from environment variable
     const apiHost = process.env.VITE_API_HOST || 'localhost:8000';
     await page.addInitScript((host) => {
-      (window as unknown as { VITE_API_HOST: string }).VITE_API_HOST = host;
+      (window as unknown as E2EWindow).VITE_API_HOST = host;
     }, apiHost);
 
     // Clear any existing mocks/routes to ensure we hit the real backend
@@ -23,6 +24,7 @@ test.describe('Tactical Cover Real Integration', () => {
 
   test('backend survives selection and returns tactical data', async ({ page }) => {
     const apiHost = process.env.VITE_API_HOST || '127.0.0.1:8000';
+
     await page.goto('/');
 
     // 1. Wait for system to connect to real backend

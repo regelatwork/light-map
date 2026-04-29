@@ -542,6 +542,7 @@ def run_app(args):
                                 state.hands_version,
                                 state.fow_version,
                                 state.visibility_version,
+                                state.tactical_bonuses_version,
                                 state.map_version,
                                 state.menu_version,
                                 state.tokens_version,
@@ -579,13 +580,11 @@ def run_app(args):
                                 last_menu_ts = state.menu_version
 
                             if state.tactical_bonuses_version != last_tactical_ts:
-                                logger.debug("Mirroring %d tactical bonuses (v%d)", len(state.tactical_bonuses), state.tactical_bonuses_version)
                                 state_mirror["tactical_bonuses"] = {
                                     str(tid): res.to_dict()
                                     for tid, res in state.tactical_bonuses.items()
                                 }
                                 last_tactical_ts = state.tactical_bonuses_version
-                                logger.debug("State Mirror now has tactical_bonuses for: %s", list(state_mirror["tactical_bonuses"].keys()))
 
                             # 2. Update Configuration (Only if changed)
                             current_map_config_version = getattr(

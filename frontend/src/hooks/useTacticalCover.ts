@@ -24,13 +24,7 @@ export function useTacticalCover() {
   const fetchCover = useCallback(async (id: number, version: number) => {
     setIsLoading(true);
     try {
-      if (import.meta.env.DEV) {
-        console.debug(`Fetching tactical cover for attacker ${id} (v${version})`);
-      }
       const data = await getTacticalCover(id);
-      if (import.meta.env.DEV) {
-        console.debug(`Received tactical cover for attacker ${id}:`, Object.keys(data).length, 'targets');
-      }
       setBonuses(data);
       lastFetchedVersion.current = version;
       lastFetchedAttackerId.current = id;

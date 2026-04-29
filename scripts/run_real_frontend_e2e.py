@@ -9,16 +9,45 @@ import socket as socket_lib
 import tempfile
 import shutil
 import argparse
+import json
 
 def find_free_port():
     with socket_lib.socket(socket_lib.AF_INET, socket_lib.SOCK_STREAM) as s:
         s.bind(("", 0))
         return s.getsockname()[1]
 
-def run_real_e2e(initial_config_dir=None, keep_on_failure=True):
+def cleanup_old_resources():
+    """Clean up leftover temp dirs and shared memory from previous runs."""
+    import shutil
+    import glob
+
+    # 1. Clean /tmp and /var/tmp
+    for pattern in ["/tmp/light_map_e2e_*", "/var/tmp/light_map_e2e_*"]:
+        for path in glob.glob(pattern):
+            try:
+                if os.path.isdir(path):
+                    shutil.rmtree(path)
+                else:
+                    os.remove(path)
+            except Exception as e:
+                print(f"Warning: Could not clean up {path}: {e}")
+
+    # 2. Clean Shared Memory (/dev/shm on Linux)
+    if os.path.exists("/dev/shm"):
+        for path in glob.glob("/dev/shm/light_map_*"):
+            try:
+                os.remove(path)
+            except Exception as e:
+                print(f"Warning: Could not clean up shared memory {path}: {e}")
+
+
+def run_real_e2e(initial_config_dir=None, keep_on_failure=True, skip_ui=False):
     project_root = os.getcwd()
     python_bin = os.path.join(project_root, ".venv", "bin", "python3")
     
+    print("Performing startup cleanup...")
+    cleanup_old_resources()
+
     # 1. Setup isolated directories
     # We use a manual directory if we want to keep it on failure
     temp_base = tempfile.mkdtemp(prefix="light_map_e2e_")
@@ -71,7 +100,6 @@ def run_real_e2e(initial_config_dir=None, keep_on_failure=True):
     ]
 
     cmd = [
-        "xvfb-run", "-a",
         python_bin, "-m", "light_map",
         "--remote-host", "127.0.0.1",
         "--remote-port", str(backend_port),
@@ -82,7 +110,6 @@ def run_real_e2e(initial_config_dir=None, keep_on_failure=True):
         "--map", "maps/test_blocker.svg",
         "--log-level", "DEBUG"
     ]
-
     env = os.environ.copy()
     env["MOCK_CAMERA"] = "1"
     env["PYTHONPATH"] = os.path.join(project_root, "src")
@@ -92,9 +119,11 @@ def run_real_e2e(initial_config_dir=None, keep_on_failure=True):
     env["LIGHT_MAP_LOG_FILE"] = log_file_path
 
     print(f"Starting backend (logs: {log_file_path})...")
+    print(f"Command: {' '.join(cmd)}")
     with open(log_file_path, "w") as log_file:
         backend_proc = subprocess.Popen(
-            cmd, env=env, stdout=log_file, stderr=subprocess.STDOUT, text=True
+            cmd, env=env, stdout=log_file, stderr=subprocess.STDOUT, text=True,
+            bufsize=1 # Line buffered
         )
 
     base_url = f"http://127.0.0.1:{backend_port}"
@@ -104,9 +133,14 @@ def run_real_e2e(initial_config_dir=None, keep_on_failure=True):
         # Wait for backend
         print("Waiting for backend to be ready...")
         ready = False
-        for i in range(30):
+        for i in range(45): # Increased timeout
+            # Check if process is still running
+            if backend_proc.poll() is not None:
+                print(f"Backend process EXITED prematurely with code {backend_proc.returncode}")
+                break
+            
             try:
-                if httpx.get(f"{base_url}/health").status_code == 200:
+                if httpx.get(f"{base_url}/health", timeout=1.0).status_code == 200:
                     ready = True
                     break
             except:
@@ -114,10 +148,10 @@ def run_real_e2e(initial_config_dir=None, keep_on_failure=True):
             time.sleep(1)
         
         if not ready:
-            print("Backend failed to start. Last 20 lines of logs:")
+            print("Backend failed to start. Logs:")
             if os.path.exists(log_file_path):
                 with open(log_file_path, "r") as f:
-                    print("".join(f.readlines()[-20:]))
+                    print(f.read())
             return False
 
         # 6. Inject Tokens
@@ -127,8 +161,44 @@ def run_real_e2e(initial_config_dir=None, keep_on_failure=True):
             {"id": 2, "x": 200.0, "y": 100.0, "z": 0.0}
         ])
 
-        # 7. Run Playwright
-        print(f"Starting Playwright E2E on port {frontend_port}...")
+        # 7. Run Verification
+        if skip_ui:
+            print("Running Backend API Verification (skipping UI)...")
+            # Wait for main loop to settle and calculate
+            time.sleep(2)
+            
+            # Select token 1
+            print("Selecting token 1...")
+            sel_payload = json.dumps({"type": "TOKEN", "id": 1})
+            resp = httpx.post(f"{base_url}/input/action", params={"action": "SET_SELECTION", "payload": sel_payload})
+            if resp.status_code != 200:
+                print(f"Error: SET_SELECTION failed with {resp.status_code}: {resp.text}")
+                return False
+            
+            # Wait for calculation
+            print("Waiting for tactical calculation...")
+            time.sleep(3)
+            
+            # Check API
+            print(f"Checking tactical cover API at {base_url}/tactical/cover?attacker_id=1")
+            response = httpx.get(f"{base_url}/tactical/cover?attacker_id=1")
+            if response.status_code != 200:
+                print(f"Error: API returned {response.status_code}: {response.text}")
+                return False
+            
+            data = response.json()
+            print(f"Tactical Data: {json.dumps(data, indent=2)}")
+            
+            if "2" in data:
+                print("SUCCESS: Tactical data retrieved via API!")
+                success = True
+            else:
+                print("FAILURE: No tactical data for target '2' found in API response.")
+                success = False
+            
+            return success
+        else:
+            print(f"Starting Playwright E2E on port {frontend_port}...")
         
         # CRITICAL: Clear Vite cache to ensure env vars are fresh
         vite_cache = os.path.join(project_root, "frontend", "node_modules", ".vite")
@@ -183,9 +253,10 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Run hermetic real frontend-to-backend E2E tests.")
     parser.add_argument("--config-dir", help="Directory containing initial configuration files to seed.")
     parser.add_argument("--no-keep", action="store_false", dest="keep", help="Delete isolated environment even on failure.")
+    parser.add_argument("--skip-ui", action="store_true", help="Run backend-only verification (no browser).")
     parser.set_defaults(keep=True)
     
     args = parser.parse_args()
     
-    result = run_real_e2e(initial_config_dir=args.config_dir, keep_on_failure=args.keep)
+    result = run_real_e2e(initial_config_dir=args.config_dir, keep_on_failure=args.keep, skip_ui=args.skip_ui)
     sys.exit(0 if result else 1)

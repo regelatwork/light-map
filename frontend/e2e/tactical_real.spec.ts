@@ -44,11 +44,16 @@ test.describe('Tactical Cover Real Integration', () => {
     await attackerGroup.click();
     console.log('Clicked attacker token');
 
-    // 5. Verify the backend survivors and returns data via API check
-    const response = await page.request.get(`http://${apiHost}/tactical/cover?attacker_id=1`);
-    expect(response.ok()).toBeTruthy();
-    const data = await response.json();
-    console.log('DIRECT API DATA:', JSON.stringify(data));
+    // 5. Verify the backend survives and returns data via API check (with retries for calculation time)
+    let data: any = {};
+    for (let i = 0; i < 10; i++) {
+        const response = await page.request.get(`http://${apiHost}/tactical/cover?attacker_id=1`);
+        expect(response.ok()).toBeTruthy();
+        data = await response.json();
+        console.log(`POLL ${i} API DATA keys:`, Object.keys(data));
+        if (Object.keys(data).length > 0) break;
+        await page.waitForTimeout(2000);
+    }
     expect(Object.keys(data).length).toBeGreaterThan(0);
 
     // 6. Verify tactical layer appears

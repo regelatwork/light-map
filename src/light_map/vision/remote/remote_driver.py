@@ -144,7 +144,7 @@ class ConnectionManager:
                 self.disconnect(connection)
 
 
-def start_remote_driver(
+def create_app(
     results_queue: Queue,
     stop_event: Event,
     state_mirror: Dict[str, Any],
@@ -216,6 +216,7 @@ def start_remote_driver(
             for src_key, dest_key in state_mapping.items():
                 if src_key in world:
                     state[dest_key] = world[src_key]
+            
             return numpy_to_python(state)
         except Exception as e:
             if not stop_event.is_set():
@@ -705,8 +706,6 @@ def start_remote_driver(
         If attacker_id matches the current selection, cached results from state_mirror are used.
         """
         bonuses = state_mirror.get("tactical_bonuses", {})
-        logging.debug("API: get_tactical_cover (attacker_id=%s) returning %d bonuses. Mirror keys: %s", 
-                      attacker_id, len(bonuses), list(state_mirror.keys()))
         return bonuses
 
 
@@ -843,7 +842,7 @@ def remote_driver_worker(
     )
 
     config = uvicorn.Config(
-        app, host=host, port=port, log_level="info", access_log=False
+        app, host=host, port=port, log_level="info", access_log=True
     )
     server = uvicorn.Server(config)
 

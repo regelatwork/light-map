@@ -36,9 +36,6 @@ export function useTacticalCover() {
   }, []);
 
   useEffect(() => {
-    if (import.meta.env.DEV) {
-      console.debug(`useTacticalCover useEffect: attackerId=${attackerId}, ts=${tactical_timestamp}`);
-    }
     if (attackerId === null) {
       if (Object.keys(bonuses).length > 0) {
         setBonuses({});

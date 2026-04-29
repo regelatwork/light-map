@@ -26,7 +26,6 @@ const getApiHost = () => {
 };
 
 export const API_HOST = getApiHost();
-console.log('determined API_HOST:', API_HOST);
 export const API_BASE_URL = `${window.location.protocol}//${API_HOST}`;
 export const WS_PROTOCOL = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
 export const WS_URL = `${WS_PROTOCOL}//${API_HOST}/ws/state`;

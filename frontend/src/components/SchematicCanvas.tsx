@@ -26,8 +26,8 @@ export const SchematicCanvas: FC<SchematicCanvasProps> = ({ children }) => {
   const centerY = (config.proj_res?.[1] || 750) / 2;
 
   // Viewbox state (x, y, width, height)
-  // Start with (0,0) as the default top-left of a 1000x750 view
-  const [viewBox, setViewBox] = useState({ x: 0, y: 0, w: 1000, h: 750 });
+  // Start centered at (0,0)
+  const [viewBox, setViewBox] = useState({ x: -500, y: -375, w: 1000, h: 750 });
   const isPanning = useRef(false);
   const startPoint = useRef({ x: 0, y: 0 });
   const svgRef = useRef<SVGSVGElement>(null);

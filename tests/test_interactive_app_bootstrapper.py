@@ -127,6 +127,7 @@ def test_interactive_app_process_state_delegation(mock_config, monkeypatch):
 
     # Mock scene manager and current scene
     app.scene_manager = MagicMock(spec=SceneManager)
+    app.scene_manager.current_scene_id = SceneId.MAP
     mock_scene = MagicMock()
     mock_scene.update.return_value = None
     mock_scene.__class__.__name__ = "MockScene"

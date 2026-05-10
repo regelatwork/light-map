@@ -3,7 +3,9 @@ import argparse
 import os
 import subprocess
 import sys
-import tempfile
+import qrcode
+import qrcode.image.svg
+import re
 
 def main():
     parser = argparse.ArgumentParser(description="Generate a US-Letter sized QR code for the Player Tactical Dashboard.")
@@ -17,57 +19,35 @@ def main():
     url = f"http://{args.host}:{args.port}/player"
     print(f"Generating QR code for: {url}")
     
-    # Path to inkscape extension script
-    inkscape_ext_path = "/usr/share/inkscape/extensions/render_barcode_qrcode.py"
-    if not os.path.exists(inkscape_ext_path):
-        print(f"Error: Inkscape QR extension not found at {inkscape_ext_path}")
+    # Generate QR code using the qrcode library
+    qr = qrcode.QRCode(
+        version=1,
+        error_correction=qrcode.constants.ERROR_CORRECT_M,
+        box_size=1, # 1 unit per module
+        border=4,
+    )
+    qr.add_data(url)
+    qr.make(fit=True)
+
+    # Create SVG image (using Path factory)
+    factory = qrcode.image.svg.SvgPathImage
+    img = qr.make_image(image_factory=factory)
+    
+    # Extract the path from the generated image
+    svg_str = img.to_string().decode()
+    match = re.search(r'd="([^"]+)"', svg_str)
+    if not match:
+        print("Error: Could not extract path from QR code")
         sys.exit(1)
         
-    # Use the venv python to run the extension script (since we installed dependencies there)
-    venv_python = os.path.join(os.path.dirname(__file__), "..", ".venv", "bin", "python3")
-    if not os.path.exists(venv_python):
-        # Fallback to current python
-        venv_python = sys.executable
-
-    with tempfile.NamedTemporaryFile(suffix=".svg", delete=False) as tmp_empty:
-        tmp_empty.write(b'<svg xmlns="http://www.w3.org/2000/svg"/>')
-        tmp_empty_path = tmp_empty.name
-
-    try:
-        # Generate the QR code SVG using the extension script
-        # We capture stdout as it prints the SVG there
-        cmd = [
-            venv_python, 
-            inkscape_ext_path, 
-            "--text", url,
-            "--modulesize", "4",
-            tmp_empty_path
-        ]
-        
-        result = subprocess.run(cmd, capture_output=True, text=True)
-        if result.returncode != 0:
-            print("Error generating QR code:")
-            print(result.stderr)
-            sys.exit(1)
-            
-        qr_svg_content = result.stdout
-        
-        # Extract the path/group from the generated SVG
-        # The extension outputs a full SVG, we want to embed its contents
-        import re
-        # Find the first <g> or <path> that isn't the outer <svg>
-        # Simplified: just take everything between <svg ...> and </svg>
-        match = re.search(r'<svg[^>]*>(.*)</svg>', qr_svg_content, re.DOTALL)
-        if not match:
-            print("Error: Could not parse generated QR code SVG")
-            sys.exit(1)
-            
-        qr_elements = match.group(1)
-        
-        # US Letter template (8.5 x 11 inches)
-        # 96 DPI: 816 x 1056 px
-        # QR code centered, URL text below
-        us_letter_svg = f"""<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+    qr_path = match.group(1)
+    
+    # Calculate scale to make it fit nicely
+    # Standard QR v1 with border is 29x29 modules.
+    # We want it to be about 400px wide on our 816px canvas.
+    # 400 / 29 = 13.8 approx
+    
+    us_letter_svg = f"""<?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <svg
    width="8.5in"
    height="11in"
@@ -80,8 +60,8 @@ def main():
     Light Map Tactical Dashboard
   </text>
   
-  <g transform="translate(208, 250) scale(3.5)">
-    {qr_elements}
+  <g transform="translate(208, 250) scale(13.8)">
+    <path d="{qr_path}" fill="black" stroke="none" />
   </g>
   
   <text x="408" y="750" font-family="monospace" font-size="20" text-anchor="middle" fill="#475569">
@@ -93,21 +73,23 @@ def main():
   </text>
 </svg>
 """
+    
+    with open(args.output, "w") as f:
+        f.write(us_letter_svg)
         
-        with open(args.output, "w") as f:
-            f.write(us_letter_svg)
-            
-        print(f"Successfully generated: {args.output}")
-        
-        if args.pdf:
-            pdf_path = args.output.replace(".svg", ".pdf")
-            print(f"Exporting to PDF: {pdf_path}...")
-            subprocess.run(["inkscape", args.output, "--export-filename=" + pdf_path], check=True)
+    print(f"Successfully generated: {args.output}")
+    
+    if args.pdf:
+        pdf_path = args.output.replace(".svg", ".pdf")
+        print(f"Exporting to PDF using Inkscape...")
+        try:
+            subprocess.run(["inkscape", args.output, "--export-filename=" + pdf_path], check=True, capture_output=True)
             print(f"Successfully generated: {pdf_path}")
-            
-    finally:
-        if os.path.exists(tmp_empty_path):
-            os.remove(tmp_empty_path)
+        except subprocess.CalledProcessError as e:
+            print("Error exporting PDF via Inkscape:")
+            print(e.stderr.decode())
+        except FileNotFoundError:
+            print("Error: Inkscape not found. PDF export skipped.")
 
 if __name__ == "__main__":
     main()

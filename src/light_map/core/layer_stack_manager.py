@@ -19,6 +19,7 @@ from light_map.rendering.layers.overlay_layer import (
     TokenLayer,
 )
 from light_map.rendering.layers.selection_progress_layer import SelectionProgressLayer
+from light_map.rendering.layers.ping_layer import PingLayer
 from light_map.rendering.layers.tactical_overlay_layer import TacticalOverlayLayer
 from light_map.rendering.layers.visibility_layer import (
     ExclusiveVisionLayer,
@@ -63,6 +64,7 @@ class LayerStackManager:
         self.notification_layer = NotificationLayer(state, context)
         self.debug_layer = DebugLayer(state, context)
         self.selection_progress_layer = SelectionProgressLayer(state, context)
+        self.ping_layer = PingLayer(state, context)
         self.cursor_layer = CursorLayer(state, context)
         self.tactical_overlay_layer = TacticalOverlayLayer(
             state, context.map_system, context.visibility_engine
@@ -103,6 +105,7 @@ class LayerStackManager:
             self.background_composite,
             self.hand_mask_layer,
             self.token_layer,
+            self.ping_layer,
             self.menu_layer,
             self.notification_layer,
             self.debug_layer,
@@ -156,6 +159,7 @@ class LayerStackManager:
             self.debug_layer,
             self.selection_progress_layer,
             self.cursor_layer,
+            self.ping_layer,
             self.tactical_overlay_layer,
             self.flash_layer,
             self.map_grid_layer,

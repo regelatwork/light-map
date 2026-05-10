@@ -76,6 +76,8 @@ class ActionDispatcher:
         self.register("DELETE_TOKEN_PROFILE", handle_delete_token_profile)
         self.register("UPDATE_SYSTEM_CONFIG", handle_update_system_config)
         self.register("MENU_INTERACT", handle_menu_interact)
+        self.register("TRIGGER_PING", handle_trigger_ping)
+        self.register("TOGGLE_EXCLUSIVE_VISION", handle_toggle_exclusive_vision)
 
     def _handle_menu_transition(self, action_name: str) -> Optional["SceneTransition"]:
         from light_map.core.common_types import MenuActions, SceneId
@@ -390,3 +392,53 @@ def handle_quit(
     if state is not None:
         state.is_running = False
     return None
+
+def handle_trigger_ping(
+    app: "InteractiveApp", payload: dict[str, Any], state: Optional["WorldState"] = None
+) -> Optional["SceneTransition"]:
+    if state is None:
+        return None
+    
+    token_id = payload.get("token_id")
+    if not token_id:
+        return None
+
+    import time
+    current_time = time.monotonic()
+    
+    # Update active pings atom
+    new_pings = dict(state.active_pings)
+    new_pings[token_id] = current_time
+    state.active_pings = new_pings
+    
+    # Schedule cleanup after 2.0 seconds
+    app.events.schedule(2.0, lambda: _remove_ping(state, token_id))
+    
+    return None
+
+def _remove_ping(state: "WorldState", token_id: str):
+    new_pings = dict(state.active_pings)
+    if token_id in new_pings:
+        del new_pings[token_id]
+        state.active_pings = new_pings
+
+def handle_toggle_exclusive_vision(
+    app: "InteractiveApp", payload: dict[str, Any], state: Optional["WorldState"] = None
+) -> Optional["SceneTransition"]:
+    from light_map.core.common_types import SceneId, SelectionType
+    from light_map.core.scene import SceneTransition
+
+    token_id = payload.get("token_id")
+    
+    if token_id:
+        # Lock vision on this character
+        if state:
+            from light_map.core.common_types import SelectionState
+            state.selection = SelectionState(type=SelectionType.TOKEN, id=token_id)
+        return SceneTransition(SceneId.EXCLUSIVE_VISION)
+    else:
+        # Clear selection and return to normal viewing
+        if state:
+            from light_map.core.common_types import SelectionState
+            state.selection = SelectionState()
+        return SceneTransition(SceneId.VIEWING)

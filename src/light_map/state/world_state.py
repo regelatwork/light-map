@@ -101,6 +101,7 @@ class WorldState:
         self._projector_pose_atom = VersionedAtom(
             ProjectorPose(0.0, 0.0, 0.0), "projector_pose"
         )
+        self._active_pings_atom = VersionedAtom({}, "active_pings")
         self._fps_atom = VersionedAtom(0.0, "fps")
         self._config_version_atom = VersionedAtom(0, "config")
 
@@ -612,6 +613,19 @@ class WorldState:
         return self._fps_atom.value
 
     @property
+    def active_pings(self) -> dict[str, float]:
+        """Mapping of token_id to creation timestamp."""
+        return self._active_pings_atom.value
+
+    @active_pings.setter
+    def active_pings(self, value: dict[str, float]):
+        self._active_pings_atom.update(value)
+
+    @property
+    def active_pings_version(self) -> int:
+        return self._active_pings_atom.timestamp
+
+    @property
     def fps_version(self) -> int:
         return self._fps_atom.timestamp
 
@@ -866,6 +880,8 @@ class WorldState:
             "inspected_token_version": self.inspected_token_version,
             "projector_pose_version": self.projector_pose_version,
             "grid_metadata_version": self.grid_metadata_version,
+            "active_pings_version": self.active_pings_version,
+            "active_pings": self.active_pings,
             "system_time": self.system_time,
             "system_time_version": self.system_time_version,
             "effective_show_tokens": self.effective_show_tokens,

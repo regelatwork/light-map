@@ -589,6 +589,32 @@ def create_app(
         results_queue.put(res)
         return {"status": "injected", "action": action}
 
+    @app.post("/actions/exclusive-vision")
+    def toggle_exclusive_vision(request: VisionRequest):
+        """Toggles exclusive vision for a specific token ID."""
+        from light_map.core.common_types import Action
+
+        res = DetectionResult(
+            timestamp=time.monotonic_ns(),
+            type=ResultType.ACTION,
+            data={"action": Action.TOGGLE_EXCLUSIVE_VISION, "token_id": request.token_id},
+        )
+        results_queue.put(res)
+        return {"status": "injected", "action": Action.TOGGLE_EXCLUSIVE_VISION}
+
+    @app.post("/actions/ping")
+    def trigger_ping(request: PingRequest):
+        """Triggers a visual ping on the tabletop for a specific token ID."""
+        from light_map.core.common_types import Action
+
+        res = DetectionResult(
+            timestamp=time.monotonic_ns(),
+            type=ResultType.ACTION,
+            data={"action": Action.TRIGGER_PING, "token_id": request.token_id},
+        )
+        results_queue.put(res)
+        return {"status": "injected", "action": Action.TRIGGER_PING}
+
     @app.post("/map/zoom")
     def zoom_map(delta: float):
         """Injects a zoom action for the map system."""

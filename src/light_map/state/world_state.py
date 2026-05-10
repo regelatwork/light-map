@@ -886,6 +886,20 @@ class WorldState:
             "system_time_version": self.system_time_version,
             "effective_show_tokens": self.effective_show_tokens,
             "projector_pose": self.projector_pose.to_list(),
+            "tactical": {
+                "attacker_id": self.selection.id if self.selection.id else None,
+                "is_exclusive_active": self.current_scene_name == "EXCLUSIVE_VISION",
+                "targets": [
+                    {
+                        "id": target_id,
+                        "name": next((t.name for t in self.tokens if t.id == target_id), target_id),
+                        "ac_bonus": result.ac_bonus,
+                        "reflex_bonus": result.reflex_bonus,
+                        "reason": result.explanation,
+                    }
+                    for target_id, result in self.tactical_bonuses.items()
+                ]
+            }
         }
 
     def clear_raw_aruco(self):

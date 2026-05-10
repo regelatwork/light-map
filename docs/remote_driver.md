@@ -2,23 +2,33 @@
 
 The Remote Application Driver provides a REST API and WebSocket stream to control the Light Map application, inspect its internal state, and serve the **Light Map Control Dashboard**.
 
-## 1. Web Dashboard
+## 1. Web Dashboards
 
-The easiest way to interact with the system remotely is through the built-in web dashboard. It provides a visual "Schematic View" of the tabletop, real-time token tracking, and interactive calibration wizards.
+The system provides two built-in web dashboards served from a single internal server.
 
-### Accessing the Dashboard
+### GM Dashboard (Desktop)
 
-While the Light Map application is running, navigate to the following URL in any modern web browser:
+The primary control interface for the Game Master. It provides a visual "Schematic View" of the tabletop, real-time token tracking, and interactive calibration wizards.
 
-`http://127.0.0.1:8000` (or the IP address of the machine running the app)
+- **URL**: `http://127.0.0.1:8000` (Default)
+- **Key Features**:
+  - **Schematic View**: A live SVG-based representation of the map, grid, and tokens.
+  - **Calibration Wizards**: Step-by-step UI for Camera Intrinsics, Projector Homography, and PPI calibration.
+  - **Asset Library**: Browse and load SVG maps directly from the UI.
+  - **Configuration Sidebar**: Adjust grid offsets and token properties with live preview.
 
-### Key Features
+### Player Tactical Dashboard (Mobile)
 
-- **Schematic View**: A live SVG-based representation of the map, grid, and tokens.
-- **Calibration Wizards**: Step-by-step UI for Camera Intrinsics, Projector Homography, and PPI calibration.
-- **Asset Library**: Browse and load SVG maps directly from the UI.
-- **Configuration Sidebar**: Adjust grid offsets and token properties with live preview.
-- **Vision Control**: Toggle "Exclusive Vision" and "Hand/Token Masking" modes.
+A lightweight, text-centric interface designed for players to use on their phones.
+
+- **URL**: `http://127.0.0.1:8000/player`
+- **Key Features**:
+  - **Hero Claiming**: Select your PC token from the list.
+  - **Exclusive Vision**: A prominent toggle to see through your character's eyes on the tabletop.
+  - **Tactical Readout**: Live AC and Reflex bonuses from cover, updating in real-time.
+  - **Tabletop Pings**: Tap an enemy to pulse a cyan ring around them on the physical tabletop.
+
+> **Note on Network Access**: To access these dashboards from another device (like a phone), you must start the application with `--remote-host 0.0.0.0`.
 
 ______________________________________________________________________
 
@@ -33,8 +43,10 @@ The driver is integrated into the main application and can be enabled using CLI 
 | `--remote-hands` | Remote hand input mode | `exclusive`, `merge`, `ignore` (default) |
 | `--remote-tokens` | Remote token input mode | `exclusive`, `merge`, `ignore` (default) |
 | `--remote-host` | Host address for the HTTP API | String (default: `127.0.0.1`) |
-| `--remote-port` | Port for the HTTP API | Integer (default: `8000`) |
+| `-p`, `--port` | Port for the HTTP API | Integer (default: `8000`) |
 | `--remote-origins` | Allowed CORS origins | Space-separated list (default: localhost/127.0.0.1 on 8000/5173) |
+
+> **Legacy/Verbose Flags**: `--remote-port` is also supported as an alias for `-p` and `--port`.
 
 ### CORS Security
 

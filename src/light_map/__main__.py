@@ -826,10 +826,14 @@ def main():
         help="Mode for remote token inputs",
     )
     run_parser.add_argument(
+        "-p",
+        "--port",
         "--remote-port",
         type=int,
         default=8000,
         help="Port for the remote driver HTTP API",
+        dest="remote_port",
+        metavar="PORT",
     )
     run_parser.add_argument(
         "--remote-host",

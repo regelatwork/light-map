@@ -98,6 +98,8 @@ class GridConfig(BaseModel):
     offset_y: float
     spacing: float | None = None
     grid_type: GridType | None = None
+    visible: bool | None = None
+    color: str | None = None
 
 
 class PingRequest(BaseModel):

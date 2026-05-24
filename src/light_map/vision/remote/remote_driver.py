@@ -136,16 +136,12 @@ class ConnectionManager:
     async def connect(self, websocket: WebSocket):
         await websocket.accept()
         self.active_connections.append(websocket)
-        logging.info(
-            f"WebSocket client connected. Total: {len(self.active_connections)}"
-        )
+        logging.info(f"WebSocket client connected. Total: {len(self.active_connections)}")
 
     def disconnect(self, websocket: WebSocket):
         if websocket in self.active_connections:
             self.active_connections.remove(websocket)
-            logging.info(
-                f"WebSocket client disconnected. Total: {len(self.active_connections)}"
-            )
+            logging.info(f"WebSocket client disconnected. Total: {len(self.active_connections)}")
 
     async def broadcast(self, message: dict):
         # Iterate over a copy to allow safe removal during iteration
@@ -183,7 +179,6 @@ def create_app(
     logging.info(f"Remote Driver process started (PID: {os.getpid()})")
 
     manager = ConnectionManager()
-
 
     def get_formatted_state(mirror):
         """Fetch and format state from mirror for WebSocket broadcast."""
@@ -260,10 +255,7 @@ def create_app(
                 logging.info(f"Video stream capture loop started (SHM: {shm_name})")
                 while not stop_event.is_set():
                     latest_timestamp = producer.get_latest_timestamp()
-                    if (
-                        latest_timestamp is None
-                        or latest_timestamp <= last_processed_timestamp
-                    ):
+                    if latest_timestamp is None or latest_timestamp <= last_processed_timestamp:
                         time.sleep(0.01)
                         continue
 
@@ -315,9 +307,7 @@ def create_app(
             while not stop_event.is_set():
                 if manager.active_connections:
                     try:
-                        state = await asyncio.to_thread(
-                            get_formatted_state, state_mirror
-                        )
+                        state = await asyncio.to_thread(get_formatted_state, state_mirror)
                         if state:
                             await manager.broadcast(state)
                     except Exception as e:
@@ -358,9 +348,7 @@ def create_app(
             allowed_origins.append(current_origin)
         # Also allow localhost and 127.0.0.1 on the current port
         if port != 8000:
-            allowed_origins.extend(
-                [f"http://localhost:{port}", f"http://127.0.0.1:{port}"]
-            )
+            allowed_origins.extend([f"http://localhost:{port}", f"http://127.0.0.1:{port}"])
         # If host is 0.0.0.0, we can't really guess what the client's host is,
         # but the common case is they access the machine's IP or name.
         # We don't need to add anything for 0.0.0.0 specifically.
@@ -388,10 +376,7 @@ def create_app(
 
                 jpeg_bytes = video_state["latest_jpeg"]
                 if jpeg_bytes:
-                    yield (
-                        b"--frame\r\n"
-                        b"Content-Type: image/jpeg\r\n\r\n" + jpeg_bytes + b"\r\n"
-                    )
+                    yield (b"--frame\r\nContent-Type: image/jpeg\r\n\r\n" + jpeg_bytes + b"\r\n")
 
         if not shm_name:
             return {"error": "Video feed not available"}
@@ -448,8 +433,7 @@ def create_app(
     def inject_hands_world(hands: list[RemoteWorldHandInput]):
         """Injects virtual hand inputs using world coordinates."""
         hands_data = [
-            hand.model_dump() if hasattr(hand, "model_dump") else hand.dict()
-            for hand in hands
+            hand.model_dump() if hasattr(hand, "model_dump") else hand.dict() for hand in hands
         ]
         res = DetectionResult(
             timestamp=time.monotonic_ns(),
@@ -745,7 +729,6 @@ def create_app(
         bonuses = state_mirror.get("tactical_bonuses", {})
         return bonuses
 
-
     @app.get("/state/logs")
     def get_logs(lines: int = 100):
         try:
@@ -840,6 +823,17 @@ def create_app(
     frontend_dist = os.path.abspath(
         os.path.join(os.path.dirname(__file__), "../../../../frontend/dist")
     )
+
+    @app.get("/player")
+    def serve_player():
+        """Serves the index.html for the /player route so the frontend React router can handle it."""
+        from fastapi.responses import FileResponse
+
+        index_path = os.path.join(frontend_dist, "index.html")
+        if os.path.exists(index_path):
+            return FileResponse(index_path)
+        return {"error": "Frontend build not found"}
+
     if os.path.exists(frontend_dist):
         app.mount("/", StaticFiles(directory=frontend_dist, html=True), name="frontend")
     else:
@@ -879,9 +873,7 @@ def remote_driver_worker(
         port=port,
     )
 
-    config = uvicorn.Config(
-        app, host=host, port=port, log_level="info", access_log=True
-    )
+    config = uvicorn.Config(app, host=host, port=port, log_level="info", access_log=True)
     server = uvicorn.Server(config)
 
     # Run the server in the current process

@@ -179,9 +179,7 @@ def test_remote_driver_update_token_endpoint():
     client = TestClient(app)
 
     # 1. Update basic fields
-    response = client.put(
-        "/state/tokens/123", json={"name": "New Name", "color": "#ff0000"}
-    )
+    response = client.put("/state/tokens/123", json={"name": "New Name", "color": "#ff0000"})
     assert response.status_code == 200
 
     result = results_queue.get(timeout=1.0)
@@ -208,3 +206,33 @@ def test_remote_driver_update_token_endpoint():
     assert result.data["profile"] == "large_token"
     assert result.data["size"] == 2
     assert result.data["height_mm"] == 25.5
+
+
+def test_remote_driver_player_endpoint(monkeypatch):
+    import os
+
+    results_queue = Queue()
+    stop_event = Event()
+    state_mirror = {}
+
+    app = create_app(results_queue, stop_event, state_mirror)
+    client = TestClient(app)
+
+    # 1. When index.html exists, it should return 200 with the file content
+    response = client.get("/player")
+    assert response.status_code == 200
+    assert "html" in response.headers.get("content-type", "")
+
+    # 2. When index.html does not exist, it should return the error JSON
+    original_exists = os.path.exists
+
+    def mock_exists(path):
+        if "index.html" in str(path):
+            return False
+        return original_exists(path)
+
+    monkeypatch.setattr(os.path, "exists", mock_exists)
+
+    response = client.get("/player")
+    assert response.status_code == 200
+    assert response.json() == {"error": "Frontend build not found"}

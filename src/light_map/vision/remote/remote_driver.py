@@ -697,7 +697,8 @@ def create_app(
         return {"status": "injected", "index": index}
 
     @app.get("/config")
-    def get_config():
+    def get_config(response: Response):
+        response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate"
         return numpy_to_python(state_mirror.get("config", {}))
 
     @app.get("/state/menu")

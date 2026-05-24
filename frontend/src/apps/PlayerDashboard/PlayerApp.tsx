@@ -1,22 +1,37 @@
 import React, { useState, useEffect } from 'react';
 import { CharacterSelector } from './CharacterSelector';
 import { TacticalList } from './TacticalList';
+import { API_BASE_URL, WS_URL } from '../../services/config';
+
+interface TacticalTarget {
+  id: number;
+  name: string;
+  ac_bonus: number;
+  reflex_bonus: number;
+  reason: string;
+}
+
+interface TacticalState {
+  attacker_id: string | null;
+  is_exclusive_active: boolean;
+  targets: TacticalTarget[];
+}
 
 export const PlayerApp: React.FC = () => {
   const [selectedTokenId, setSelectedTokenId] = useState<string | null>(
     localStorage.getItem('player_selected_token_id')
   );
-  const [tacticalState, setTacticalState] = useState<any>(null);
+  const [tacticalState, setTacticalState] = useState<TacticalState | null>(null);
 
   useEffect(() => {
     // Basic polling or WebSocket connection would go here
     // For now, let's assume we have a global state mirror or similar service
-    const ws = new WebSocket(`ws://${window.location.hostname}:8000/ws/state`);
+    const ws = new WebSocket(WS_URL);
 
     ws.onmessage = (event) => {
       const state = JSON.parse(event.data);
-      if (state.tactical) {
-        setTacticalState(state.tactical);
+      if (state.world?.tactical) {
+        setTacticalState(state.world.tactical);
       }
     };
 
@@ -32,7 +47,7 @@ export const PlayerApp: React.FC = () => {
     const isCurrentlyActive =
       tacticalState?.is_exclusive_active && tacticalState?.attacker_id === selectedTokenId;
 
-    await fetch(`http://${window.location.hostname}:8000/actions/exclusive-vision`, {
+    await fetch(`${API_BASE_URL}/actions/exclusive-vision`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ token_id: isCurrentlyActive ? null : selectedTokenId }),
@@ -40,7 +55,7 @@ export const PlayerApp: React.FC = () => {
   };
 
   const triggerPing = async (targetId: string) => {
-    await fetch(`http://${window.location.hostname}:8000/actions/ping`, {
+    await fetch(`${API_BASE_URL}/actions/ping`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ token_id: targetId }),

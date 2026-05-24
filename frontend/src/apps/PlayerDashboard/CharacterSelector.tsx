@@ -1,29 +1,32 @@
 import React, { useState, useEffect } from 'react';
+import { API_BASE_URL } from '../../services/config';
+import { ArucoDefinition } from '../../types/schema.generated';
 
 interface CharacterSelectorProps {
   onSelect: (id: string) => void;
 }
 
+interface PCToken extends ArucoDefinition {
+  id: string;
+}
+
 export const CharacterSelector: React.FC<CharacterSelectorProps> = ({ onSelect }) => {
-  const [pcTokens, setPcTokens] = useState<any[]>([]);
+  const [pcTokens, setPcTokens] = useState<PCToken[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchTokens = async () => {
       try {
-        const response = await fetch(`http://${window.location.hostname}:8000/ws/state`);
-        // Note: The /ws/state might not be a REST endpoint, we might need a specific config endpoint
-        // For simplicity in this PR, we'll try to get it from the standard state mirror if possible
-        // or just allow manual entry if it fails.
-        const state = await response.json();
-        const tokens = state.config?.tokens || {};
+        const response = await fetch(`${API_BASE_URL}/config`);
+        const config = await response.json();
+        const tokens = (config.aruco_defaults || {}) as Record<string, ArucoDefinition>;
         const pcs = Object.entries(tokens)
-          .filter(([_, t]: [string, any]) => t.type === 'PC')
-          .map(([id, t]: [string, any]) => ({ id, ...t }));
+          .filter(([, t]) => t.type === 'PC')
+          .map(([id, t]) => ({ id, ...t }));
 
         setPcTokens(pcs);
       } catch (e) {
-        console.error('Failed to fetch PC tokens, falling back to manual entry');
+        console.error('Failed to fetch PC tokens, falling back to manual entry', e);
       } finally {
         setLoading(false);
       }

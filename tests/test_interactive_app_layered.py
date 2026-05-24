@@ -37,8 +37,8 @@ def test_interactive_app_layered_init(mock_config, monkeypatch):
     assert hasattr(app, "layer_stack")
     stack = app.layer_stack
     assert (
-        len(stack) == 9
-    )  # BackgroundComposite, Hand, Token, Menu, Notif, Debug, SelectionProgress, Cursor, ArucoMask
+        len(stack) == 10
+    )  # BackgroundComposite, Hand, Token, Ping, Menu, Notif, Debug, SelectionProgress, Cursor, ArucoMask
 
     # Verify background_composite is the first layer
     from light_map.core.common_types import CompositeLayer
@@ -92,7 +92,9 @@ def test_interactive_app_process_state_skips_render_when_not_stale(mock_config, 
     app.current_scene.version = 1
     app.current_scene.is_dynamic = False
     app.current_scene.update.return_value = None
-    app.current_scene.get_active_layers.return_value = app.layer_stack
+    # Filter out non-static layers (like PingLayer) so the render can be skipped
+    static_layers = [lyr for lyr in app.layer_stack if lyr.is_static]
+    app.current_scene.get_active_layers.return_value = static_layers
     app.current_scene.render.return_value = (np.zeros((100, 100, 3), dtype=np.uint8), 1)
 
     # Sync state name to avoid update between calls
@@ -111,7 +113,7 @@ def test_interactive_app_process_state_skips_render_when_not_stale(mock_config, 
     app.last_scene_version = app.current_scene.version
 
     # Also need to mock get_active_layers to return same stack
-    app.current_scene.get_active_layers.return_value = app.layer_stack
+    app.current_scene.get_active_layers.return_value = static_layers
 
     frame2, _ = app.process_state(ws, [])
     assert frame2 is None

@@ -698,27 +698,27 @@ def create_app(
 
     @app.get("/config")
     def get_config():
-        return state_mirror.get("config", {})
+        return numpy_to_python(state_mirror.get("config", {}))
 
     @app.get("/state/menu")
     def get_menu_state():
-        return state_mirror.get("menu", {})
+        return numpy_to_python(state_mirror.get("menu", {}))
 
     @app.get("/state/world")
     def get_world_state():
-        return state_mirror.get("world", {})
+        return numpy_to_python(state_mirror.get("world", {}))
 
     @app.get("/state/tokens")
     def get_tokens():
-        return state_mirror.get("tokens", [])
+        return numpy_to_python(state_mirror.get("tokens", []))
 
     @app.get("/state/blockers")
     def get_blockers():
-        return state_mirror.get("world", {}).get("blockers", [])
+        return numpy_to_python(state_mirror.get("world", {}).get("blockers", []))
 
     @app.get("/state/dwell")
     async def get_dwell_state():
-        return state_mirror.get("world", {}).get("dwell_state", {})
+        return numpy_to_python(state_mirror.get("world", {}).get("dwell_state", {}))
 
     @app.get("/tactical/cover", response_model=dict[int, CoverResultSchema])
     async def get_tactical_cover(attacker_id: int | None = Query(None)):
@@ -727,7 +727,7 @@ def create_app(
         If attacker_id matches the current selection, cached results from state_mirror are used.
         """
         bonuses = state_mirror.get("tactical_bonuses", {})
-        return bonuses
+        return numpy_to_python(bonuses)
 
     @app.get("/state/logs")
     def get_logs(lines: int = 100):
@@ -792,7 +792,7 @@ def create_app(
     @app.get("/maps")
     def get_maps():
         """Returns a list of registered maps from the MapConfigManager."""
-        maps_dict = state_mirror.get("maps", {})
+        maps_dict = numpy_to_python(state_mirror.get("maps", {}))
         return [
             {"path": path, "name": info.get("name", os.path.basename(path))}
             for path in maps_dict.keys()

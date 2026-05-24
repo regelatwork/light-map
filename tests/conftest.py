@@ -3,6 +3,7 @@ import shutil
 import tempfile
 from pathlib import Path
 
+
 # 1. Create a session-wide temporary directory for all tests
 # This ensures that any StorageManager or configuration operations remain isolated.
 _TEST_TEMP_DIR = tempfile.mkdtemp(prefix="light_map_test_")

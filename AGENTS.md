@@ -36,7 +36,6 @@ To ensure codebase health and project velocity, strictly follow these steps afte
 1. **Verify**: Run `pytest` to ensure all tests pass.
 1. **Checkpoint**: Commit and push logical changes frequently. Do not wait until the end of the session for large tasks.
    - Stage changes: `git add .`
-   - Sync beads: `br sync --flush-only`
    - Commit with a descriptive message.
    - Push to the remote repository.
 
@@ -73,11 +72,3 @@ This project strictly adheres to a TDD workflow to ensure reliability and mainta
 - **Best Practices**:
   - Use mocks and stubs (via `unittest.mock` or `pytest-mock`) for hardware-dependent components like the camera, projector, and GStreamer pipelines to ensure tests are fast and deterministic.
   - Leverage `pytest` fixtures for common setup/teardown logic.
-
-### Continuous Issue Tracking
-
-**CRITICAL MANDATE**: While working on any task, you will inevitably discover bugs, potential improvements, or future work. **You MUST capture these immediately as beads using `br create`.**
-
-- **Do not rely on memory**: If it's not in `bd`, it doesn't exist and will be forgotten.
-- **Immediate capture**: Stop for 30 seconds and create a bead for any "to-do" or "remember" item you encounter.
-- **Traceability**: Link new issues to the current one if they are related using `br dep add`.

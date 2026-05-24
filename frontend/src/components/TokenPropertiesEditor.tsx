@@ -22,9 +22,10 @@ export const TokenPropertiesEditor: React.FC<TokenPropertiesEditorProps> = ({
   const [showAdvanced, setShowAdvanced] = useState(false);
 
   const arucoDefault = config?.aruco_defaults?.[token.id];
-  const isOverridden = config?.current_map_path && maps && maps[config.current_map_path]
-    ? !!maps[config.current_map_path]?.aruco_overrides?.[token.id]
-    : false;
+  const isOverridden =
+    config?.current_map_path && maps && maps[config.current_map_path]
+      ? !!maps[config.current_map_path]?.aruco_overrides?.[token.id]
+      : false;
 
   const [editMode, setEditMode] = useState<'MAP' | 'GLOBAL'>(isOverridden ? 'MAP' : 'GLOBAL');
 

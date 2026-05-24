@@ -38,54 +38,57 @@ export const TacticalCoverLayer: React.FC = () => {
 
         return (
           <g key={`radar-${targetId}`} style={{ pointerEvents: 'none' }}>
-            {cover.segments && cover.segments.map((seg, idx) => {
-              const pStart = {
-                x: cover.npc_pixels[seg.start_idx][0] * maskToSvgScale,
-                y: cover.npc_pixels[seg.start_idx][1] * maskToSvgScale,
-              };
-              const pEnd = {
-                x: cover.npc_pixels[seg.end_idx][0] * maskToSvgScale,
-                y: cover.npc_pixels[seg.end_idx][1] * maskToSvgScale,
-              };
+            {cover.segments &&
+              cover.segments.map((seg, idx) => {
+                const pStart = {
+                  x: cover.npc_pixels[seg.start_idx][0] * maskToSvgScale,
+                  y: cover.npc_pixels[seg.start_idx][1] * maskToSvgScale,
+                };
+                const pEnd = {
+                  x: cover.npc_pixels[seg.end_idx][0] * maskToSvgScale,
+                  y: cover.npc_pixels[seg.end_idx][1] * maskToSvgScale,
+                };
 
-              // Path from Apex to start of wedge, then to end of wedge, and back to Apex
-              const d = `M ${pApex.x} ${pApex.y} L ${pStart.x} ${pStart.y} L ${pEnd.x} ${pEnd.y} Z`;
+                // Path from Apex to start of wedge, then to end of wedge, and back to Apex
+                const d = `M ${pApex.x} ${pApex.y} L ${pStart.x} ${pStart.y} L ${pEnd.x} ${pEnd.y} Z`;
 
-              // Colors based on status (0: Clear, 2: Obscured, 3: Soft Cover)
-              let fill = 'rgba(59, 130, 246, 0.8)'; // Opaque blue
-              
-              if (seg.status === 2) { // Obscured
-                fill = 'rgba(234, 179, 8, 0.8)'; // Opaque yellow
-              } else if (seg.status === 3) { // Soft Cover
-                fill = 'rgba(168, 85, 247, 0.8)'; // Opaque purple
-              }
+                // Colors based on status (0: Clear, 2: Obscured, 3: Soft Cover)
+                let fill = 'rgba(59, 130, 246, 0.8)'; // Opaque blue
 
-              return (
-                <g key={`seg-${targetId}-${idx}`}>
-                  {/* The wedge fill */}
-                  <path
-                    d={d}
-                    fill={fill}
-                    stroke="none"
-                  />
-                  {/* The edge lines (White like the app) */}
-                  <line 
-                    x1={pApex.x} y1={pApex.y} 
-                    x2={pStart.x} y2={pStart.y} 
-                    stroke="white" 
-                    strokeWidth="0.75" 
-                    strokeOpacity="0.8" 
-                  />
-                  <line 
-                    x1={pApex.x} y1={pApex.y} 
-                    x2={pEnd.x} y2={pEnd.y} 
-                    stroke="white" 
-                    strokeWidth="0.75" 
-                    strokeOpacity="0.8" 
-                  />
-                </g>
-              );
-            })}
+                if (seg.status === 2) {
+                  // Obscured
+                  fill = 'rgba(234, 179, 8, 0.8)'; // Opaque yellow
+                } else if (seg.status === 3) {
+                  // Soft Cover
+                  fill = 'rgba(168, 85, 247, 0.8)'; // Opaque purple
+                }
+
+                return (
+                  <g key={`seg-${targetId}-${idx}`}>
+                    {/* The wedge fill */}
+                    <path d={d} fill={fill} stroke="none" />
+                    {/* The edge lines (White like the app) */}
+                    <line
+                      x1={pApex.x}
+                      y1={pApex.y}
+                      x2={pStart.x}
+                      y2={pStart.y}
+                      stroke="white"
+                      strokeWidth="0.75"
+                      strokeOpacity="0.8"
+                    />
+                    <line
+                      x1={pApex.x}
+                      y1={pApex.y}
+                      x2={pEnd.x}
+                      y2={pEnd.y}
+                      stroke="white"
+                      strokeWidth="0.75"
+                      strokeOpacity="0.8"
+                    />
+                  </g>
+                );
+              })}
 
             {/* Bonus Label */}
             <g transform={`translate(${target.world_x}, ${target.world_y + 22})`}>

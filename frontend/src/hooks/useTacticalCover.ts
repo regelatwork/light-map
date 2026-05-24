@@ -17,9 +17,12 @@ export function useTacticalCover() {
   const lastFetchedVersion = useRef(-1);
   const lastFetchedAttackerId = useRef<number | null>(null);
 
-  const attackerId = selection?.type === SelectionType.TOKEN && selection.id
-    ? (typeof selection.id === 'string' ? parseInt(selection.id) : selection.id)
-    : null;
+  const attackerId =
+    selection?.type === SelectionType.TOKEN && selection.id
+      ? typeof selection.id === 'string'
+        ? parseInt(selection.id)
+        : selection.id
+      : null;
 
   const fetchCover = useCallback(async (id: number, version: number) => {
     setIsLoading(true);
@@ -46,8 +49,11 @@ export function useTacticalCover() {
     }
 
     // Only fetch if selection changed OR backend tactical state changed
-    if (attackerId !== lastFetchedAttackerId.current || tactical_timestamp !== lastFetchedVersion.current) {
-        fetchCover(attackerId, tactical_timestamp);
+    if (
+      attackerId !== lastFetchedAttackerId.current ||
+      tactical_timestamp !== lastFetchedVersion.current
+    ) {
+      fetchCover(attackerId, tactical_timestamp);
     }
     // We omit 'bonuses' from deps to avoid re-triggering when we update results
     // eslint-disable-next-line react-hooks/exhaustive-deps

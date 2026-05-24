@@ -309,13 +309,13 @@ describe('ConfigurationSidebar', () => {
         fow_disabled: false,
         use_projector_3d_model: true,
         aruco_defaults: {
-          42: { 
-            name: 'Deep Thought', 
-            type: 'NPC', 
+          42: {
+            name: 'Deep Thought',
+            type: 'NPC',
             color: '#0000ff',
             profile: 'medium',
             size: 25.0,
-            height_mm: 50.0
+            height_mm: 50.0,
           },
         },
       },
@@ -348,7 +348,7 @@ describe('ConfigurationSidebar', () => {
       selection: { type: SelectionType.TOKEN, id: 42 },
       setSelection,
     });
-    
+
     unmount(); // Remove the old instance
     render(<ConfigurationSidebar />);
 

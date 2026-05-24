@@ -23,9 +23,8 @@ vi.mock('../hooks/useSystemState', () => ({
     grid_origin_svg_y: 100,
     world: { scene: 'VIEWING' },
   }),
-  SystemStateProvider: ({ children }: { children: React.ReactNode }) => <div>{children}</div>
+  SystemStateProvider: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
 }));
-
 
 // Mock API service
 vi.mock('../services/api', () => ({

@@ -11,12 +11,13 @@ export const HardwareAlignment: React.FC = () => {
 
   // Sync state from props during render (Idiomatic React pattern for "storing state from props")
   const currentPos = config?.current_projector_pos;
-  if (currentPos && (
-    !prevPos || 
-    currentPos[0] !== prevPos[0] || 
-    currentPos[1] !== prevPos[1] || 
-    currentPos[2] !== prevPos[2]
-  )) {
+  if (
+    currentPos &&
+    (!prevPos ||
+      currentPos[0] !== prevPos[0] ||
+      currentPos[1] !== prevPos[1] ||
+      currentPos[2] !== prevPos[2])
+  ) {
     setPrevPos(currentPos);
     setLocalX(currentPos[0].toFixed(2));
     setLocalY(currentPos[1].toFixed(2));
@@ -117,12 +118,21 @@ export const HardwareAlignment: React.FC = () => {
         </div>
 
         <div className="p-4 bg-blue-50 rounded-xl border border-blue-100 flex gap-3">
-          <svg className="w-5 h-5 text-blue-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-            <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+          <svg
+            className="w-5 h-5 text-blue-500 flex-shrink-0"
+            fill="currentColor"
+            viewBox="0 0 20 20"
+          >
+            <path
+              fillRule="evenodd"
+              d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
+              clipRule="evenodd"
+            />
           </svg>
           <p className="text-xs text-blue-700 leading-relaxed">
-            Adjust these values to fine-tune the alignment of masks and pointers. 
-            Increasing <span className="font-bold">Z</span> will make the projected elements appear smaller and shift towards the projector center (parallax).
+            Adjust these values to fine-tune the alignment of masks and pointers. Increasing{' '}
+            <span className="font-bold">Z</span> will make the projected elements appear smaller and
+            shift towards the projector center (parallax).
           </p>
         </div>
       </section>
@@ -134,7 +144,9 @@ export const HardwareAlignment: React.FC = () => {
             <p className="text-sm text-gray-500">Enable advanced 3D math for all visual layers.</p>
           </div>
           <button
-            onClick={() => updateSystemConfig({ use_projector_3d_model: !config?.use_projector_3d_model })}
+            onClick={() =>
+              updateSystemConfig({ use_projector_3d_model: !config?.use_projector_3d_model })
+            }
             className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none shadow-sm ${
               config?.use_projector_3d_model ? 'bg-blue-600' : 'bg-gray-200'
             }`}

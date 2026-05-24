@@ -178,7 +178,7 @@ export const GridLayer: React.FC = () => {
     // Hex Grid - Optimized with a single path
     const hexSize = displayedSpacing / Math.sqrt(3);
     const isPointy = gridType === GridType.HEX_POINTY;
-    
+
     // Draw 3 segments per hex to create a mesh without duplicates
     // Standard axial coordinate system
     const numHex = 25;
@@ -188,11 +188,11 @@ export const GridLayer: React.FC = () => {
       for (let r = -numHex; r <= numHex; r++) {
         let cx, cy;
         if (isPointy) {
-          cx = hexSize * Math.sqrt(3) * (q + r/2);
+          cx = hexSize * Math.sqrt(3) * (q + r / 2);
           cy = hexSize * 1.5 * r;
         } else {
           cx = hexSize * 1.5 * q;
-          cy = hexSize * Math.sqrt(3) * (r + q/2);
+          cy = hexSize * Math.sqrt(3) * (r + q / 2);
         }
 
         const wx = displayedOrigin.x + cx;
@@ -200,8 +200,8 @@ export const GridLayer: React.FC = () => {
 
         // Draw segments (first 3 segments of each hex to avoid overlaps)
         for (let i = 0; i < 3; i++) {
-          const angle1 = (60 * i + (isPointy ? 30 : 0)) * Math.PI / 180;
-          const angle2 = (60 * (i + 1) + (isPointy ? 30 : 0)) * Math.PI / 180;
+          const angle1 = ((60 * i + (isPointy ? 30 : 0)) * Math.PI) / 180;
+          const angle2 = ((60 * (i + 1) + (isPointy ? 30 : 0)) * Math.PI) / 180;
           const x1 = wx + hexSize * Math.cos(angle1);
           const y1 = wy + hexSize * Math.sin(angle1);
           const x2 = wx + hexSize * Math.cos(angle2);
@@ -259,7 +259,7 @@ export const GridLayer: React.FC = () => {
               }
               stroke="#3b82f6"
               strokeWidth="2"
-              className={isRotated90 ? "cursor-ns-resize" : "cursor-ew-resize"}
+              className={isRotated90 ? 'cursor-ns-resize' : 'cursor-ew-resize'}
               onMouseDown={(e) => handleMouseDownScale(e, dist)}
             />
           ))}
@@ -278,7 +278,7 @@ export const GridLayer: React.FC = () => {
               }
               stroke="#3b82f6"
               strokeWidth="2"
-              className={isRotated90 ? "cursor-ew-resize" : "cursor-ns-resize"}
+              className={isRotated90 ? 'cursor-ew-resize' : 'cursor-ns-resize'}
               onMouseDown={(e) => handleMouseDownScale(e, dist)}
             />
           ))}

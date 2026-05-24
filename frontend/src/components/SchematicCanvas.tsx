@@ -50,22 +50,24 @@ export const SchematicCanvas: FC<SchematicCanvasProps> = ({ children }) => {
       targetX = centerX;
       targetY = centerY;
     }
-    
-    const { x: displayX, y: displayY } = rotatePoint(
-      targetX,
-      targetY,
-      centerX,
-      centerY,
-      rotation
-    );
-    
+
+    const { x: displayX, y: displayY } = rotatePoint(targetX, targetY, centerX, centerY, rotation);
+
     setViewBox({
       x: displayX - 500,
       y: displayY - 375,
       w: 1000,
       h: 750,
     });
-  }, [grid_origin_svg_x, grid_origin_svg_y, config.map_width, config.map_height, centerX, centerY, rotation]);
+  }, [
+    grid_origin_svg_x,
+    grid_origin_svg_y,
+    config.map_width,
+    config.map_height,
+    centerX,
+    centerY,
+    rotation,
+  ]);
 
   useLayoutEffect(() => {
     // Only center if we have a map path and it's different from what we last centered on

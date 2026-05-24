@@ -1,7 +1,11 @@
 import { type FC } from 'react';
 import { useSystemState } from '../hooks/useSystemState';
 import { injectAction, updateSystemConfig } from '../services/api';
-import { GlobalConfigNumber, GlobalConfigCheckbox, GlobalConfigSelect } from './common/ConfigInputs';
+import {
+  GlobalConfigNumber,
+  GlobalConfigCheckbox,
+  GlobalConfigSelect,
+} from './common/ConfigInputs';
 import type { GlobalConfig } from '../types/schema.generated';
 
 interface VisionControlProps {
@@ -67,7 +71,6 @@ export const VisionControl: FC<VisionControlProps> = ({ showOnlyToggles = false 
             config={globalConfig}
             update={updateSystemConfig}
           />
-
         )}
 
         <GlobalConfigNumber
@@ -134,7 +137,6 @@ export const VisionControl: FC<VisionControlProps> = ({ showOnlyToggles = false 
           config={globalConfig}
           update={updateSystemConfig}
         />
-
       )}
 
       <GlobalConfigNumber
@@ -238,11 +240,7 @@ export const VisionControl: FC<VisionControlProps> = ({ showOnlyToggles = false 
         </button>
       </div>
 
-      <GlobalConfigSelect
-        name="gm_position"
-        config={globalConfig}
-        update={updateSystemConfig}
-      />
+      <GlobalConfigSelect name="gm_position" config={globalConfig} update={updateSystemConfig} />
     </div>
   );
 };

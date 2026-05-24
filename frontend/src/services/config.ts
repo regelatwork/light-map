@@ -21,7 +21,7 @@ const getApiHost = () => {
   if (import.meta.env.VITE_API_HOST) {
     return import.meta.env.VITE_API_HOST;
   }
-  
+
   // Default for development
   if (import.meta.env.DEV) {
     return 'localhost:8000';

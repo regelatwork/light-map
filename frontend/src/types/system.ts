@@ -6,12 +6,7 @@
  * This is enforced by the backend test: tests/test_enum_sync.py
  */
 
-import {
-  GmPosition,
-  TokenDetectionAlgorithm,
-  NamingStyle,
-  GridType,
-} from './schema.generated';
+import { GmPosition, TokenDetectionAlgorithm, NamingStyle, GridType } from './schema.generated';
 import type {
   ViewportState,
   Token,

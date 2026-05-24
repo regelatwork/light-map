@@ -8,15 +8,15 @@ import { SystemState } from '../src/types/system';
  */
 test.describe('Tactical Cover Integration', () => {
   test.beforeEach(async ({ page }) => {
-    page.on('console', msg => console.log('BROWSER:', msg.text()));
-    page.on('pageerror', err => console.log('BROWSER ERROR:', err.message));
+    page.on('console', (msg) => console.log('BROWSER:', msg.text()));
+    page.on('pageerror', (err) => console.log('BROWSER ERROR:', err.message));
 
     // Mock the maps API
     await page.route('**/maps', async (route) => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify([{ path: '/maps/test.svg', name: 'test.svg' }])
+        body: JSON.stringify([{ path: '/maps/test.svg', name: 'test.svg' }]),
       });
     });
 
@@ -25,13 +25,13 @@ test.describe('Tactical Cover Integration', () => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify({ 
-            proj_res: [1000, 750],
-            projector_ppi: 96.0, 
-            current_map_path: 'tactical_map.svg',
-            map_width: 800,
-            map_height: 600
-        })
+        body: JSON.stringify({
+          proj_res: [1000, 750],
+          projector_ppi: 96.0,
+          current_map_path: 'tactical_map.svg',
+          map_width: 800,
+          map_height: 600,
+        }),
       });
     });
 
@@ -41,15 +41,18 @@ test.describe('Tactical Cover Integration', () => {
         status: 200,
         contentType: 'application/json',
         body: JSON.stringify({
-          '2': { 
-            ac_bonus: 2, 
-            reflex_bonus: 1, 
+          '2': {
+            ac_bonus: 2,
+            reflex_bonus: 1,
             explanation: 'Partial Cover',
             best_apex: [50, 50],
-            npc_pixels: [[100, 100], [110, 110]],
-            segments: [{ start_idx: 0, end_idx: 1, status: 0 }]
-          }
-        })
+            npc_pixels: [
+              [100, 100],
+              [110, 110],
+            ],
+            segments: [{ start_idx: 0, end_idx: 1, status: 0 }],
+          },
+        }),
       });
     });
 
@@ -57,8 +60,8 @@ test.describe('Tactical Cover Integration', () => {
     await page.addInitScript((MockWebSocketSource) => {
       const MockWebSocketClass = new Function(`return ${MockWebSocketSource}`)();
       const win = window as unknown as E2EWindow;
-      
-      win.WebSocket = function(url: string) {
+
+      win.WebSocket = function (url: string) {
         const instance = new (MockWebSocketClass as any)(url);
         win.mockWs = instance;
 
@@ -66,23 +69,23 @@ test.describe('Tactical Cover Integration', () => {
           instance.triggerOpen();
 
           const initialData: Partial<SystemState> = {
-            world: { 
-              scene: 'VIEWING', 
-              fps: 60, 
-              selection: { type: 'NONE', id: null } as any
+            world: {
+              scene: 'VIEWING',
+              fps: 60,
+              selection: { type: 'NONE', id: null } as any,
             } as any,
             tokens: [
               { id: 1, world_x: 50, world_y: 50, name: 'Attacker', type: 'PC' },
-              { id: 2, world_x: 100, world_y: 100, name: 'Target', type: 'NPC' }
+              { id: 2, world_x: 100, world_y: 100, name: 'Target', type: 'NPC' },
             ] as any,
-            config: { 
-                proj_res: [1000, 750],
-                projector_ppi: 96.0, 
-                current_map_path: 'tactical_map.svg',
-                map_width: 800,
-                map_height: 600
+            config: {
+              proj_res: [1000, 750],
+              projector_ppi: 96.0,
+              current_map_path: 'tactical_map.svg',
+              map_width: 800,
+              map_height: 600,
             } as any,
-            tactical_timestamp: 1
+            tactical_timestamp: 1,
           };
           instance.triggerMessage(JSON.stringify(initialData));
         }, 100);
@@ -113,31 +116,34 @@ test.describe('Tactical Cover Integration', () => {
     await page.evaluate(() => {
       const win = window as unknown as E2EWindow;
       const data: Partial<SystemState> = {
-        world: { 
-          scene: 'VIEWING', 
-          fps: 60, 
+        world: {
+          scene: 'VIEWING',
+          fps: 60,
           selection: { type: 'TOKEN', id: '1' } as any,
           tactical_bonuses: {
-            '2': { 
-                ac_bonus: 2, 
-                reflex_bonus: 1, 
-                explanation: 'Partial Cover',
-                best_apex: [50, 50],
-                npc_pixels: [[100, 100], [110, 110]],
-                segments: [{ start_idx: 0, end_idx: 1, status: 0 }]
-            }
-          }
+            '2': {
+              ac_bonus: 2,
+              reflex_bonus: 1,
+              explanation: 'Partial Cover',
+              best_apex: [50, 50],
+              npc_pixels: [
+                [100, 100],
+                [110, 110],
+              ],
+              segments: [{ start_idx: 0, end_idx: 1, status: 0 }],
+            },
+          },
         } as any,
         tokens: [
           { id: 1, world_x: 50, world_y: 50, name: 'Attacker', type: 'PC' },
-          { id: 2, world_x: 100, world_y: 100, name: 'Target', type: 'NPC' }
+          { id: 2, world_x: 100, world_y: 100, name: 'Target', type: 'NPC' },
         ] as any,
-        config: { 
-            proj_res: [1000, 750],
-            projector_ppi: 96.0, 
-            current_map_path: 'tactical_map.svg' 
+        config: {
+          proj_res: [1000, 750],
+          projector_ppi: 96.0,
+          current_map_path: 'tactical_map.svg',
         } as any,
-        tactical_timestamp: 2
+        tactical_timestamp: 2,
       };
       win.mockWs?.triggerMessage(JSON.stringify(data));
     });

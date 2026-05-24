@@ -28,7 +28,9 @@ function systemReducer(state: SystemState, action: Action): SystemState {
         ...action.payload,
         // Deeply merge world and config if they exist in the payload
         world: action.payload.world ? { ...state.world, ...action.payload.world } : state.world,
-        config: action.payload.config ? { ...state.config, ...action.payload.config } : state.config,
+        config: action.payload.config
+          ? { ...state.config, ...action.payload.config }
+          : state.config,
         isConnected: true,
         error: null,
       };

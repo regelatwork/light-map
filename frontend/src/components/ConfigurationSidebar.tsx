@@ -7,12 +7,7 @@ import { TokenPropertiesEditor } from './TokenPropertiesEditor';
 import { injectAction, saveGridConfig, setViewportConfig } from '../services/api';
 
 export const ConfigurationSidebar: React.FC = () => {
-  const {
-    tokens,
-    world,
-    grid_origin_svg_x,
-    grid_origin_svg_y,
-  } = useSystemState();
+  const { tokens, world, grid_origin_svg_x, grid_origin_svg_y } = useSystemState();
   const { selection, setSelection } = useSelection();
   const { activeMode, setMode } = useCalibration();
 
@@ -122,14 +117,20 @@ export const ConfigurationSidebar: React.FC = () => {
 
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {/* Visual Grid Editor Toggle */}
-        <section className={`px-4 py-3 border rounded-lg transition-colors ${
-          isGridEditMode ? 'bg-blue-50 border-blue-200' : 'bg-gray-50 border-gray-100'
-        }`}>
+        <section
+          className={`px-4 py-3 border rounded-lg transition-colors ${
+            isGridEditMode ? 'bg-blue-50 border-blue-200' : 'bg-gray-50 border-gray-100'
+          }`}
+        >
           <div className="flex items-center justify-between mb-2">
             <div>
-              <h4 className={`text-xs font-bold uppercase tracking-wider ${
-                isGridEditMode ? 'text-blue-800' : 'text-gray-500'
-              }`}>Visual Grid Editor</h4>
+              <h4
+                className={`text-xs font-bold uppercase tracking-wider ${
+                  isGridEditMode ? 'text-blue-800' : 'text-gray-500'
+                }`}
+              >
+                Visual Grid Editor
+              </h4>
               <p className="text-[10px] text-gray-400 font-medium">Calibrate map grid</p>
             </div>
             <button
@@ -150,7 +151,12 @@ export const ConfigurationSidebar: React.FC = () => {
           {isGridEditMode && (
             <div className="grid grid-cols-2 gap-3 animate-in fade-in slide-in-from-top-2 duration-200 pt-2">
               <div className="space-y-1">
-                <label htmlFor="grid-origin-x" className="block text-[10px] font-bold text-blue-700 uppercase">Origin X</label>
+                <label
+                  htmlFor="grid-origin-x"
+                  className="block text-[10px] font-bold text-blue-700 uppercase"
+                >
+                  Origin X
+                </label>
                 <input
                   id="grid-origin-x"
                   type="number"
@@ -161,7 +167,12 @@ export const ConfigurationSidebar: React.FC = () => {
                 />
               </div>
               <div className="space-y-1">
-                <label htmlFor="grid-origin-y" className="block text-[10px] font-bold text-blue-700 uppercase">Origin Y</label>
+                <label
+                  htmlFor="grid-origin-y"
+                  className="block text-[10px] font-bold text-blue-700 uppercase"
+                >
+                  Origin Y
+                </label>
                 <input
                   id="grid-origin-y"
                   type="number"
@@ -172,7 +183,10 @@ export const ConfigurationSidebar: React.FC = () => {
                 />
               </div>
               <div className="col-span-2 text-[10px] text-blue-600 bg-blue-100 bg-opacity-30 p-2 rounded flex gap-2">
-                <p>Use <span className="font-bold text-green-700">Green Handle</span> to move origin, <span className="font-bold text-blue-700">Blue Handles</span> for scale.</p>
+                <p>
+                  Use <span className="font-bold text-green-700">Green Handle</span> to move origin,{' '}
+                  <span className="font-bold text-blue-700">Blue Handles</span> for scale.
+                </p>
               </div>
             </div>
           )}
@@ -182,7 +196,9 @@ export const ConfigurationSidebar: React.FC = () => {
         <section className="px-4 py-3 border rounded-lg bg-gray-50 border-gray-100 transition-colors">
           <div className="flex items-center justify-between mb-2">
             <div>
-              <h4 className="text-xs font-bold uppercase tracking-wider text-gray-500">Grid Overlay</h4>
+              <h4 className="text-xs font-bold uppercase tracking-wider text-gray-500">
+                Grid Overlay
+              </h4>
               <p className="text-[10px] text-gray-400 font-medium">Visible reference grid</p>
             </div>
             <button
@@ -226,18 +242,26 @@ export const ConfigurationSidebar: React.FC = () => {
         </section>
 
         {/* Map Pan & Zoom Toggle */}
-        <section className={`px-4 py-3 border rounded-lg transition-colors ${
-          isViewportEditMode ? 'bg-indigo-50 border-indigo-200' : 'bg-gray-50 border-gray-100'
-        }`}>
+        <section
+          className={`px-4 py-3 border rounded-lg transition-colors ${
+            isViewportEditMode ? 'bg-indigo-50 border-indigo-200' : 'bg-gray-50 border-gray-100'
+          }`}
+        >
           <div className="flex items-center justify-between mb-2">
             <div>
-              <h4 className={`text-xs font-bold uppercase tracking-wider ${
-                isViewportEditMode ? 'text-indigo-800' : 'text-gray-500'
-              }`}>Map Pan & Zoom</h4>
+              <h4
+                className={`text-xs font-bold uppercase tracking-wider ${
+                  isViewportEditMode ? 'text-indigo-800' : 'text-gray-500'
+                }`}
+              >
+                Map Pan & Zoom
+              </h4>
               <p className="text-[10px] text-gray-400 font-medium">Calibrate viewport</p>
             </div>
             <button
-              onClick={() => setMode(isViewportEditMode ? CalibrationMode.NONE : CalibrationMode.VIEWPORT)}
+              onClick={() =>
+                setMode(isViewportEditMode ? CalibrationMode.NONE : CalibrationMode.VIEWPORT)
+              }
               aria-label="Map Pan and Zoom"
               className={`relative inline-flex h-5 w-10 items-center rounded-full transition-colors focus:outline-none shadow-sm ${
                 isViewportEditMode ? 'bg-indigo-600' : 'bg-gray-300'
@@ -255,7 +279,12 @@ export const ConfigurationSidebar: React.FC = () => {
             <div className="space-y-3 animate-in fade-in slide-in-from-top-2 duration-200 pt-2">
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <label htmlFor="vp-x" className="block text-[10px] font-bold text-indigo-700 uppercase">Center X</label>
+                  <label
+                    htmlFor="vp-x"
+                    className="block text-[10px] font-bold text-indigo-700 uppercase"
+                  >
+                    Center X
+                  </label>
                   <input
                     id="vp-x"
                     type="number"
@@ -266,7 +295,12 @@ export const ConfigurationSidebar: React.FC = () => {
                   />
                 </div>
                 <div className="space-y-1">
-                  <label htmlFor="vp-y" className="block text-[10px] font-bold text-indigo-700 uppercase">Center Y</label>
+                  <label
+                    htmlFor="vp-y"
+                    className="block text-[10px] font-bold text-indigo-700 uppercase"
+                  >
+                    Center Y
+                  </label>
                   <input
                     id="vp-y"
                     type="number"
@@ -278,7 +312,12 @@ export const ConfigurationSidebar: React.FC = () => {
                 </div>
               </div>
               <div className="space-y-1">
-                <label htmlFor="vp-zoom" className="block text-[10px] font-bold text-indigo-700 uppercase">Zoom factor</label>
+                <label
+                  htmlFor="vp-zoom"
+                  className="block text-[10px] font-bold text-indigo-700 uppercase"
+                >
+                  Zoom factor
+                </label>
                 <div className="flex gap-2">
                   <input
                     id="vp-zoom"
@@ -298,7 +337,10 @@ export const ConfigurationSidebar: React.FC = () => {
                 </div>
               </div>
               <div className="text-[10px] text-indigo-600 bg-indigo-100 bg-opacity-30 p-2 rounded">
-                <p>Drag <span className="font-bold text-green-700">Center Handle</span> to pan, <span className="font-bold text-blue-700">Side Handles</span> to zoom.</p>
+                <p>
+                  Drag <span className="font-bold text-green-700">Center Handle</span> to pan,{' '}
+                  <span className="font-bold text-blue-700">Side Handles</span> to zoom.
+                </p>
               </div>
             </div>
           )}

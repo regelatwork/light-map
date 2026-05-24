@@ -4,23 +4,28 @@ import { E2EWindow } from './types/e2e';
 
 test.describe('Dashboard E2E', () => {
   test.beforeEach(async ({ page }) => {
-    page.on('console', msg => console.log('BROWSER:', msg.text()));
-    page.on('pageerror', err => console.log('BROWSER ERROR:', err.message));
+    page.on('console', (msg) => console.log('BROWSER:', msg.text()));
+    page.on('pageerror', (err) => console.log('BROWSER ERROR:', err.message));
 
     // Mock WebSocket MUST be injected before anything else
     await page.addInitScript((MockWebSocketSource) => {
       const MockWebSocketClass = new Function(`return ${MockWebSocketSource}`)();
       const win = window as unknown as E2EWindow;
-      
-      win.WebSocket = function(url: string) {
+
+      win.WebSocket = function (url: string) {
         const instance = new (MockWebSocketClass as any)(url);
         win.mockWs = instance;
-        setTimeout(() => { instance.triggerOpen(); }, 50);
+        setTimeout(() => {
+          instance.triggerOpen();
+        }, 50);
         return instance;
       } as any;
-      
+
       Object.assign(win.WebSocket, {
-        CONNECTING: 0, OPEN: 1, CLOSING: 2, CLOSED: 3
+        CONNECTING: 0,
+        OPEN: 1,
+        CLOSING: 2,
+        CLOSED: 3,
       });
     }, MockWebSocket.toString());
 
@@ -29,9 +34,7 @@ test.describe('Dashboard E2E', () => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify([
-          { path: '/maps/test1.jpg', name: 'test1.jpg' },
-        ]),
+        body: JSON.stringify([{ path: '/maps/test1.jpg', name: 'test1.jpg' }]),
       });
     });
 
@@ -60,7 +63,10 @@ test.describe('Dashboard E2E', () => {
     await page.goto('/');
 
     // Find the map item in the library
-    const mapItem = page.locator('div').filter({ hasText: /^test1\.jpg$/ }).first();
+    const mapItem = page
+      .locator('div')
+      .filter({ hasText: /^test1\.jpg$/ })
+      .first();
     await expect(mapItem).toBeVisible();
     await mapItem.click();
 
@@ -103,16 +109,16 @@ test.describe('Dashboard E2E', () => {
     await page.goto('/');
 
     await page.evaluate(() => {
-        const win = window as unknown as E2EWindow;
-        if (!win.mockWs) throw new Error('mockWs not found on window');
+      const win = window as unknown as E2EWindow;
+      if (!win.mockWs) throw new Error('mockWs not found on window');
 
-        const data = {
-          world: { scene: 'test-scene', fps: 60.5 },
-          tokens: [{ id: 42, world_x: 100, world_y: 200, is_occluded: false }],
-          grid_origin_svg_x: 0,
-          grid_origin_svg_y: 0,
-        };
-        win.mockWs.triggerMessage(JSON.stringify(data));
+      const data = {
+        world: { scene: 'test-scene', fps: 60.5 },
+        tokens: [{ id: 42, world_x: 100, world_y: 200, is_occluded: false }],
+        grid_origin_svg_x: 0,
+        grid_origin_svg_y: 0,
+      };
+      win.mockWs.triggerMessage(JSON.stringify(data));
     });
 
     await expect(page.getByText('Scene: test-scene')).toBeVisible();

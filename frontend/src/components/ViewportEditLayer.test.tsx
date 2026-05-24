@@ -96,8 +96,11 @@ describe('ViewportEditLayer', () => {
 
     const polygon = container.querySelector('polygon');
     expect(polygon).toBeInTheDocument();
-    
-    expect(polygon).toHaveAttribute('points', '-5.684341886080802e-14,1250 0,249.99999999999997 500,250 499.99999999999994,1250');
+
+    expect(polygon).toHaveAttribute(
+      'points',
+      '-5.684341886080802e-14,1250 0,249.99999999999997 500,250 499.99999999999994,1250'
+    );
 
     const circles = container.querySelectorAll('circle');
     expect(circles[0]).toHaveAttribute('cx', '249.99999999999997');
@@ -160,13 +163,18 @@ describe('ViewportEditLayer', () => {
 
     const topHandle = container.querySelectorAll('circle')[2];
     fireEvent.mouseDown(topHandle);
-    
+
     // As calculated in previous run
     fireEvent.mouseMove(window, { clientX: 500, clientY: 400 });
     fireEvent.mouseUp(window);
 
     await waitFor(() => {
-      expect(api.setViewportConfig).toHaveBeenCalledWith(500, -333.33333333333337, 3.3333333333333335, 0);
+      expect(api.setViewportConfig).toHaveBeenCalledWith(
+        500,
+        -333.33333333333337,
+        3.3333333333333335,
+        0
+      );
     });
   });
 });

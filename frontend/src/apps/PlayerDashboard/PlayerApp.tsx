@@ -12,7 +12,7 @@ export const PlayerApp: React.FC = () => {
     // Basic polling or WebSocket connection would go here
     // For now, let's assume we have a global state mirror or similar service
     const ws = new WebSocket(`ws://${window.location.hostname}:8000/ws/state`);
-    
+
     ws.onmessage = (event) => {
       const state = JSON.parse(event.data);
       if (state.tactical) {
@@ -29,8 +29,9 @@ export const PlayerApp: React.FC = () => {
   };
 
   const toggleVision = async () => {
-    const isCurrentlyActive = tacticalState?.is_exclusive_active && tacticalState?.attacker_id === selectedTokenId;
-    
+    const isCurrentlyActive =
+      tacticalState?.is_exclusive_active && tacticalState?.attacker_id === selectedTokenId;
+
     await fetch(`http://${window.location.hostname}:8000/actions/exclusive-vision`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -50,7 +51,8 @@ export const PlayerApp: React.FC = () => {
     return <CharacterSelector onSelect={handleSelectCharacter} />;
   }
 
-  const isVisionActive = tacticalState?.is_exclusive_active && tacticalState?.attacker_id === selectedTokenId;
+  const isVisionActive =
+    tacticalState?.is_exclusive_active && tacticalState?.attacker_id === selectedTokenId;
 
   return (
     <div className="min-h-screen bg-slate-900 text-slate-100 p-4 font-sans select-none">
@@ -59,7 +61,7 @@ export const PlayerApp: React.FC = () => {
           <h1 className="text-xl font-bold text-cyan-400">Tactical Dashboard</h1>
           <p className="text-sm text-slate-400">Token ID: {selectedTokenId}</p>
         </div>
-        <button 
+        <button
           onClick={() => {
             setSelectedTokenId(null);
             localStorage.removeItem('player_selected_token_id');
@@ -74,8 +76,8 @@ export const PlayerApp: React.FC = () => {
         <button
           onClick={toggleVision}
           className={`w-full py-6 rounded-xl font-bold text-lg shadow-lg transition-all active:scale-95 flex flex-col items-center justify-center gap-2 border-2 ${
-            isVisionActive 
-              ? 'bg-cyan-500 border-cyan-400 text-white shadow-cyan-900/40' 
+            isVisionActive
+              ? 'bg-cyan-500 border-cyan-400 text-white shadow-cyan-900/40'
               : 'bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-750'
           }`}
         >
@@ -92,10 +94,7 @@ export const PlayerApp: React.FC = () => {
           Visible Targets
         </h2>
         {tacticalState?.targets && tacticalState.targets.length > 0 ? (
-          <TacticalList 
-            targets={tacticalState.targets} 
-            onPing={triggerPing} 
-          />
+          <TacticalList targets={tacticalState.targets} onPing={triggerPing} />
         ) : (
           <div className="bg-slate-800/50 border border-slate-700 rounded-lg p-8 text-center text-slate-500 italic">
             No enemies currently in sight.

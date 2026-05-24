@@ -69,12 +69,7 @@ export const saveGridConfig = async (
   return response.json();
 };
 
-export const setViewportConfig = async (
-  x: number,
-  y: number,
-  zoom: number,
-  rotation: number
-) => {
+export const setViewportConfig = async (x: number, y: number, zoom: number, rotation: number) => {
   const response = await fetch(`${API_BASE_URL}/config/viewport`, {
     method: 'POST',
     headers: {
@@ -115,7 +110,7 @@ export const updateToken = async (
     size?: number;
     height_mm?: number;
     is_map_override?: boolean;
-  },
+  }
 ) => {
   const response = await fetch(`${API_BASE_URL}/state/tokens/${tokenId}`, {
     method: 'PUT',
@@ -200,7 +195,9 @@ export const updateSystemConfig = async (update: Partial<GlobalConfig>) => {
   return response.json();
 };
 
-export const getTacticalCover = async (attackerId?: number): Promise<Record<number, CoverResult>> => {
+export const getTacticalCover = async (
+  attackerId?: number
+): Promise<Record<number, CoverResult>> => {
   const url = new URL(`${API_BASE_URL}/tactical/cover`);
   if (attackerId !== undefined) {
     url.searchParams.append('attacker_id', attackerId.toString());

@@ -15,7 +15,9 @@ export function ConfigNumberInput<T>({ name, config, update, metadata }: BasePro
   return (
     <div className="p-4 bg-gray-50 rounded-xl border border-gray-100 space-y-3">
       <div className="flex justify-between items-center">
-        <label className="text-sm font-bold text-gray-700 uppercase tracking-wider">{meta.title}</label>
+        <label className="text-sm font-bold text-gray-700 uppercase tracking-wider">
+          {meta.title}
+        </label>
       </div>
       <div className="flex gap-4 items-center">
         <input
@@ -23,11 +25,13 @@ export function ConfigNumberInput<T>({ name, config, update, metadata }: BasePro
           value={value}
           min={meta.min}
           max={meta.max}
-          step={meta.step ?? (meta.min !== undefined && meta.min % 1 !== 0 ? "0.1" : "1")}
+          step={meta.step ?? (meta.min !== undefined && meta.min % 1 !== 0 ? '0.1' : '1')}
           onChange={(e) => update({ [name]: parseFloat(e.target.value) } as unknown as Partial<T>)}
           className="flex-1 px-4 py-2 text-sm border-2 border-gray-200 rounded-lg focus:ring-4 focus:ring-blue-100 focus:border-blue-500 transition-all outline-none bg-white font-medium text-black"
         />
-        {meta.title.includes('(mm)') && <span className="text-sm text-gray-500 font-medium">mm</span>}
+        {meta.title.includes('(mm)') && (
+          <span className="text-sm text-gray-500 font-medium">mm</span>
+        )}
       </div>
       {meta.description && <p className="text-xs text-gray-500">{meta.description}</p>}
     </div>
@@ -62,12 +66,14 @@ export function ConfigCheckbox<T>({ name, config, update, metadata }: BaseProps<
 
 export function ConfigSelect<T>({ name, config, update, metadata }: BaseProps<T>) {
   const meta = metadata[name];
-  const value = (config[name] as unknown as string) ?? meta.default ?? "";
+  const value = (config[name] as unknown as string) ?? meta.default ?? '';
 
   return (
     <div className="p-4 bg-gray-50 rounded-xl border border-gray-100 space-y-3">
       <div className="flex justify-between items-center">
-        <label className="text-sm font-bold text-gray-700 uppercase tracking-wider">{meta.title}</label>
+        <label className="text-sm font-bold text-gray-700 uppercase tracking-wider">
+          {meta.title}
+        </label>
       </div>
       <select
         value={value}

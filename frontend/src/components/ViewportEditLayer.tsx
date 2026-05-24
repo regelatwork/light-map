@@ -5,7 +5,13 @@ import { useCalibration, CalibrationMode } from './CalibrationContext';
 import { setViewportConfig } from '../services/api';
 import { rotatePoint } from '../utils/geometry';
 
-type InteractionMode = 'IDLE' | 'PANNING' | 'ZOOMING_TOP' | 'ZOOMING_BOTTOM' | 'ZOOMING_LEFT' | 'ZOOMING_RIGHT';
+type InteractionMode =
+  | 'IDLE'
+  | 'PANNING'
+  | 'ZOOMING_TOP'
+  | 'ZOOMING_BOTTOM'
+  | 'ZOOMING_LEFT'
+  | 'ZOOMING_RIGHT';
 
 export const ViewportEditLayer: React.FC = () => {
   const { world, config, grid_spacing_svg } = useSystemState();
@@ -23,15 +29,15 @@ export const ViewportEditLayer: React.FC = () => {
     zoom: 1.0,
     rotation: 0,
   });
-  const [fixedPoint, setFixedPoint] = useState<{ x: number, y: number } | null>(null);
+  const [fixedPoint, setFixedPoint] = useState<{ x: number; y: number } | null>(null);
 
-  const currentVp = React.useMemo(() => 
-    world.viewport || { x: 0, y: 0, zoom: 1.0, rotation: 0 },
+  const currentVp = React.useMemo(
+    () => world.viewport || { x: 0, y: 0, zoom: 1.0, rotation: 0 },
     [world.viewport]
   );
-  
-  const displayedVp = React.useMemo(() => 
-    interactionMode !== 'IDLE' ? dragState : currentVp,
+
+  const displayedVp = React.useMemo(
+    () => (interactionMode !== 'IDLE' ? dragState : currentVp),
     [interactionMode, dragState, currentVp]
   );
   const safeZoom = Math.max(0.001, displayedVp.zoom || 1.0);
@@ -46,17 +52,20 @@ export const ViewportEditLayer: React.FC = () => {
   // Function to map screen coordinates to world coordinates (inverting the projection)
   // P_screen = T + R_center(Zoom * P_world)
   // P_world = R_center_inv(P_screen - T) / Zoom
-  const getW = useCallback((sx: number, sy: number, vpX: number, vpY: number, vpZoom: number, vpRot: number) => {
-    const p = rotatePoint(sx - vpX, sy - vpY, centerX, centerY, -vpRot);
-    return { x: p.x / vpZoom, y: p.y / vpZoom };
-  }, [centerX, centerY]);
+  const getW = useCallback(
+    (sx: number, sy: number, vpX: number, vpY: number, vpZoom: number, vpRot: number) => {
+      const p = rotatePoint(sx - vpX, sy - vpY, centerX, centerY, -vpRot);
+      return { x: p.x / vpZoom, y: p.y / vpZoom };
+    },
+    [centerX, centerY]
+  );
 
   // Viewport corners and midpoints in world space
   const wTL = getW(0, 0, displayedVp.x, displayedVp.y, safeZoom, rotation);
   const wTR = getW(projW, 0, displayedVp.x, displayedVp.y, safeZoom, rotation);
   const wBR = getW(projW, projH, displayedVp.x, displayedVp.y, safeZoom, rotation);
   const wBL = getW(0, projH, displayedVp.x, displayedVp.y, safeZoom, rotation);
-  
+
   const wTop = getW(centerX, 0, displayedVp.x, displayedVp.y, safeZoom, rotation);
   const wBottom = getW(centerX, projH, displayedVp.x, displayedVp.y, safeZoom, rotation);
   const wLeft = getW(0, centerY, displayedVp.x, displayedVp.y, safeZoom, rotation);
@@ -66,12 +75,17 @@ export const ViewportEditLayer: React.FC = () => {
   const handleMouseDownCenter = (e: React.MouseEvent) => {
     e.stopPropagation();
     setInteractionMode('PANNING');
-    setDragState({ x: currentVp.x, y: currentVp.y, zoom: currentVp.zoom, rotation: currentVp.rotation });
+    setDragState({
+      x: currentVp.x,
+      y: currentVp.y,
+      zoom: currentVp.zoom,
+      rotation: currentVp.rotation,
+    });
   };
 
   const handleMouseDownSide = (e: React.MouseEvent, mode: InteractionMode) => {
     e.stopPropagation();
-    
+
     // Fixed screen point for each handle (the opposite side)
     let Sf = { x: centerX, y: centerY };
     if (mode === 'ZOOMING_TOP') Sf = { x: centerX, y: projH };
@@ -84,7 +98,12 @@ export const ViewportEditLayer: React.FC = () => {
 
     setFixedPoint(Wf);
     setInteractionMode(mode);
-    setDragState({ x: currentVp.x, y: currentVp.y, zoom: currentVp.zoom, rotation: currentVp.rotation });
+    setDragState({
+      x: currentVp.x,
+      y: currentVp.y,
+      zoom: currentVp.zoom,
+      rotation: currentVp.rotation,
+    });
   };
 
   const handleMouseMove = useCallback(
@@ -98,7 +117,7 @@ export const ViewportEditLayer: React.FC = () => {
         const spacing = grid_spacing_svg || 1;
         const snappedWx = Math.round(worldPos.x / spacing) * spacing;
         const snappedWy = Math.round(worldPos.y / spacing) * spacing;
-        
+
         // We want the snapped world point to be at the center of the screen
         const rotatedSnappedW = rotatePoint(
           currentVp.zoom * snappedWx,
@@ -109,7 +128,7 @@ export const ViewportEditLayer: React.FC = () => {
         );
         const newTx = centerX - rotatedSnappedW.x;
         const newTy = centerY - rotatedSnappedW.y;
-        
+
         setDragState((prev) => ({ ...prev, x: newTx, y: newTy }));
       } else if (fixedPoint) {
         // Zooming logic - Opposite Side Fixed
@@ -117,30 +136,65 @@ export const ViewportEditLayer: React.FC = () => {
         let targetDist = 0;
         let isVertical = false;
 
-        if (interactionMode === 'ZOOMING_TOP') { Sf = { x: centerX, y: projH }; targetDist = projH; isVertical = true; }
-        if (interactionMode === 'ZOOMING_BOTTOM') { Sf = { x: centerX, y: 0 }; targetDist = projH; isVertical = true; }
-        if (interactionMode === 'ZOOMING_LEFT') { Sf = { x: projW, y: centerY }; targetDist = projW; isVertical = false; }
-        if (interactionMode === 'ZOOMING_RIGHT') { Sf = { x: 0, y: centerY }; targetDist = projW; isVertical = false; }
+        if (interactionMode === 'ZOOMING_TOP') {
+          Sf = { x: centerX, y: projH };
+          targetDist = projH;
+          isVertical = true;
+        }
+        if (interactionMode === 'ZOOMING_BOTTOM') {
+          Sf = { x: centerX, y: 0 };
+          targetDist = projH;
+          isVertical = true;
+        }
+        if (interactionMode === 'ZOOMING_LEFT') {
+          Sf = { x: projW, y: centerY };
+          targetDist = projW;
+          isVertical = false;
+        }
+        if (interactionMode === 'ZOOMING_RIGHT') {
+          Sf = { x: 0, y: centerY };
+          targetDist = projW;
+          isVertical = false;
+        }
 
         // Vector from fixed point to mouse in world space
         const vWorld = { x: worldPos.x - fixedPoint.x, y: worldPos.y - fixedPoint.y };
         // Rotate back to screen-aligned coordinates
         const vScreenDir = rotatePoint(vWorld.x, vWorld.y, 0, 0, currentVp.rotation);
-        
+
         // Distance in world space along the relevant screen axis
-        const distWorld = Math.max(10 / currentVp.zoom, isVertical ? Math.abs(vScreenDir.y) : Math.abs(vScreenDir.x));
-        
+        const distWorld = Math.max(
+          10 / currentVp.zoom,
+          isVertical ? Math.abs(vScreenDir.y) : Math.abs(vScreenDir.x)
+        );
+
         const newZoom = targetDist / distWorld;
-        
+
         // Keep the fixed world point at its fixed screen position: T = Sf - R(Z_new * Wf)
-        const rotatedWf = rotatePoint(newZoom * fixedPoint.x, newZoom * fixedPoint.y, centerX, centerY, currentVp.rotation);
+        const rotatedWf = rotatePoint(
+          newZoom * fixedPoint.x,
+          newZoom * fixedPoint.y,
+          centerX,
+          centerY,
+          currentVp.rotation
+        );
         const newTx = Sf.x - rotatedWf.x;
         const newTy = Sf.y - rotatedWf.y;
-        
+
         setDragState({ zoom: newZoom, x: newTx, y: newTy, rotation: currentVp.rotation });
       }
     },
-    [interactionMode, currentVp, centerX, centerY, projW, projH, grid_spacing_svg, screenToWorld, fixedPoint]
+    [
+      interactionMode,
+      currentVp,
+      centerX,
+      centerY,
+      projW,
+      projH,
+      grid_spacing_svg,
+      screenToWorld,
+      fixedPoint,
+    ]
   );
 
   const handleMouseUp = useCallback(async () => {
@@ -194,13 +248,7 @@ export const ViewportEditLayer: React.FC = () => {
         onMouseDown={handleMouseDownCenter}
         className="shadow-lg"
       />
-      <circle
-        cx={wCenter.x}
-        cy={wCenter.y}
-        r={6 / safeZoom}
-        fill="#22c55e"
-        pointerEvents="none"
-      />
+      <circle cx={wCenter.x} cy={wCenter.y} r={6 / safeZoom} fill="#22c55e" pointerEvents="none" />
 
       {/* Zoom Handles (Midpoints) */}
       {/* Top */}

@@ -25,10 +25,13 @@ export const SelectionProvider = ({ children }: { children: ReactNode }) => {
   const setSelection = useCallback((newSelection: SelectionState) => {
     setInternalSelection(newSelection);
     // Sync to backend
-    injectAction('SET_SELECTION', JSON.stringify({
+    injectAction(
+      'SET_SELECTION',
+      JSON.stringify({
         type: newSelection.type,
-        id: newSelection.id
-    })).catch(err => console.error('Failed to sync selection to backend:', err));
+        id: newSelection.id,
+      })
+    ).catch((err) => console.error('Failed to sync selection to backend:', err));
   }, []);
 
   return (

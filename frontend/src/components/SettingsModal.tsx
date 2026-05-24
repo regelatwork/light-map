@@ -57,7 +57,12 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
             className="text-gray-400 hover:text-gray-600 transition-colors p-1 rounded-lg hover:bg-gray-200"
           >
             <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M6 18L18 6M6 6l12 12"
+              />
             </svg>
           </button>
         </div>
@@ -114,10 +119,14 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                 <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl border border-gray-100">
                   <div>
                     <h4 className="font-bold text-gray-800">Visual Grid Editor</h4>
-                    <p className="text-sm text-gray-500">Enable on-canvas handles for precise grid alignment.</p>
+                    <p className="text-sm text-gray-500">
+                      Enable on-canvas handles for precise grid alignment.
+                    </p>
                   </div>
                   <button
-                    onClick={() => setMode(isGridEditMode ? CalibrationMode.NONE : CalibrationMode.GRID)}
+                    onClick={() =>
+                      setMode(isGridEditMode ? CalibrationMode.NONE : CalibrationMode.GRID)
+                    }
                     className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none shadow-sm ${
                       isGridEditMode ? 'bg-blue-600' : 'bg-gray-200'
                     }`}
@@ -131,7 +140,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                 </div>
 
                 <div className="flex flex-col gap-2 p-4 bg-gray-50 rounded-xl border border-gray-100">
-                  <label className="text-xs font-bold text-gray-400 uppercase tracking-wider">Grid Type</label>
+                  <label className="text-xs font-bold text-gray-400 uppercase tracking-wider">
+                    Grid Type
+                  </label>
                   <select
                     value={gridType}
                     onChange={(e) => handleGridTypeChange(e.target.value as GridType)}
@@ -146,7 +157,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                 {isGridEditMode && (
                   <div className="grid grid-cols-2 gap-6 p-6 bg-blue-50 rounded-xl border border-blue-100 shadow-inner">
                     <div className="space-y-2">
-                      <label className="block text-xs font-bold text-blue-700 uppercase tracking-wider">Origin X</label>
+                      <label className="block text-xs font-bold text-blue-700 uppercase tracking-wider">
+                        Origin X
+                      </label>
                       <input
                         type="number"
                         value={Math.round(gridX)}
@@ -156,7 +169,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                       />
                     </div>
                     <div className="space-y-2">
-                      <label className="block text-xs font-bold text-blue-700 uppercase tracking-wider">Origin Y</label>
+                      <label className="block text-xs font-bold text-blue-700 uppercase tracking-wider">
+                        Origin Y
+                      </label>
                       <input
                         type="number"
                         value={Math.round(gridY)}
@@ -166,10 +181,22 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                       />
                     </div>
                     <div className="col-span-2 text-xs text-blue-600 bg-blue-100 bg-opacity-50 p-3 rounded-lg flex gap-3">
-                      <svg className="w-5 h-5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                      <svg
+                        className="w-5 h-5 flex-shrink-0"
+                        fill="currentColor"
+                        viewBox="0 0 20 20"
+                      >
+                        <path
+                          fillRule="evenodd"
+                          d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
+                          clipRule="evenodd"
+                        />
                       </svg>
-                      <p>Use the <span className="font-bold">Green Handle</span> on canvas to move the origin, or the <span className="font-bold">Blue Handle</span> to adjust scale.</p>
+                      <p>
+                        Use the <span className="font-bold">Green Handle</span> on canvas to move
+                        the origin, or the <span className="font-bold">Blue Handle</span> to adjust
+                        scale.
+                      </p>
                     </div>
                   </div>
                 )}
@@ -177,21 +204,61 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
 
               <section className="space-y-4">
                 <h4 className="font-bold text-gray-800 flex items-center gap-2">
-                  <svg className="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+                  <svg
+                    className="w-5 h-5 text-gray-400"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"
+                    />
                   </svg>
                   View Controls
                 </h4>
                 <div className="grid grid-cols-2 gap-3">
-                  <button onClick={() => injectAction('RESET_ZOOM')} className="p-3 bg-white border border-gray-200 rounded-lg text-sm font-semibold hover:bg-gray-50 transition-colors shadow-sm text-gray-700">Zoom 1:1</button>
-                  <button onClick={() => injectAction('RESET_VIEW')} className="p-3 bg-white border border-gray-200 rounded-lg text-sm font-semibold hover:bg-gray-50 transition-colors shadow-sm text-gray-700">Reset All</button>
-                  <button onClick={() => injectAction('ROTATE_CCW')} className="p-3 bg-white border border-gray-200 rounded-lg text-sm font-semibold hover:bg-gray-50 transition-colors shadow-sm text-gray-700 flex justify-center items-center gap-2">
-                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
+                  <button
+                    onClick={() => injectAction('RESET_ZOOM')}
+                    className="p-3 bg-white border border-gray-200 rounded-lg text-sm font-semibold hover:bg-gray-50 transition-colors shadow-sm text-gray-700"
+                  >
+                    Zoom 1:1
+                  </button>
+                  <button
+                    onClick={() => injectAction('RESET_VIEW')}
+                    className="p-3 bg-white border border-gray-200 rounded-lg text-sm font-semibold hover:bg-gray-50 transition-colors shadow-sm text-gray-700"
+                  >
+                    Reset All
+                  </button>
+                  <button
+                    onClick={() => injectAction('ROTATE_CCW')}
+                    className="p-3 bg-white border border-gray-200 rounded-lg text-sm font-semibold hover:bg-gray-50 transition-colors shadow-sm text-gray-700 flex justify-center items-center gap-2"
+                  >
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M10 19l-7-7m0 0l7-7m-7 7h18"
+                      />
+                    </svg>
                     Rotate CCW
                   </button>
-                  <button onClick={() => injectAction('ROTATE_CW')} className="p-3 bg-white border border-gray-200 rounded-lg text-sm font-semibold hover:bg-gray-50 transition-colors shadow-sm text-gray-700 flex justify-center items-center gap-2">
+                  <button
+                    onClick={() => injectAction('ROTATE_CW')}
+                    className="p-3 bg-white border border-gray-200 rounded-lg text-sm font-semibold hover:bg-gray-50 transition-colors shadow-sm text-gray-700 flex justify-center items-center gap-2"
+                  >
                     Rotate CW
-                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M14 5l7 7m0 0l-7 7m7-7H3"
+                      />
+                    </svg>
                   </button>
                 </div>
               </section>
@@ -200,13 +267,13 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
 
           {activeTab === 'vision' && (
             <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-200">
-               <VisionControl showOnlyToggles={true} />
+              <VisionControl showOnlyToggles={true} />
             </div>
           )}
 
           {activeTab === 'hardware' && (
             <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-200">
-               <HardwareAlignment />
+              <HardwareAlignment />
             </div>
           )}
 
@@ -216,7 +283,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                 <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl border border-gray-100">
                   <div>
                     <h4 className="font-bold text-gray-800">Debug Overlay</h4>
-                    <p className="text-sm text-gray-500">Show FPS, scene name, and hand tracking raw data on projection.</p>
+                    <p className="text-sm text-gray-500">
+                      Show FPS, scene name, and hand tracking raw data on projection.
+                    </p>
                   </div>
                   <button
                     onClick={() => injectAction('TOGGLE_DEBUG_MODE')}
@@ -234,11 +303,20 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
               </section>
 
               <section className="space-y-4">
-                <label className="block text-sm font-bold text-gray-700 uppercase tracking-wider">GM Position</label>
+                <label className="block text-sm font-bold text-gray-700 uppercase tracking-wider">
+                  GM Position
+                </label>
                 <div className="grid grid-cols-3 gap-2">
                   {[
-                    'None', 'North', 'South', 'East', 'West',
-                    'North West', 'North East', 'South West', 'South East'
+                    'None',
+                    'North',
+                    'South',
+                    'East',
+                    'West',
+                    'North West',
+                    'North East',
+                    'South West',
+                    'South East',
                   ].map((pos) => (
                     <button
                       key={pos}

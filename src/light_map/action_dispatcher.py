@@ -434,8 +434,14 @@ def handle_toggle_exclusive_vision(
         if state:
             from light_map.core.common_types import SelectionState
 
-            state.selection = SelectionState(type=SelectionType.TOKEN, id=token_id)
-        return SceneTransition(SceneId.EXCLUSIVE_VISION)
+            state.selection = SelectionState(type=SelectionType.TOKEN, id=str(token_id))
+
+        try:
+            token_id_int = int(token_id)
+        except (ValueError, TypeError):
+            token_id_int = token_id
+
+        return SceneTransition(SceneId.EXCLUSIVE_VISION, payload={"token_id": token_id_int})
     else:
         # Clear selection and return to normal viewing
         if state:

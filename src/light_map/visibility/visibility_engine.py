@@ -36,9 +36,7 @@ if TYPE_CHECKING:
 if HAS_NUMBA:
 
     @njit(cache=True)
-    def _numba_trace_path(
-        x1: int, y1: int, x2: int, y2: int, blocker_mask: np.ndarray
-    ) -> int:
+    def _numba_trace_path(x1: int, y1: int, x2: int, y2: int, blocker_mask: np.ndarray) -> int:
         """
         Traces a path from Target (x1, y1) to Attacker (x2, y2).
         Returns:
@@ -349,17 +347,13 @@ class VisibilityEngine:
     Ensures watertight walls and supports object-based discovery.
     """
 
-    def __init__(
-        self, grid_spacing_svg: float, grid_origin: tuple[float, float] = (0.0, 0.0)
-    ):
+    def __init__(self, grid_spacing_svg: float, grid_origin: tuple[float, float] = (0.0, 0.0)):
         self.grid_spacing_svg = grid_spacing_svg
         self.grid_origin = grid_origin
         self.blockers: list[VisibilityBlocker] = []
 
         # Mask Cache: (token_id, grid_x, grid_y, size) -> (vis_mask, discovered_ids)
-        self.mask_cache: dict[
-            tuple[int, int, int, int], tuple[np.ndarray, set[str]]
-        ] = {}
+        self.mask_cache: dict[tuple[int, int, int, int], tuple[np.ndarray, set[str]]] = {}
 
         self._footprint_cache: dict[tuple[int, GridType], np.ndarray] = {}
 
@@ -461,9 +455,7 @@ class VisibilityEngine:
                             cv2.circle(self.blocker_id_map, p1, 1, idx, -1)
                             cv2.circle(self.blocker_id_map, p2, 1, idx, -1)
 
-    def get_token_footprint(
-        self, size: int, grid_type: GridType = GridType.SQUARE
-    ) -> np.ndarray:
+    def get_token_footprint(self, size: int, grid_type: GridType = GridType.SQUARE) -> np.ndarray:
         """
         Returns a binary footprint mask for a given token size, cached for efficiency.
         The footprint is a square numpy array centered on its own coordinates.
@@ -533,9 +525,7 @@ class VisibilityEngine:
                     is_inside = True
                     for i in range(cell_planes.shape[0]):
                         if (
-                            cell_planes[i, 0] * nx
-                            + cell_planes[i, 1] * ny
-                            + cell_planes[i, 2]
+                            cell_planes[i, 0] * nx + cell_planes[i, 1] * ny + cell_planes[i, 2]
                             > 0.1
                         ):
                             is_inside = False
@@ -664,12 +654,7 @@ class VisibilityEngine:
                     # Check Plane boundaries
                     is_inside = True
                     for i in range(cell_planes.shape[0]):
-                        if (
-                            cell_planes[i, 0] * nx
-                            + cell_planes[i, 1] * ny
-                            + cell_planes[i, 2]
-                            > 0
-                        ):
+                        if cell_planes[i, 0] * nx + cell_planes[i, 1] * ny + cell_planes[i, 2] > 0:
                             is_inside = False
                             break
 
@@ -687,9 +672,7 @@ class VisibilityEngine:
 
         return footprint, cell_planes
 
-    def _get_footprint_border_points(
-        self, footprint: np.ndarray
-    ) -> list[tuple[int, int]]:
+    def _get_footprint_border_points(self, footprint: np.ndarray) -> list[tuple[int, int]]:
         """
         Extracts the (x, y) coordinates of all pixels on the perimeter of the footprint.
         Uses cv2.findContours to ensure they are returned in a spatially ordered path.
@@ -698,9 +681,7 @@ class VisibilityEngine:
             return []
 
         # Find external contour
-        contours, _ = cv2.findContours(
-            footprint, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE
-        )
+        contours, _ = cv2.findContours(footprint, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
         if not contours:
             return []
 
@@ -743,11 +724,7 @@ class VisibilityEngine:
         Calculates AC and Reflex save bonuses for a target token viewed from a source token.
         Returns CoverResult containing bonuses, best apex, and visual segments.
         """
-        mask = (
-            blocker_mask_override
-            if blocker_mask_override is not None
-            else self.blocker_mask
-        )
+        mask = blocker_mask_override if blocker_mask_override is not None else self.blocker_mask
 
         if mask is None:
             return CoverResult(0, 0, (0, 0), [], np.empty((0, 2), dtype=np.int32))
@@ -784,22 +761,22 @@ class VisibilityEngine:
             hard_ratio = total_ratio - soft_ratio
             if total_ratio >= 0.90 and wall_ratio >= 0.50:
                 ac_bonus, reflex_bonus = 8, 4
-                explanation = f"Improved Cover (+8 AC, +4 Reflex): {total_ratio*100:.1f}% obscured by walls/obstacles."
+                explanation = f"Improved Cover (+8 AC, +4 Reflex): {total_ratio * 100:.1f}% obscured by walls/obstacles."
             elif hard_ratio >= 0.50:
                 ac_bonus, reflex_bonus = 4, 2
-                explanation = f"Standard Cover (+4 AC, +2 Reflex): {hard_ratio*100:.1f}% obscured by obstacles."
+                explanation = f"Standard Cover (+4 AC, +2 Reflex): {hard_ratio * 100:.1f}% obscured by obstacles."
             elif hard_ratio > 0.0:
                 ac_bonus, reflex_bonus = 2, 1
-                explanation = f"Partial Cover (+2 AC, +1 Reflex): {hard_ratio*100:.1f}% obscured by obstacles."
+                explanation = f"Partial Cover (+2 AC, +1 Reflex): {hard_ratio * 100:.1f}% obscured by obstacles."
 
             # Soft Cover override: Creatures grant +4 AC but +0 Reflex.
             # We take the best bonus from either source.
             if soft_ratio > 0.0:
                 if 4 > ac_bonus:
                     ac_bonus = 4
-                    explanation = f"Soft Cover (+4 AC, +0 Reflex): {soft_ratio*100:.1f}% obscured by creatures."
+                    explanation = f"Soft Cover (+4 AC, +0 Reflex): {soft_ratio * 100:.1f}% obscured by creatures."
                 elif soft_ratio > 0.1:
-                    explanation += f" (includes {soft_ratio*100:.1f}% soft cover)"
+                    explanation += f" (includes {soft_ratio * 100:.1f}% soft cover)"
 
         best_apex = (int(pc_pixels[best_apex_idx, 0]), int(pc_pixels[best_apex_idx, 1]))
 
@@ -815,9 +792,9 @@ class VisibilityEngine:
             for i in range(len(npc_pixels)):
                 nx, ny = npc_pixels[i, 0], npc_pixels[i, 1]
                 # Near-Side Filter: (P-C)·(P-A) <= 1.0 (strict)
-                if (nx - target_center[0]) * (nx - best_apex[0]) + (
-                    ny - target_center[1]
-                ) * (ny - best_apex[1]) <= 1.0:
+                if (nx - target_center[0]) * (nx - best_apex[0]) + (ny - target_center[1]) * (
+                    ny - best_apex[1]
+                ) <= 1.0:
                     near_side_pts.append([nx, ny])
 
             if not near_side_pts:
@@ -831,7 +808,7 @@ class VisibilityEngine:
                     wall_ratio,
                     soft_ratio,
                     explanation=explanation,
-                    )
+                )
             near_side_pixels = np.array(near_side_pts, dtype=np.int32)
 
             # 2. Calculate angles relative to apex for near-side points ONLY
@@ -867,17 +844,13 @@ class VisibilityEngine:
                     if statuses[i] != statuses[current_start]:
                         if statuses[current_start] in (0, 2, 3):
                             segments.append(
-                                WedgeSegment(
-                                    current_start, i - 1, int(statuses[current_start])
-                                )
+                                WedgeSegment(current_start, i - 1, int(statuses[current_start]))
                             )
                         current_start = i
 
                 if statuses[current_start] in (0, 2, 3):
                     segments.append(
-                        WedgeSegment(
-                            current_start, len(statuses) - 1, int(statuses[current_start])
-                        )
+                        WedgeSegment(current_start, len(statuses) - 1, int(statuses[current_start]))
                     )
 
             return CoverResult(
@@ -1012,8 +985,7 @@ class VisibilityEngine:
             discovered_ids = {
                 self.blockers[i].id
                 for i in np.where(disc_indices > 0)[0]
-                if self.blockers[i].type
-                in (VisibilityType.DOOR, VisibilityType.TALL_OBJECT)
+                if self.blockers[i].type in (VisibilityType.DOOR, VisibilityType.TALL_OBJECT)
             }
             return v_mask, discovered_ids
 
@@ -1035,9 +1007,7 @@ class VisibilityEngine:
             for nx, ny in [(x, y + 1), (x, y - 1), (x + 1, y), (x - 1, y)]:
                 if 0 <= nx < mask_w and 0 <= ny < mask_h and not visited[ny, nx]:
                     if (nx - cx) ** 2 + (ny - cy) ** 2 <= range_sq:
-                        found_source = self._find_visible_source(
-                            (nx, ny), border_points, hint
-                        )
+                        found_source = self._find_visible_source((nx, ny), border_points, hint)
                         if found_source:
                             visited[ny, nx] = True
                             vis_mask[ny, nx] = 255
@@ -1089,9 +1059,7 @@ class VisibilityEngine:
         footprint, cell_planes = self._calculate_token_footprint_with_planes(
             cx_mask, cy_mask, size, grid_type
         )
-        result = self._calculate_visibility(
-            footprint, vision_range_px, mask_width, mask_height
-        )
+        result = self._calculate_visibility(footprint, vision_range_px, mask_width, mask_height)
 
         self.mask_cache[mask_cache_key] = result
         return result
@@ -1111,9 +1079,7 @@ class VisibilityEngine:
         combined_pc_mask = None
         all_discovered_ids = set()
 
-        pc_tokens = [
-            t for t in tokens if map_config.resolve_token_profile(t.id).type == "PC"
-        ]
+        pc_tokens = [t for t in tokens if map_config.resolve_token_profile(t.id).type == "PC"]
 
         for token in pc_tokens:
             token_mask, discovered_ids = self.get_token_vision_mask(

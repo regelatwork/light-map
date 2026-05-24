@@ -51,16 +51,12 @@ class StructuredLightTokenDetector:
         self._fov_mask = None
         self._fov_mask_params = None
 
-    def set_calibration(
-        self, camera_matrix: np.ndarray, distortion_coefficients: np.ndarray
-    ):
+    def set_calibration(self, camera_matrix: np.ndarray, distortion_coefficients: np.ndarray):
         self.camera_matrix = camera_matrix
         self.distortion_coefficients = distortion_coefficients
         self._update_projection_model()
 
-    def set_extrinsics(
-        self, rotation_vector: np.ndarray, translation_vector: np.ndarray
-    ):
+    def set_extrinsics(self, rotation_vector: np.ndarray, translation_vector: np.ndarray):
         self.rotation_vector = rotation_vector
         self.translation_vector = translation_vector
         self._update_projection_model()
@@ -167,9 +163,7 @@ class StructuredLightTokenDetector:
 
         # 4. Extract Observed Centroids
         observed_points_camera = []
-        contours, _ = cv2.findContours(
-            thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE
-        )
+        contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
         for cnt in contours:
             M = cv2.moments(cnt)
@@ -201,9 +195,9 @@ class StructuredLightTokenDetector:
                     world_point_3d = np.array(
                         [[world_x_mm, world_y_mm, default_height_mm]], dtype=np.float32
                     )
-                    projector_pixel_coord = (
-                        projector_3d_model.project_world_to_projector(world_point_3d)[0]
-                    )
+                    projector_pixel_coord = projector_3d_model.project_world_to_projector(
+                        world_point_3d
+                    )[0]
                     px, py = projector_pixel_coord[0], projector_pixel_coord[1]
                 else:
                     px = world_x_mm * ppi_mm
@@ -211,9 +205,7 @@ class StructuredLightTokenDetector:
             else:
                 # Fallback to homography
                 point = np.array([u, v], dtype=np.float32).reshape(1, 1, 2)
-                projected_point = cv2.perspectiveTransform(point, projector_matrix)[0][
-                    0
-                ]
+                projected_point = cv2.perspectiveTransform(point, projector_matrix)[0][0]
                 px, py = projected_point[0], projected_point[1]
 
             if distortion_model:
@@ -253,9 +245,7 @@ class StructuredLightTokenDetector:
             shifts.append(np.array(obs_p) - nearest)
 
         median_shift = np.median(np.array(shifts), axis=0)
-        corrected_points = [
-            tuple(np.array(p) - median_shift) for p in observed_points_projector
-        ]
+        corrected_points = [tuple(np.array(p) - median_shift) for p in observed_points_projector]
 
         detected_tokens_points = []
         for i, corr_p in enumerate(corrected_points):
@@ -272,9 +262,7 @@ class StructuredLightTokenDetector:
 
             if 0 <= cx < w and 0 <= cy < h:
                 if mask[cy, cx] == 255:
-                    dists = np.linalg.norm(
-                        np.array(corrected_points) - np.array(exp_p), axis=1
-                    )
+                    dists = np.linalg.norm(np.array(corrected_points) - np.array(exp_p), axis=1)
                     if np.min(dists) > self.SL_MISSING_THRESHOLD_PX:
                         detected_tokens_points.append(tuple(exp_p))
 
@@ -313,12 +301,8 @@ class StructuredLightTokenDetector:
                             if not covered:
                                 break
 
-                            new_cx = sum(remaining_pts[i][0] for i in covered) / len(
-                                covered
-                            )
-                            new_cy = sum(remaining_pts[i][1] for i in covered) / len(
-                                covered
-                            )
+                            new_cx = sum(remaining_pts[i][0] for i in covered) / len(covered)
+                            new_cy = sum(remaining_pts[i][1] for i in covered) / len(covered)
 
                             if abs(new_cx - cx) < 1.0 and abs(new_cy - cy) < 1.0:
                                 cx, cy = new_cx, new_cy
@@ -333,9 +317,7 @@ class StructuredLightTokenDetector:
                     if best_count < 2:
                         break
 
-                    placed_rects.append(
-                        (best_rect_center[0], best_rect_center[1], best_count)
-                    )
+                    placed_rects.append((best_rect_center[0], best_rect_center[1], best_count))
 
                     # Remove the covered points
                     for i in sorted(best_covered, reverse=True):
@@ -375,10 +357,7 @@ class StructuredLightTokenDetector:
                     added = False
                     for cluster in clusters:
                         centroid = np.mean(cluster, axis=0)
-                        if (
-                            np.linalg.norm(centroid - np.array(p))
-                            < self.CLUSTER_DIST_PX
-                        ):
+                        if np.linalg.norm(centroid - np.array(p)) < self.CLUSTER_DIST_PX:
                             cluster.append(p)
                             added = True
                             break
@@ -474,9 +453,7 @@ class StructuredLightTokenDetector:
         h, w = frame_pattern.shape[:2]
         logging.debug("SL Debug: Camera Frame Res: %dx%d", w, h)
         logging.debug("SL Debug: Projector/Map Res: %dx%d", w_proj, h_proj)
-        logging.debug(
-            "SL Debug: Max Val: %d, Dynamic Thresh: %d", max_val, dynamic_thresh
-        )
+        logging.debug("SL Debug: Max Val: %d, Dynamic Thresh: %d", max_val, dynamic_thresh)
         logging.debug("SL Debug: Found %d raw contours.", len(contours))
         logging.debug(
             "SL Debug: Extracted %d observed centroids from %d contours.",
@@ -484,9 +461,7 @@ class StructuredLightTokenDetector:
             len(contours),
         )
         if len(observed_points_camera) > 0:
-            logging.debug(
-                "SL Debug: Sample Camera Coords: %s", observed_points_camera[:5]
-            )
+            logging.debug("SL Debug: Sample Camera Coords: %s", observed_points_camera[:5])
         if len(projector_points_array) > 0:
             logging.debug(
                 "SL Debug: Sample Projector Coords: %s",

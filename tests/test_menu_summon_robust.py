@@ -45,9 +45,7 @@ def test_viewing_scene_robust_summon_step_2_ready(viewing_scene_context):
     scene = ViewingScene(viewing_scene_context)
 
     # Simulate Step 1 complete (TimerKey.SUMMON_MENU is present)
-    viewing_scene_context.events.has_event.side_effect = lambda k: (
-        k == TimerKey.SUMMON_MENU
-    )
+    viewing_scene_context.events.has_event.side_effect = lambda k: k == TimerKey.SUMMON_MENU
 
     # Step 2: SHAKA
     inputs = [HandInput(GestureType.SHAKA, (100, 100), (0.0, 0.0), None)]

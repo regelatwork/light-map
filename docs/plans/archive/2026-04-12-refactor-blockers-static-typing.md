@@ -8,14 +8,15 @@
 
 **Tech Stack:** Python (Dataclasses, TypedDict), OpenCV, svgelements.
 
----
+______________________________________________________________________
 
 ### Task 1: Fix InteractiveApp sync logic
 
 **Files:**
+
 - Modify: `src/light_map/interactive_app.py`
 
-**Step 1: Implement correct _sync_blockers_to_state signature**
+**Step 1: Implement correct \_sync_blockers_to_state signature**
 Ensure it accepts an optional `state` and uses `list()` for versioning.
 
 ```python
@@ -54,6 +55,7 @@ Expected: PASS (if Task 2 is also done or if we fix the dispatcher)
 ### Task 2: Fix ActionDispatcher toggle logic
 
 **Files:**
+
 - Modify: `src/light_map/action_dispatcher.py`
 
 **Step 1: Update handle_toggle_door to use dot-notation and pass state**
@@ -79,6 +81,7 @@ Expected: PASS
 ### Task 3: Bulk Update Tests to use points and dot-notation
 
 **Files:**
+
 - Modify: `tests/**/*.py` (especially `test_token_movement.py`, `test_svg_loader_visibility.py`, `test_visibility_logic.py`, `test_visibility_starfinder.py`)
 
 **Step 1: Replace segments with points in all tests**

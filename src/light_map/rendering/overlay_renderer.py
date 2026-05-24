@@ -25,9 +25,7 @@ class OverlayRenderer:
     def __init__(self, context: AppContext):
         self.context = context
 
-    def _create_patch_from_buffer(
-        self, buffer: np.ndarray, x: int, y: int
-    ) -> ImagePatch:
+    def _create_patch_from_buffer(self, buffer: np.ndarray, x: int, y: int) -> ImagePatch:
         """Helper to convert a BGR buffer into a BGRA patch with transparency heuristic."""
         h, w = buffer.shape[:2]
         patch_data = np.zeros((h, w, 4), dtype=np.uint8)
@@ -150,9 +148,7 @@ class OverlayRenderer:
             (0, 0, 255, 255),
             2,
         )
-        patches.append(
-            ImagePatch(x=50, y=40, width=debug_w, height=debug_h, data=debug_buffer)
-        )
+        patches.append(ImagePatch(x=50, y=40, width=debug_w, height=debug_h, data=debug_buffer))
 
         # 2. Hand inputs
         for hand_input in inputs:
@@ -162,9 +158,7 @@ class OverlayRenderer:
             # Draw a small yellow dot at the physical tip (projected)
             hand_buffer = np.zeros((30, 30, 4), dtype=np.uint8)
             cv2.circle(hand_buffer, (15, 15), 5, (0, 255, 255, 255), -1)
-            patches.append(
-                ImagePatch(x=px - 15, y=py - 15, width=30, height=30, data=hand_buffer)
-            )
+            patches.append(ImagePatch(x=px - 15, y=py - 15, width=30, height=30, data=hand_buffer))
 
             # Draw label above it
             (lw, lh), _ = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, 0.5, 1)
@@ -222,7 +216,5 @@ class OverlayRenderer:
                 2,
             )
 
-        patches.append(
-            ImagePatch(x=50, y=100, width=max_w, height=total_h, data=buffer)
-        )
+        patches.append(ImagePatch(x=50, y=100, width=max_w, height=total_h, data=buffer))
         return patches

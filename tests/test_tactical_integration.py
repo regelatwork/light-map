@@ -27,14 +27,17 @@ def app_with_tokens():
     app.visibility_engine.grid_spacing_svg = 16.0
     app.visibility_engine.blocker_mask = np.zeros((100, 100), dtype=np.uint8)
     app.visibility_engine.calculate_token_cover_bonuses.return_value = CoverResult(
-        ac_bonus=4, reflex_bonus=2, best_apex=(0,0), segments=[], npc_pixels=np.empty((0,2)), explanation="Standard"
+        ac_bonus=4,
+        reflex_bonus=2,
+        best_apex=(0, 0),
+        segments=[],
+        npc_pixels=np.empty((0, 2)),
+        explanation="Standard",
     )
 
-    app.state.tokens = [
-        Token(id=1, world_x=50, world_y=50),
-        Token(id=2, world_x=100, world_y=100)
-    ]
+    app.state.tokens = [Token(id=1, world_x=50, world_y=50), Token(id=2, world_x=100, world_y=100)]
     return app
+
 
 def test_selection_triggers_tactical_update(app_with_tokens):
     app = app_with_tokens
@@ -60,6 +63,7 @@ def test_selection_triggers_tactical_update(app_with_tokens):
     # 5. Verify bonuses are cleared
     assert not state.tactical_bonuses
 
+
 def test_token_movement_triggers_tactical_recalculation(app_with_tokens):
     app = app_with_tokens
     state = app.state
@@ -83,6 +87,7 @@ def test_token_movement_triggers_tactical_recalculation(app_with_tokens):
     # Verify it was recalculated
     assert app.visibility_engine.calculate_token_cover_bonuses.called
     assert app._last_tactical_calc_version > first_version
+
 
 def test_soft_cover_augmentation(app_with_tokens):
     app = app_with_tokens

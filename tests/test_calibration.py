@@ -45,9 +45,7 @@ def test_find_corners_success(mock_cv2):
     # Mock finding corners
     mock_corners = np.array([[[10, 10]]], dtype=np.float32)
     mock_cv2.findChessboardCorners.return_value = (True, mock_corners)
-    mock_cv2.cornerSubPix.return_value = (
-        mock_corners  # Refined same as initial for test
-    )
+    mock_cv2.cornerSubPix.return_value = mock_corners  # Refined same as initial for test
 
     # Test
     ret, corners, gray = find_corners(mock_image, (6, 9), (3, 30, 0.1))

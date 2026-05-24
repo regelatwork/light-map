@@ -7,9 +7,7 @@ import numpy as np
 
 
 # Ensure we can import the local package
-sys.path.insert(
-    0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "src"))
-)
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "src")))
 
 from light_map.calibration.calibration_logic import (
     calculate_ppi_from_frame,
@@ -68,9 +66,7 @@ def run_projector_calibrate(args):
                 )
 
                 if result is not None:
-                    projector_matrix, ground_points_camera, ground_points_projector = (
-                        result
-                    )
+                    projector_matrix, ground_points_camera, ground_points_projector = result
                     logger.info("Saving projector calibration...")
                     np.savez(
                         calibration_file,
@@ -79,9 +75,7 @@ def run_projector_calibrate(args):
                         projector_points=ground_points_projector,
                         resolution=np.array([camera.width, camera.height]),
                         camera_resolution=np.array([camera.width, camera.height]),
-                        projector_resolution=np.array(
-                            [projector_width, projector_height]
-                        ),
+                        projector_resolution=np.array([projector_width, projector_height]),
                     )
                     logger.info("Projector calibration saved to %s", calibration_file)
                 else:
@@ -114,17 +108,13 @@ def run_projector_calibrate(args):
             elif step == "extrinsics":
                 logger.info("--- Step 3: Extrinsics (Camera-to-World) ---")
                 if projector_matrix is None:
-                    logger.error(
-                        "Cannot run extrinsics calibration without projector matrix!"
-                    )
+                    logger.error("Cannot run extrinsics calibration without projector matrix!")
                     continue
 
                 # We need intrinsics to do extrinsics
                 intrinsics_file = storage.get_data_path("camera_calibration.npz")
                 if not os.path.exists(intrinsics_file):
-                    logger.error(
-                        "Camera intrinsics missing! Run 'light-map calibrate' first."
-                    )
+                    logger.error("Camera intrinsics missing! Run 'light-map calibrate' first.")
                     continue
 
                 with np.load(intrinsics_file) as data:

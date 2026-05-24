@@ -18,8 +18,8 @@ from light_map.rendering.layers.overlay_layer import (
     NotificationLayer,
     TokenLayer,
 )
-from light_map.rendering.layers.selection_progress_layer import SelectionProgressLayer
 from light_map.rendering.layers.ping_layer import PingLayer
+from light_map.rendering.layers.selection_progress_layer import SelectionProgressLayer
 from light_map.rendering.layers.tactical_overlay_layer import TacticalOverlayLayer
 from light_map.rendering.layers.visibility_layer import (
     ExclusiveVisionLayer,
@@ -44,9 +44,7 @@ class LayerStackManager:
         config = self.config
 
         # Core Layers
-        self.map_layer = MapLayer(
-            state, context.map_system, config.width, config.height
-        )
+        self.map_layer = MapLayer(state, context.map_system, config.width, config.height)
         self.door_layer = DoorLayer(
             state,
             config.width,
@@ -78,9 +76,7 @@ class LayerStackManager:
         # Visibility and FoW Layers
         self.fow_layer = FogOfWarLayer(state, config.width, config.height)
         self.visibility_layer = VisibilityLayer(state, config.width, config.height)
-        self.exclusive_vision_layer = ExclusiveVisionLayer(
-            state, config.width, config.height
-        )
+        self.exclusive_vision_layer = ExclusiveVisionLayer(state, config.width, config.height)
 
         # Background Composite (Optimized for performance)
         # DoorLayer is now visibility-aware and placed ABOVE FoW/Visibility highlight

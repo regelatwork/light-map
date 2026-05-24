@@ -138,16 +138,13 @@ def generate_metadata_registry(model_name: str, model: type[BaseModel]) -> str:
         # Handle Optional[Enum]
         if get_origin(annotation) is Union:
             args = get_args(annotation)
-            enum_types = [
-                arg for arg in args if isinstance(arg, type) and issubclass(arg, Enum)
-            ]
+            enum_types = [arg for arg in args if isinstance(arg, type) and issubclass(arg, Enum)]
             if enum_types:
                 annotation = enum_types[0]
 
         if isinstance(annotation, type) and issubclass(annotation, Enum):
             field_meta["options"] = [
-                {"label": m.name.replace("_", " ").title(), "value": m.value}
-                for m in annotation
+                {"label": m.name.replace("_", " ").title(), "value": m.value} for m in annotation
             ]
 
         metadata[field_name] = field_meta

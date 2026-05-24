@@ -46,9 +46,7 @@ class AnalyticsManager:
     def log_menu_selection(self, action_id: str):
         """Records a menu selection."""
         self.menu_stats[action_id] = self.menu_stats.get(action_id, 0) + 1
-        logger.info(
-            f"Menu action selected: {action_id} (Total: {self.menu_stats[action_id]})"
-        )
+        logger.info(f"Menu action selected: {action_id} (Total: {self.menu_stats[action_id]})")
         self._save()
 
 
@@ -124,9 +122,7 @@ class LatencyInstrument:
 
         return report
 
-    def log_and_reset_if_needed(
-        self, interval_s: float = 10.0, level: int = logging.DEBUG
-    ):
+    def log_and_reset_if_needed(self, interval_s: float = 10.0, level: int = logging.DEBUG):
         """Logs the current statistics and resets history if interval has passed."""
         now = time.perf_counter()
         if now - self._last_report_time >= interval_s:

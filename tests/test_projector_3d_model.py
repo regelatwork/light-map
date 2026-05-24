@@ -27,9 +27,7 @@ class TestProjector3DModel(unittest.TestCase):
     def test_3d_projection(self):
         # Simple camera-like projection
         # Looking down from Z=1000, no rotation
-        intrinsic_matrix = np.array(
-            [[1000, 0, 640], [0, 1000, 360], [0, 0, 1]], dtype=np.float32
-        )
+        intrinsic_matrix = np.array([[1000, 0, 640], [0, 1000, 360], [0, 0, 1]], dtype=np.float32)
         distortion_coefficients = np.zeros(5, dtype=np.float32)
         rotation_vector = np.array(
             [np.pi, 0, 0], dtype=np.float32
@@ -84,9 +82,7 @@ class TestProjector3DModel(unittest.TestCase):
         image_points = image_points.reshape(-1, 2)
 
         # Package as correspondences
-        correspondences = [
-            (object_points[i], image_points[i]) for i in range(len(object_points))
-        ]
+        correspondences = [(object_points[i], image_points[i]) for i in range(len(object_points))]
 
         # Solve
         result = calibrate_projector_3d(correspondences, resolution)
@@ -104,17 +100,13 @@ class TestProjector3DModel(unittest.TestCase):
         self.assertLess(rms, 0.1)
 
         # Verify intrinsic matrix is close
-        np.testing.assert_array_almost_equal(
-            intrinsic_matrix, true_intrinsic_matrix, decimal=0
-        )
+        np.testing.assert_array_almost_equal(intrinsic_matrix, true_intrinsic_matrix, decimal=0)
 
         # Verify pose is close
         # Rotation can sometimes have different representations, so check rotation matrix
         true_rotation_matrix, _ = cv2.Rodrigues(true_rotation_vector)
         sol_rotation_matrix, _ = cv2.Rodrigues(rotation_vector)
-        np.testing.assert_array_almost_equal(
-            sol_rotation_matrix, true_rotation_matrix, decimal=2
-        )
+        np.testing.assert_array_almost_equal(sol_rotation_matrix, true_rotation_matrix, decimal=2)
         np.testing.assert_array_almost_equal(
             translation_vector.flatten(), true_translation_vector.flatten(), decimal=0
         )
@@ -149,9 +141,7 @@ class TestProjector3DModel(unittest.TestCase):
         np.random.seed(42)
         image_points += np.random.normal(0, 0.5, image_points.shape).astype(np.float32)
 
-        correspondences = [
-            (object_points[i], image_points[i]) for i in range(len(object_points))
-        ]
+        correspondences = [(object_points[i], image_points[i]) for i in range(len(object_points))]
         result = calibrate_projector_3d(correspondences, resolution)
 
         self.assertIsNotNone(result)
@@ -172,9 +162,7 @@ class TestProjector3DModel(unittest.TestCase):
 
     def test_projection_consistency(self):
         """Verifies that 3D model returns world X,Y when use_3d=False."""
-        intrinsic_matrix = np.array(
-            [[1000, 0, 640], [0, 1000, 360], [0, 0, 1]], dtype=np.float32
-        )
+        intrinsic_matrix = np.array([[1000, 0, 640], [0, 1000, 360], [0, 0, 1]], dtype=np.float32)
         rotation_vector = np.array([np.pi, 0.1, 0.1], dtype=np.float32)  # Slight tilt
         translation_vector = np.array([50, -50, 1500], dtype=np.float32)
 
@@ -195,9 +183,7 @@ class TestProjector3DModel(unittest.TestCase):
         model.use_3d = False
         result_fallback = model.project_world_to_projector(test_point)
 
-        np.testing.assert_array_almost_equal(
-            result_fallback, [[123.0, 456.0]], decimal=1
-        )
+        np.testing.assert_array_almost_equal(result_fallback, [[123.0, 456.0]], decimal=1)
         # Note: result_3d will NOT match result_fallback unless calibration is perfect identity/scale
         self.assertFalse(np.array_equal(result_3d, result_fallback))
 

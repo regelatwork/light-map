@@ -35,9 +35,7 @@ def root_menu():
         children=[
             MenuItem("Item 1", action_id="ACTION_1"),
             MenuItem("Item 2", action_id="ACTION_2"),
-            MenuItem(
-                "Submenu", children=[MenuItem("SubItem 1", action_id="SUB_ACTION_1")]
-            ),
+            MenuItem("Submenu", children=[MenuItem("SubItem 1", action_id="SUB_ACTION_1")]),
         ],
     )
 

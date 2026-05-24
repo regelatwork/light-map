@@ -29,9 +29,7 @@ class CameraProjectionModel:
         self.rotation_matrix, _ = cv2.Rodrigues(self.rotation_vector)
         self.rotation_matrix_inv = self.rotation_matrix.T
         # Camera center in world coordinates: C = -R^T * t
-        self.camera_center = -(
-            self.rotation_matrix_inv @ self.translation_vector.flatten()
-        )
+        self.camera_center = -(self.rotation_matrix_inv @ self.translation_vector.flatten())
 
     def reconstruct_world_points_3d(
         self, pixel_points: np.ndarray, height_mm: float = 0.0
@@ -125,13 +123,9 @@ class Projector3DModel:
         self.calibrated_projector_center = None
         if self.rotation_vector is not None and self.translation_vector is not None:
             R, _ = cv2.Rodrigues(self.rotation_vector)
-            self.calibrated_projector_center = -(
-                R.T @ self.translation_vector.flatten()
-            )
+            self.calibrated_projector_center = -(R.T @ self.translation_vector.flatten())
 
-    def get_projector_center(
-        self, override: ProjectorPose | None = None
-    ) -> np.ndarray | None:
+    def get_projector_center(self, override: ProjectorPose | None = None) -> np.ndarray | None:
         """Returns the absolute 3D position of the projector center."""
         if override is not None:
             return np.array([override.x, override.y, override.z], dtype=np.float32)
@@ -158,11 +152,7 @@ class Projector3DModel:
         Otherwise, returns world points (X, Y) as pixels, which is usually incorrect
         unless world units are pixels and origin matches.
         """
-        if (
-            self.use_3d
-            and self.intrinsic_matrix is not None
-            and self.rotation_vector is not None
-        ):
+        if self.use_3d and self.intrinsic_matrix is not None and self.rotation_vector is not None:
             # 1. Determine Pose
             rv = self.rotation_vector
             tv = self.translation_vector
@@ -220,9 +210,7 @@ class Projector3DModel:
                     translation_vector = data.get("translation_vector")
                     if translation_vector is None:
                         translation_vector = data.get("tvec")
-                    logging.info(
-                        "Projector3DModel: Loaded 3D calibration from %s", ext_path
-                    )
+                    logging.info("Projector3DModel: Loaded 3D calibration from %s", ext_path)
             except Exception as e:
                 logging.error("Projector3DModel: Error loading 3D calibration: %s", e)
 
@@ -303,9 +291,7 @@ class ProjectionService:
             # If target_z is provided (e.g. 0.0 for floor), we ensure it has the correct sign.
             # Most users provide positive heights, but if C.z is negative, Z is negative.
             target_pts_3d[:, 2] = (
-                np.sign(self.camera_model.camera_center[2]) * target_z
-                if target_z != 0
-                else 0.0
+                np.sign(self.camera_model.camera_center[2]) * target_z if target_z != 0 else 0.0
             )
         # else: target_z is None, so we hit the object at its reconstructed Z (e.g. at height_mm)
 
@@ -347,14 +333,10 @@ class ProjectionService:
             # Map the floor point P back to the camera pixel that sees it
             ground_camera_pixels = self.camera_model.project_world_to_camera(pm0)
 
-            camera_pixels_reshaped = ground_camera_pixels.reshape(-1, 1, 2).astype(
-                np.float32
-            )
+            camera_pixels_reshaped = ground_camera_pixels.reshape(-1, 1, 2).astype(np.float32)
             # Apply homography and optional 2D distortion correction
             if self.distortion_model:
-                proj_pts = self.distortion_model.apply_correction(
-                    camera_pixels_reshaped
-                )
+                proj_pts = self.distortion_model.apply_correction(camera_pixels_reshaped)
             else:
                 proj_pts = cv2.perspectiveTransform(
                     camera_pixels_reshaped, self.projector_model.homography_matrix

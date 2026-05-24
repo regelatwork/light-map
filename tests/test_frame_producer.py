@@ -33,9 +33,7 @@ def test_frame_producer_lifecycle():
         # Verify ref count is 1
         with operator.lock:
             # We must be careful not to hold references to operator.shm.buf slices
-            ref_counts_buf = operator.shm.buf[
-                operator.ctrl_ref_offset : operator.ctrl_ts_offset
-            ]
+            ref_counts_buf = operator.shm.buf[operator.ctrl_ref_offset : operator.ctrl_ts_offset]
             ref_counts = np.frombuffer(ref_counts_buf, dtype=np.int32)
 
             latest_id_buf = operator.shm.buf[
@@ -54,9 +52,7 @@ def test_frame_producer_lifecycle():
         consumer.release()
         with operator.lock:
             # We need another view to check result
-            ref_counts_buf = operator.shm.buf[
-                operator.ctrl_ref_offset : operator.ctrl_ts_offset
-            ]
+            ref_counts_buf = operator.shm.buf[operator.ctrl_ref_offset : operator.ctrl_ts_offset]
             ref_counts = np.frombuffer(ref_counts_buf, dtype=np.int32)
             assert ref_counts[latest_id] == 0
             del ref_counts

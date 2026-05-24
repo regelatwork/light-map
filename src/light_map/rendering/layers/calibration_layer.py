@@ -1,4 +1,3 @@
-
 import cv2
 import numpy as np
 
@@ -144,13 +143,7 @@ class CalibrationLayer(Layer):
         # 3. Reprojection residuals
         if cal.reprojection_error > 0:
             rms = cal.reprojection_error
-            status_color = (
-                (0, 255, 0)
-                if rms < 2.0
-                else (0, 255, 255)
-                if rms < 5.0
-                else (0, 0, 255)
-            )
+            status_color = (0, 255, 0) if rms < 2.0 else (0, 255, 255) if rms < 5.0 else (0, 0, 255)
             status_text = "GOOD" if rms < 2.0 else "FAIR" if rms < 5.0 else "POOR"
             draw_text_with_background(
                 canvas,

@@ -20,6 +20,4 @@ def test_tokens_atomic_updates():
     t1 = Token(id=1, world_x=10.0, world_y=10.0)
     ts0 = state.tokens_version
     state.tokens = [t1]
-    assert (
-        state.tokens_version > ts0
-    )  # Currently FAILS because tokens is not yet an atom/property
+    assert state.tokens_version > ts0  # Currently FAILS because tokens is not yet an atom/property

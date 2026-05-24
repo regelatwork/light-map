@@ -66,9 +66,7 @@ class TrackingCoordinator:
                     mid = int(marker_id_entry)
 
                 if mid not in token_configs:
-                    resolved_profile = map_config.resolve_token_profile(
-                        mid, map_filename
-                    )
+                    resolved_profile = map_config.resolve_token_profile(mid, map_filename)
                     token_configs[mid] = asdict(resolved_profile)
 
         raw_detections = aruco_detector.map_to_tokens(

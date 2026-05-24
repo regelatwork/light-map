@@ -8,11 +8,12 @@
 
 **Tech Stack:** Python (OpenCV, NumPy, Numba), TypeScript (Frontend mirror).
 
----
+______________________________________________________________________
 
 ### Task 1: Update Visibility Enums
 
 **Files:**
+
 - Modify: `src/light_map/visibility/visibility_types.py:11-14`
 - Modify: `frontend/src/types/system.ts` (assuming path based on convention)
 - Test: `tests/test_enum_sync.py`
@@ -35,16 +36,18 @@ Run: `pytest tests/test_enum_sync.py`
 Expected: PASS.
 
 **Step 6: Commit**
+
 ```bash
 git add src/light_map/visibility/visibility_types.py frontend/src/types/system.ts
 git commit -m "feat(visibility): add TALL_OBJECT visibility type"
 ```
 
----
+______________________________________________________________________
 
 ### Task 2: SVG Extraction for Tall Objects
 
 **Files:**
+
 - Modify: `src/light_map/rendering/svg/utils.py`
 - Modify: `src/light_map/rendering/svg/blockers.py`
 - Test: `tests/test_tall_object_extraction.py` (New)
@@ -63,16 +66,18 @@ Run: `pytest tests/test_tall_object_extraction.py`
 Expected: PASS.
 
 **Step 5: Commit**
+
 ```bash
 git add src/light_map/rendering/svg/ tests/test_tall_object_extraction.py
 git commit -m "feat(svg): extract tall objects from specific layers"
 ```
 
----
+______________________________________________________________________
 
 ### Task 3: Render Tall Objects to Mask
 
 **Files:**
+
 - Modify: `src/light_map/visibility/visibility_engine.py`
 - Test: `tests/test_visibility_engine_mask.py` (New)
 
@@ -86,16 +91,18 @@ Use `cv2.fillPoly` to render `TALL_OBJECT` blockers into `self.blocker_mask` usi
 Verify pixels inside a tall object polygon in the mask have value 100.
 
 **Step 4: Commit**
+
 ```bash
 git add src/light_map/visibility/visibility_engine.py tests/test_visibility_engine_mask.py
 git commit -m "feat(visibility): render tall objects to blocker mask"
 ```
 
----
+______________________________________________________________________
 
 ### Task 4: Implement "First Exit" LOS Logic
 
 **Files:**
+
 - Modify: `src/light_map/visibility/visibility_engine.py`
 - Test: `tests/test_tall_object_visibility.py` (New)
 
@@ -116,16 +123,18 @@ Run: `pytest tests/test_tall_object_visibility.py`
 Expected: PASS.
 
 **Step 6: Commit**
+
 ```bash
 git add src/light_map/visibility/visibility_engine.py tests/test_tall_object_visibility.py
 git commit -m "feat(visibility): implement First Exit LOS rule for tall objects"
 ```
 
----
+______________________________________________________________________
 
 ### Task 5: Fog of War Integration
 
 **Files:**
+
 - Modify: `src/light_map/visibility/fow_manager.py`
 - Test: `tests/test_tall_object_discovery.py` (New)
 
@@ -136,6 +145,7 @@ Ensure that when a tall object is visible, it is marked as "discovered" in the F
 Write a test to ensure visible tall object surfaces are not shrouded.
 
 **Step 3: Commit**
+
 ```bash
 git add src/light_map/visibility/fow_manager.py tests/test_tall_object_discovery.py
 git commit -m "feat(fow): allow discovery of tall object surfaces"

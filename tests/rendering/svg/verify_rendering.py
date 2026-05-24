@@ -33,9 +33,7 @@ def capture_reference(svg_path, out_path):
         f"file://{os.path.abspath(html_path)}",
     ]
     try:
-        subprocess.run(
-            cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
-        )
+        subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         os.remove(html_path)
         # Standardize size to 512x512
         img = cv2.imread(out_path)
@@ -107,15 +105,11 @@ def run_all():
         ref_img = cv2.imread(ref_path)
 
         act_coverage = (
-            np.count_nonzero(
-                cv2.max(act_img[:, :, 0], cv2.max(act_img[:, :, 1], act_img[:, :, 2]))
-            )
+            np.count_nonzero(cv2.max(act_img[:, :, 0], cv2.max(act_img[:, :, 1], act_img[:, :, 2])))
             / (act_img.size / 3)
         ) * 100
         ref_coverage = (
-            np.count_nonzero(
-                cv2.max(ref_img[:, :, 0], cv2.max(ref_img[:, :, 1], ref_img[:, :, 2]))
-            )
+            np.count_nonzero(cv2.max(ref_img[:, :, 0], cv2.max(ref_img[:, :, 1], ref_img[:, :, 2])))
             / (ref_img.size / 3)
         ) * 100
 

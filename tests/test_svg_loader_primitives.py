@@ -35,25 +35,21 @@ def test_render_primitives(svg_primitives):
     img = loader.render(100, 100)
 
     # Rect check: top-left corner and bottom-right corner should be drawn
-    assert np.any(img[10, 10] > 0) or np.any(img[10, 11] > 0), (
-        "Rect not drawn at top-left"
-    )
-    assert np.any(img[30, 30] > 0) or np.any(img[29, 30] > 0), (
-        "Rect not drawn at bottom-right"
-    )
+    assert np.any(img[10, 10] > 0) or np.any(img[10, 11] > 0), "Rect not drawn at top-left"
+    assert np.any(img[30, 30] > 0) or np.any(img[29, 30] > 0), "Rect not drawn at bottom-right"
 
     # Circle check: top point (cx=50, cy=40) and bottom point (cx=50, cy=60)
-    assert (
-        np.any(img[40, 50] > 0) or np.any(img[40, 49] > 0) or np.any(img[40, 51] > 0)
-    ), "Circle not drawn at top"
-    assert (
-        np.any(img[60, 50] > 0) or np.any(img[60, 49] > 0) or np.any(img[60, 51] > 0)
-    ), "Circle not drawn at bottom"
+    assert np.any(img[40, 50] > 0) or np.any(img[40, 49] > 0) or np.any(img[40, 51] > 0), (
+        "Circle not drawn at top"
+    )
+    assert np.any(img[60, 50] > 0) or np.any(img[60, 49] > 0) or np.any(img[60, 51] > 0), (
+        "Circle not drawn at bottom"
+    )
 
     # Polygon check: top point (80,10)
-    assert (
-        np.any(img[10, 80] > 0) or np.any(img[10, 79] > 0) or np.any(img[10, 81] > 0)
-    ), "Polygon not drawn at top point"
+    assert np.any(img[10, 80] > 0) or np.any(img[10, 79] > 0) or np.any(img[10, 81] > 0), (
+        "Polygon not drawn at top point"
+    )
 
     # Line check: start (10,80) and end (30,80)
     assert np.any(img[80, 10] > 0) or np.any(img[80, 11] > 0), "Line not drawn at start"

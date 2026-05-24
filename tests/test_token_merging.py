@@ -58,9 +58,7 @@ def test_token_merging_physical_and_remote():
     res_remote_2 = DetectionResult(
         timestamp=time.monotonic_ns(),
         type=ResultType.ARUCO,
-        data={
-            "tokens": [remote_token_4, remote_token_2]
-        },  # remote thinks 2 is still at 200
+        data={"tokens": [remote_token_4, remote_token_2]},  # remote thinks 2 is still at 200
     )
     res_remote_2.metadata["source"] = "remote"
 

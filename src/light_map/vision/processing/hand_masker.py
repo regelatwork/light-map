@@ -95,14 +95,10 @@ class HandMasker:
         for landmarks in multi_hand_landmarks:
             if hasattr(landmarks, "landmark"):
                 # MediaPipe-style object
-                pts = np.array(
-                    [[lm.x, lm.y] for lm in landmarks.landmark], dtype=np.float32
-                )
+                pts = np.array([[lm.x, lm.y] for lm in landmarks.landmark], dtype=np.float32)
             elif isinstance(landmarks, list):
                 # Serialized list of dicts (IPC format)
-                pts = np.array(
-                    [[lm["x"], lm["y"]] for lm in landmarks], dtype=np.float32
-                )
+                pts = np.array([[lm["x"], lm["y"]] for lm in landmarks], dtype=np.float32)
             else:
                 continue
 
@@ -110,9 +106,7 @@ class HandMasker:
             proj_pts = transformation_fn(pts)
 
             # Compute convex hull
-            hull_indices = cv2.convexHull(
-                proj_pts.astype(np.float32), returnPoints=False
-            )
+            hull_indices = cv2.convexHull(proj_pts.astype(np.float32), returnPoints=False)
             hull_pts = proj_pts[hull_indices.flatten()].astype(np.int32)
 
             # Approximate hull to reduce points

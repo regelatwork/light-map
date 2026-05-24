@@ -73,16 +73,12 @@ def benchmark_renderer():
     for i in range(10):
         data = np.random.randint(0, 256, (400, 400, 4), dtype=np.uint8)
         data[:, :, 3] = np.random.randint(0, 256, (400, 400), dtype=np.uint8)
-        patches.append(
-            ImagePatch(x=i * 100, y=i * 50, width=400, height=400, data=data)
-        )
+        patches.append(ImagePatch(x=i * 100, y=i * 50, width=400, height=400, data=data))
 
     start = time.perf_counter()
     for _ in range(100):
         for patch in patches:
-            composite_patch(
-                renderer.output_buffer, patch, LayerMode.NORMAL, width, height
-            )
+            composite_patch(renderer.output_buffer, patch, LayerMode.NORMAL, width, height)
     end = time.perf_counter()
 
     print(f"Time for 1000 patches: {end - start:.4f}s")

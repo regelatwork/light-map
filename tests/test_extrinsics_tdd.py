@@ -41,9 +41,7 @@ def mock_context():
 
 @patch("light_map.calibration.calibration_scenes.calibrate_extrinsics")
 @patch("os.path.exists")
-def test_extrinsics_scene_passes_known_targets(
-    mock_exists, mock_calibrate, mock_context
-):
+def test_extrinsics_scene_passes_known_targets(mock_exists, mock_calibrate, mock_context):
     """
     Verifies that the scene correctly maps detected markers to target zones
     and passes these known (tx, ty) coordinates to the calibration logic.
@@ -66,15 +64,15 @@ def test_extrinsics_scene_passes_known_targets(
     ids = [10, 11, 12]
     # Corners near TL (220,180), TR (w-220+30, 180-20), BL (220-40, h-180+15)
     corners = [
-        np.array(
-            [[210, 170], [230, 170], [230, 190], [210, 190]], dtype=np.float32
-        ).reshape(1, 4, 2),
-        np.array(
-            [[1720, 150], [1740, 150], [1740, 170], [1720, 170]], dtype=np.float32
-        ).reshape(1, 4, 2),
-        np.array(
-            [[170, 905], [190, 905], [190, 925], [170, 925]], dtype=np.float32
-        ).reshape(1, 4, 2),
+        np.array([[210, 170], [230, 170], [230, 190], [210, 190]], dtype=np.float32).reshape(
+            1, 4, 2
+        ),
+        np.array([[1720, 150], [1740, 150], [1740, 170], [1720, 170]], dtype=np.float32).reshape(
+            1, 4, 2
+        ),
+        np.array([[170, 905], [190, 905], [190, 925], [170, 925]], dtype=np.float32).reshape(
+            1, 4, 2
+        ),
     ]
     mock_context.raw_aruco = {"ids": ids, "corners": corners}
 

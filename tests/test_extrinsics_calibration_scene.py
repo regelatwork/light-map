@@ -42,9 +42,7 @@ def mock_context():
 @patch("light_map.calibration.calibration_scenes.calibrate_extrinsics")
 @patch("numpy.load")
 @patch("os.path.exists")
-def test_extrinsics_scene_uses_ground_points(
-    mock_exists, mock_load, mock_calibrate, mock_context
-):
+def test_extrinsics_scene_uses_ground_points(mock_exists, mock_load, mock_calibrate, mock_context):
     # Setup mock projector_calibration.npz
     mock_exists.return_value = True
 
@@ -86,15 +84,9 @@ def test_extrinsics_scene_uses_ground_points(
     mock_context.raw_aruco = {
         "ids": [1, 2, 3],
         "corners": [
-            np.array(
-                [[195, 195], [205, 195], [205, 205], [195, 205]], dtype=np.float32
-            ),  # TL
-            np.array(
-                [[1715, 195], [1725, 195], [1725, 205], [1715, 205]], dtype=np.float32
-            ),  # TR
-            np.array(
-                [[195, 875], [205, 875], [205, 885], [195, 885]], dtype=np.float32
-            ),  # BL
+            np.array([[195, 195], [205, 195], [205, 205], [195, 205]], dtype=np.float32),  # TL
+            np.array([[1715, 195], [1725, 195], [1725, 205], [1715, 205]], dtype=np.float32),  # TR
+            np.array([[195, 875], [205, 875], [205, 885], [195, 885]], dtype=np.float32),  # BL
         ],
     }
 
@@ -121,9 +113,7 @@ def test_extrinsics_scene_uses_ground_points(
     # Check that ground points were passed (now at index 7 and 8 due to new aruco params)
     if "ground_points_camera" in kwargs:
         np.testing.assert_array_equal(kwargs["ground_points_camera"], camera_points)
-        np.testing.assert_array_equal(
-            kwargs["ground_points_projector"], projector_points
-        )
+        np.testing.assert_array_equal(kwargs["ground_points_projector"], projector_points)
     else:
         # calibrate_extrinsics(frame, projector_matrix, camera_matrix, distortion_coefficients, token_heights, ppi, g_cam, g_proj, ...)
         # Actually it's better to check by name if possible or by position.
@@ -145,9 +135,7 @@ def test_extrinsics_scene_validation_flow(mock_save, mock_calibrate, mock_contex
     mock_context.distortion_coefficients = np.zeros(5)
 
     # Mock return: rotation_vector, translation_vector, object_points, image_points
-    object_points = np.array(
-        [[0, 0, 0], [10, 0, 0], [0, 10, 0], [0, 0, 10]], dtype=np.float32
-    )
+    object_points = np.array([[0, 0, 0], [10, 0, 0], [0, 10, 0], [0, 0, 10]], dtype=np.float32)
     image_points = np.array(
         [[100, 100], [110, 100], [100, 110], [100, 100]], dtype=np.float32
     )  # Dummy
@@ -200,9 +188,7 @@ def test_extrinsics_scene_validation_flow(mock_save, mock_calibrate, mock_contex
     )
 
     # Trigger it manually for the test
-    transition = scene.update(
-        inputs, [], 7.0
-    )  # Should return MENU transition after callback
+    transition = scene.update(inputs, [], 7.0)  # Should return MENU transition after callback
     # Wait, the callback actually sets stage to DONE. Let's trigger it.
     scene._on_accept_triggered()
     assert scene._stage == "DONE"

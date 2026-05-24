@@ -53,9 +53,7 @@ def test_token_filter_grid_snapping_odd():
     t1 = Token(id=1, world_x=120.0, world_y=130.0)
 
     # Size 1 (Odd)
-    filtered = filter.update(
-        [t1], 0.0, grid_spacing=100.0, token_configs={1: {"size": 1}}
-    )
+    filtered = filter.update([t1], 0.0, grid_spacing=100.0, token_configs={1: {"size": 1}})
     assert filtered[0].world_x == 150.0
     assert filtered[0].world_y == 150.0
     assert filtered[0].grid_x == 1
@@ -71,9 +69,7 @@ def test_token_filter_grid_snapping_even():
     t1 = Token(id=1, world_x=120.0, world_y=130.0)
 
     # Size 2 (Even)
-    filtered = filter.update(
-        [t1], 0.0, grid_spacing=100.0, token_configs={1: {"size": 2}}
-    )
+    filtered = filter.update([t1], 0.0, grid_spacing=100.0, token_configs={1: {"size": 2}})
     assert filtered[0].world_x == 100.0
     assert filtered[0].world_y == 100.0
     assert filtered[0].grid_x == 1

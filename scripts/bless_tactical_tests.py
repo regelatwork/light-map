@@ -35,6 +35,7 @@ def bless(case_name=None):
         shutil.copy2(src, dst)
         print(f"Blessed: {f}")
 
+
 if __name__ == "__main__":
     case = sys.argv[1] if len(sys.argv) > 1 else None
     bless(case)

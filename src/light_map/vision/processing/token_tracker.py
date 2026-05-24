@@ -107,10 +107,7 @@ class TokenTracker:
                 projection_service=projection_service,
             )
 
-        if (
-            algorithm == TokenDetectionAlgorithm.STRUCTURED_LIGHT
-            and frame_dark is not None
-        ):
+        if algorithm == TokenDetectionAlgorithm.STRUCTURED_LIGHT and frame_dark is not None:
             w_proj = map_system.width
             h_proj = map_system.height
             _, expected_points = self.get_scan_pattern(w_proj, h_proj, ppi)

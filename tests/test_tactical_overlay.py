@@ -99,9 +99,7 @@ def test_tactical_overlay_invisible_token(mock_state, mock_map_system, mock_engi
     assert len(patches) == 0
 
 
-def test_tactical_overlay_skips_inspected_token(
-    mock_state, mock_map_system, mock_engine
-):
+def test_tactical_overlay_skips_inspected_token(mock_state, mock_map_system, mock_engine):
     """Verifies that the source (inspected) token does not get a label."""
     layer = TacticalOverlayLayer(mock_state, mock_map_system, mock_engine)
 
@@ -123,9 +121,7 @@ def test_tactical_overlay_wedge_generation(mock_state, mock_map_system, mock_eng
     npc_pixels = np.array([[60, 10], [61, 11], [62, 12]], dtype=np.int32)
     segments = [WedgeSegment(0, 2, 0)]  # One clear segment
 
-    mock_state.tactical_bonuses = {
-        2: CoverResult(0, 0, (10, 10), segments, npc_pixels)
-    }
+    mock_state.tactical_bonuses = {2: CoverResult(0, 0, (10, 10), segments, npc_pixels)}
 
     patches = layer._generate_patches(0.0)
 

@@ -17,9 +17,7 @@ def blend_bgra(dst: np.ndarray, src_bgra: np.ndarray):
     src_a_3 = src_a[:, :, np.newaxis]
 
     if dst.shape[2] == 3:
-        dst[:] = (src_rgb * src_a_3 + dst.astype(float) * (1.0 - src_a_3)).astype(
-            np.uint8
-        )
+        dst[:] = (src_rgb * src_a_3 + dst.astype(float) * (1.0 - src_a_3)).astype(np.uint8)
     else:
         # Full BGRA compositing
         dst_rgb = dst[:, :, :3].astype(float)
@@ -31,8 +29,7 @@ def blend_bgra(dst: np.ndarray, src_bgra: np.ndarray):
 
         for c in range(3):
             dst[:, :, c] = (
-                (src_rgb[:, :, c] * src_a + dst_rgb[:, :, c] * dst_a * (1.0 - src_a))
-                / safe_out_a
+                (src_rgb[:, :, c] * src_a + dst_rgb[:, :, c] * dst_a * (1.0 - src_a)) / safe_out_a
             ).astype(np.uint8)
         dst[:, :, 3] = (out_a * 255.0).astype(np.uint8)
 
@@ -83,20 +80,14 @@ def render_image_element(
             local_m = local_m * element.transform
 
         final_m = local_m * final_vp_matrix
-        M = np.float32(
-            [[final_m.a, final_m.c, final_m.e], [final_m.b, final_m.d, final_m.f]]
-        )
+        M = np.float32([[final_m.a, final_m.c, final_m.e], [final_m.b, final_m.d, final_m.f]])
         # Use INTER_NEAREST to preserve sharp edges and exact colors from small images
-        warped_bgra = cv2.warpAffine(
-            src_img, M, (render_w, render_h), flags=cv2.INTER_NEAREST
-        )
+        warped_bgra = cv2.warpAffine(src_img, M, (render_w, render_h), flags=cv2.INTER_NEAREST)
 
         # Apply element opacity
         opacity = get_element_opacity(element)
         if opacity < 1.0:
-            warped_bgra[:, :, 3] = (
-                warped_bgra[:, :, 3].astype(float) * opacity
-            ).astype(np.uint8)
+            warped_bgra[:, :, 3] = (warped_bgra[:, :, 3].astype(float) * opacity).astype(np.uint8)
 
         if image.shape[2] == 3:
             # Separate BGR and Alpha
@@ -105,8 +96,7 @@ def render_image_element(
             alpha_f = warped_alpha.astype(float) / 255.0
             alpha_f = alpha_f[:, :, np.newaxis]
             image[:] = (
-                warped_bgr.astype(float) * alpha_f
-                + image.astype(float) * (1.0 - alpha_f)
+                warped_bgr.astype(float) * alpha_f + image.astype(float) * (1.0 - alpha_f)
             ).astype(np.uint8)
         else:
             blend_bgra(image, warped_bgra)
@@ -177,9 +167,7 @@ def apply_fill(
     fill_val = element.values.get("fill")
     if fill_val and fill_val.startswith("url(#"):
         gradient_id = fill_val[5:-1]
-        gradient_elem = (
-            id_map.get(gradient_id) if id_map else svg.get_element_by_id(gradient_id)
-        )
+        gradient_elem = id_map.get(gradient_id) if id_map else svg.get_element_by_id(gradient_id)
         if gradient_elem is not None:
             tag = str(gradient_elem.values.get("tag", ""))
             if tag == "radialGradient":
@@ -362,9 +350,7 @@ def apply_stroke(
         elif stroke_opacity > 0:
             overlay = image.copy()
             draw_all(overlay, stroke_opacity)
-            cv2.addWeighted(
-                overlay, stroke_opacity, image, 1.0 - stroke_opacity, 0, image
-            )
+            cv2.addWeighted(overlay, stroke_opacity, image, 1.0 - stroke_opacity, 0, image)
 
 
 def resolve_gradient_coord(val_str, total_val, default_val, viewbox_total=None):
@@ -422,22 +408,12 @@ def render_linear_gradient(
     else:
         vw = float(svg.viewbox.width) if svg.viewbox else svg.width
         vh = float(svg.viewbox.height) if svg.viewbox else svg.height
-        x1 = resolve_gradient_coord(
-            gradient_elem.values.get("x1"), vw, 0.0, viewbox_total=vw
-        )
-        y1 = resolve_gradient_coord(
-            gradient_elem.values.get("y1"), vh, 0.0, viewbox_total=vh
-        )
-        x2 = resolve_gradient_coord(
-            gradient_elem.values.get("x2"), vw, vw, viewbox_total=vw
-        )
-        y2 = resolve_gradient_coord(
-            gradient_elem.values.get("y2"), vh, 0.0, viewbox_total=vh
-        )
+        x1 = resolve_gradient_coord(gradient_elem.values.get("x1"), vw, 0.0, viewbox_total=vw)
+        y1 = resolve_gradient_coord(gradient_elem.values.get("y1"), vh, 0.0, viewbox_total=vh)
+        x2 = resolve_gradient_coord(gradient_elem.values.get("x2"), vw, vw, viewbox_total=vw)
+        y2 = resolve_gradient_coord(gradient_elem.values.get("y2"), vh, 0.0, viewbox_total=vh)
 
-    explicit_transform = svgelements.Matrix(
-        gradient_elem.values.get("gradientTransform", "")
-    )
+    explicit_transform = svgelements.Matrix(gradient_elem.values.get("gradientTransform", ""))
     g_transform = explicit_transform
     if hasattr(gradient_elem, "transform") and gradient_elem.transform is not None:
         g_transform = explicit_transform * gradient_elem.transform
@@ -502,8 +478,7 @@ def render_linear_gradient(
         safe_out_a = np.where(out_a > 0, out_a, 1.0)
         for c in range(3):
             image[y_idx, x_idx, c] = (
-                (src_rgb[:, c] * src_a + dst_rgb[:, c] * dst_a * (1.0 - src_a))
-                / safe_out_a
+                (src_rgb[:, c] * src_a + dst_rgb[:, c] * dst_a * (1.0 - src_a)) / safe_out_a
             ).astype(np.uint8)
         image[y_idx, x_idx, 3] = (out_a * 255.0).astype(np.uint8)
 
@@ -589,22 +564,14 @@ def render_radial_gradient(
         vw = float(svg.viewbox.width) if svg.viewbox else svg.width
         vh = float(svg.viewbox.height) if svg.viewbox else svg.height
         avg_v = (vw + vh) / 2.0
-        cx = resolve_gradient_coord(
-            gradient_elem.values.get("cx"), vw, 0.0, viewbox_total=vw
-        )
-        cy = resolve_gradient_coord(
-            gradient_elem.values.get("cy"), vh, 0.0, viewbox_total=vh
-        )
-        r = resolve_gradient_coord(
-            gradient_elem.values.get("r"), avg_v, 0.0, viewbox_total=avg_v
-        )
+        cx = resolve_gradient_coord(gradient_elem.values.get("cx"), vw, 0.0, viewbox_total=vw)
+        cy = resolve_gradient_coord(gradient_elem.values.get("cy"), vh, 0.0, viewbox_total=vh)
+        r = resolve_gradient_coord(gradient_elem.values.get("r"), avg_v, 0.0, viewbox_total=avg_v)
         # Note: fx and fy are currently unused but resolve_gradient_coord is called for potential side effects or future use.
         resolve_gradient_coord(gradient_elem.values.get("fx"), vw, cx, viewbox_total=vw)
         resolve_gradient_coord(gradient_elem.values.get("fy"), vh, cy, viewbox_total=vh)
 
-    explicit_transform = svgelements.Matrix(
-        gradient_elem.values.get("gradientTransform", "")
-    )
+    explicit_transform = svgelements.Matrix(gradient_elem.values.get("gradientTransform", ""))
     g_transform = explicit_transform
     if hasattr(gradient_elem, "transform") and gradient_elem.transform is not None:
         g_transform = explicit_transform * gradient_elem.transform
@@ -667,8 +634,7 @@ def render_radial_gradient(
 
         for c in range(3):
             image[y_idx, x_idx, c] = (
-                (src_rgb[:, c] * src_a + dst_rgb[:, c] * dst_a * (1.0 - src_a))
-                / safe_out_a
+                (src_rgb[:, c] * src_a + dst_rgb[:, c] * dst_a * (1.0 - src_a)) / safe_out_a
             ).astype(np.uint8)
         image[y_idx, x_idx, 3] = (out_a * 255.0).astype(np.uint8)
 
@@ -704,9 +670,7 @@ def render_shape_element(
     path.transform *= current_matrix
     transformed_path = path
     transformed_path.reify()
-    closed, open_paths = convert_path_to_points(
-        transformed_path, element_naturally_closed, ppu
-    )
+    closed, open_paths = convert_path_to_points(transformed_path, element_naturally_closed, ppu)
 
     all_subpaths = closed + open_paths
     if not all_subpaths:

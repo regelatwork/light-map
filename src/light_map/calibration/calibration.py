@@ -32,11 +32,7 @@ def find_corners(image, checkerboard_dims, criteria):
     """
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 
-    flags = (
-        cv2.CALIB_CB_ADAPTIVE_THRESH
-        + cv2.CALIB_CB_FAST_CHECK
-        + cv2.CALIB_CB_NORMALIZE_IMAGE
-    )
+    flags = cv2.CALIB_CB_ADAPTIVE_THRESH + cv2.CALIB_CB_FAST_CHECK + cv2.CALIB_CB_NORMALIZE_IMAGE
 
     ret, corners = cv2.findChessboardCorners(gray, checkerboard_dims, flags)
 
@@ -138,9 +134,7 @@ def save_camera_extrinsics(
     logging.info("Camera extrinsics saved to %s", output_file)
 
 
-def calibrate_camera_from_images(
-    image_paths, checkerboard_dims=DEFAULT_CHECKERBOARD_DIMS
-):
+def calibrate_camera_from_images(image_paths, checkerboard_dims=DEFAULT_CHECKERBOARD_DIMS):
     """
     Performs camera calibration using a list of image paths.
     """

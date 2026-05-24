@@ -87,17 +87,11 @@ class DoorLayer(Layer):
             if blocker.is_open:
                 # Render endpoints as circles
                 for pt in transformed_points:
-                    cv2.circle(
-                        image, pt, circle_outline, BLACK, -1, lineType=cv2.LINE_AA
-                    )
-                    cv2.circle(
-                        image, pt, circle_radius, YELLOW, -1, lineType=cv2.LINE_AA
-                    )
+                    cv2.circle(image, pt, circle_outline, BLACK, -1, lineType=cv2.LINE_AA)
+                    cv2.circle(image, pt, circle_radius, YELLOW, -1, lineType=cv2.LINE_AA)
             else:
                 # Render as thick yellow line
-                pts_array = np.array(transformed_points, dtype=np.int32).reshape(
-                    (-1, 1, 2)
-                )
+                pts_array = np.array(transformed_points, dtype=np.int32).reshape((-1, 1, 2))
                 cv2.polylines(
                     image,
                     [pts_array],

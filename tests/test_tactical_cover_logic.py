@@ -76,7 +76,7 @@ def test_calculate_cover_bonuses_starfinder_rules():
     # Target is Medium (size 1) -> approx 64 border pixels (4 * 16).
     # We block everything with walls but leave a thin 2-pixel horizontal slit.
     engine.blocker_mask[0:100, 42:58] = MASK_VALUE_WALL
-    engine.blocker_mask[10:12, 42:58] = 0 # Slit at target center height
+    engine.blocker_mask[10:12, 42:58] = 0  # Slit at target center height
     res = engine.calculate_token_cover_bonuses(source, target)
     assert res.total_ratio >= 0.90
     assert res.wall_ratio >= 0.50

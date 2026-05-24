@@ -79,9 +79,7 @@ class FlashCalibrationScene(Scene):
 
         # Preserve intensity and text during stage update
         intensity = (
-            self.context.state.calibration.flash_intensity
-            if self.context.state.calibration
-            else 0
+            self.context.state.calibration.flash_intensity if self.context.state.calibration else 0
         )
         text = (
             self.context.state.calibration.instruction_text
@@ -109,9 +107,7 @@ class FlashCalibrationScene(Scene):
                     default_height_mm=0.0,  # Calibrate against table surface
                 )
                 self._results[intensity] = len(tokens)
-                logging.info(
-                    "Calibration: Level %d -> Found %d tokens", intensity, len(tokens)
-                )
+                logging.info("Calibration: Level %d -> Found %d tokens", intensity, len(tokens))
                 self._capture_frame = False
                 self._current_level_idx += 1
 
@@ -165,9 +161,7 @@ class FlashCalibrationScene(Scene):
         else:
             counts = list(non_zero_results.values())
             most_common_count = Counter(counts).most_common(1)[0][0]
-            stable_intensities = [
-                i for i, c in non_zero_results.items() if c == most_common_count
-            ]
+            stable_intensities = [i for i, c in non_zero_results.items() if c == most_common_count]
             stable_intensities.sort()
             # Pick the median of the stable intensities
             optimal_intensity = stable_intensities[len(stable_intensities) // 2]
@@ -205,9 +199,7 @@ class FlashCalibrationScene(Scene):
         if self._stage == FlashCalibStage.FLASH:
             intensity = self._test_levels[self._current_level_idx]
             self.context.state.calibration.flash_intensity = intensity
-            self.context.state.calibration.instruction_text = (
-                f"Flashing (Level {intensity})..."
-            )
+            self.context.state.calibration.instruction_text = f"Flashing (Level {intensity})..."
         elif self._stage in (FlashCalibStage.IDLE, FlashCalibStage.COOLDOWN):
             self.context.state.calibration.flash_intensity = 0
             if self._stage == FlashCalibStage.COOLDOWN:
@@ -318,9 +310,7 @@ class IntrinsicsCalibrationScene(Scene):
                 save_camera_calibration(
                     camera_matrix, distortion_coefficients, output_file=output_file
                 )
-                self.context.notifications.add_notification(
-                    "Camera calibrated successfully."
-                )
+                self.context.notifications.add_notification("Camera calibrated successfully.")
                 self._stage = "DONE"
                 return SceneTransition(SceneId.MENU)
             else:
@@ -362,7 +352,9 @@ class ProjectorCalibrationScene(Scene):
 
     def __init__(self, context: AppContext):
         super().__init__(context)
-        self._stage = "DISPLAY_PATTERN"  # DISPLAY_PATTERN | SETTLE | CAPTURE | PROCESSING | DONE | ERROR
+        self._stage = (
+            "DISPLAY_PATTERN"  # DISPLAY_PATTERN | SETTLE | CAPTURE | PROCESSING | DONE | ERROR
+        )
         self._pattern_image: np.ndarray | None = None
         self._pattern_params: dict | None = None
 
@@ -427,14 +419,10 @@ class ProjectorCalibrationScene(Scene):
                     return SceneTransition(SceneId.MENU)
                 except Exception as e:
                     logging.error("Homography error: %s", e)
-                    self.context.notifications.add_notification(
-                        f"Calibration failed: {e}"
-                    )
+                    self.context.notifications.add_notification(f"Calibration failed: {e}")
                     self._stage = "ERROR"
             else:
-                self.context.notifications.add_notification(
-                    "Error: No camera frame captured."
-                )
+                self.context.notifications.add_notification("Error: No camera frame captured.")
                 self._stage = "ERROR"
 
         if self._stage == "ERROR":
@@ -580,9 +568,7 @@ class ExtrinsicsCalibrationScene(Scene):
         for (
             aid,
             _defn,
-        ) in (
-            self.context.map_config_manager.data.global_settings.aruco_defaults.items()
-        ):
+        ) in self.context.map_config_manager.data.global_settings.aruco_defaults.items():
             resolved = self.context.map_config_manager.resolve_token_profile(aid)
             self._token_heights[aid] = resolved.height_mm
             self._token_names[aid] = resolved.name
@@ -620,7 +606,9 @@ class ExtrinsicsCalibrationScene(Scene):
         elif self._stage == "CAPTURE":
             instr = "Capturing..."
         elif self._stage == "VALIDATION":
-            instr = f"Error: {self._reprojection_error:.2f} px. Hold Victory to Accept, Fist to Retry."
+            instr = (
+                f"Error: {self._reprojection_error:.2f} px. Hold Victory to Accept, Fist to Retry."
+            )
         elif self._stage == "ERROR":
             instr = "Error occurred."
         elif self._stage == "DONE":
@@ -683,9 +671,7 @@ class ExtrinsicsCalibrationScene(Scene):
 
                 # Reset status, detected IDs, and known targets for this frame
                 self._target_status = ["IDLE"] * len(self._target_zones)
-                self._target_info = [
-                    {"x": tx, "y": ty} for tx, ty, _ in self._target_zones
-                ]
+                self._target_info = [{"x": tx, "y": ty} for tx, ty, _ in self._target_zones]
                 self._detected_ids = {}
                 self._known_targets = {}
 
@@ -715,7 +701,9 @@ class ExtrinsicsCalibrationScene(Scene):
 
                     # 2. Match by proximity if ID matching failed
                     if best_idx == -1:
-                        best_dist = 250.0  # Increased threshold in projector pixels for initial calibration
+                        best_dist = (
+                            250.0  # Increased threshold in projector pixels for initial calibration
+                        )
                         for idx, (tx, ty, _) in enumerate(self._target_zones):
                             dist = math.sqrt((px - tx) ** 2 + (py - ty) ** 2)
                             if dist < best_dist:
@@ -727,11 +715,7 @@ class ExtrinsicsCalibrationScene(Scene):
                         info["aid"] = aid
                         # If ID is unknown, resolve it on the fly
                         if aid not in self._token_heights:
-                            resolved = (
-                                self.context.map_config_manager.resolve_token_profile(
-                                    aid
-                                )
-                            )
+                            resolved = self.context.map_config_manager.resolve_token_profile(aid)
                             self._token_heights[aid] = resolved.height_mm
                             self._token_names[aid] = resolved.name
                             self._token_sizes[aid] = resolved.size
@@ -753,10 +737,7 @@ class ExtrinsicsCalibrationScene(Scene):
 
                 # Clean up animation timers for IDLE targets
                 for idx in range(len(self._target_status)):
-                    if (
-                        self._target_status[idx] == "IDLE"
-                        and idx in self._animation_start_times
-                    ):
+                    if self._target_status[idx] == "IDLE" and idx in self._animation_start_times:
                         del self._animation_start_times[idx]
 
             # Validation: At least 3 targets are "VALID"
@@ -784,9 +765,7 @@ class ExtrinsicsCalibrationScene(Scene):
             self.context.events.cancel(TimerKey.CALIBRATION_STAGE)
             # Run solvePnP
             if self.context.app_config.camera_matrix is None:
-                self.context.notifications.add_notification(
-                    "Error: Camera intrinsics missing."
-                )
+                self.context.notifications.add_notification("Error: Camera intrinsics missing.")
                 self._stage = "ERROR"
                 return None
 
@@ -1007,9 +986,7 @@ class PpiCalibrationScene(Scene):
                             f"Updated base scale for {os.path.basename(filename)} to {map_system.base_scale:.4f}"
                         )
 
-                self.context.notifications.add_notification(
-                    f"PPI saved: {self._candidate_ppi:.2f}"
-                )
+                self.context.notifications.add_notification(f"PPI saved: {self._candidate_ppi:.2f}")
                 return SceneTransition(SceneId.MENU)
             elif gesture == GestureType.OPEN_PALM:
                 self._stage = "DETECTING"
@@ -1087,9 +1064,7 @@ class MapGridCalibrationScene(Scene):
 
         # Check for existing calibration
         filename = map_system.svg_loader.filename if map_system.svg_loader else None
-        entry = (
-            map_config.data.maps.get(os.path.abspath(filename)) if filename else None
-        )
+        entry = map_config.data.maps.get(os.path.abspath(filename)) if filename else None
 
         if entry and entry.grid_spacing_svg > 0:
             # Initialize from existing config
@@ -1099,9 +1074,7 @@ class MapGridCalibrationScene(Scene):
                 self.context.app_config,
             )
             # Use world_to_screen to find the current screen position of the saved world origin
-            sx, sy = map_system.world_to_screen(
-                entry.grid_origin_svg_x, entry.grid_origin_svg_y
-            )
+            sx, sy = map_system.world_to_screen(entry.grid_origin_svg_x, entry.grid_origin_svg_y)
             self.grid_overlay.offset_x = sx
             self.grid_overlay.offset_y = sy
             logging.info(
@@ -1141,9 +1114,7 @@ class MapGridCalibrationScene(Scene):
         if self.grid_overlay:
             map_system = self.context.map_system
             # Push live grid state to WorldState to trigger MapGridLayer rendering
-            self.context.state.grid_spacing_svg = (
-                self.grid_overlay.spacing / map_system.state.zoom
-            )
+            self.context.state.grid_spacing_svg = self.grid_overlay.spacing / map_system.state.zoom
             wx, wy = map_system.screen_to_world(
                 self.grid_overlay.offset_x, self.grid_overlay.offset_y
             )
@@ -1191,9 +1162,7 @@ class MapGridCalibrationScene(Scene):
         map_config = self.context.map_config_manager
 
         if not map_system.svg_loader:
-            self.context.notifications.add_notification(
-                "Error: No map loaded for calibration."
-            )
+            self.context.notifications.add_notification("Error: No map loaded for calibration.")
             return
 
         filename = map_system.svg_loader.filename
@@ -1214,9 +1183,7 @@ class MapGridCalibrationScene(Scene):
         # Origin:
         # The grid origin is at screen (offset_x, offset_y).
         # We want the world coordinate corresponding to this screen pixel.
-        wx, wy = map_system.screen_to_world(
-            self.grid_overlay.offset_x, self.grid_overlay.offset_y
-        )
+        wx, wy = map_system.screen_to_world(self.grid_overlay.offset_x, self.grid_overlay.offset_y)
 
         logging.info(
             "Calibrated %s: Spacing=%.1f, Origin=(%.1f, %.1f)",
@@ -1248,9 +1215,7 @@ class MapGridCalibrationScene(Scene):
         # S_1:1 = (Physical * PPI) / Spacing_SVG
         ppi = map_config.get_ppi()
         if ppi > 0:
-            new_base_scale = (
-                self.calib_map_grid_size_inches * ppi
-            ) / derived_spacing_svg
+            new_base_scale = (self.calib_map_grid_size_inches * ppi) / derived_spacing_svg
             # Update the config with this new base scale
             # Wait, save_map_grid_config takes scale_factor_1to1 as arg.
             # I should calculate it and pass it.
@@ -1386,9 +1351,7 @@ class Projector3DCalibrationScene(Scene):
         elif self.stage == Projector3DCalibStage.PLACE_BOX:
             # Alternate gestures to prevent double-triggering
             expected_gesture = (
-                GestureType.VICTORY
-                if self.current_box_pos_idx % 2 == 0
-                else GestureType.SHAKA
+                GestureType.VICTORY if self.current_box_pos_idx % 2 == 0 else GestureType.SHAKA
             )
 
             for inp in inputs:
@@ -1585,9 +1548,7 @@ class Projector3DCalibrationScene(Scene):
         self.feedback_layer.box_markers = box_markers
         self.feedback_layer.table_markers = table_markers
 
-        expected_gesture_name = (
-            "Victory" if self.current_box_pos_idx % 2 == 0 else "Shaka"
-        )
+        expected_gesture_name = "Victory" if self.current_box_pos_idx % 2 == 0 else "Shaka"
         self.feedback_layer.instructions = (
             f"Step {self.current_box_pos_idx + 1}/{self.max_box_positions}: "
             f"Place box (H={self.context.app_config.calibration_box_height_mm}mm) "
@@ -1604,9 +1565,7 @@ class Projector3DCalibrationScene(Scene):
 
         raw = self.context.raw_aruco
         if not raw or raw.get("ids") is None:
-            logging.warning(
-                "Projector3DCalibrationScene: No ArUco markers detected for capture!"
-            )
+            logging.warning("Projector3DCalibrationScene: No ArUco markers detected for capture!")
             self.context.notifications.add_notification("No markers detected!")
             return
 
@@ -1620,9 +1579,7 @@ class Projector3DCalibrationScene(Scene):
         translation_vector_camera = self.context.app_config.translation_vector
 
         if camera_matrix is None or rotation_vector_camera is None:
-            logging.error(
-                "Projector3DCalibrationScene: Camera calibration missing in AppContext!"
-            )
+            logging.error("Projector3DCalibrationScene: Camera calibration missing in AppContext!")
             self.context.notifications.add_notification(
                 "Error: Camera extrinsics missing. Run Step 4 first."
             )
@@ -1633,9 +1590,7 @@ class Projector3DCalibrationScene(Scene):
         rotation_matrix_camera, _ = cv2.Rodrigues(rotation_vector_camera)
         # Camera position in world coordinates: C = -R^T * t
         # We flatten to ensure it's a (3,) vector, avoiding broadcasting issues in world_point calculation
-        camera_center_world = (
-            -rotation_matrix_camera.T @ translation_vector_camera
-        ).flatten()
+        camera_center_world = (-rotation_matrix_camera.T @ translation_vector_camera).flatten()
 
         # Collect all expected marker info from the layers
         marker_map = {}  # id -> (corners_projector, height, is_box)
@@ -1672,9 +1627,7 @@ class Projector3DCalibrationScene(Scene):
 
             # For each corner (0-3):
             for j in range(4):
-                projector_pixels = corners_projector[
-                    j
-                ]  # (2,) [u, v] in projector pixels
+                projector_pixels = corners_projector[j]  # (2,) [u, v] in projector pixels
                 # camera_pixels might be a list if it came from serialized state
                 camera_pixels = np.array(
                     corners_camera_current[j], dtype=np.float32
@@ -1734,9 +1687,7 @@ class Projector3DCalibrationScene(Scene):
                 msg += " (Warning: No box markers found!)"
             self.context.notifications.add_notification(msg)
         else:
-            self.context.notifications.add_notification(
-                "Capture failed: No markers detected."
-            )
+            self.context.notifications.add_notification("Capture failed: No markers detected.")
 
     def _run_calibration(self):
         """Solves for Projector Intrinsics and Extrinsics."""

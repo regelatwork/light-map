@@ -30,9 +30,7 @@ def verify_remote_api():
     ]
 
     print(f"Starting application from {project_root}: {' '.join(cmd)}")
-    process = subprocess.Popen(
-        cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
-    )
+    process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
 
     base_url = "http://127.0.0.1:8000"
 
@@ -81,9 +79,7 @@ def verify_remote_api():
         if blockers:
             target_x, target_y = blockers[0]["points"][0]
             print(f"Injecting hand at world coordinate: ({target_x}, {target_y})")
-            hand_data = [
-                {"world_x": target_x, "world_y": target_y, "gesture": "Pointing"}
-            ]
+            hand_data = [{"world_x": target_x, "world_y": target_y, "gesture": "Pointing"}]
             resp = httpx.post(f"{base_url}/input/hands/world", json=hand_data)
             assert resp.status_code == 200
 

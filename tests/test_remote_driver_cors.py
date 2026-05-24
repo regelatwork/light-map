@@ -22,9 +22,7 @@ def test_cors_default_restricted():
     }
     response = client.options("/input/hands", headers=headers)
     assert response.status_code == 200
-    assert (
-        response.headers.get("access-control-allow-origin") == "http://localhost:5173"
-    )
+    assert response.headers.get("access-control-allow-origin") == "http://localhost:5173"
 
     # 2. Unauthorized origin (default)
     headers = {
@@ -56,9 +54,7 @@ def test_cors_restricted():
     }
     response = client.options("/input/hands", headers=headers)
     assert response.status_code == 200
-    assert (
-        response.headers.get("access-control-allow-origin") == "http://localhost:5173"
-    )
+    assert response.headers.get("access-control-allow-origin") == "http://localhost:5173"
 
     # 2. Unauthorized origin
     headers = {

@@ -104,10 +104,7 @@ class Layer(ABC):
         """
         current_version = self.get_current_version()
 
-        if (
-            current_version != self._last_rendered_version
-            or self._cached_patches is None
-        ):
+        if current_version != self._last_rendered_version or self._cached_patches is None:
             self._cached_patches = self._generate_patches(current_time)
             self._last_rendered_version = current_version
 
@@ -471,21 +468,11 @@ class AppConfig:
 
     def sync_from_global_settings(self, gs: Any):
         """Syncs config fields from GlobalMapConfig object while avoiding circular imports."""
-        self.enable_hand_masking = getattr(
-            gs, "enable_hand_masking", self.enable_hand_masking
-        )
-        self.hand_mask_padding = getattr(
-            gs, "hand_mask_padding", self.hand_mask_padding
-        )
-        self.enable_aruco_masking = getattr(
-            gs, "enable_aruco_masking", self.enable_aruco_masking
-        )
-        self.aruco_mask_padding = getattr(
-            gs, "aruco_mask_padding", self.aruco_mask_padding
-        )
-        self.aruco_mask_intensity = getattr(
-            gs, "aruco_mask_intensity", self.aruco_mask_intensity
-        )
+        self.enable_hand_masking = getattr(gs, "enable_hand_masking", self.enable_hand_masking)
+        self.hand_mask_padding = getattr(gs, "hand_mask_padding", self.hand_mask_padding)
+        self.enable_aruco_masking = getattr(gs, "enable_aruco_masking", self.enable_aruco_masking)
+        self.aruco_mask_padding = getattr(gs, "aruco_mask_padding", self.aruco_mask_padding)
+        self.aruco_mask_intensity = getattr(gs, "aruco_mask_intensity", self.aruco_mask_intensity)
         self.aruco_mask_persistence_s = getattr(
             gs, "aruco_mask_persistence_s", self.aruco_mask_persistence_s
         )
@@ -505,9 +492,7 @@ class AppConfig:
         )
 
         # Sync Pointer Offset
-        self.pointer_offset_mm = getattr(
-            gs, "pointer_offset_mm", self.pointer_offset_mm
-        )
+        self.pointer_offset_mm = getattr(gs, "pointer_offset_mm", self.pointer_offset_mm)
 
         # Sync Projector Position Overrides
         self.projector_pos_x_override = getattr(
@@ -552,9 +537,7 @@ class Token:
     world_x: float  # SVG coordinates (Vertical projection to Z=0)
     world_y: float
     world_z: float = 0.0  # Height of the base on the map (typically 0.0)
-    marker_x: float | None = (
-        None  # SVG coordinates of the physical marker (at height Z=h)
-    )
+    marker_x: float | None = None  # SVG coordinates of the physical marker (at height Z=h)
     marker_y: float | None = None
     marker_z: float = 0.0  # Height of the marker in mm (h)
     grid_x: int | None = None

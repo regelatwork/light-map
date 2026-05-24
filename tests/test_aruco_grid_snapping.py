@@ -52,9 +52,7 @@ def test_aruco_detection_snapped_to_detected_grid(grid_svg_file, tmp_path):
     assert entry.grid_spacing_svg == 50.0
 
     # Setup for tracking
-    app.map_config.data.global_settings.detection_algorithm = (
-        TokenDetectionAlgorithm.ARUCO
-    )
+    app.map_config.data.global_settings.detection_algorithm = TokenDetectionAlgorithm.ARUCO
 
     from light_map.core.common_types import Token
 
@@ -72,9 +70,7 @@ def test_aruco_detection_snapped_to_detected_grid(grid_svg_file, tmp_path):
     # (TrackingCoordinator uses its own token_tracker)
     coordinator.token_tracker.detect_tokens = MagicMock(return_value=[fixed_token])
 
-    coordinator.process_aruco_tracking(
-        dummy_frame, config, app.map_system, app.map_config
-    )
+    coordinator.process_aruco_tracking(dummy_frame, config, app.map_system, app.map_config)
 
     # Verify results
     tokens = app.map_system.ghost_tokens

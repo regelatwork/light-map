@@ -83,9 +83,7 @@ def test_tokens_persist_when_none_detected():
     # If raw_aruco is empty, this branch is skipped.
 
     # Let's test the queue-based path first.
-    assert len(state.tokens) == 0, (
-        "Tokens should be cleared when empty result is received"
-    )
+    assert len(state.tokens) == 0, "Tokens should be cleared when empty result is received"
 
 
 def test_tokens_persist_via_aruco_mapper_path():

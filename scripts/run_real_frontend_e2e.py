@@ -17,6 +17,7 @@ def find_free_port():
         s.bind(("", 0))
         return s.getsockname()[1]
 
+
 def cleanup_old_resources():
     """Clean up leftover temp dirs and shared memory from previous runs."""
     import glob
@@ -95,22 +96,26 @@ def run_real_e2e(initial_config_dir=None, keep_on_failure=True, skip_ui=False):
     log_file_path = os.path.join(xdg_state, "light_map", "backend_e2e.log")
 
     # We must allow the frontend's origin for CORS
-    allowed_origins = [
-        f"http://localhost:{frontend_port}",
-        f"http://127.0.0.1:{frontend_port}"
-    ]
+    allowed_origins = [f"http://localhost:{frontend_port}", f"http://127.0.0.1:{frontend_port}"]
 
-    cmd = [
-        python_bin, "-m", "light_map",
-        "--remote-host", "127.0.0.1",
-        "--remote-port", str(backend_port),
-        "--remote-tokens", "exclusive",
-        "--remote-hands", "exclusive",
-        "--remote-origins"
-    ] + allowed_origins + [
-        "--map", "maps/test_blocker.svg",
-        "--log-level", "DEBUG"
-    ]
+    cmd = (
+        [
+            python_bin,
+            "-m",
+            "light_map",
+            "--remote-host",
+            "127.0.0.1",
+            "--remote-port",
+            str(backend_port),
+            "--remote-tokens",
+            "exclusive",
+            "--remote-hands",
+            "exclusive",
+            "--remote-origins",
+        ]
+        + allowed_origins
+        + ["--map", "maps/test_blocker.svg", "--log-level", "DEBUG"]
+    )
     env = os.environ.copy()
     env["MOCK_CAMERA"] = "1"
     env["PYTHONPATH"] = os.path.join(project_root, "src")
@@ -123,8 +128,12 @@ def run_real_e2e(initial_config_dir=None, keep_on_failure=True, skip_ui=False):
     print(f"Command: {' '.join(cmd)}")
     with open(log_file_path, "w") as log_file:
         backend_proc = subprocess.Popen(
-            cmd, env=env, stdout=log_file, stderr=subprocess.STDOUT, text=True,
-            bufsize=1 # Line buffered
+            cmd,
+            env=env,
+            stdout=log_file,
+            stderr=subprocess.STDOUT,
+            text=True,
+            bufsize=1,  # Line buffered
         )
 
     base_url = f"http://127.0.0.1:{backend_port}"
@@ -134,7 +143,7 @@ def run_real_e2e(initial_config_dir=None, keep_on_failure=True, skip_ui=False):
         # Wait for backend
         print("Waiting for backend to be ready...")
         ready = False
-        for _i in range(45): # Increased timeout
+        for _i in range(45):  # Increased timeout
             # Check if process is still running
             if backend_proc.poll() is not None:
                 print(f"Backend process EXITED prematurely with code {backend_proc.returncode}")
@@ -157,10 +166,13 @@ def run_real_e2e(initial_config_dir=None, keep_on_failure=True, skip_ui=False):
 
         # 6. Inject Tokens
         print("Injecting test tokens...")
-        httpx.post(f"{base_url}/input/tokens", json=[
-            {"id": 1, "x": 100.0, "y": 100.0, "z": 0.0},
-            {"id": 2, "x": 200.0, "y": 100.0, "z": 0.0}
-        ])
+        httpx.post(
+            f"{base_url}/input/tokens",
+            json=[
+                {"id": 1, "x": 100.0, "y": 100.0, "z": 0.0},
+                {"id": 2, "x": 200.0, "y": 100.0, "z": 0.0},
+            ],
+        )
 
         # 7. Run Verification
         if skip_ui:
@@ -171,7 +183,10 @@ def run_real_e2e(initial_config_dir=None, keep_on_failure=True, skip_ui=False):
             # Select token 1
             print("Selecting token 1...")
             sel_payload = json.dumps({"type": "TOKEN", "id": 1})
-            resp = httpx.post(f"{base_url}/input/action", params={"action": "SET_SELECTION", "payload": sel_payload})
+            resp = httpx.post(
+                f"{base_url}/input/action",
+                params={"action": "SET_SELECTION", "payload": sel_payload},
+            )
             if resp.status_code != 200:
                 print(f"Error: SET_SELECTION failed with {resp.status_code}: {resp.text}")
                 return False
@@ -210,18 +225,11 @@ def run_real_e2e(initial_config_dir=None, keep_on_failure=True, skip_ui=False):
         env["VITE_API_HOST"] = f"127.0.0.1:{backend_port}"
         env["PORT"] = str(frontend_port)
 
-        pw_cmd = [
-            "npx", "playwright", "test", "e2e/tactical_real.spec.ts",
-            "--reporter=list"
-        ]
+        pw_cmd = ["npx", "playwright", "test", "e2e/tactical_real.spec.ts", "--reporter=list"]
 
-        pw_proc = subprocess.run(
-            pw_cmd,
-            cwd=os.path.join(project_root, "frontend"),
-            env=env
-        )
+        pw_proc = subprocess.run(pw_cmd, cwd=os.path.join(project_root, "frontend"), env=env)
 
-        success = (pw_proc.returncode == 0)
+        success = pw_proc.returncode == 0
 
         if not success:
             print("Playwright tests failed.")
@@ -243,14 +251,26 @@ def run_real_e2e(initial_config_dir=None, keep_on_failure=True, skip_ui=False):
         else:
             print(f"FAILURE DETECTED. Isolated environment PRESERVED for diagnosis: {temp_base}")
 
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Run hermetic real frontend-to-backend E2E tests.")
-    parser.add_argument("--config-dir", help="Directory containing initial configuration files to seed.")
-    parser.add_argument("--no-keep", action="store_false", dest="keep", help="Delete isolated environment even on failure.")
-    parser.add_argument("--skip-ui", action="store_true", help="Run backend-only verification (no browser).")
+    parser.add_argument(
+        "--config-dir", help="Directory containing initial configuration files to seed."
+    )
+    parser.add_argument(
+        "--no-keep",
+        action="store_false",
+        dest="keep",
+        help="Delete isolated environment even on failure.",
+    )
+    parser.add_argument(
+        "--skip-ui", action="store_true", help="Run backend-only verification (no browser)."
+    )
     parser.set_defaults(keep=True)
 
     args = parser.parse_args()
 
-    result = run_real_e2e(initial_config_dir=args.config_dir, keep_on_failure=args.keep, skip_ui=args.skip_ui)
+    result = run_real_e2e(
+        initial_config_dir=args.config_dir, keep_on_failure=args.keep, skip_ui=args.skip_ui
+    )
     sys.exit(0 if result else 1)

@@ -57,10 +57,7 @@ def test_door_layer_render_closed_door(state):
 
     # Check for black-ish color (0, 0, 0)
     black_ish = (
-        (data[:, :, 0] < 50)
-        & (data[:, :, 1] < 50)
-        & (data[:, :, 2] < 50)
-        & (data[:, :, 3] == 255)
+        (data[:, :, 0] < 50) & (data[:, :, 1] < 50) & (data[:, :, 2] < 50) & (data[:, :, 3] == 255)
     )
     assert np.any(black_ish)
 

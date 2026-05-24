@@ -71,9 +71,7 @@ def test_token_vertical_projection():
         from light_map.core.common_types import AppConfig
 
         config = AppConfig(width=1920, height=1080, projector_matrix=np.eye(3))
-        map_system = MapSystem(
-            config
-        )  # Identity mapping mm -> projector pixels -> world
+        map_system = MapSystem(config)  # Identity mapping mm -> projector pixels -> world
 
         frame = np.zeros((1080, 1920, 3), dtype=np.uint8)
 

@@ -19,9 +19,7 @@ def test_main_loop_iteration():
     input_mgr = MagicMock(spec=InputManager)
 
     # Mock a result from queue
-    res = DetectionResult(
-        timestamp=1000, type=ResultType.GESTURE, data={"gesture": "PINCH"}
-    )
+    res = DetectionResult(timestamp=1000, type=ResultType.GESTURE, data={"gesture": "PINCH"})
 
     # Simulate first call returning a result, then empty
     manager.results_queue.empty.side_effect = [False, True]

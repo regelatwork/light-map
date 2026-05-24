@@ -43,9 +43,7 @@ class InputCoordinator:
         else:
             inputs = state.inputs
             # Expire inputs if no update received for > flicker_timeout
-            if inputs and (
-                current_time - state.last_hand_timestamp > self.flicker_timeout
-            ):
+            if inputs and (current_time - state.last_hand_timestamp > self.flicker_timeout):
                 state.inputs = []
 
         # Sync common vision results to AppContext

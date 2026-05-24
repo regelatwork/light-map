@@ -65,9 +65,7 @@ class VisibilityBaseLayer(Layer):
 
             final_m = m_fow_to_svg * m_svg_to_screen
 
-            M = np.float32(
-                [[final_m.a, final_m.c, final_m.e], [final_m.b, final_m.d, final_m.f]]
-            )
+            M = np.float32([[final_m.a, final_m.c, final_m.e], [final_m.b, final_m.d, final_m.f]])
 
             mask_screen = cv2.warpAffine(
                 render_mask,

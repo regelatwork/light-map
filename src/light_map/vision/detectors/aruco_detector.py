@@ -43,9 +43,7 @@ class ArucoTokenDetector:
                 self.distortion_coefficients = data.get("distortion_coefficients")
                 if self.distortion_coefficients is None:
                     self.distortion_coefficients = data.get("dist_coeffs")
-                logging.info(
-                    f"ArucoDetector: Loaded camera calibration from {calibration_file}."
-                )
+                logging.info(f"ArucoDetector: Loaded camera calibration from {calibration_file}.")
             else:
                 logging.warning(
                     f"ArucoDetector: Camera calibration file '{calibration_file}' not found."
@@ -62,9 +60,7 @@ class ArucoTokenDetector:
                 if translation_vector is None:
                     translation_vector = data.get("tvec")
                 self.set_extrinsics(rotation_vector, translation_vector)
-                logging.info(
-                    f"ArucoDetector: Loaded camera extrinsics from {extrinsics_file}."
-                )
+                logging.info(f"ArucoDetector: Loaded camera extrinsics from {extrinsics_file}.")
             else:
                 logging.warning(
                     f"ArucoDetector: Camera extrinsics file '{extrinsics_file}' not found."
@@ -75,17 +71,13 @@ class ArucoTokenDetector:
         parameters = cv2.aruco.DetectorParameters()
         self.detector = cv2.aruco.ArucoDetector(dictionary, parameters)
 
-    def set_calibration(
-        self, camera_matrix: np.ndarray, distortion_coefficients: np.ndarray
-    ):
+    def set_calibration(self, camera_matrix: np.ndarray, distortion_coefficients: np.ndarray):
         self.camera_matrix = camera_matrix
         self.distortion_coefficients = distortion_coefficients
         self._update_projection_model()
         logging.debug("ArucoDetector: Camera intrinsics updated.")
 
-    def set_extrinsics(
-        self, rotation_vector: np.ndarray, translation_vector: np.ndarray
-    ):
+    def set_extrinsics(self, rotation_vector: np.ndarray, translation_vector: np.ndarray):
         self.rotation_vector = rotation_vector
         self.translation_vector = translation_vector
         self._update_projection_model()
@@ -144,11 +136,7 @@ class ArucoTokenDetector:
         offset_x, offset_y = crop_offset if crop_offset else (0, 0)
 
         # 2. FOV Masking (if not already cropped)
-        if (
-            crop_offset is None
-            and projector_matrix is not None
-            and map_dims is not None
-        ):
+        if crop_offset is None and projector_matrix is not None and map_dims is not None:
             mask = self._get_fov_mask(
                 gray.shape,
                 scale,
@@ -187,10 +175,7 @@ class ArucoTokenDetector:
                 marker_corners = marker_corners / scale
 
             area = cv2.contourArea(marker_corners)
-            if (
-                marker_id not in detections_by_id
-                or area > detections_by_id[marker_id]["area"]
-            ):
+            if marker_id not in detections_by_id or area > detections_by_id[marker_id]["area"]:
                 detections_by_id[marker_id] = {"corners": marker_corners, "area": area}
 
         final_corners = [v["corners"] for v in detections_by_id.values()]
@@ -237,10 +222,8 @@ class ArucoTokenDetector:
             # 1. Reconstruct logical world position (mm) from camera perspective
             # This finds where the token actually is in the real world.
             if projection_service:
-                marker_pts_3d = (
-                    projection_service.camera_model.reconstruct_world_points_3d(
-                        np.array([[u, v]], dtype=np.float32), height_mm=height_mm
-                    )
+                marker_pts_3d = projection_service.camera_model.reconstruct_world_points_3d(
+                    np.array([[u, v]], dtype=np.float32), height_mm=height_mm
                 )
             else:
                 marker_pts_3d = self.projection_model.reconstruct_world_points_3d(
@@ -250,9 +233,7 @@ class ArucoTokenDetector:
             marker_x_mm, marker_y_mm, _ = marker_pts_3d[0]
 
             # Map true world position directly to SVG (independent of projector position)
-            wx_svg, wy_svg = map_system.world_mm_to_svg(
-                marker_x_mm, marker_y_mm, ppi=ppi
-            )
+            wx_svg, wy_svg = map_system.world_mm_to_svg(marker_x_mm, marker_y_mm, ppi=ppi)
 
             # NOTE: We do NOT perform projector parallax correction here for UI anchors (marker_x/y).
             # The ArucoMaskLayer handles its own more precise 4-corner projection using the raw corners.

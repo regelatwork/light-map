@@ -59,9 +59,7 @@ def build_root_menu(
     map_items = []
 
     # Get maps and sort alphabetically by filename
-    known_maps = sorted(
-        map_config.data.maps.keys(), key=lambda x: os.path.basename(x).lower()
-    )
+    known_maps = sorted(map_config.data.maps.keys(), key=lambda x: os.path.basename(x).lower())
 
     for filename in known_maps:
         status = map_config.get_map_status(filename)
@@ -303,9 +301,7 @@ def build_root_menu(
                     ),
                 ],
             ),
-            MenuItem(
-                title="Quit", action_id=MenuActions.EXIT, should_close_on_trigger=True
-            ),
+            MenuItem(title="Quit", action_id=MenuActions.EXIT, should_close_on_trigger=True),
         ],
     )
 

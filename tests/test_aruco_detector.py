@@ -45,9 +45,7 @@ def test_aruco_parallax_correction_math():
     # Plane Z=0 (table) should give (0, 0) in world space.
     # Plane Z=100 (token top) should still give (0, 0) because it's directly under camera.
     pixel_points_center = np.array([[960, 540]], dtype=np.float32)
-    world_points_res0 = detector.projection_model.reconstruct_world_points(
-        pixel_points_center, 0
-    )
+    world_points_res0 = detector.projection_model.reconstruct_world_points(pixel_points_center, 0)
     world_x0, world_y0 = world_points_res0[0]
     assert world_x0 == pytest.approx(0.0, abs=1e-4)
     assert world_y0 == pytest.approx(0.0, abs=1e-4)

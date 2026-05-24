@@ -89,6 +89,7 @@ def test_redo_stack_cleared_on_new_push(map_system):
     assert not map_system.can_redo()
     map_system.redo()  # Should not raise IndexError anymore
 
+
 def test_can_undo_redo_flags(map_system):
     assert not map_system.can_undo()
     assert not map_system.can_redo()

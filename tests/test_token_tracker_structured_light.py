@@ -130,9 +130,7 @@ def test_detect_structured_light_with_cluster_shift(tracker, map_system):
     # Find two points close to center
     cx, cy = width // 2, height // 2
     # simple search
-    sorted_pts = sorted(
-        expected_points, key=lambda p: (p[0] - cx) ** 2 + (p[1] - cy) ** 2
-    )
+    sorted_pts = sorted(expected_points, key=lambda p: (p[0] - cx) ** 2 + (p[1] - cy) ** 2)
     p1 = sorted_pts[0]
     p2 = sorted_pts[1]
 

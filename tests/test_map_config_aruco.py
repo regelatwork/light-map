@@ -18,9 +18,7 @@ def test_map_config_manager_aruco_defaults(tmp_path):
     assert manager.data.global_settings.token_profiles["small"].height_mm == 15.0
 
     # 2. Add an ArUco default
-    manager.set_global_aruco_definition(
-        1, "Fighter", type="PC", profile="medium", color="#FF0000"
-    )
+    manager.set_global_aruco_definition(1, "Fighter", type="PC", profile="medium", color="#FF0000")
 
     # 3. Add an ArUco override for a specific map
     map_name = "test_map.svg"
@@ -53,9 +51,7 @@ def test_map_config_manager_mutual_exclusivity(tmp_path):
     manager = MapConfigManager(filename=test_file)
 
     # 1. Set profile -> should clear custom dimensions
-    manager.set_global_aruco_definition(
-        1, "Hero", profile="large", size=5, height_mm=100.0
-    )
+    manager.set_global_aruco_definition(1, "Hero", profile="large", size=5, height_mm=100.0)
     defn = manager.data.global_settings.aruco_defaults[1]
     assert defn.profile == "large"
     assert defn.size is None

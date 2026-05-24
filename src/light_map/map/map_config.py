@@ -138,9 +138,7 @@ class MapConfigManager:
             self.filename = filename
             if not storage:
                 # If only filename is provided, assume tokens.json should be in the same dir
-                self.tokens_filename = os.path.join(
-                    os.path.dirname(filename), "tokens.json"
-                )
+                self.tokens_filename = os.path.join(os.path.dirname(filename), "tokens.json")
             else:
                 self.tokens_filename = self.storage.get_config_path("tokens.json")
         else:
@@ -193,10 +191,7 @@ class MapConfigManager:
             # Fallback: if tokens_raw is empty, try looking in the project root
             if not tokens_raw or not tokens_raw.get("token_profiles"):
                 root_tokens_path = os.path.join(os.getcwd(), "tokens.json")
-                if (
-                    os.path.exists(root_tokens_path)
-                    and root_tokens_path != self.tokens_filename
-                ):
+                if os.path.exists(root_tokens_path) and root_tokens_path != self.tokens_filename:
                     logging.info(
                         f"MapConfig: Primary tokens.json empty, trying root fallback: {root_tokens_path}"
                     )
@@ -209,9 +204,7 @@ class MapConfigManager:
                                     "MapConfig: Successfully loaded tokens from root fallback."
                                 )
                     except Exception as e:
-                        logging.warning(
-                            f"MapConfig: Failed to load root tokens fallback: {e}"
-                        )
+                        logging.warning(f"MapConfig: Failed to load root tokens fallback: {e}")
 
             if not raw and not tokens_raw:
                 return MapConfigData()
@@ -257,9 +250,7 @@ class MapConfigManager:
                     global_settings.aruco_defaults[aid] = aruco
 
             except Exception as e:
-                logging.warning(
-                    f"MapConfig: Failed to validate token config: {e}. Using defaults."
-                )
+                logging.warning(f"MapConfig: Failed to validate token config: {e}. Using defaults.")
                 # Keep factory defaults in global_settings
 
             global_settings.last_used_map = global_raw.get("last_used_map")
@@ -282,9 +273,7 @@ class MapConfigManager:
 
                     maps[name] = entry
                 except Exception as e:
-                    logging.warning(
-                        f"MapConfig: Failed to validate map entry for {name}: {e}"
-                    )
+                    logging.warning(f"MapConfig: Failed to validate map entry for {name}: {e}")
 
             return MapConfigData(global_settings=global_settings, maps=maps)
 
@@ -310,12 +299,10 @@ class MapConfigManager:
             # Serialize Tokens
             tokens_dict = {
                 "token_profiles": {
-                    k: asdict(v)
-                    for k, v in self.data.global_settings.token_profiles.items()
+                    k: asdict(v) for k, v in self.data.global_settings.token_profiles.items()
                 },
                 "aruco_defaults": {
-                    str(k): asdict(v)
-                    for k, v in self.data.global_settings.aruco_defaults.items()
+                    str(k): asdict(v) for k, v in self.data.global_settings.aruco_defaults.items()
                 },
             }
             self.tokens_store.save(tokens_dict)
@@ -363,9 +350,7 @@ class MapConfigManager:
             return self.data.maps[map_name].grid_spacing_svg
         return 0.0
 
-    def save_map_viewport(
-        self, map_name: str, x: float, y: float, zoom: float, rotation: float
-    ):
+    def save_map_viewport(self, map_name: str, x: float, y: float, zoom: float, rotation: float):
         map_name = os.path.abspath(map_name)
         if map_name not in self.data.maps:
             self.data.maps[map_name] = MapEntry()
@@ -508,9 +493,7 @@ class MapConfigManager:
                     if img.shape == (fow_manager.height, fow_manager.width):
                         fow_manager.explored_mask = img
                     else:
-                        logging.warning(
-                            "FoW dimension mismatch, ignoring: %s", fow_path
-                        )
+                        logging.warning("FoW dimension mismatch, ignoring: %s", fow_path)
             except Exception as e:
                 logging.error("Error loading FoW: %s", e)
 
@@ -523,9 +506,7 @@ class MapConfigManager:
                     if img.shape == (fow_manager.height, fow_manager.width):
                         fow_manager.visible_mask = img
                     else:
-                        logging.warning(
-                            "LOS dimension mismatch, ignoring: %s", los_path
-                        )
+                        logging.warning("LOS dimension mismatch, ignoring: %s", los_path)
             except Exception as e:
                 logging.error("Error loading LOS: %s", e)
 
@@ -561,9 +542,7 @@ class MapConfigManager:
 
     def set_token_profile(self, name: str, size: int, height_mm: float):
         """Helper to set a global token profile."""
-        self.data.global_settings.token_profiles[name] = SizeProfile(
-            size=size, height_mm=height_mm
-        )
+        self.data.global_settings.token_profiles[name] = SizeProfile(size=size, height_mm=height_mm)
         self.save()
 
     def delete_token_profile(self, name: str):
@@ -592,9 +571,7 @@ class MapConfigManager:
 
         return configs
 
-    def resolve_token_profile(
-        self, aruco_id: int, map_name: str | None = None
-    ) -> ResolvedToken:
+    def resolve_token_profile(self, aruco_id: int, map_name: str | None = None) -> ResolvedToken:
         """
         Resolves the full token profile for a given ArUco ID, considering:
         1. Map-specific overrides (if map_name provided)
@@ -635,9 +612,7 @@ class MapConfigManager:
 
         # If profile is specified, apply it first
         if definition.profile:
-            profile_def = self.data.global_settings.token_profiles.get(
-                definition.profile
-            )
+            profile_def = self.data.global_settings.token_profiles.get(definition.profile)
             if profile_def:
                 size = profile_def.size
                 height_mm = profile_def.height_mm

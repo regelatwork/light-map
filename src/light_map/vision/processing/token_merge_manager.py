@@ -1,4 +1,3 @@
-
 from light_map.core.common_types import (
     DetectionResult,
     ResultType,
@@ -38,16 +37,16 @@ class TokenMergeManager:
 
         changed = False
         if source == "remote":
-            if not self._tokens_equal(
-                self._remote_tokens, new_tokens
-            ) or not self._tokens_equal(self._remote_raw_tokens, new_raw_tokens):
+            if not self._tokens_equal(self._remote_tokens, new_tokens) or not self._tokens_equal(
+                self._remote_raw_tokens, new_raw_tokens
+            ):
                 self._remote_tokens = new_tokens
                 self._remote_raw_tokens = new_raw_tokens
                 changed = True
         else:
-            if not self._tokens_equal(
-                self._physical_tokens, new_tokens
-            ) or not self._tokens_equal(self._physical_raw_tokens, new_raw_tokens):
+            if not self._tokens_equal(self._physical_tokens, new_tokens) or not self._tokens_equal(
+                self._physical_raw_tokens, new_raw_tokens
+            ):
                 self._physical_tokens = new_tokens
                 self._physical_raw_tokens = new_raw_tokens
                 changed = True
@@ -122,10 +121,7 @@ class TokenMergeManager:
                 if t1.grid_x != t2.grid_x or t1.grid_y != t2.grid_y:
                     return False
             else:
-                if (
-                    abs(t1.world_x - t2.world_x) > 1.0
-                    or abs(t1.world_y - t2.world_y) > 1.0
-                ):
+                if abs(t1.world_x - t2.world_x) > 1.0 or abs(t1.world_y - t2.world_y) > 1.0:
                     return False
 
             # Check status flags

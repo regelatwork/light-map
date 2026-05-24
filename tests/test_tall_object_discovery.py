@@ -35,18 +35,14 @@ def test_tall_object_discovery_in_fow():
         mask_height=height,
     )
 
-    assert "tall_pillar" in discovered_ids, (
-        "Tall pillar should be in discovered_ids from engine"
-    )
+    assert "tall_pillar" in discovered_ids, "Tall pillar should be in discovered_ids from engine"
 
     # Reveal area in FoW
     fow.reveal_area(vis_mask, discovered_ids)
 
     # Check if it's discovered in FoW
     # Note: We might want to check a more generic attribute name if we rename it
-    assert "tall_pillar" in fow.discovered_ids, (
-        "Tall pillar should be discovered in FoW"
-    )
+    assert "tall_pillar" in fow.discovered_ids, "Tall pillar should be discovered in FoW"
 
 
 def test_tall_object_area_revealed_in_fow():
@@ -83,14 +79,10 @@ def test_tall_object_area_revealed_in_fow():
     # Plateau top should be visible (255)
     target_mx = int(12.0 * engine.svg_to_mask_scale)
     target_my = int(12.0 * engine.svg_to_mask_scale)
-    assert vis_mask[target_my, target_mx] == 255, (
-        "Plateau top should be visible in LOS mask"
-    )
+    assert vis_mask[target_my, target_mx] == 255, "Plateau top should be visible in LOS mask"
 
     # Reveal in FoW
     fow.reveal_area(vis_mask)
 
     # Check if explored mask has the plateau top revealed
-    assert fow.explored_mask[target_my, target_mx] == 255, (
-        "Plateau top should be explored in FoW"
-    )
+    assert fow.explored_mask[target_my, target_mx] == 255, "Plateau top should be explored in FoW"

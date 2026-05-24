@@ -29,9 +29,7 @@ def test_get_session_path():
 
 def test_save_and_load_for_map(clean_session_dir):
     map_path = "/maps/test_map.svg"
-    data = SessionData(
-        map_file=map_path, viewport=ViewportState(x=10, y=20, zoom=2.0), tokens=[]
-    )
+    data = SessionData(map_file=map_path, viewport=ViewportState(x=10, y=20, zoom=2.0), tokens=[])
 
     # Save
     saved = SessionManager.save_for_map(map_path, data)

@@ -155,9 +155,7 @@ class VisionProcessManager:
             if p.is_alive():
                 p.join(timeout=1.0)
                 if p.is_alive():
-                    logging.warning(
-                        f"Process {p.name} did not terminate gracefully. Killing..."
-                    )
+                    logging.warning(f"Process {p.name} did not terminate gracefully. Killing...")
                     p.kill()
 
         self.processes.clear()

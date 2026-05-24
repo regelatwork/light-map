@@ -6,9 +6,7 @@ import cv2
 
 class DebugVisualizer:
     @staticmethod
-    def draw_grid(
-        debug_img, map_system, grid_spacing_svg, grid_origin_x, grid_origin_y
-    ):
+    def draw_grid(debug_img, map_system, grid_spacing_svg, grid_origin_x, grid_origin_y):
         h, w = debug_img.shape[:2]
         grid_color = (100, 100, 100)
 

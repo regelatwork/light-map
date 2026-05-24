@@ -63,10 +63,7 @@ def test_flash_calibration_scene_state_machine(mock_app_context):
             scene.update([], [], time_state.val)
             assert scene._stage == FlashCalibStage.FLASH
             assert mock_app_context.state.calibration.flash_intensity == 255
-            assert (
-                mock_app_context.state.calibration.instruction_text
-                == "Flashing (Level 255)..."
-            )
+            assert mock_app_context.state.calibration.instruction_text == "Flashing (Level 255)..."
 
             # Iterate through test levels
             for i in range(len(scene._test_levels)):
@@ -78,9 +75,7 @@ def test_flash_calibration_scene_state_machine(mock_app_context):
 
                 assert scene._stage == FlashCalibStage.FLASH
                 assert scene._capture_frame is True
-                assert (
-                    mock_app_context.state.calibration.flash_intensity == current_level
-                )
+                assert mock_app_context.state.calibration.flash_intensity == current_level
 
                 # Update to trigger capture and process
                 scene.update([], [], time_state.val)
@@ -100,10 +95,7 @@ def test_flash_calibration_scene_state_machine(mock_app_context):
                     # FLASH -> COOLDOWN
                     assert scene._stage == FlashCalibStage.COOLDOWN
                     assert mock_app_context.state.calibration.flash_intensity == 0
-                    assert (
-                        mock_app_context.state.calibration.instruction_text
-                        == "Cooldown..."
-                    )
+                    assert mock_app_context.state.calibration.instruction_text == "Cooldown..."
 
                     # COOLDOWN -> FLASH (via timer)
                     time_state.val += 0.51
@@ -128,9 +120,7 @@ def test_flash_calibration_scene_state_machine(mock_app_context):
             )
 
             # Optimal intensity for [255, 225, 195, 165, 135, 105, 75, 45] is 165 (median of sorted)
-            mock_app_context.map_config_manager.set_flash_intensity.assert_called_once_with(
-                165
-            )
+            mock_app_context.map_config_manager.set_flash_intensity.assert_called_once_with(165)
             mock_app_context.notifications.add_notification.assert_called_once_with(
                 "Optimal intensity found: 165"
             )

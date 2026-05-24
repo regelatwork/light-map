@@ -3,9 +3,7 @@ import sys
 
 
 # Ensure we can import the local package
-sys.path.insert(
-    0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "src"))
-)
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "src")))
 
 import argparse
 import logging
@@ -45,9 +43,7 @@ def run_calibrate(args):
         logger.info("Distortion coefficients:\n%s", distortion_coefficients)
 
         output_file = storage.get_data_path("camera_calibration.npz")
-        save_camera_calibration(
-            camera_matrix, distortion_coefficients, output_file=output_file
-        )
+        save_camera_calibration(camera_matrix, distortion_coefficients, output_file=output_file)
         logger.info("Calibration saved to %s", output_file)
 
     except RuntimeError as e:

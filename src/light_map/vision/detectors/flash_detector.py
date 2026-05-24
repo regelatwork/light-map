@@ -37,16 +37,12 @@ class FlashTokenDetector:
         self.translation_vector: np.ndarray | None = None
         self.projection_model: CameraProjectionModel | None = None
 
-    def set_calibration(
-        self, camera_matrix: np.ndarray, distortion_coefficients: np.ndarray
-    ):
+    def set_calibration(self, camera_matrix: np.ndarray, distortion_coefficients: np.ndarray):
         self.camera_matrix = camera_matrix
         self.distortion_coefficients = distortion_coefficients
         self._update_projection_model()
 
-    def set_extrinsics(
-        self, rotation_vector: np.ndarray, translation_vector: np.ndarray
-    ):
+    def set_extrinsics(self, rotation_vector: np.ndarray, translation_vector: np.ndarray):
         self.rotation_vector = rotation_vector
         self.translation_vector = translation_vector
         self._update_projection_model()
@@ -114,9 +110,7 @@ class FlashTokenDetector:
     def _preprocess_and_find_markers(
         self, frame_white, projector_matrix, mask_rois, target_w, target_h
     ):
-        warped = cv2.warpPerspective(
-            frame_white, projector_matrix, (target_w, target_h)
-        )
+        warped = cv2.warpPerspective(frame_white, projector_matrix, (target_w, target_h))
         if mask_rois:
             for mx, my, mw, mh in mask_rois:
                 cv2.rectangle(warped, (mx, my), (mx + mw, my + mh), (0, 0, 0), -1)
@@ -217,9 +211,7 @@ class FlashTokenDetector:
         distortion_model=None,
     ):
         x, y, w, h = cv2.boundingRect(blob_mask)
-        pts = np.float32([[x, y], [x + w, y], [x, y + h], [x + w, y + h]]).reshape(
-            -1, 1, 2
-        )
+        pts = np.float32([[x, y], [x + w, y], [x, y + h], [x + w, y + h]]).reshape(-1, 1, 2)
         world_pts = []
         for p in pts:
             sx, sy = p[0]
@@ -299,12 +291,8 @@ class FlashTokenDetector:
                 # screen_x, screen_y are in Projector pixels (warped frame)
                 # Use inverse homography to find camera (u, v)
                 inv_homography = np.linalg.inv(projector_matrix)
-                projector_point = np.array(
-                    [screen_x, screen_y], dtype=np.float32
-                ).reshape(1, 1, 2)
-                camera_point = cv2.perspectiveTransform(
-                    projector_point, inv_homography
-                )[0][0]
+                projector_point = np.array([screen_x, screen_y], dtype=np.float32).reshape(1, 1, 2)
+                camera_point = cv2.perspectiveTransform(projector_point, inv_homography)[0][0]
 
                 # Apply vertical projection (parallax correction)
                 camera_pixels = camera_point.reshape(1, 2)
@@ -317,9 +305,9 @@ class FlashTokenDetector:
                     world_point_3d = np.array(
                         [[world_x_mm, world_y_mm, default_height_mm]], dtype=np.float32
                     )
-                    projector_pixel_coord = (
-                        projector_3d_model.project_world_to_projector(world_point_3d)[0]
-                    )
+                    projector_pixel_coord = projector_3d_model.project_world_to_projector(
+                        world_point_3d
+                    )[0]
                     px, py = projector_pixel_coord[0], projector_pixel_coord[1]
                 else:
                     ppi_mm = ppi / 25.4
@@ -376,9 +364,7 @@ class FlashTokenDetector:
                 continue
             blob_mask = np.zeros(markers.shape, dtype=np.uint8)
             blob_mask[markers == marker_id] = 255
-            contours, _ = cv2.findContours(
-                blob_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE
-            )
+            contours, _ = cv2.findContours(blob_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
             if contours:
                 cv2.drawContours(debug_img, contours, -1, (0, 255, 0), 1)
                 x, y, wr, hr = cv2.boundingRect(contours[0])

@@ -56,9 +56,7 @@ def test_visibility_layer_caching():
     # 2. Update mask with same data
     ws.update_visibility_mask(mask)
     p3 = layer.render()[0]
-    assert (
-        p3 is p1
-    )  # Manager/State handles change detection, timestamp shouldn't increment
+    assert p3 is p1  # Manager/State handles change detection, timestamp shouldn't increment
 
     # 3. Update with different data
     mask_new = mask.copy()

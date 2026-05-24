@@ -1,4 +1,3 @@
-
 import svgelements
 
 from light_map.rendering.svg.geometry import sample_segment

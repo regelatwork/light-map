@@ -1,4 +1,3 @@
-
 import cv2
 import numpy as np
 
@@ -73,9 +72,7 @@ class HandMaskLayer(Layer):
         if self.config.distortion_model:
             proj_pts = self.config.distortion_model.apply_correction(cam_pts_reshaped)
         else:
-            proj_pts = cv2.perspectiveTransform(
-                cam_pts_reshaped, self.config.projector_matrix
-            )
+            proj_pts = cv2.perspectiveTransform(cam_pts_reshaped, self.config.projector_matrix)
         return proj_pts.reshape(-1, 2)
 
     def _generate_patches(self, current_time: float) -> list[ImagePatch]:
@@ -86,9 +83,7 @@ class HandMaskLayer(Layer):
             return []
 
         # Get hulls from masker (delegates transform logic)
-        hulls = self.hand_masker.get_mask_hulls(
-            self.state.hands, self._transform_pts, current_time
-        )
+        hulls = self.hand_masker.get_mask_hulls(self.state.hands, self._transform_pts, current_time)
 
         if not hulls:
             return []

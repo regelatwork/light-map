@@ -31,9 +31,7 @@ def test_token_movement_propagation():
     map_system.svg_loader.height = 1000.0
     map_system.svg_loader.svg = MagicMock()
 
-    map_config = MapConfigManager(
-        filename=":memory:"
-    )  # Use memory if supported, or just mock
+    map_config = MapConfigManager(filename=":memory:")  # Use memory if supported, or just mock
     # Ensure grid is set
     map_file = "test.svg"
     from light_map.core.common_types import GridType
@@ -45,16 +43,12 @@ def test_token_movement_propagation():
         grid_type=GridType.SQUARE,
     )
 
-    config = AppConfig(
-        width=1920, height=1080, projector_matrix=np.eye(3), distortion_model=None
-    )
+    config = AppConfig(width=1920, height=1080, projector_matrix=np.eye(3), distortion_model=None)
 
     # Frame 1: Token at (120, 120) -> Snapped to (150, 150), Grid (1, 1)
     raw_data_1 = {
         "ids": [1],
-        "corners": [
-            np.array([[10, 10], [20, 10], [20, 20], [10, 20]])
-        ],  # Dummy corners
+        "corners": [np.array([[10, 10], [20, 10], [20, 20], [10, 20]])],  # Dummy corners
     }
 
     # We need to mock ArucoDetector.map_to_tokens because it uses camera calibration
@@ -64,9 +58,7 @@ def test_token_movement_propagation():
     token_1 = Token(id=1, world_x=120.0, world_y=120.0)
     mock_detector.map_to_tokens.return_value = [token_1]
 
-    result_1 = coordinator.map_and_filter_aruco(
-        raw_data_1, map_system, map_config, config
-    )
+    result_1 = coordinator.map_and_filter_aruco(raw_data_1, map_system, map_config, config)
 
     assert len(result_1["tokens"]) == 1
     assert result_1["tokens"][0].grid_x == 1
@@ -89,16 +81,10 @@ def test_token_movement_propagation():
     token_2 = Token(id=1, world_x=220.0, world_y=220.0)
     mock_detector.map_to_tokens.return_value = [token_2]
 
-    result_2 = coordinator.map_and_filter_aruco(
-        raw_data_1, map_system, map_config, config
-    )
+    result_2 = coordinator.map_and_filter_aruco(raw_data_1, map_system, map_config, config)
 
-    print(
-        f"Result 2 Snapped: {result_2['tokens'][0].world_x}, {result_2['tokens'][0].world_y}"
-    )
-    print(
-        f"Result 2 Grid: {result_2['tokens'][0].grid_x}, {result_2['tokens'][0].grid_y}"
-    )
+    print(f"Result 2 Snapped: {result_2['tokens'][0].world_x}, {result_2['tokens'][0].world_y}")
+    print(f"Result 2 Grid: {result_2['tokens'][0].grid_x}, {result_2['tokens'][0].grid_y}")
 
     assert result_2["tokens"][0].grid_x == 2
     assert result_2["tokens"][0].grid_y == 2
@@ -120,9 +106,7 @@ def test_token_movement_propagation():
     token_3 = Token(id=1, world_x=230.0, world_y=230.0)
     mock_detector.map_to_tokens.return_value = [token_3]
 
-    result_3 = coordinator.map_and_filter_aruco(
-        raw_data_1, map_system, map_config, config
-    )
+    result_3 = coordinator.map_and_filter_aruco(raw_data_1, map_system, map_config, config)
 
     # Apply to WorldState
     world_res_3 = DetectionResult(

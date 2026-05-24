@@ -24,9 +24,7 @@ class MockResults:
         labels=None,
     ):
         if hands_landmarks:
-            self.multi_hand_landmarks = [
-                MagicMock(landmark=lm) for lm in hands_landmarks
-            ]
+            self.multi_hand_landmarks = [MagicMock(landmark=lm) for lm in hands_landmarks]
             self.multi_handedness = []
             for label in labels or ["Right"] * len(hands_landmarks):
                 classification = MagicMock()
@@ -185,9 +183,7 @@ def test_token_count_hidden_in_menu(app):
     state.last_frame_timestamp = 1
     state.tokens = app.map_system.ghost_tokens
 
-    with patch(
-        "light_map.rendering.layers.overlay_layer.OverlayRenderer.draw_ghost_tokens"
-    ):
+    with patch("light_map.rendering.layers.overlay_layer.OverlayRenderer.draw_ghost_tokens"):
         app.process_state(state, [])
         # MenuScene is not in (ViewingScene, MapScene), but OverlayLayer
         # doesn't check scene type anymore, OverlayRenderer did?

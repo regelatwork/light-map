@@ -42,9 +42,7 @@ def test_pan_delta_closed_fist(map_interaction_controller, mock_map_system):
             raw_landmarks=None,
         )
     ]
-    interaction_occurred = map_interaction_controller.process_gestures(
-        inputs2, mock_map_system
-    )
+    interaction_occurred = map_interaction_controller.process_gestures(inputs2, mock_map_system)
 
     assert interaction_occurred
     mock_map_system.pan.assert_called_once_with(20, 30)
@@ -85,9 +83,7 @@ def test_zoom_scaling_pointing(map_interaction_controller, mock_map_system):
             raw_landmarks=None,
         ),
     ]
-    interaction_occurred = map_interaction_controller.process_gestures(
-        inputs2, mock_map_system
-    )
+    interaction_occurred = map_interaction_controller.process_gestures(inputs2, mock_map_system)
 
     assert interaction_occurred
     # Initial distance was 100, new distance is 200. Factor should be 2.0
@@ -108,10 +104,7 @@ def test_no_interaction_wrong_gestures(map_interaction_controller, mock_map_syst
             raw_landmarks=None,
         )
     ]
-    assert (
-        map_interaction_controller.process_gestures(inputs_wrong_pan, mock_map_system)
-        is False
-    )
+    assert map_interaction_controller.process_gestures(inputs_wrong_pan, mock_map_system) is False
     mock_map_system.pan.assert_not_called()
 
     # Case 2: Two hands but wrong gestures (OPEN_PALM instead of POINTING)
@@ -129,8 +122,5 @@ def test_no_interaction_wrong_gestures(map_interaction_controller, mock_map_syst
             raw_landmarks=None,
         ),
     ]
-    assert (
-        map_interaction_controller.process_gestures(inputs_wrong_zoom, mock_map_system)
-        is False
-    )
+    assert map_interaction_controller.process_gestures(inputs_wrong_zoom, mock_map_system) is False
     mock_map_system.zoom_pinned.assert_not_called()

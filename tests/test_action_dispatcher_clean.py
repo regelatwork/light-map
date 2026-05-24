@@ -62,18 +62,14 @@ def test_dispatch_reset_fow(dispatcher, app):
     payload = {"action": "RESET_FOW"}
     state = MagicMock()
     dispatcher.dispatch(payload, state)
-    app.environment_manager.reset_fow.assert_called_once_with(
-        app.current_map_path, state
-    )
+    app.environment_manager.reset_fow.assert_called_once_with(app.current_map_path, state)
 
 
 def test_dispatch_toggle_fow(dispatcher, app):
     payload = {"action": "TOGGLE_FOW"}
     state = MagicMock()
     dispatcher.dispatch(payload, state)
-    app.environment_manager.toggle_fow.assert_called_once_with(
-        app.current_map_path, state
-    )
+    app.environment_manager.toggle_fow.assert_called_once_with(app.current_map_path, state)
 
 
 def test_dispatch_update_token(dispatcher, app):

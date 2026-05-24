@@ -32,9 +32,7 @@ def test_load_map_updates_state(mock_app):
     mock_entry.fow_disabled = True
     mock_app.map_config.data.maps = {os.path.abspath(filename): mock_entry}
 
-    with patch(
-        "light_map.persistence.persistence_service.SVGLoader"
-    ) as mock_svg_loader:
+    with patch("light_map.persistence.persistence_service.SVGLoader") as mock_svg_loader:
         mock_svg_loader.return_value.filename = os.path.abspath(filename)
         service.load_map(filename)
 

@@ -1,4 +1,3 @@
-
 import numpy as np
 
 from light_map.core.common_types import AppConfig, ImagePatch, Layer, LayerMode
@@ -62,17 +61,13 @@ def test_renderer_normal_layer_alpha_blending():
     blue_data = np.zeros((100, 100, 4), dtype=np.uint8)
     blue_data[:, :, 0] = 255  # BGR Blue
     blue_data[:, :, 3] = 255
-    layer1 = MockLayer(
-        mode=LayerMode.BLOCKING, patches=[ImagePatch(0, 0, 100, 100, blue_data)]
-    )
+    layer1 = MockLayer(mode=LayerMode.BLOCKING, patches=[ImagePatch(0, 0, 100, 100, blue_data)])
 
     # 2. Top layer: 50% Alpha Green (NORMAL)
     green_data = np.zeros((100, 100, 4), dtype=np.uint8)
     green_data[:, :, 1] = 255  # BGR Green
     green_data[:, :, 3] = 128  # ~50% alpha
-    layer2 = MockLayer(
-        mode=LayerMode.NORMAL, patches=[ImagePatch(0, 0, 100, 100, green_data)]
-    )
+    layer2 = MockLayer(mode=LayerMode.NORMAL, patches=[ImagePatch(0, 0, 100, 100, green_data)])
 
     out = renderer.render(None, [layer1, layer2])
 
@@ -91,9 +86,7 @@ def test_renderer_clipping():
     red_data = np.zeros((100, 50, 4), dtype=np.uint8)
     red_data[:, :, 2] = 255  # BGR Red
     red_data[:, :, 3] = 255
-    layer = MockLayer(
-        mode=LayerMode.BLOCKING, patches=[ImagePatch(-25, 0, 50, 100, red_data)]
-    )
+    layer = MockLayer(mode=LayerMode.BLOCKING, patches=[ImagePatch(-25, 0, 50, 100, red_data)])
 
     out = renderer.render(None, [layer])
     # x=0 to x=24 should be red. x=25 should be black.
@@ -104,9 +97,7 @@ def test_renderer_clipping():
     blue_data = np.zeros((50, 100, 4), dtype=np.uint8)
     blue_data[:, :, 0] = 255  # BGR Blue
     blue_data[:, :, 3] = 255
-    layer = MockLayer(
-        mode=LayerMode.BLOCKING, patches=[ImagePatch(0, 75, 100, 50, blue_data)]
-    )
+    layer = MockLayer(mode=LayerMode.BLOCKING, patches=[ImagePatch(0, 75, 100, 50, blue_data)])
 
     out = renderer.render(None, [layer])
     # y=75 to y=99 should be blue.

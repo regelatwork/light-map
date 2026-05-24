@@ -7,9 +7,7 @@ from light_map.calibration.calibration_logic import calibrate_extrinsics
 
 def test_calibrate_extrinsics_synthetic():
     # Setup Camera Intrinsics
-    camera_matrix = np.array(
-        [[800, 0, 320], [0, 800, 240], [0, 0, 1]], dtype=np.float32
-    )
+    camera_matrix = np.array([[800, 0, 320], [0, 800, 240], [0, 0, 1]], dtype=np.float32)
     distortion_coefficients = np.zeros(5, dtype=np.float32)
 
     # Setup Pose (R, t)
@@ -75,9 +73,7 @@ def test_calibrate_extrinsics_synthetic():
                     # Derive world corners for this token
                     w_corners = []
                     for dx, dy in offsets:
-                        w_corners.append(
-                            [(px_c + dx) / ppi_mm, (py_c + dy) / ppi_mm, 25.0]
-                        )
+                        w_corners.append([(px_c + dx) / ppi_mm, (py_c + dy) / ppi_mm, 25.0])
 
                     w_corners = np.array(w_corners, dtype=np.float32)
                     img_corners, _ = cv2.projectPoints(
@@ -127,10 +123,7 @@ def test_calibrate_extrinsics_synthetic():
         assert result is not None
         rotation_vector_res, translation_vector_res, _, _ = result
         assert rotation_vector_diff(rotation_vector_res, rotation_vector_true) < 0.1
-        assert (
-            np.linalg.norm(translation_vector_res.flatten() - translation_vector_true)
-            < 5.0
-        )
+        assert np.linalg.norm(translation_vector_res.flatten() - translation_vector_true) < 5.0
 
         # Test 2: Combined (Ground + Tokens) with known_targets
         result_combined = calibrate_extrinsics(
@@ -149,7 +142,4 @@ def test_calibrate_extrinsics_synthetic():
         assert result_combined is not None
         rotation_vector_comb, translation_vector_comb, _, _ = result_combined
         assert rotation_vector_diff(rotation_vector_comb, rotation_vector_true) < 0.05
-        assert (
-            np.linalg.norm(translation_vector_comb.flatten() - translation_vector_true)
-            < 1.0
-        )
+        assert np.linalg.norm(translation_vector_comb.flatten() - translation_vector_true) < 1.0

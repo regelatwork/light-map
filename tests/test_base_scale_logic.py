@@ -20,9 +20,7 @@ def app(tmp_path, monkeypatch):
         lambda self: (np.eye(3), np.zeros(5), np.zeros(3), np.zeros(3)),
     )
 
-    config = AppConfig(
-        width=1000, height=1000, projector_matrix=np.eye(3), storage_manager=storage
-    )
+    config = AppConfig(width=1000, height=1000, projector_matrix=np.eye(3), storage_manager=storage)
     app = InteractiveApp(config)
     app.map_config.set_ppi(100.0)
     return app

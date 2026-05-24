@@ -58,9 +58,7 @@ class BaseMapScene(Scene):
         self, cursor_pos: tuple[int, int]
     ) -> tuple[SelectionType, str | None]:
         """Detects if we are pointing at a token or a door. Returns (type, id)."""
-        world_x, world_y = self.context.map_system.screen_to_world(
-            cursor_pos[0], cursor_pos[1]
-        )
+        world_x, world_y = self.context.map_system.screen_to_world(cursor_pos[0], cursor_pos[1])
 
         # Combine physical and logical tokens for inspection check
         all_candidate_tokens = []
@@ -75,9 +73,7 @@ class BaseMapScene(Scene):
 
         # 1. Check Tokens
         for token in all_candidate_tokens:
-            dist = np.sqrt(
-                (token.world_x - world_x) ** 2 + (token.world_y - world_y) ** 2
-            )
+            dist = np.sqrt((token.world_x - world_x) ** 2 + (token.world_y - world_y) ** 2)
             # Use 0.5 grid cell radius for selection
             grid_spacing = self.context.map_config_manager.get_map_grid_spacing(
                 self.context.map_system.svg_loader.filename
@@ -96,18 +92,13 @@ class BaseMapScene(Scene):
                     if self.context.map_system.svg_loader
                     else None
                 )
-                resolved = self.context.map_config_manager.resolve_token_profile(
-                    token.id, map_file
-                )
+                resolved = self.context.map_config_manager.resolve_token_profile(token.id, map_file)
                 self.context.notifications.add_notification(
                     f"Inspecting: {resolved.name}", duration=2.0
                 )
 
                 # Update context mask for scenes that need it immediately
-                if (
-                    self.context.visibility_engine
-                    and self.context.map_system.is_map_loaded()
-                ):
+                if self.context.visibility_engine and self.context.map_system.is_map_loaded():
                     engine = self.context.visibility_engine
                     mask_w, mask_h = engine.width, engine.height
 
@@ -129,13 +120,9 @@ class BaseMapScene(Scene):
         if door_id:
             self.context.selected_door = door_id
             if self.context.state:
-                self.context.state.selection = SelectionState(
-                    type=SelectionType.DOOR, id=door_id
-                )
+                self.context.state.selection = SelectionState(type=SelectionType.DOOR, id=door_id)
 
-            self.context.notifications.add_notification(
-                f"Selected Door: {door_id}", duration=2.0
-            )
+            self.context.notifications.add_notification(f"Selected Door: {door_id}", duration=2.0)
             return (SelectionType.DOOR, door_id)
 
         return (SelectionType.NONE, None)
@@ -187,9 +174,7 @@ class BaseMapScene(Scene):
 
     def _find_target_at_point(self, cursor_pos: tuple[int, int]) -> str | None:
         """Finds the ID of a token or door at the given screen point."""
-        world_x, world_y = self.context.map_system.screen_to_world(
-            cursor_pos[0], cursor_pos[1]
-        )
+        world_x, world_y = self.context.map_system.screen_to_world(cursor_pos[0], cursor_pos[1])
 
         # 1. Check Tokens
         all_candidate_tokens = []
@@ -207,14 +192,10 @@ class BaseMapScene(Scene):
             else None
         )
         grid_spacing = self.context.map_config_manager.get_map_grid_spacing(map_file)
-        threshold = max(
-            0.5 * grid_spacing, 10.0
-        )  # Ensure at least 10 units for new maps
+        threshold = max(0.5 * grid_spacing, 10.0)  # Ensure at least 10 units for new maps
 
         for token in all_candidate_tokens:
-            dist = np.sqrt(
-                (token.world_x - world_x) ** 2 + (token.world_y - world_y) ** 2
-            )
+            dist = np.sqrt((token.world_x - world_x) ** 2 + (token.world_y - world_y) ** 2)
             if dist < threshold:
                 return str(token.id)
 
@@ -246,13 +227,10 @@ class BaseMapScene(Scene):
             self.dwell_tracker.reset()
 
             # Start linger timer if we were inspecting
-            if (
-                self.context.inspected_token_id is not None
-                and not self.context.events.has_event(TimerKey.INSPECTION_LINGER)
+            if self.context.inspected_token_id is not None and not self.context.events.has_event(
+                TimerKey.INSPECTION_LINGER
             ):
-                duration = getattr(
-                    self.context.app_config, "inspection_linger_duration", 10.0
-                )
+                duration = getattr(self.context.app_config, "inspection_linger_duration", 10.0)
                 self.context.events.schedule(
                     duration,
                     lambda: Action.CLEAR_INSPECTION,
@@ -291,9 +269,7 @@ class ViewingScene(BaseMapScene):
             self.context.inspected_token_id = None
             self.context.inspected_token_mask = None
 
-        dt = (
-            current_time - self.last_update_time if self.last_update_time > 0 else 0.033
-        )
+        dt = current_time - self.last_update_time if self.last_update_time > 0 else 0.033
         self.last_update_time = current_time
 
         if not inputs:
@@ -317,9 +293,7 @@ class ViewingScene(BaseMapScene):
         if (dwell_just_triggered or Action.DWELL_TRIGGER in actions) and cursor_pos:
             stype, sid = self._handle_dwell_trigger(cursor_pos)
             if stype == SelectionType.TOKEN and sid:
-                return SceneTransition(
-                    SceneId.EXCLUSIVE_VISION, payload={"token_id": int(sid)}
-                )
+                return SceneTransition(SceneId.EXCLUSIVE_VISION, payload={"token_id": int(sid)})
             self.context.events.cancel(TimerKey.INSPECTION_LINGER)
 
         # Multi-step menu summoning (Step 1: VICTORY for 2s, Step 2: SHAKA for 2s)
@@ -353,9 +327,7 @@ class ViewingScene(BaseMapScene):
 
     def _on_summon_step1_complete(self):
         """Called when Step 1 of menu summoning is complete."""
-        self.context.notifications.add_notification(
-            "Ready to open menu... (SHAKA for 2s)"
-        )
+        self.context.notifications.add_notification("Ready to open menu... (SHAKA for 2s)")
         # Create a 5-second window for step 2
         self.context.events.schedule(5.0, lambda: None, key=TimerKey.SUMMON_MENU)
 
@@ -401,9 +373,7 @@ class MapScene(BaseMapScene):
             self.context.inspected_token_id = None
             self.context.inspected_token_mask = None
 
-        dt = (
-            current_time - self.last_update_time if self.last_update_time > 0 else 0.033
-        )
+        dt = current_time - self.last_update_time if self.last_update_time > 0 else 0.033
         self.last_update_time = current_time
 
         primary_gesture = inputs[0].gesture if inputs else GestureType.NONE
@@ -422,9 +392,7 @@ class MapScene(BaseMapScene):
         if (dwell_just_triggered or Action.DWELL_TRIGGER in actions) and cursor_pos:
             stype, sid = self._handle_dwell_trigger(cursor_pos)
             if stype == SelectionType.TOKEN and sid:
-                return SceneTransition(
-                    SceneId.EXCLUSIVE_VISION, payload={"token_id": int(sid)}
-                )
+                return SceneTransition(SceneId.EXCLUSIVE_VISION, payload={"token_id": int(sid)})
             self.context.events.cancel(TimerKey.INSPECTION_LINGER)
 
         if primary_gesture == config_vars.SUMMON_GESTURE:
@@ -446,9 +414,7 @@ class MapScene(BaseMapScene):
             import os
 
             filename = svg_loader.filename
-            entry = self.context.map_config_manager.data.maps.get(
-                os.path.abspath(filename)
-            )
+            entry = self.context.map_config_manager.data.maps.get(os.path.abspath(filename))
             if entry and entry.grid_spacing_svg > 0:
                 grid_size = entry.grid_spacing_svg * map_system.state.zoom
 

@@ -109,9 +109,7 @@ class ExclusiveVisionScene(BaseMapScene):
         if Action.CLEAR_INSPECTION in actions:
             return SceneTransition(SceneId.VIEWING)
 
-        dt = (
-            current_time - self.last_update_time if self.last_update_time > 0 else 0.033
-        )
+        dt = current_time - self.last_update_time if self.last_update_time > 0 else 0.033
         self.last_update_time = current_time
 
         if not inputs:
@@ -147,9 +145,7 @@ class ExclusiveVisionScene(BaseMapScene):
     def _handle_no_input(self, dt: float):
         """Schedules the exit transition if no interaction is occurring."""
         if not self.context.events.has_event(TimerKey.INSPECTION_LINGER):
-            duration = getattr(
-                self.context.app_config, "inspection_linger_duration", 10.0
-            )
+            duration = getattr(self.context.app_config, "inspection_linger_duration", 10.0)
             self.context.events.schedule(
                 duration,
                 lambda: Action.CLEAR_INSPECTION,
@@ -183,9 +179,7 @@ class ExclusiveVisionScene(BaseMapScene):
             if self.context.map_system.svg_loader
             else None
         )
-        resolved = self.context.map_config_manager.resolve_token_profile(
-            self.token_id, map_file
-        )
+        resolved = self.context.map_config_manager.resolve_token_profile(self.token_id, map_file)
 
         engine = self.context.visibility_engine
         mask_w, mask_h = engine.width, engine.height

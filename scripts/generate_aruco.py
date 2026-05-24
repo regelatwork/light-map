@@ -23,9 +23,7 @@ def generate_aruco_svg(filename, mode, marker_size_in=1.0):
 
     if mode == "sizes":
         sizes_inches = [2.0, 1.5, 1.0, 0.75, 0.5, 0.25]
-        total_height_inches = (
-            sum(sizes_inches) + (len(sizes_inches) + 1) * margin_inches
-        )
+        total_height_inches = sum(sizes_inches) + (len(sizes_inches) + 1) * margin_inches
         max_width_inches = max(sizes_inches) + 2 * margin_inches
         width_px = max_width_inches * inch_to_px
         height_px = total_height_inches * inch_to_px
@@ -95,12 +93,8 @@ if __name__ == "__main__":
     parser.add_argument(
         "--mode", choices=["sizes", "grid"], default="sizes", help="Generation mode"
     )
-    parser.add_argument(
-        "--size", type=float, help="Marker size in inches (for grid mode)"
-    )
-    parser.add_argument(
-        "--size-mm", type=float, help="Marker size in millimeters (for grid mode)"
-    )
+    parser.add_argument("--size", type=float, help="Marker size in inches (for grid mode)")
+    parser.add_argument("--size-mm", type=float, help="Marker size in millimeters (for grid mode)")
     parser.add_argument("--output", default="aruco_markers.svg", help="Output filename")
 
     args = parser.parse_args()

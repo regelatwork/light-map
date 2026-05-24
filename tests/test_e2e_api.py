@@ -111,17 +111,13 @@ def test_full_app_api_sync_e2e(tmp_path):
         # 4. Verify remote token via GET
         resp = httpx.get(f"{base_url}/state/tokens")
         tokens = resp.json()
-        assert any(t["id"] == remote_id for t in tokens), (
-            "Remote token not found after injection"
-        )
+        assert any(t["id"] == remote_id for t in tokens), "Remote token not found after injection"
 
         # 5. Inject physical tokens (via raw corners)
         # Note: with identity calibration, (100,100) cam -> (100,100) world approx
         corners = [[[100.0, 100.0], [110.0, 100.0], [110.0, 110.0], [100.0, 110.0]]]
         ids = [1]
-        resp = httpx.post(
-            f"{base_url}/input/aruco_corners", json={"corners": corners, "ids": ids}
-        )
+        resp = httpx.post(f"{base_url}/input/aruco_corners", json={"corners": corners, "ids": ids})
         assert resp.status_code == 200
 
         time.sleep(1)
@@ -137,9 +133,7 @@ def test_full_app_api_sync_e2e(tmp_path):
         # but the critical part is that remote_id survives.
 
         # 7. Inject EMPTY physical tokens
-        resp = httpx.post(
-            f"{base_url}/input/aruco_corners", json={"corners": [], "ids": []}
-        )
+        resp = httpx.post(f"{base_url}/input/aruco_corners", json={"corners": [], "ids": []})
         assert resp.status_code == 200
 
         time.sleep(1)
@@ -161,9 +155,7 @@ def test_full_app_api_sync_e2e(tmp_path):
         resp = httpx.get(f"{base_url}/state/tokens")
         tokens = resp.json()
         t = next(t for t in tokens if t["id"] == remote_id)
-        assert abs(t["world_x"] - 600.0) < 1.0, (
-            f"Token did not move correctly: {t['world_x']}"
-        )
+        assert abs(t["world_x"] - 600.0) < 1.0, f"Token did not move correctly: {t['world_x']}"
 
     finally:
         process.send_signal(signal.SIGINT)

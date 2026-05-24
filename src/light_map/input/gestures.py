@@ -43,9 +43,7 @@ def is_finger_extended(landmarks, finger_name, hand_label="Right"):
         d_tip_pinky = np.linalg.norm(
             np.array([tip.x, tip.y]) - np.array([pinky_mcp.x, pinky_mcp.y])
         )
-        d_ip_pinky = np.linalg.norm(
-            np.array([ip.x, ip.y]) - np.array([pinky_mcp.x, pinky_mcp.y])
-        )
+        d_ip_pinky = np.linalg.norm(np.array([ip.x, ip.y]) - np.array([pinky_mcp.x, pinky_mcp.y]))
 
         d_tip_index = np.linalg.norm(
             np.array([tip.x, tip.y]) - np.array([index_mcp.x, index_mcp.y])
@@ -112,12 +110,7 @@ def detect_gesture(landmarks, handedness_label):
         return GestureType.GUN
 
     # Index only -> Pointing
-    if (
-        state["Index"]
-        and not state["Middle"]
-        and not state["Ring"]
-        and not state["Pinky"]
-    ):
+    if state["Index"] and not state["Middle"] and not state["Ring"] and not state["Pinky"]:
         # Thumb state can vary for pointing (sometimes tucked, sometimes out)
         # Let's allow thumb to be anything or strict?
         # "Pointing" usually implies thumb is tucked or neutral.

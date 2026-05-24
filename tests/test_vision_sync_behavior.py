@@ -29,9 +29,7 @@ def mock_app():
         patch("light_map.interactive_app.AnalyticsManager"),
         patch("light_map.interactive_app.TemporalEventManager") as mock_events_class,
         patch("light_map.interactive_app.ArucoTokenDetector"),
-        patch(
-            "light_map.interactive_app.InteractiveApp._load_camera_calibration"
-        ) as mock_cal,
+        patch("light_map.interactive_app.InteractiveApp._load_camera_calibration") as mock_cal,
         patch("light_map.interactive_app.VisibilityEngine") as mock_ve_class,
     ):
         mock_cal.return_value = (np.eye(3), np.zeros(5), np.zeros(3), np.zeros(3))
@@ -57,9 +55,7 @@ def mock_app():
         app.environment_manager.fow_manager = MagicMock()
         app.environment_manager.fow_manager.width = 10
         app.environment_manager.fow_manager.height = 10
-        app.environment_manager.fow_manager.visible_mask = np.zeros(
-            (10, 10), dtype=np.uint8
-        )
+        app.environment_manager.fow_manager.visible_mask = np.zeros((10, 10), dtype=np.uint8)
         app.environment_manager.fow_manager.discovered_ids = set()
 
         return app

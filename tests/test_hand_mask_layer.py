@@ -35,9 +35,7 @@ def test_hand_mask_layer_render_enabled(mock_config):
 
     # Mock HandMasker internals to avoid CV2 calls
     with patch.object(layer.hand_masker, "get_mask_hulls") as mock_hulls:
-        mock_hulls.return_value = [
-            np.array([[50, 50], [60, 50], [60, 60]], dtype=np.int32)
-        ]
+        mock_hulls.return_value = [np.array([[50, 50], [60, 50], [60, 60]], dtype=np.int32)]
 
         patches = layer.render(current_time=0.0)[0]
 
@@ -135,9 +133,7 @@ def test_hand_mask_expansion_with_ppi():
     mask_no_ppi = patches_no_ppi[0].data[:, :, 3]
     mask_area_no_ppi = np.sum(mask_no_ppi > 0)
 
-    assert (
-        mask_area_no_ppi < 2000
-    )  # Just the triangle + small margin for bounding box logic
+    assert mask_area_no_ppi < 2000  # Just the triangle + small margin for bounding box logic
     assert mask_area > mask_area_no_ppi * 10
 
 

@@ -33,9 +33,7 @@ def app_with_real_scenes(tmp_path):
                 np.zeros((3, 1)),
             ),
         ),
-        patch(
-            "light_map.map.map_config.MapConfigManager._load", return_value=MagicMock()
-        ),
+        patch("light_map.map.map_config.MapConfigManager._load", return_value=MagicMock()),
     ):
         _app = InteractiveApp(config)
         return _app
@@ -49,17 +47,13 @@ def test_process_state_returns_valid_image(app_with_real_scenes):
     state.last_frame_timestamp = 1
 
     # Mock input processor to return empty inputs
-    app_with_real_scenes.input_processor.convert_mediapipe_to_inputs = MagicMock(
-        return_value=[]
-    )
+    app_with_real_scenes.input_processor.convert_mediapipe_to_inputs = MagicMock(return_value=[])
 
     # Execute
     output_image, actions = app_with_real_scenes.process_state(state, [])
 
     # Verify
-    assert output_image is not None, (
-        "process_state returned None, which causes cv2.imshow to fail."
-    )
+    assert output_image is not None, "process_state returned None, which causes cv2.imshow to fail."
     assert isinstance(output_image, np.ndarray)
     assert output_image.shape == (100, 100, 3)
     assert output_image.dtype == np.uint8
@@ -78,9 +72,7 @@ def test_map_render_caching(app_with_real_scenes):
     # 2. Mock state and inputs
     state = WorldState()
     state.background = np.zeros((100, 100, 3), dtype=np.uint8)
-    app_with_real_scenes.input_processor.convert_mediapipe_to_inputs = MagicMock(
-        return_value=[]
-    )
+    app_with_real_scenes.input_processor.convert_mediapipe_to_inputs = MagicMock(return_value=[])
 
     # 3. First render (should call svg_loader.render)
     app_with_real_scenes.process_state(state, [])

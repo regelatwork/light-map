@@ -54,9 +54,7 @@ class Projector3DPatternLayer(Layer):
         img[:, :, 3] = CALIB_BG_COLOR[3]
 
         # Draw a dark border (BGRA)
-        cv2.rectangle(
-            img, (5, 5), (self.width - 6, self.height - 6), CALIB_BORDER_COLOR, 10
-        )
+        cv2.rectangle(img, (5, 5), (self.width - 6, self.height - 6), CALIB_BORDER_COLOR, 10)
 
         # Draw Table Markers (Reference) - Dark Green (BGRA)
         for aruco_id, corners in self.table_markers:
@@ -84,9 +82,7 @@ class Projector3DPatternLayer(Layer):
             return
 
         # Generate the marker bits
-        marker_img = cv2.aruco.generateImageMarker(
-            self._aruco_dict, aruco_id, marker_size
-        )
+        marker_img = cv2.aruco.generateImageMarker(self._aruco_dict, aruco_id, marker_size)
         marker_bgr = cv2.cvtColor(marker_img, cv2.COLOR_GRAY2BGR)
 
         # Create a thicker white border/background for contrast
@@ -117,9 +113,7 @@ class Projector3DPatternLayer(Layer):
         temp = cv2.warpPerspective(padded_marker, M, (self.width, self.height))
 
         # Composite: use a mask of where the marker is warped to ensure all pixels (including black) are copied
-        mask_src = np.full(
-            (marker_size + padding, marker_size + padding), 255, dtype=np.uint8
-        )
+        mask_src = np.full((marker_size + padding, marker_size + padding), 255, dtype=np.uint8)
         mask_warped = cv2.warpPerspective(mask_src, M, (self.width, self.height))
         mask = mask_warped > 0
 

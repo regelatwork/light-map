@@ -8,11 +8,12 @@
 
 **Tech Stack:** Python (OpenCV, Numba, NumPy), TypeScript (Frontend).
 
----
+______________________________________________________________________
 
 ### Task 1: Update Data Models
 
 **Files:**
+
 - Modify: `src/light_map/visibility/visibility_types.py`
 - Modify: `frontend/src/types/system.ts`
 - Modify: `src/light_map/core/common_types.py`
@@ -29,16 +30,18 @@ Run: `pytest tests/test_enum_sync.py`
 Expected: PASS.
 
 **Step 4: Commit**
+
 ```bash
 git add src/light_map/visibility/visibility_types.py src/light_map/core/common_types.py frontend/src/types/system.ts
 git commit -m "feat(models): add LOW_OBJECT type and cover/reflex bonus fields to Token"
 ```
 
----
+______________________________________________________________________
 
 ### Task 2: SVG Extraction for Low Objects
 
 **Files:**
+
 - Modify: `src/light_map/rendering/svg/utils.py`
 - Modify: `src/light_map/rendering/svg/blockers.py`
 - Test: `tests/test_low_object_extraction.py` (New)
@@ -50,16 +53,18 @@ Verify layers with "low" + "object" are correctly identified and closed.
 Implement detection in `utils.py` and Ensure closed polygons in `blockers.py`.
 
 **Step 3: Commit**
+
 ```bash
 git add src/light_map/rendering/svg/ tests/test_low_object_extraction.py
 git commit -m "feat(svg): extract low objects from SVG layers"
 ```
 
----
+______________________________________________________________________
 
 ### Task 3: Render Low Objects to Mask
 
 **Files:**
+
 - Modify: `src/light_map/visibility/visibility_engine.py`
 - Test: `tests/test_low_object_mask.py` (New)
 
@@ -70,16 +75,18 @@ Add constant to `VisibilityEngine`.
 Use `cv2.fillPoly` to render low objects with value 50. Update priority sorting so LOW (50) is rendered before TALL (100) or WALL (255).
 
 **Step 3: Commit**
+
 ```bash
 git add src/light_map/visibility/visibility_engine.py tests/test_low_object_mask.py
 git commit -m "feat(visibility): render low objects to blocker mask"
 ```
 
----
+______________________________________________________________________
 
 ### Task 4: Numba-Optimized Cover Calculation
 
 **Files:**
+
 - Modify: `src/light_map/visibility/visibility_engine.py`
 - Test: `tests/test_cover_logic.py` (New)
 
@@ -93,16 +100,18 @@ Implement the ^2$ boundary-to-boundary logic with proximity rules.
 Implement `calculate_token_cover_bonuses(source_token, target_token)`.
 
 **Step 4: Commit**
+
 ```bash
 git add src/light_map/visibility/visibility_engine.py tests/test_cover_logic.py
 git commit -m "feat(visibility): implement high-resolution cover calculation"
 ```
 
----
+______________________________________________________________________
 
 ### Task 5: Tactical Overlay Layer
 
 **Files:**
+
 - Create: `src/light_map/rendering/layers/tactical_overlay_layer.py`
 - Modify: `src/light_map/core/layer_stack_manager.py`
 - Test: `tests/test_tactical_overlay.py` (New)
@@ -117,6 +126,7 @@ Inject the layer above `MapLayer`, active in Exclusive Vision.
 Trigger cover calculation during Exclusive Vision scene processing.
 
 **Step 4: Commit**
+
 ```bash
 git add src/light_map/ tests/test_tactical_overlay.py
 git commit -m "feat(rendering): add tactical overlay for cover bonuses"

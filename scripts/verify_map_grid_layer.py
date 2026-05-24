@@ -42,9 +42,7 @@ def verify_map_grid_layer():
     print(f"SUCCESS: Generated {len(patches)} patch(es) for version {version}.")
 
     for i, patch in enumerate(patches):
-        print(
-            f"Patch {i}: x={patch.x}, y={patch.y}, width={patch.width}, height={patch.height}"
-        )
+        print(f"Patch {i}: x={patch.x}, y={patch.y}, width={patch.width}, height={patch.height}")
         if patch.data is None:
             print(f"FAILED: Patch {i} data is None.")
             sys.exit(1)

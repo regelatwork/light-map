@@ -49,9 +49,7 @@ class ArucoMaskLayer(Layer):
         # Only include system_time_version if there are lingering masks being timed out.
         # If all masks are currently visible, raw_aruco_version handles updates.
         current_ids = set(self.state.raw_aruco.get("ids", []))
-        has_lingering = any(
-            marker_id not in current_ids for marker_id in self.last_seen
-        )
+        has_lingering = any(marker_id not in current_ids for marker_id in self.last_seen)
 
         if has_lingering:
             v = max(v, self.state.system_time_version)
@@ -84,9 +82,7 @@ class ArucoMaskLayer(Layer):
         # Fallback to standard surface homography (Z=0)
         camera_pixels_reshaped = camera_pixels.reshape(-1, 1, 2).astype(np.float32)
         if self.config.distortion_model:
-            proj_pts = self.config.distortion_model.apply_correction(
-                camera_pixels_reshaped
-            )
+            proj_pts = self.config.distortion_model.apply_correction(camera_pixels_reshaped)
         else:
             proj_pts = cv2.perspectiveTransform(
                 camera_pixels_reshaped, self.config.projector_matrix
@@ -104,9 +100,7 @@ class ArucoMaskLayer(Layer):
         # Update persistent store
         for i, marker_id in enumerate(ids):
             if i < len(corners_list):
-                self.last_corners[marker_id] = np.array(
-                    corners_list[i], dtype=np.float32
-                )
+                self.last_corners[marker_id] = np.array(corners_list[i], dtype=np.float32)
                 self.last_seen[marker_id] = current_time
 
         # Cleanup and collect markers to render
@@ -142,9 +136,7 @@ class ArucoMaskLayer(Layer):
         for marker_id, corners in to_render:
             # Determine height
             height_mm = default_height
-            if marker_id != -1 and marker_id in getattr(
-                self.config, "aruco_defaults", {}
-            ):
+            if marker_id != -1 and marker_id in getattr(self.config, "aruco_defaults", {}):
                 defn = self.config.aruco_defaults[marker_id]
                 # Priority: 1. Specific height_mm, 2. Profile height_mm, 3. Default
                 specific_height = getattr(defn, "height_mm", None)
@@ -161,9 +153,7 @@ class ArucoMaskLayer(Layer):
             projector_corners = self._transform_pts(
                 corners, height_mm=height_mm, prefer_homography=True
             )
-            projector_corners = np.array(projector_corners, dtype=np.float32).reshape(
-                -1, 2
-            )
+            projector_corners = np.array(projector_corners, dtype=np.float32).reshape(-1, 2)
 
             # Get bounding box in projector space
             x, y, w, h = cv2.boundingRect(projector_corners)
@@ -198,9 +188,7 @@ class ArucoMaskLayer(Layer):
             patch_data[mask > 0, 3] = color[3]
 
             patches.append(
-                ImagePatch(
-                    x=int(x1), y=int(y1), width=patch_w, height=patch_h, data=patch_data
-                )
+                ImagePatch(x=int(x1), y=int(y1), width=patch_w, height=patch_h, data=patch_data)
             )
 
         return patches

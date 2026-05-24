@@ -4,9 +4,7 @@ import cv2
 import numpy as np
 
 
-def generate_calibration_pattern(
-    width, height, pattern_rows, pattern_cols, border_size=100
-):
+def generate_calibration_pattern(width, height, pattern_rows, pattern_cols, border_size=100):
     """
     Generates a visual calibration pattern (checkerboard).
 
@@ -254,11 +252,6 @@ class ProjectorDistortionModel:
         r11 = self.grid_residuals[iy_high, ix_high]
 
         # Bilinear interpolation
-        r = (
-            r00 * (1 - tx) * (1 - ty)
-            + r10 * tx * (1 - ty)
-            + r01 * (1 - tx) * ty
-            + r11 * tx * ty
-        )
+        r = r00 * (1 - tx) * (1 - ty) + r10 * tx * (1 - ty) + r01 * (1 - tx) * ty + r11 * tx * ty
 
         return r[0], r[1]

@@ -44,12 +44,8 @@ def test_camera_operator_write_frame():
         # Control size: ref_counts (n*4) + timestamps (n*8) + shm_pushed (n*8) + latest_id (4)
         control_size = (n * 4) + (n * 8) + (n * 8) + 4
         frame_offset = control_size + (buffer_id * width * height * 3)
-        shm_frame_buf = operator.shm.buf[
-            frame_offset : frame_offset + width * height * 3
-        ]
-        shm_frame = np.frombuffer(shm_frame_buf, dtype=np.uint8).reshape(
-            (height, width, 3)
-        )
+        shm_frame_buf = operator.shm.buf[frame_offset : frame_offset + width * height * 3]
+        shm_frame = np.frombuffer(shm_frame_buf, dtype=np.uint8).reshape((height, width, 3))
         assert np.array_equal(shm_frame, fake_frame)
         del shm_frame
         del shm_frame_buf

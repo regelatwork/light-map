@@ -103,9 +103,7 @@ def run_app(args):
         if issubclass(exc_type, KeyboardInterrupt):
             sys.__excepthook__(exc_type, exc_value, exc_traceback)
             return
-        logger.critical(
-            "Unhandled exception", exc_info=(exc_type, exc_value, exc_traceback)
-        )
+        logger.critical("Unhandled exception", exc_info=(exc_type, exc_value, exc_traceback))
 
     sys.excepthook = handle_exception
 
@@ -159,18 +157,14 @@ def run_app(args):
             return None, 4608, 2592, None
 
     native_screen_width, native_screen_height = get_screen_resolution()
-    logger.info(
-        "Hardware Screen Resolution: %dx%d", native_screen_width, native_screen_height
-    )
+    logger.info("Hardware Screen Resolution: %dx%d", native_screen_width, native_screen_height)
 
-    transformation_matrix, camera_res_width, camera_res_height, distortion_model = (
-        load_calibration(native_screen_width, native_screen_height)
+    transformation_matrix, camera_res_width, camera_res_height, distortion_model = load_calibration(
+        native_screen_width, native_screen_height
     )
 
     if transformation_matrix is None:
-        logger.info(
-            "Starting uncalibrated (or using defaults). Please calibrate via menu."
-        )
+        logger.info("Starting uncalibrated (or using defaults). Please calibrate via menu.")
         # Create a dummy identity matrix if calibration missing, so app doesn't crash
         transformation_matrix = np.eye(3, dtype=np.float32)
 
@@ -278,9 +272,7 @@ def run_app(args):
     try:
         with (
             Camera() as cam,
-            ProjectorWindow(
-                window_name, native_screen_width, native_screen_height
-            ) as app_win,
+            ProjectorWindow(window_name, native_screen_width, native_screen_height) as app_win,
         ):
             # --- Resolution Mismatch Check ---
             current_camera_width, current_camera_height = cam.width, cam.height
@@ -315,14 +307,10 @@ def run_app(args):
                 "pointer_offset_mm": app.config.pointer_offset_mm,
                 "gm_position": str(app.config.gm_position),
                 "debug_mode": app.debug_mode,
-                "fow_disabled": app.fow_manager.is_disabled
-                if app.fow_manager
-                else True,
+                "fow_disabled": app.fow_manager.is_disabled if app.fow_manager else True,
                 "current_map_path": app.current_map_path,
                 "projector_ppi": app.config.projector_ppi,
-                "map_width": app.map_system.svg_loader.width
-                if app.map_system.svg_loader
-                else 0.0,
+                "map_width": app.map_system.svg_loader.width if app.map_system.svg_loader else 0.0,
                 "map_height": app.map_system.svg_loader.height
                 if app.map_system.svg_loader
                 else 0.0,
@@ -349,9 +337,7 @@ def run_app(args):
             if app.state.menu_state:
                 state_mirror["menu"] = {
                     "title": app.state.menu_state.current_menu_title,
-                    "depth": len(
-                        getattr(app.state.menu_state, "node_stack_titles", [])
-                    ),
+                    "depth": len(getattr(app.state.menu_state, "node_stack_titles", [])),
                     "items": [item.title for item in app.state.menu_state.active_items],
                 }
             else:
@@ -487,9 +473,7 @@ def run_app(args):
                                     app.current_scene = app.scenes[SceneId.SCANNING]
                                     app.current_scene.on_enter()
                                 else:
-                                    logger.error(
-                                        "Error: Cannot start scan. No map loaded."
-                                    )
+                                    logger.error("Error: Cannot start scan. No map loaded.")
 
                             elif args.action == MenuActions.SCAN_ALGORITHM:
                                 current = app.map_config.get_detection_algorithm()
@@ -556,9 +540,7 @@ def run_app(args):
                                 last_world_ts = current_world_ts
 
                             if state.tokens_version != last_tokens_ts:
-                                state_mirror["tokens"] = [
-                                    t.to_dict() for t in state.tokens
-                                ]
+                                state_mirror["tokens"] = [t.to_dict() for t in state.tokens]
                                 last_tokens_ts = state.tokens_version
 
                             if state.menu_version != last_menu_ts:
@@ -573,8 +555,7 @@ def run_app(args):
                                             )
                                         ),
                                         "items": [
-                                            item.title
-                                            for item in state.menu_state.active_items
+                                            item.title for item in state.menu_state.active_items
                                         ],
                                     }
                                 else:
@@ -589,17 +570,12 @@ def run_app(args):
                                 last_tactical_ts = state.tactical_bonuses_version
 
                             # 2. Update Configuration (Only if changed)
-                            current_map_config_version = getattr(
-                                app.map_config, "version", 0
-                            )
-                            fow_disabled = (
-                                app.fow_manager.is_disabled if app.fow_manager else True
-                            )
+                            current_map_config_version = getattr(app.map_config, "version", 0)
+                            fow_disabled = app.fow_manager.is_disabled if app.fow_manager else True
 
                             if (
                                 current_map_config_version != last_map_config_version
-                                or state.projector_pose_version
-                                != last_projector_pose_ts
+                                or state.projector_pose_version != last_projector_pose_ts
                                 or state.config_version != last_config_ts
                                 or app.debug_mode != last_debug_mode
                                 or app.current_map_path != last_map_path
@@ -607,20 +583,18 @@ def run_app(args):
                                 or str(app.config.gm_position) != last_gm_position
                                 or app.config.enable_hand_masking != last_hand_masking
                                 or app.config.enable_aruco_masking != last_aruco_masking
-                                or app.config.aruco_mask_intensity
-                                != last_aruco_intensity
-                                or app.config.aruco_mask_persistence_s
-                                != last_aruco_persistence
+                                or app.config.aruco_mask_intensity != last_aruco_intensity
+                                or app.config.aruco_mask_persistence_s != last_aruco_persistence
                                 or app.config.pointer_offset_mm != last_pointer_offset
                             ):
                                 last_projector_pose_ts = state.projector_pose_version
                                 last_config_ts = state.config_version
                                 last_aruco_intensity = app.config.aruco_mask_intensity
-                                last_aruco_persistence = (
-                                    app.config.aruco_mask_persistence_s
-                                )
+                                last_aruco_persistence = app.config.aruco_mask_persistence_s
                                 last_pointer_offset = app.config.pointer_offset_mm
-                                calibrated_pos = app.config.projector_3d_model.calibrated_projector_center
+                                calibrated_pos = (
+                                    app.config.projector_3d_model.calibrated_projector_center
+                                )
                                 state_mirror["config"] = {
                                     "cam_res": (
                                         current_camera_width,
@@ -671,10 +645,7 @@ def run_app(args):
                                 }
 
                                 # 3. Update Map List (if map config changed)
-                                if (
-                                    current_map_config_version
-                                    != last_map_config_version
-                                ):
+                                if current_map_config_version != last_map_config_version:
                                     state_mirror["maps"] = {
                                         path: {
                                             "name": os.path.basename(path),
@@ -700,9 +671,7 @@ def run_app(args):
                                 last_gm_position = str(app.config.gm_position)
                                 last_hand_masking = app.config.enable_hand_masking
                                 last_aruco_masking = app.config.enable_aruco_masking
-                                last_aruco_persistence = (
-                                    app.config.aruco_mask_persistence_s
-                                )
+                                last_aruco_persistence = app.config.aruco_mask_persistence_s
 
                         # E. Process Actions
                         should_break = False
@@ -715,10 +684,7 @@ def run_app(args):
                             else:
                                 action_str = action
 
-                            if (
-                                action_str == MenuActions.EXIT
-                                or action_str == Action.QUIT
-                            ):
+                            if action_str == MenuActions.EXIT or action_str == Action.QUIT:
                                 logger.info("Exiting...")
                                 should_break = True
                             elif action_str == MenuActions.CALIBRATE:
@@ -731,9 +697,7 @@ def run_app(args):
                                 app.set_debug_mode(not app.debug_mode)
 
                         if should_break:
-                            logger.info(
-                                f"Stopping main loop due to action: {action_str}"
-                            )
+                            logger.info(f"Stopping main loop due to action: {action_str}")
                             main_loop.stop()
 
                         if app_win.is_closed():

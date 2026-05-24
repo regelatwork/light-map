@@ -27,9 +27,7 @@ def mock_camera():
 @pytest.fixture
 def mock_projector_utils():
     with (
-        patch(
-            "light_map.calibration.calibration_logic.generate_calibration_pattern"
-        ) as mock_gen,
+        patch("light_map.calibration.calibration_logic.generate_calibration_pattern") as mock_gen,
         patch(
             "light_map.calibration.calibration_logic.compute_projector_homography"
         ) as mock_compute,
@@ -59,9 +57,7 @@ def test_run_calibration_sequence_success(
     mock_cv2.aruco.ArucoDetector.return_value = mock_detector
 
     # Run
-    result = run_calibration_sequence(
-        mock_camera, projector_width=1920, projector_height=1080
-    )
+    result = run_calibration_sequence(mock_camera, projector_width=1920, projector_height=1080)
 
     # Verify
     assert result is not None
@@ -148,9 +144,7 @@ def test_calibrate_extrinsics_flip_inverted(mock_cv2):
         {1: 5.0},
         100.0,
         ground_points_camera=np.array([[50, 50], [60, 60], [70, 70], [80, 80]]),
-        ground_points_projector=np.array(
-            [[100, 100], [120, 120], [140, 140], [160, 160]]
-        ),
+        ground_points_projector=np.array([[100, 100], [120, 120], [140, 140], [160, 160]]),
     )
 
     assert result is not None

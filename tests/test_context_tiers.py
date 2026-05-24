@@ -36,9 +36,7 @@ class TestContextTiers(unittest.TestCase):
         self.state = WorldState()
 
     def test_vision_context_attributes_and_pickle(self):
-        ctx = VisionContext(
-            app_config=self.config, camera_projection_model=self.projection_model
-        )
+        ctx = VisionContext(app_config=self.config, camera_projection_model=self.projection_model)
         self.assertEqual(ctx.app_config.width, 1920)
         self.assertIs(ctx.camera_projection_model, self.projection_model)
 

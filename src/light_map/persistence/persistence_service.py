@@ -57,9 +57,7 @@ class PersistenceService:
                 # Calculate initial base scale for this map
                 ppi = self.map_config.get_ppi()
                 if ppi > 0:
-                    entry.scale_factor_1to1 = (
-                        entry.physical_unit_inches * ppi
-                    ) / spacing
+                    entry.scale_factor_1to1 = (entry.physical_unit_inches * ppi) / spacing
                 self.map_config.save()
 
         # setup Visibility Engine and layers (Delegated to app for now)
@@ -90,10 +88,7 @@ class PersistenceService:
 
                 # Restore door states
                 for blocker in self.app.visibility_engine.blockers:
-                    if (
-                        blocker.type == VisibilityType.DOOR
-                        and blocker.id in session.door_states
-                    ):
+                    if blocker.type == VisibilityType.DOOR and blocker.id in session.door_states:
                         blocker.is_open = session.door_states[blocker.id]
 
                 self.app.visibility_engine.update_blockers(
@@ -134,9 +129,7 @@ class PersistenceService:
         map_file = self.app.map_system.svg_loader.filename
         session_dir = None
         if self.app.config.storage_manager:
-            session_dir = os.path.join(
-                self.app.config.storage_manager.get_data_dir(), "sessions"
-            )
+            session_dir = os.path.join(self.app.config.storage_manager.get_data_dir(), "sessions")
 
         from light_map.visibility.visibility_types import VisibilityType
 
@@ -177,9 +170,7 @@ class PersistenceService:
                         is_map_override = True
 
         if not existing_def:
-            existing_def = self.map_config.data.global_settings.aruco_defaults.get(
-                token_id
-            )
+            existing_def = self.map_config.data.global_settings.aruco_defaults.get(token_id)
 
         # Use existing values if not provided in the update
         final_name = kwargs.get("name")
@@ -236,9 +227,7 @@ class PersistenceService:
                 height_mm=final_height_mm,
                 color=final_color,
             )
-            logging.info(
-                f"PersistenceService: Updated GLOBAL definition for token {token_id}"
-            )
+            logging.info(f"PersistenceService: Updated GLOBAL definition for token {token_id}")
 
         # Trigger WorldState update for tokens to reflect config changes
         # This assumes WorldState.tokens will be refreshed by the main loop or here.
@@ -268,9 +257,7 @@ class PersistenceService:
                 try:
                     entry.grid_type = GridType(grid_type_val)
                 except ValueError:
-                    logging.warning(
-                        f"PersistenceService: Invalid grid type {grid_type_val}"
-                    )
+                    logging.warning(f"PersistenceService: Invalid grid type {grid_type_val}")
 
             visible = kwargs.get("visible")
             if visible is not None:
@@ -295,9 +282,7 @@ class PersistenceService:
                     overlay_color=entry.grid_overlay_color,
                 )
                 if self.app.environment_manager:
-                    self.app.environment_manager.rebuild_visibility_stack(
-                        entry, map_path
-                    )
+                    self.app.environment_manager.rebuild_visibility_stack(entry, map_path)
 
             self.state.config_data += 1
 
@@ -326,9 +311,7 @@ class PersistenceService:
             self.map_config.save()
 
             if self.app.current_map_path == map_path:
-                self.state.grid_metadata = replace(
-                    self.state.grid_metadata, overlay_color=color
-                )
+                self.state.grid_metadata = replace(self.state.grid_metadata, overlay_color=color)
             self.state.config_data += 1
 
     def delete_token_override(self, token_id: int):
@@ -336,18 +319,14 @@ class PersistenceService:
         map_file = self.app.current_map_path
         if token_id is not None and map_file:
             self.map_config.delete_map_aruco_override(map_file, token_id)
-            logging.info(
-                f"PersistenceService: Deleted MAP override for token {token_id}"
-            )
+            logging.info(f"PersistenceService: Deleted MAP override for token {token_id}")
             self.state.config_data += 1
 
     def delete_token(self, token_id: int):
         """Deletes a global token definition."""
         if token_id is not None:
             self.map_config.delete_global_aruco_definition(token_id)
-            logging.info(
-                f"PersistenceService: Deleted GLOBAL definition for token {token_id}"
-            )
+            logging.info(f"PersistenceService: Deleted GLOBAL definition for token {token_id}")
             self.state.config_data += 1
 
     def update_token_profile(self, name: str, size: float, height_mm: float):

@@ -46,16 +46,12 @@ def test_camera_projection_model_parallax_math():
     # world ray = R^T * [0.1, 0, 1] = [0.1, 0, -1]
     # Intersection with Z=0 (s=1000): [100, 0, 0]
     pixel_points_offset = np.array([[1060, 540]], dtype=np.float32)
-    world_points_offset = model.reconstruct_world_points(
-        pixel_points_offset, height_mm=0.0
-    )
+    world_points_offset = model.reconstruct_world_points(pixel_points_offset, height_mm=0.0)
     assert world_points_offset[0, 0] == pytest.approx(100.0, abs=1e-4)
     assert world_points_offset[0, 1] == pytest.approx(0.0, abs=1e-4)
 
     # Intersection with Z=100 (s=900): [90, 0, 100]
-    world_points_offset_100 = model.reconstruct_world_points(
-        pixel_points_offset, height_mm=100.0
-    )
+    world_points_offset_100 = model.reconstruct_world_points(pixel_points_offset, height_mm=100.0)
     assert world_points_offset_100[0, 0] == pytest.approx(90.0, abs=1e-4)
     assert world_points_offset_100[0, 1] == pytest.approx(0.0, abs=1e-4)
 

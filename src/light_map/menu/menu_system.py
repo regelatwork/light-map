@@ -40,9 +40,7 @@ class MenuState:
 
 
 class MenuSystem:
-    def __init__(
-        self, width: int, height: int, root_item: MenuItem, time_provider=time.monotonic
-    ):
+    def __init__(self, width: int, height: int, root_item: MenuItem, time_provider=time.monotonic):
         self.width = width
         self.height = height
         self.root = root_item

@@ -163,9 +163,7 @@ def test_scanning_scene_layers(mock_app, mock_context):
     layers = scene.get_active_layers(mock_app)
     assert mock_app.map_layer in layers
     assert mock_app.debug_layer in layers
-    assert (
-        mock_app.notification_layer not in layers
-    )  # EXPLICITLY excluded in SHOW_RESULT
+    assert mock_app.notification_layer not in layers  # EXPLICITLY excluded in SHOW_RESULT
 
 
 def test_exclusive_vision_scene_layers(mock_app, mock_context):

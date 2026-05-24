@@ -40,9 +40,7 @@ class WorldState:
     Manages background frames, vision results, and granular versioning for caching.
     """
 
-    def __init__(
-        self, frame_processor: Callable[[np.ndarray], np.ndarray] | None = None
-    ):
+    def __init__(self, frame_processor: Callable[[np.ndarray], np.ndarray] | None = None):
         self.frame_processor = frame_processor
 
         # State Data
@@ -52,18 +50,14 @@ class WorldState:
         # Atoms
         self._tokens_atom = VersionedAtom([], "tokens", equality_fn=self._tokens_equal)
         self._raw_tokens_atom = VersionedAtom([], "raw_tokens")
-        self._blockers_atom = VersionedAtom(
-            [], "blockers", equality_fn=self._blockers_equal
-        )
+        self._blockers_atom = VersionedAtom([], "blockers", equality_fn=self._blockers_equal)
         self._token_merge_manager = TokenMergeManager()
 
         self._raw_aruco_atom = VersionedAtom(
             {"corners": [], "ids": []}, "raw_aruco", equality_fn=self._raw_aruco_equal
         )
         self._inputs_atom = VersionedAtom([], "inputs", equality_fn=self._inputs_equal)
-        self._landmarks_atom = VersionedAtom(
-            [], "landmarks", equality_fn=self._landmarks_equal
-        )
+        self._landmarks_atom = VersionedAtom([], "landmarks", equality_fn=self._landmarks_equal)
         self._handedness_atom = VersionedAtom([], "handedness")
         self._gesture_atom = VersionedAtom(None, "gesture")
 
@@ -73,18 +67,14 @@ class WorldState:
 
         self._scene_atom = VersionedAtom("", "scene")
         self._scene_state_atom = VersionedAtom(0, "scene_state")
-        self._fow_mask_atom = VersionedAtom(
-            None, "fow_mask", equality_fn=np.array_equal
-        )
+        self._fow_mask_atom = VersionedAtom(None, "fow_mask", equality_fn=np.array_equal)
         self._discovered_ids_atom = VersionedAtom(set(), "discovered_ids")
         self._fow_disabled_atom = VersionedAtom(False, "fow_disabled")
         self._calibration_atom = VersionedAtom(
             CalibrationState(), "calibration", equality_fn=self._calibration_equal
         )
         self._notifications_atom = VersionedAtom([], "notifications")
-        self._map_render_state_atom = VersionedAtom(
-            MapRenderState(), "map_render_state"
-        )
+        self._map_render_state_atom = VersionedAtom(MapRenderState(), "map_render_state")
         self._visibility_mask_atom = VersionedAtom(
             None, "visibility_mask", equality_fn=np.array_equal
         )
@@ -98,9 +88,7 @@ class WorldState:
         self._inspected_token_id_atom = VersionedAtom(None, "inspected_token_id")
         self._tactical_bonuses_atom = VersionedAtom({}, "tactical_bonuses")
         self._grid_metadata_atom = VersionedAtom(GridMetadata(), "grid_metadata")
-        self._projector_pose_atom = VersionedAtom(
-            ProjectorPose(0.0, 0.0, 0.0), "projector_pose"
-        )
+        self._projector_pose_atom = VersionedAtom(ProjectorPose(0.0, 0.0, 0.0), "projector_pose")
         self._active_pings_atom = VersionedAtom({}, "active_pings")
         self._fps_atom = VersionedAtom(0.0, "fps")
         self._config_version_atom = VersionedAtom(0, "config")
@@ -665,9 +653,7 @@ class WorldState:
                     # Raw ArUco from workers (corners, ids)
                     new_ids = result.data.get("ids", [])
                     new_corners = result.data.get("corners", [])
-                    tx.update(
-                        self._raw_aruco_atom, {"ids": new_ids, "corners": new_corners}
-                    )
+                    tx.update(self._raw_aruco_atom, {"ids": new_ids, "corners": new_corners})
 
             elif result.type == ResultType.HANDS:
                 if (
@@ -778,10 +764,7 @@ class WorldState:
                 if t1.grid_x != t2.grid_x or t1.grid_y != t2.grid_y:
                     return False
             else:
-                if (
-                    abs(t1.world_x - t2.world_x) > 1.0
-                    or abs(t1.world_y - t2.world_y) > 1.0
-                ):
+                if abs(t1.world_x - t2.world_x) > 1.0 or abs(t1.world_y - t2.world_y) > 1.0:
                     return False
 
             if t1.is_occluded != t2.is_occluded or t1.is_duplicate != t2.is_duplicate:
@@ -789,9 +772,7 @@ class WorldState:
 
         return True
 
-    def _blockers_equal(
-        self, b1: list[VisibilityBlocker], b2: list[VisibilityBlocker]
-    ) -> bool:
+    def _blockers_equal(self, b1: list[VisibilityBlocker], b2: list[VisibilityBlocker]) -> bool:
         """Checks if two lists of blockers are semantically equal."""
         if len(b1) != len(b2):
             return False
@@ -898,8 +879,8 @@ class WorldState:
                         "reason": result.explanation,
                     }
                     for target_id, result in self.tactical_bonuses.items()
-                ]
-            }
+                ],
+            },
         }
 
     def clear_raw_aruco(self):

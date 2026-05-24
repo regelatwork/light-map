@@ -34,9 +34,7 @@ class FrameProducer:
 
         # Attach to existing Shared Memory
         self.shm = SharedMemory(name=shm_name)
-        self.lock = (
-            mp.Lock()
-        )  # Note: In a real system, this Lock would be shared from the manager
+        self.lock = mp.Lock()  # Note: In a real system, this Lock would be shared from the manager
 
         # Internal state
         self._current_buffer_id: int | None = None

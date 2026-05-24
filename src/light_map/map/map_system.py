@@ -118,9 +118,7 @@ class MapSystem:
         # Use robust pivot logic
         self.set_zoom_around_pivot(new_zoom, center_x, center_y, wx, wy)
 
-    def set_zoom_around_pivot(
-        self, new_zoom: float, sx: float, sy: float, wx: float, wy: float
-    ):
+    def set_zoom_around_pivot(self, new_zoom: float, sx: float, sy: float, wx: float, wy: float):
         """
         Sets the zoom level and adjusts pan (x, y) so that the given world coordinate (wx, wy)
         maps to the given screen coordinate (sx, sy).
@@ -190,10 +188,7 @@ class MapSystem:
             self.state.zoom,
             self.state.rotation,
         )
-        if (
-            self._cached_matrix is not None
-            and self._cached_state_tuple == current_state
-        ):
+        if self._cached_matrix is not None and self._cached_state_tuple == current_state:
             return self._cached_matrix
 
         cx, cy = self.width / 2, self.height / 2
@@ -218,9 +213,7 @@ class MapSystem:
         """Converts world coordinates to screen coordinates."""
         m = self._get_matrix()
         p = m.point_in_matrix_space((wx, wy))
-        logging.debug(
-            f"MapSystem: world {wx:.1f},{wy:.1f} -> screen {p.x:.1f},{p.y:.1f}"
-        )
+        logging.debug(f"MapSystem: world {wx:.1f},{wy:.1f} -> screen {p.x:.1f},{p.y:.1f}")
         return p.x, p.y
 
     def world_mm_to_svg(

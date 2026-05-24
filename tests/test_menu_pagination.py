@@ -49,9 +49,7 @@ def test_pagination_flow(paged_menu_system):
 
     # Trigger Next Page
     # Find index of Next Page
-    next_idx = next(
-        i for i, item in enumerate(items) if item.action_id == MenuActions.PAGE_NEXT
-    )
+    next_idx = next(i for i, item in enumerate(items) if item.action_id == MenuActions.PAGE_NEXT)
     from light_map.core.common_types import GestureType
 
     rect = rects[next_idx]
@@ -99,9 +97,7 @@ def test_pagination_flow(paged_menu_system):
     assert "Next Page >" not in titles
 
     # Trigger Prev Page -> Page 2
-    prev_idx = next(
-        i for i, item in enumerate(items) if item.action_id == MenuActions.PAGE_PREV
-    )
+    prev_idx = next(i for i, item in enumerate(items) if item.action_id == MenuActions.PAGE_PREV)
     from light_map.core.common_types import GestureType
 
     rect = rects[prev_idx]

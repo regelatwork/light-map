@@ -58,9 +58,7 @@ def test_fow_rendering_with_non_zero_origin():
     # Set grid metadata so transformation works
     from light_map.core.common_types import GridMetadata
 
-    ws.grid_metadata = GridMetadata(
-        spacing_svg=spacing, origin_svg_x=100.0, origin_svg_y=100.0
-    )
+    ws.grid_metadata = GridMetadata(spacing_svg=spacing, origin_svg_x=100.0, origin_svg_y=100.0)
 
     # Viewport at zoom=1.0, no offset
     from light_map.core.common_types import ViewportState

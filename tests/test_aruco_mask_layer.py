@@ -39,9 +39,7 @@ def mock_state():
     state = WorldState()
     # Mock some ArUco corners in camera space
     # Marker 1: Top-left square
-    corners1 = np.array(
-        [[100, 100], [200, 100], [200, 200], [100, 200]], dtype=np.float32
-    )
+    corners1 = np.array([[100, 100], [200, 100], [200, 200], [100, 200]], dtype=np.float32)
     state.raw_aruco = {"corners": [corners1], "ids": [42]}
     return state
 
@@ -87,9 +85,7 @@ def test_aruco_mask_layer_rendering(mock_state, mock_config):
     # Expected: x=90, y=90, w=120, h=120
     assert patch.x == 90
     assert patch.y == 90
-    assert (
-        patch.width == 121
-    )  # 100 + 10 + 10 + 1 (boundingRect inclusive/exclusive nuances)
+    assert patch.width == 121  # 100 + 10 + 10 + 1 (boundingRect inclusive/exclusive nuances)
     assert patch.height == 121
 
     # Check data
@@ -149,9 +145,7 @@ def test_aruco_mask_layer_parallax_rendering(mock_state, mock_config):
     mock_config.projector_matrix_resolution = (10000, 10000)
 
     # Marker corners in camera space
-    corners = np.array(
-        [[1010, 490], [1110, 490], [1110, 590], [1010, 590]], dtype=np.float32
-    )
+    corners = np.array([[1010, 490], [1110, 490], [1110, 590], [1010, 590]], dtype=np.float32)
     mock_state.raw_aruco = {"corners": [corners], "ids": [42]}
 
     from dataclasses import dataclass
@@ -193,9 +187,7 @@ def test_aruco_mask_layer_parallax_rendering(mock_state, mock_config):
         mock_config.camera_projection_model, mock_config.projector_3d_model
     )
 
-    layer = ArucoMaskLayer(
-        mock_state, mock_config, projection_service=projection_service
-    )
+    layer = ArucoMaskLayer(mock_state, mock_config, projection_service=projection_service)
 
     # Height 0mm
     patches_0 = layer._generate_patches(0.0)
@@ -246,9 +238,7 @@ def test_aruco_mask_layer_version_with_persistence(mock_state, mock_config):
     v_base = layer.get_current_version()
 
     # Update system time - should NOT affect version because no lingering yet
-    mock_state._system_time_atom.update(
-        101.0, force_timestamp=mock_state.raw_aruco_version + 1000
-    )
+    mock_state._system_time_atom.update(101.0, force_timestamp=mock_state.raw_aruco_version + 1000)
     v1 = layer.get_current_version()
     assert v1 == v_base  # Still based on raw_aruco_version
 
@@ -258,9 +248,7 @@ def test_aruco_mask_layer_version_with_persistence(mock_state, mock_config):
     v_after_lost = layer.get_current_version()
 
     # system_time_version should now trigger every-frame updates
-    mock_state._system_time_atom.update(
-        102.0, force_timestamp=mock_state.raw_aruco_version + 2000
-    )
+    mock_state._system_time_atom.update(102.0, force_timestamp=mock_state.raw_aruco_version + 2000)
     v2 = layer.get_current_version()
     assert v2 > v_after_lost
 

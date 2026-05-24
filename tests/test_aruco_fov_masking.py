@@ -63,9 +63,7 @@ def test_aruco_fov_masking():
     assert len(tokens_no_mask) == 2
 
     # 2. Detect WITH full masking (should still see both)
-    tokens_full_mask = detector.detect(
-        frame, map_system, projector_matrix=projector_matrix_full
-    )
+    tokens_full_mask = detector.detect(frame, map_system, projector_matrix=projector_matrix_full)
     assert len(tokens_full_mask) == 2
 
     # 3. Detect WITH partial masking (Top-Left 200x200)
@@ -73,9 +71,7 @@ def test_aruco_fov_masking():
     config_small = AppConfig(width=200, height=200, projector_matrix=np.eye(3))
     map_system_small = MapSystem(config_small)
     # Identity projector matrix means projector pixels (0-200, 0-200) map to camera (0-200, 0-200).
-    tokens_masked = detector.detect(
-        frame, map_system_small, projector_matrix=projector_matrix_full
-    )
+    tokens_masked = detector.detect(frame, map_system_small, projector_matrix=projector_matrix_full)
 
     # It should only see Marker 1 (at 100, 100)
     assert len(tokens_masked) == 1

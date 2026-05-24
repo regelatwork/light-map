@@ -56,9 +56,7 @@ def map_grid_calib_scene(mock_app_context):
     return MapGridCalibrationScene(mock_app_context)
 
 
-def test_map_grid_calibration_on_enter_initializes_overlay(
-    map_grid_calib_scene, mock_app_context
-):
+def test_map_grid_calibration_on_enter_initializes_overlay(map_grid_calib_scene, mock_app_context):
     """Verify on_enter initializes GridOverlay centered on screen."""
     map_grid_calib_scene.on_enter()
 
@@ -75,18 +73,14 @@ def test_map_grid_calibration_on_enter_initializes_overlay(
     mock_app_context.map_system.reset_view_to_base.assert_not_called()
 
 
-def test_map_grid_calibration_on_enter_restores_from_config(
-    map_grid_calib_scene, mock_app_context
-):
+def test_map_grid_calibration_on_enter_restores_from_config(map_grid_calib_scene, mock_app_context):
     """Verify on_enter restores grid from existing config aligned to viewport."""
     # Setup existing config
     abs_path = os.path.abspath("test_map.svg")
     # Mocking map_config_manager.data.maps
     mock_app_context.map_config_manager.data = MagicMock()
     mock_app_context.map_config_manager.data.maps = {
-        abs_path: MapEntry(
-            grid_spacing_svg=50.0, grid_origin_svg_x=100.0, grid_origin_svg_y=100.0
-        )
+        abs_path: MapEntry(grid_spacing_svg=50.0, grid_origin_svg_x=100.0, grid_origin_svg_y=100.0)
     }
 
     # Setup viewport (zoom=2.0 already set in fixture)
@@ -156,9 +150,7 @@ def test_map_grid_calibration_confirm_saves_config(
     )
 
 
-def test_map_grid_calibration_interaction_updates_overlay(
-    map_grid_calib_scene, mock_app_context
-):
+def test_map_grid_calibration_interaction_updates_overlay(map_grid_calib_scene, mock_app_context):
     """Verify that interactions are directed to the GridOverlay."""
     map_grid_calib_scene.on_enter()
 

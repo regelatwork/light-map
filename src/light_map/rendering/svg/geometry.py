@@ -5,9 +5,7 @@ import numpy as np
 import svgelements
 
 
-def sample_segment(
-    segment: Any, points_per_unit: float = 1.0
-) -> list[tuple[float, float]]:
+def sample_segment(segment: Any, points_per_unit: float = 1.0) -> list[tuple[float, float]]:
     """Samples a curve segment adaptively based on its length."""
     if isinstance(segment, svgelements.Line):
         return [(segment.end.x, segment.end.y)]
@@ -57,9 +55,7 @@ def convert_path_to_points(
     for segment in transformed_path:
         if isinstance(segment, svgelements.Move):
             if current_points:
-                subpath_array = np.array(current_points, dtype=np.int32).reshape(
-                    (-1, 1, 2)
-                )
+                subpath_array = np.array(current_points, dtype=np.int32).reshape((-1, 1, 2))
                 if is_current_closed or element_naturally_closed:
                     closed_subpaths.append(subpath_array)
                 else:
@@ -94,9 +90,7 @@ def collect_path_grid_coords(
                 y_coords.append(p1.y)
 
 
-def collect_line_grid_coords(
-    element: Any, x_coords: list[float], y_coords: list[float]
-):
+def collect_line_grid_coords(element: Any, x_coords: list[float], y_coords: list[float]):
     """Collects grid lines from line elements."""
     if hasattr(element, "x1"):
         p1x, p1y, p2x, p2y = element.x1, element.y1, element.x2, element.y2

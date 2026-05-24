@@ -77,9 +77,7 @@ def test_visibility_door_toggle():
 
     # Token at (100, 100)
     # Door closed: blocked
-    mask_closed, door_ids_closed = engine.get_token_vision_mask(
-        1, 100, 100, 1, 10, mask_w, mask_h
-    )
+    mask_closed, door_ids_closed = engine.get_token_vision_mask(1, 100, 100, 1, 10, mask_w, mask_h)
     assert mask_closed[16, 28] == 0
 
     # The door itself should be discovered
@@ -90,9 +88,7 @@ def test_visibility_door_toggle():
     # Re-update blockers to rebuild mask
     engine.update_blockers([door], mask_width=mask_w, mask_height=mask_h)
 
-    mask_open, door_ids_open = engine.get_token_vision_mask(
-        1, 100, 100, 1, 10, mask_w, mask_h
-    )
+    mask_open, door_ids_open = engine.get_token_vision_mask(1, 100, 100, 1, 10, mask_w, mask_h)
     assert mask_open[16, 28] > 0
     # Open door is transparent to vision but still identified
     assert "door1" in door_ids_open
@@ -106,17 +102,13 @@ def test_visibility_cache_hysteresis():
     token_id = 1
     # Both in Grid (1, 1) assuming grid spacing is 100
     origin1 = (120, 120)
-    res1 = engine.get_token_vision_mask(
-        token_id, origin1[0], origin1[1], 1, 5, mask_w, mask_h
-    )
+    res1 = engine.get_token_vision_mask(token_id, origin1[0], origin1[1], 1, 5, mask_w, mask_h)
 
     assert len(engine.mask_cache) == 1
 
     # Move slightly within the same grid cell
     origin2 = (140, 140)
-    res2 = engine.get_token_vision_mask(
-        token_id, origin2[0], origin2[1], 1, 5, mask_w, mask_h
-    )
+    res2 = engine.get_token_vision_mask(token_id, origin2[0], origin2[1], 1, 5, mask_w, mask_h)
 
     # Should be identical from cache
     assert np.array_equal(res1[0], res2[0])
@@ -125,8 +117,6 @@ def test_visibility_cache_hysteresis():
 
     # Move to next cell
     origin3 = (220, 120)  # Grid (2, 1)
-    res3 = engine.get_token_vision_mask(
-        token_id, origin3[0], origin3[1], 1, 5, mask_w, mask_h
-    )
+    res3 = engine.get_token_vision_mask(token_id, origin3[0], origin3[1], 1, 5, mask_w, mask_h)
     assert not np.array_equal(res1[0], res3[0])
     assert len(engine.mask_cache) == 2

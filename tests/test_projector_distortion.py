@@ -6,9 +6,7 @@ from light_map.rendering.projector import ProjectorDistortionModel
 def test_projector_distortion_model_interpolation():
     # Setup a simple 2x2 grid of projector points
     # Px = [100, 200], Py = [100, 200]
-    proj_pts = np.array(
-        [[100, 100], [200, 100], [100, 200], [200, 200]], dtype=np.float32
-    )
+    proj_pts = np.array([[100, 100], [200, 100], [100, 200], [200, 200]], dtype=np.float32)
 
     # Matching camera points (identity-ish)
     cam_pts = np.array([[10, 10], [20, 10], [10, 20], [20, 20]], dtype=np.float32)
@@ -66,9 +64,7 @@ def test_projector_distortion_model_with_residuals():
 
 
 def test_projector_distortion_model_clamping():
-    proj_pts = np.array(
-        [[100, 100], [200, 100], [100, 200], [200, 200]], dtype=np.float32
-    )
+    proj_pts = np.array([[100, 100], [200, 100], [100, 200], [200, 200]], dtype=np.float32)
     cam_pts = np.array([[10, 10], [20, 10], [10, 20], [20, 20]], dtype=np.float32)
     homography = np.eye(3) * 10
     homography[2, 2] = 1

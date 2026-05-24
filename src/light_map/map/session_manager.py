@@ -38,9 +38,7 @@ class SessionManager:
         return os.path.exists(path)
 
     @staticmethod
-    def save_for_map(
-        map_path: str, data: SessionData, session_dir: str | None = None
-    ) -> bool:
+    def save_for_map(map_path: str, data: SessionData, session_dir: str | None = None) -> bool:
         SessionManager._ensure_session_dir(session_dir)
         path = SessionManager.get_session_path(map_path, session_dir)
         # Ensure data stores correct map file path
@@ -48,9 +46,7 @@ class SessionManager:
         return SessionManager.save_session(path, data)
 
     @staticmethod
-    def load_for_map(
-        map_path: str, session_dir: str | None = None
-    ) -> SessionData | None:
+    def load_for_map(map_path: str, session_dir: str | None = None) -> SessionData | None:
         path = SessionManager.get_session_path(map_path, session_dir)
         return SessionManager.load_session(path)
 

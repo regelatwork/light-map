@@ -108,11 +108,7 @@ class SVGLoader:
         spacing_y, origin_y = analyze_spacing_and_origin(y_coords)
 
         if spacing_x > 0 and spacing_y > 0:
-            spacing = (
-                (spacing_x + spacing_y) / 2
-                if abs(spacing_x - spacing_y) < 1.0
-                else spacing_x
-            )
+            spacing = (spacing_x + spacing_y) / 2 if abs(spacing_x - spacing_y) < 1.0 else spacing_x
         else:
             spacing = max(spacing_x, spacing_y)
 
@@ -142,9 +138,7 @@ class SVGLoader:
             width, height, q_scale, q_offset_x, q_offset_y, q_rot, q_quality
         )
 
-    def _render_mask(
-        self, mask_id, final_vp_matrix, render_w, render_h, scale_factor, quality
-    ):
+    def _render_mask(self, mask_id, final_vp_matrix, render_w, render_h, scale_factor, quality):
         """Renders an SVG mask into a grayscale buffer."""
         mask_elem = self.svg.get_element_by_id(mask_id)
         if not mask_elem or not isinstance(mask_elem, svgelements.Group):
@@ -162,9 +156,7 @@ class SVGLoader:
                 local_matrix = svgelements.Matrix(elem.transform) * current_matrix
 
             if isinstance(elem, svgelements.Image):
-                render_image_element(
-                    elem, temp_buffer, local_matrix, render_w, render_h, self.svg
-                )
+                render_image_element(elem, temp_buffer, local_matrix, render_w, render_h, self.svg)
             elif isinstance(elem, svgelements.Text):
                 render_text_element(elem, temp_buffer, local_matrix, self.svg)
             elif isinstance(elem, svgelements.Shape):
@@ -204,11 +196,7 @@ class SVGLoader:
         image = np.zeros((max(1, render_h), max(1, render_w), 3), dtype=np.uint8)
 
         if self.svg is None:
-            return (
-                cv2.resize(image, (target_width, target_height))
-                if quality < 1.0
-                else image
-            )
+            return cv2.resize(image, (target_width, target_height)) if quality < 1.0 else image
 
         final_vp_matrix = get_viewport_matrix(
             target_width,
@@ -299,8 +287,7 @@ class SVGLoader:
                     alpha_f = alpha_f[:, :, np.newaxis]
                     warped_bgr = elem_buffer[:, :, :3]
                     image[:] = (
-                        warped_bgr.astype(float) * alpha_f
-                        + image.astype(float) * (1.0 - alpha_f)
+                        warped_bgr.astype(float) * alpha_f + image.astype(float) * (1.0 - alpha_f)
                     ).astype(np.uint8)
                     return
 
@@ -312,9 +299,7 @@ class SVGLoader:
 
         traverse(self.svg)
 
-        return (
-            cv2.resize(image, (target_width, target_height)) if quality < 1.0 else image
-        )
+        return cv2.resize(image, (target_width, target_height)) if quality < 1.0 else image
 
     def get_visibility_blockers(self) -> list[VisibilityBlocker]:
         """Extracts walls, doors, and windows from the SVG based on layer names."""

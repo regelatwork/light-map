@@ -15,9 +15,7 @@ class MapLayer(Layer):
     Uses timestamps for efficient caching.
     """
 
-    def __init__(
-        self, state: WorldState, map_system: MapSystem, width: int, height: int
-    ):
+    def __init__(self, state: WorldState, map_system: MapSystem, width: int, height: int):
         super().__init__(state=state, is_static=True, layer_mode=LayerMode.BLOCKING)
         self.map_system = map_system
         self.width = width
@@ -75,9 +73,7 @@ class MapLayer(Layer):
         # Only re-render SVG if params changed or cache is empty
         if current_params != self._last_render_params or self._cached_map_bgra is None:
             # Render from SVG
-            map_bgr = self.map_system.svg_loader.render(
-                self.width, self.height, **current_params
-            )
+            map_bgr = self.map_system.svg_loader.render(self.width, self.height, **current_params)
             # Convert BGR to BGRA and cache the result
             self._cached_map_bgra = cv2.cvtColor(map_bgr, cv2.COLOR_BGR2BGRA)
             self._last_render_params = current_params.copy()
@@ -92,8 +88,6 @@ class MapLayer(Layer):
                 final_data[:, :, :3], alpha=self.opacity, beta=0
             )
 
-        patch = ImagePatch(
-            x=0, y=0, width=self.width, height=self.height, data=final_data
-        )
+        patch = ImagePatch(x=0, y=0, width=self.width, height=self.height, data=final_data)
 
         return [patch]

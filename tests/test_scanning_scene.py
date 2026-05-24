@@ -75,9 +75,7 @@ def test_scanning_scene_state_machine(mock_app_context):
         # FLASH -> CAPTURE_FLASH (after delay)
         time_state.val += 1.6  # 1.7s total
         mock_app_context.events.check()
-        assert (
-            scene._stage == ScanStage.PROCESS
-        )  # CAPTURE_FLASH immediately transitions to PROCESS
+        assert scene._stage == ScanStage.PROCESS  # CAPTURE_FLASH immediately transitions to PROCESS
 
         # PROCESS -> SHOW_RESULT (happens within _change_stage for PROCESS)
         with patch.object(scene, "_detect_and_save_tokens") as mock_detect:

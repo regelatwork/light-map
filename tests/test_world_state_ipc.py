@@ -27,9 +27,7 @@ def test_world_state_apply_results():
 
     # 1. Apply ArUco result (Initial)
     tokens = [Token(id=1, world_x=10, world_y=20)]
-    result = DetectionResult(
-        timestamp=2000, type=ResultType.ARUCO, data={"tokens": tokens}
-    )
+    result = DetectionResult(timestamp=2000, type=ResultType.ARUCO, data={"tokens": tokens})
 
     last_ts = state.tokens_version
     state.apply(result)
@@ -38,9 +36,7 @@ def test_world_state_apply_results():
     last_ts = state.tokens_version
 
     # 2. Apply SAME tokens again - should NOT increment version
-    result_same = DetectionResult(
-        timestamp=2010, type=ResultType.ARUCO, data={"tokens": tokens}
-    )
+    result_same = DetectionResult(timestamp=2010, type=ResultType.ARUCO, data={"tokens": tokens})
     state.apply(result_same)
     assert state.tokens_version == last_ts
 
@@ -132,9 +128,7 @@ def test_world_state_apply_actions():
 
     # 2. Apply another one
     action_data_2 = {"action": "ZOOM", "delta": 0.1}
-    result_2 = DetectionResult(
-        timestamp=3010, type=ResultType.ACTION, data=action_data_2
-    )
+    result_2 = DetectionResult(timestamp=3010, type=ResultType.ACTION, data=action_data_2)
 
     state.apply(result_2)
     assert len(state.pending_actions) == 2

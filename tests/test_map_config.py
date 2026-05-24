@@ -100,9 +100,7 @@ def test_aruco_defaults_and_overrides(tmp_path):
         "global": {"projector_ppi": 100.0},
         "maps": {
             map_abs_path: {
-                "aruco_overrides": {
-                    "42": {"name": "Map Override Token", "type": "PC", "size": 2}
-                }
+                "aruco_overrides": {"42": {"name": "Map Override Token", "type": "PC", "size": 2}}
             }
         },
     }
@@ -127,6 +125,4 @@ def test_aruco_defaults_and_overrides(tmp_path):
     assert (
         resolved_map.height_mm == 50.0
     )  # DEFAULT_TOKEN_HEIGHT_MM (override clears profile/custom if not set in override definition? wait.)
-    assert (
-        resolved_map.color is None
-    )  # Overrides don't merge, they replace the definition
+    assert resolved_map.color is None  # Overrides don't merge, they replace the definition

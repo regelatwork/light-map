@@ -73,9 +73,7 @@ def test_interactive_app_process_state_layered(mock_config, monkeypatch):
     assert np.all(frame == 0)  # Base black frame
 
 
-def test_interactive_app_process_state_skips_render_when_not_stale(
-    mock_config, monkeypatch
-):
+def test_interactive_app_process_state_skips_render_when_not_stale(mock_config, monkeypatch):
     monkeypatch.setattr(
         InteractiveApp,
         "_load_camera_calibration",

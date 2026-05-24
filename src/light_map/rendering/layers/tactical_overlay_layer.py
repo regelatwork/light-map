@@ -65,7 +65,9 @@ class TacticalOverlayLayer(Layer):
             tile = np.zeros((4, 4), dtype=np.uint8)
             tile[0:2, 0:2] = 255
             tile[2:4, 2:4] = 255
-            stipple_mask = np.tile(tile, (screen_h // 4 + 1, screen_w // 4 + 1))[:screen_h, :screen_w]
+            stipple_mask = np.tile(tile, (screen_h // 4 + 1, screen_w // 4 + 1))[
+                :screen_h, :screen_w
+            ]
 
             svg_to_mask_scale = self.visibility_engine.svg_to_mask_scale
             inv_scale = 1.0 / svg_to_mask_scale
@@ -99,7 +101,11 @@ class TacticalOverlayLayer(Layer):
                 all_visible_pts = []
 
                 # Target Center in Screen Space (to pinch the polygons and determine radius)
-                all_tokens = self.state.tokens + [t for t in self.map_system.ghost_tokens if t.id not in {tk.id for tk in self.state.tokens}]
+                all_tokens = self.state.tokens + [
+                    t
+                    for t in self.map_system.ghost_tokens
+                    if t.id not in {tk.id for tk in self.state.tokens}
+                ]
                 target_tk = next((t for t in all_tokens if t.id == target_id), None)
                 if target_tk:
                     tsx, tsy = self.map_system.world_to_screen(target_tk.world_x, target_tk.world_y)
@@ -126,11 +132,18 @@ class TacticalOverlayLayer(Layer):
                     # 2. Determine Radius
                     # Use distance from apex to target center for a consistent "radar sweep" length
                     if target_center_screen:
-                        dist = math.sqrt((apex_screen[0]-target_center_screen[0])**2 + (apex_screen[1]-target_center_screen[1])**2)
+                        dist = math.sqrt(
+                            (apex_screen[0] - target_center_screen[0]) ** 2
+                            + (apex_screen[1] - target_center_screen[1]) ** 2
+                        )
                     else:
                         # Fallback: boundary point distance
-                        psx_s, psy_s = self.map_system.world_to_screen(p_start[0] * inv_scale, p_start[1] * inv_scale)
-                        dist = math.sqrt((apex_screen[0]-psx_s)**2 + (apex_screen[1]-psy_s)**2)
+                        psx_s, psy_s = self.map_system.world_to_screen(
+                            p_start[0] * inv_scale, p_start[1] * inv_scale
+                        )
+                        dist = math.sqrt(
+                            (apex_screen[0] - psx_s) ** 2 + (apex_screen[1] - psy_s) ** 2
+                        )
 
                     # 3. Build smooth arc for the sector
                     # Using 20 points for a very smooth high-res curve
@@ -172,8 +185,12 @@ class TacticalOverlayLayer(Layer):
                     p_start_edge = cover.npc_pixels[cover.segments[0].start_idx]
                     p_end_edge = cover.npc_pixels[cover.segments[-1].end_idx]
 
-                    psx1, psy_1 = self.map_system.world_to_screen(p_start_edge[0] * inv_scale, p_start_edge[1] * inv_scale)
-                    psx2, psy_2 = self.map_system.world_to_screen(p_end_edge[0] * inv_scale, p_end_edge[1] * inv_scale)
+                    psx1, psy_1 = self.map_system.world_to_screen(
+                        p_start_edge[0] * inv_scale, p_start_edge[1] * inv_scale
+                    )
+                    psx2, psy_2 = self.map_system.world_to_screen(
+                        p_end_edge[0] * inv_scale, p_end_edge[1] * inv_scale
+                    )
 
                     p_edge1 = (int(psx1), int(psy_1))
                     p_edge2 = (int(psx2), int(psy_2))
@@ -195,9 +212,7 @@ class TacticalOverlayLayer(Layer):
         all_tokens = []
         all_tokens.extend(self.state.tokens)
         existing_ids = {t.id for t in all_tokens}
-        all_tokens.extend(
-            [t for t in self.map_system.ghost_tokens if t.id not in existing_ids]
-        )
+        all_tokens.extend([t for t in self.map_system.ghost_tokens if t.id not in existing_ids])
 
         ppi = self.map_system.config.projector_ppi if self.map_system.config else 96.0
 

@@ -34,10 +34,7 @@ class MenuScene(Scene):
 
         selected_door = None
         door_is_open = False
-        if (
-            self.context.state
-            and self.context.state.selection.type == SelectionType.DOOR
-        ):
+        if self.context.state and self.context.state.selection.type == SelectionType.DOOR:
             selected_door = self.context.state.selection.id
             if selected_door:
                 for blocker in self.context.visibility_engine.blockers:
@@ -72,10 +69,7 @@ class MenuScene(Scene):
         selected_door = None
         door_is_open = False
 
-        if (
-            self.context.state
-            and self.context.state.selection.type == SelectionType.DOOR
-        ):
+        if self.context.state and self.context.state.selection.type == SelectionType.DOOR:
             selected_door = self.context.state.selection.id
             if selected_door:
                 for blocker in self.context.visibility_engine.blockers:
@@ -126,9 +120,7 @@ class MenuScene(Scene):
         if self.context.analytics:
             self.context.analytics.log_menu_selection(action_raw)
 
-        action, payload = (
-            action_raw.split("|", 1) if "|" in action_raw else (action_raw, None)
-        )
+        action, payload = action_raw.split("|", 1) if "|" in action_raw else (action_raw, None)
 
         # --- Translation Layer ---
         if action == MenuActions.MAP_CONTROLS:
@@ -144,9 +136,7 @@ class MenuScene(Scene):
                 SceneId.VIEWING, payload={"map_file": payload, "load_session": True}
             )
         if action == "CALIBRATE_MAP":
-            return SceneTransition(
-                SceneId.CALIBRATE_MAP_GRID, payload={"map_file": payload}
-            )
+            return SceneTransition(SceneId.CALIBRATE_MAP_GRID, payload={"map_file": payload})
         if action == "FORGET_MAP" and payload:
             self.context.map_config_manager.forget_map(payload)
             self.on_enter()  # Rebuild menu
@@ -190,10 +180,7 @@ class MenuScene(Scene):
 
             selected_door = None
             door_is_open = False
-            if (
-                self.context.state
-                and self.context.state.selection.type == SelectionType.DOOR
-            ):
+            if self.context.state and self.context.state.selection.type == SelectionType.DOOR:
                 selected_door = self.context.state.selection.id
                 if selected_door:
                     for blocker in self.context.visibility_engine.blockers:
@@ -288,9 +275,7 @@ class MenuScene(Scene):
                     map_path = os.path.abspath(map_path)
                     entry = self.context.map_config_manager.data.maps.get(map_path)
                     if entry:
-                        entry.grid_overlay_visible = (
-                            self.context.state.grid_overlay_visible
-                        )
+                        entry.grid_overlay_visible = self.context.state.grid_overlay_visible
                         self.context.map_config_manager.save()
 
                 state_str = "ON" if self.context.state.grid_overlay_visible else "OFF"

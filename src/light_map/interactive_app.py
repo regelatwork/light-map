@@ -148,9 +148,7 @@ class InteractiveApp:
             SceneId.CALIBRATE_EXTRINSICS: ExtrinsicsCalibrationScene,
             SceneId.CALIBRATE_PROJECTOR_3D: Projector3DCalibrationScene,
         }
-        self.scene_manager = SceneManager(
-            self.app_context, self.state, scene_classes=scene_classes
-        )
+        self.scene_manager = SceneManager(self.app_context, self.state, scene_classes=scene_classes)
 
         # Layer Management
         self.layer_manager = LayerStackManager(self.app_context, self.state)
@@ -175,10 +173,8 @@ class InteractiveApp:
             self._load_camera_calibration()
         )
 
-        camera_matrix, rotation_vector, translation_vector = (
-            self._normalize_calibration(
-                camera_matrix, rotation_vector, translation_vector
-            )
+        camera_matrix, rotation_vector, translation_vector = self._normalize_calibration(
+            camera_matrix, rotation_vector, translation_vector
         )
 
         self.config.camera_matrix = camera_matrix
@@ -214,27 +210,17 @@ class InteractiveApp:
         from light_map.core.app_context import MainContext
 
         storage = self.config.storage_manager
-        intrinsics_path = (
-            storage.get_data_path("camera_calibration.npz") if storage else None
-        )
-        extrinsics_path = (
-            storage.get_data_path("camera_extrinsics.npz") if storage else None
-        )
+        intrinsics_path = storage.get_data_path("camera_calibration.npz") if storage else None
+        extrinsics_path = storage.get_data_path("camera_extrinsics.npz") if storage else None
 
         aruco_detector = ArucoTokenDetector(
             calibration_file=intrinsics_path, extrinsics_file=extrinsics_path
         )
-        if (
-            aruco_detector.camera_matrix is None
-            and self.config.camera_matrix is not None
-        ):
+        if aruco_detector.camera_matrix is None and self.config.camera_matrix is not None:
             aruco_detector.set_calibration(
                 self.config.camera_matrix, self.config.distortion_coefficients
             )
-        if (
-            aruco_detector.rotation_vector is None
-            and self.config.rotation_vector is not None
-        ):
+        if aruco_detector.rotation_vector is None and self.config.rotation_vector is not None:
             aruco_detector.set_extrinsics(
                 self.config.rotation_vector, self.config.translation_vector
             )
@@ -573,9 +559,7 @@ class InteractiveApp:
             SceneId.CALIBRATE_EXTRINSICS: ExtrinsicsCalibrationScene,
             SceneId.CALIBRATE_PROJECTOR_3D: Projector3DCalibrationScene,
         }
-        self.scene_manager = SceneManager(
-            self.app_context, self.state, scene_classes=scene_classes
-        )
+        self.scene_manager = SceneManager(self.app_context, self.state, scene_classes=scene_classes)
         self.current_scene.on_enter()
         self.notifications.add_notification("Configuration Reloaded")
 
@@ -587,9 +571,7 @@ class InteractiveApp:
         entry = self.map_config.data.maps.get(filename)
         ppi = self.map_config.get_ppi()
         if entry and entry.grid_spacing_svg > 0 and ppi > 0:
-            self.map_system.base_scale = (
-                entry.physical_unit_inches * ppi
-            ) / entry.grid_spacing_svg
+            self.map_system.base_scale = (entry.physical_unit_inches * ppi) / entry.grid_spacing_svg
             logging.info(
                 f"Refreshed base scale for {os.path.basename(filename)}: {self.map_system.base_scale:.4f} (PPI={ppi:.1f})"
             )
@@ -631,9 +613,7 @@ class InteractiveApp:
 
     @property
     def effective_show_tokens(self) -> bool:
-        return self.app_context.show_tokens and getattr(
-            self.current_scene, "show_tokens", True
-        )
+        return self.app_context.show_tokens and getattr(self.current_scene, "show_tokens", True)
 
     def _load_camera_calibration(
         self,
@@ -649,14 +629,10 @@ class InteractiveApp:
         translation_vector = None
         storage = self.config.storage_manager
         intrinsics_path = (
-            storage.get_data_path("camera_calibration.npz")
-            if storage
-            else "camera_calibration.npz"
+            storage.get_data_path("camera_calibration.npz") if storage else "camera_calibration.npz"
         )
         extrinsics_path = (
-            storage.get_data_path("camera_extrinsics.npz")
-            if storage
-            else "camera_extrinsics.npz"
+            storage.get_data_path("camera_extrinsics.npz") if storage else "camera_extrinsics.npz"
         )
 
         # Check if we are running in a test environment to avoid sys.exit(1)
@@ -810,6 +786,7 @@ class InteractiveApp:
                 new_bonuses[target.id] = cover_result
             except Exception as e:
                 import logging
+
                 logging.getLogger(__name__).error(
                     "Error calculating tactical cover for target %d: %s",
                     target.id,

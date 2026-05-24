@@ -1,4 +1,3 @@
-
 import cv2
 import numpy as np
 
@@ -100,9 +99,7 @@ class SelectionProgressLayer(Layer):
 
             if has_indicator:
                 patches.append(
-                    ImagePatch(
-                        x=cx - w // 2, y=cy - h // 2, width=w, height=h, data=buffer
-                    )
+                    ImagePatch(x=cx - w // 2, y=cy - h // 2, width=w, height=h, data=buffer)
                 )
 
         return patches

@@ -104,9 +104,7 @@ class InputProcessor:
         # Since it's not, we use the standard homography.
         camera_points_reshaped = camera_points.reshape(-1, 1, 2).astype(np.float32)
         if self.config.distortion_model:
-            projector_points = self.config.distortion_model.apply_correction(
-                camera_points_reshaped
-            )
+            projector_points = self.config.distortion_model.apply_correction(camera_points_reshaped)
         else:
             projector_points = cv2.perspectiveTransform(
                 camera_points_reshaped, self.config.projector_matrix
@@ -132,13 +130,9 @@ class InputProcessor:
 
         for i, landmarks in enumerate(results.multi_hand_landmarks):
             handedness = results.multi_handedness[i]
-            gesture = detect_gesture(
-                landmarks.landmark, handedness.classification[0].label
-            )
+            gesture = detect_gesture(landmarks.landmark, handedness.classification[0].label)
 
-            tip_landmark = landmarks.landmark[
-                mp.solutions.hands.HandLandmark.INDEX_FINGER_TIP
-            ]
+            tip_landmark = landmarks.landmark[mp.solutions.hands.HandLandmark.INDEX_FINGER_TIP]
             camera_point = np.array(
                 [[tip_landmark.x * frame_shape[1], tip_landmark.y * frame_shape[0]]],
                 dtype=np.float32,
@@ -155,9 +149,7 @@ class InputProcessor:
             unit_x, unit_y = 0.0, 0.0
             if gesture == GestureType.POINTING:
                 # Calculate direction from PIP to TIP
-                pip_landmark = landmarks.landmark[
-                    mp.solutions.hands.HandLandmark.INDEX_FINGER_PIP
-                ]
+                pip_landmark = landmarks.landmark[mp.solutions.hands.HandLandmark.INDEX_FINGER_PIP]
 
                 # Direction in camera coordinates (normalized)
                 dx_camera = tip_landmark.x - pip_landmark.x
@@ -170,10 +162,8 @@ class InputProcessor:
                     tip_extended_camera = np.array(
                         [
                             [
-                                (tip_landmark.x + (dx_camera / magnitude) * 0.1)
-                                * frame_shape[1],
-                                (tip_landmark.y + (dy_camera / magnitude) * 0.1)
-                                * frame_shape[0],
+                                (tip_landmark.x + (dx_camera / magnitude) * 0.1) * frame_shape[1],
+                                (tip_landmark.y + (dy_camera / magnitude) * 0.1) * frame_shape[0],
                             ]
                         ],
                         dtype=np.float32,

@@ -11,9 +11,7 @@ SUMMON_TIME: float = 1.0  # Seconds to hold summon gesture to open menu
 SUMMON_STEP_1_TIME: float = 2.0  # Seconds for first gesture
 SUMMON_STEP_2_TIME: float = 2.0  # Seconds for second gesture
 ZOOM_DELAY: float = 0.5  # Seconds to hold two-hand pointing to enter zoom mode
-MODE_TRANSITION_DELAY: float = (
-    0.5  # Seconds to wait after mode switch before processing input
-)
+MODE_TRANSITION_DELAY: float = 0.5  # Seconds to wait after mode switch before processing input
 
 ITEM_WIDTH_PCT: float = 0.6  # Width of menu items relative to screen width
 MAX_VISIBLE_ITEMS: int = 8  # Maximum number of items to show at once

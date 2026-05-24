@@ -12,9 +12,7 @@ def main():
         "--tokens", type=int, nargs="+", default=[4, 11, 12], help="Token IDs to test"
     )
     parser.add_argument("--dwell", type=float, default=5.0, help="Dwell time per token")
-    parser.add_argument(
-        "--stabilize", type=float, default=5.0, help="Menu stabilization time"
-    )
+    parser.add_argument("--stabilize", type=float, default=5.0, help="Menu stabilization time")
     parser.add_argument("--url", default="http://127.0.0.1:8000", help="Base API URL")
     args = parser.parse_args()
 
@@ -82,11 +80,7 @@ def main():
 
         # 5. Fetch Final Logs
         print("\n--- TACTICAL LOGS ---")
-        logs = (
-            httpx.get(f"{args.url}/state/logs", params={"lines": 50})
-            .json()
-            .get("logs", [])
-        )
+        logs = httpx.get(f"{args.url}/state/logs", params={"lines": 50}).json().get("logs", [])
         for log in logs:
             if "[ExclusiveVision]" in log:
                 print(log)

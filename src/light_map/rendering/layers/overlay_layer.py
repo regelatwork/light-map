@@ -11,9 +11,7 @@ class TokenLayer(Layer):
     Renders ghost tokens on the map.
     """
 
-    def __init__(
-        self, state: WorldState, context: AppContext, time_provider=time.monotonic
-    ):
+    def __init__(self, state: WorldState, context: AppContext, time_provider=time.monotonic):
         super().__init__(state=state, is_static=False, layer_mode=LayerMode.NORMAL)
         self.context = context
         self.time_provider = time_provider
@@ -26,9 +24,7 @@ class TokenLayer(Layer):
             return 0
 
         now = self.time_provider()
-        show_tokens = getattr(
-            self.state, "effective_show_tokens", self.context.show_tokens
-        )
+        show_tokens = getattr(self.state, "effective_show_tokens", self.context.show_tokens)
 
         # Pulse logic: If any token is occluded, we need to pulse every frame for smoothness.
         # Otherwise, we pulse every 500ms for static ghost tokens to show they are "live".
@@ -58,9 +54,7 @@ class TokenLayer(Layer):
         if self.state is None:
             return []
 
-        show_tokens = getattr(
-            self.state, "effective_show_tokens", self.context.show_tokens
-        )
+        show_tokens = getattr(self.state, "effective_show_tokens", self.context.show_tokens)
         self._last_show_tokens = show_tokens
 
         if not show_tokens:
@@ -107,9 +101,7 @@ class DebugLayer(Layer):
             return 0
 
         # Catch debug toggle in version
-        version = (self.state.hands_version << 1) | (
-            1 if self.context.debug_mode else 0
-        )
+        version = (self.state.hands_version << 1) | (1 if self.context.debug_mode else 0)
         # Also depend on FPS updates
         version = max(version, self.state.fps_version)
         return version

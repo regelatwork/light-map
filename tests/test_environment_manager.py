@@ -44,9 +44,7 @@ def test_sync_vision_updates_masks(mock_context, state):
 
     # Mock visibility engine response
     mask = np.ones((100, 100), dtype=np.uint8) * 255
-    manager.visibility_engine.get_aggregate_vision_mask = MagicMock(
-        return_value=(mask, {1})
-    )
+    manager.visibility_engine.get_aggregate_vision_mask = MagicMock(return_value=(mask, {1}))
 
     manager.sync_vision(state)
 

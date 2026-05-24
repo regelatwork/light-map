@@ -180,17 +180,11 @@ class ScanningScene(Scene):
         logging.info("Detected %d tokens.", len(tokens))
 
         if algorithm == TokenDetectionAlgorithm.STRUCTURED_LIGHT:
-            self.context.notifications.add_notification(
-                f"SL Scan: Found {len(tokens)} tokens."
-            )
+            self.context.notifications.add_notification(f"SL Scan: Found {len(tokens)} tokens.")
         elif algorithm == TokenDetectionAlgorithm.ARUCO:
-            self.context.notifications.add_notification(
-                f"ArUco Scan: Found {len(tokens)} tokens."
-            )
+            self.context.notifications.add_notification(f"ArUco Scan: Found {len(tokens)} tokens.")
         else:
-            self.context.notifications.add_notification(
-                f"Flash Scan: Found {len(tokens)} tokens."
-            )
+            self.context.notifications.add_notification(f"Flash Scan: Found {len(tokens)} tokens.")
 
         # Save Session
         if map_file:

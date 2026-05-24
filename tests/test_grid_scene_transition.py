@@ -21,9 +21,7 @@ def app(tmp_path):
         storage_manager=storage,
     )
     with (
-        patch(
-            "light_map.core.scene_manager.SceneManager._initialize_scenes"
-        ) as mock_init,
+        patch("light_map.core.scene_manager.SceneManager._initialize_scenes") as mock_init,
         patch(
             "light_map.interactive_app.InteractiveApp._load_camera_calibration",
             return_value=(None, None, None, None),

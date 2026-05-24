@@ -20,11 +20,8 @@ from light_map.state.world_state import WorldState
 from light_map.visibility.visibility_engine import VisibilityEngine, _numba_trace_path
 
 
-STATUS_MAP = {
-    0: "CLEAR",
-    1: "BLOCKED",
-    2: "OBSCURED_LOW"
-}
+STATUS_MAP = {0: "CLEAR", 1: "BLOCKED", 2: "OBSCURED_LOW"}
+
 
 def run_test_case(case_path: str):
     case_name = os.path.splitext(os.path.basename(case_path))[0]
@@ -36,7 +33,7 @@ def run_test_case(case_path: str):
         return False
 
     with open(yaml_path) as f:
-        config = yaml.safe_all_load(f) if hasattr(yaml, 'safe_all_load') else yaml.safe_load(f)
+        config = yaml.safe_all_load(f) if hasattr(yaml, "safe_all_load") else yaml.safe_load(f)
         if isinstance(config, list):
             config = config[0]  # Handle cases where yaml.safe_load returns a list
 
@@ -72,6 +69,7 @@ def run_test_case(case_path: str):
         pts = (np.array(b.points) * engine.svg_to_mask_scale).astype(np.int32)
         val = 0
         from light_map.visibility.visibility_types import VisibilityType
+
         if b.type == VisibilityType.WALL:
             val = 255
         elif b.type == VisibilityType.DOOR:
@@ -102,7 +100,7 @@ def run_test_case(case_path: str):
     for i, t_data in enumerate(config.get("tokens", [])):
         tx_val = (t_data.get("grid_x", 0) + 0.5) * spacing_svg
         ty_val = (t_data.get("grid_y", 0) + 0.5) * spacing_svg
-        t_obj = Token(id=100+i, world_x=tx_val, world_y=ty_val, size=t_data.get("size", 1))
+        t_obj = Token(id=100 + i, world_x=tx_val, world_y=ty_val, size=t_data.get("size", 1))
         tokens.append(t_obj)
         engine.stamp_token_footprint(engine.blocker_mask, t_obj)
 
@@ -118,35 +116,51 @@ def run_test_case(case_path: str):
         "grid_params": {
             "spacing_svg": float(spacing_svg),
             "svg_to_mask_scale": float(engine.svg_to_mask_scale),
-            "mask_resolution": [mask_w, mask_h]
+            "mask_resolution": [mask_w, mask_h],
         },
         "cover_result": {
             "ac_bonus": res.ac_bonus,
             "reflex_bonus": res.reflex_bonus,
             "total_ratio": float(res.total_ratio),
             "wall_ratio": float(res.wall_ratio),
-            "best_apex_svg": [float(res.best_apex[0] / engine.svg_to_mask_scale), float(res.best_apex[1] / engine.svg_to_mask_scale)],
+            "best_apex_svg": [
+                float(res.best_apex[0] / engine.svg_to_mask_scale),
+                float(res.best_apex[1] / engine.svg_to_mask_scale),
+            ],
             "wedges": [
                 {
                     "status": STATUS_MAP.get(seg.status, str(seg.status)),
                     "start_idx": seg.start_idx,
-                    "end_idx": seg.end_idx
-                } for seg in res.segments
+                    "end_idx": seg.end_idx,
+                }
+                for seg in res.segments
             ],
             "boundary_samples": [
                 {
                     "mask_xy": p.tolist(),
-                    "angle_rad": float(np.arctan2(p[1] - res.best_apex[1], p[0] - res.best_apex[0])),
+                    "angle_rad": float(
+                        np.arctan2(p[1] - res.best_apex[1], p[0] - res.best_apex[0])
+                    ),
                     # Recalculate status for the report (same logic as engine)
-                    "status": STATUS_MAP.get(_numba_trace_path(int(p[0]), int(p[1]), int(res.best_apex[0]), int(res.best_apex[1]), engine.blocker_mask), "UNKNOWN")
-                } for p in res.npc_pixels
-            ]
-        }
+                    "status": STATUS_MAP.get(
+                        _numba_trace_path(
+                            int(p[0]),
+                            int(p[1]),
+                            int(res.best_apex[0]),
+                            int(res.best_apex[1]),
+                            engine.blocker_mask,
+                        ),
+                        "UNKNOWN",
+                    ),
+                }
+                for p in res.npc_pixels
+            ],
+        },
     }
 
     res_dir = "tests/tactical_cases/results"
     json_path = os.path.join(res_dir, f"{case_name}.json")
-    with open(json_path, 'w') as f:
+    with open(json_path, "w") as f:
         json.dump(output_json, f, indent=2)
 
     # 6. Generate PNG (128px per cell)
@@ -162,13 +176,11 @@ def run_test_case(case_path: str):
     # We'll use a temporary file for the base map
     base_map_path = os.path.join(res_dir, f"{case_name}_base.png")
     try:
-        subprocess.run([
-            "inkscape",
-            "-o", base_map_path,
-            "-w", str(png_w),
-            "-h", str(png_h),
-            svg_path
-        ], check=True, capture_output=True)
+        subprocess.run(
+            ["inkscape", "-o", base_map_path, "-w", str(png_w), "-h", str(png_h), svg_path],
+            check=True,
+            capture_output=True,
+        )
         base_img = cv2.imread(base_map_path)
     except Exception as e:
         print(f"Warning: Inkscape rendering failed ({e}), using black background.")
@@ -220,7 +232,9 @@ def run_test_case(case_path: str):
             ov_slice = overlay[:oh, :ow]
             al_slice = alpha[:oh, :ow]
 
-            final_img[y1:y2, x1:x2] = (ov_slice * al_slice + final_img[y1:y2, x1:x2] * (1.0 - al_slice)).astype(np.uint8)
+            final_img[y1:y2, x1:x2] = (
+                ov_slice * al_slice + final_img[y1:y2, x1:x2] * (1.0 - al_slice)
+            ).astype(np.uint8)
 
     # Draw tokens as actual footprints and border points
     for t in [attacker, target] + tokens:
@@ -249,7 +263,7 @@ def run_test_case(case_path: str):
                 color = (0, 0, 40)
             else:
                 color = (40, 40, 0)
-            cv2.rectangle(final_img, (px, py), (px+int(scale), py+int(scale)), color, -1)
+            cv2.rectangle(final_img, (px, py), (px + int(scale), py + int(scale)), color, -1)
 
         # Draw border points
         for p in border_points:
@@ -264,7 +278,15 @@ def run_test_case(case_path: str):
 
         # Draw label
         sx, sy = map_system.world_to_screen(t.world_x, t.world_y)
-        cv2.putText(final_img, f"{t.id}", (int(sx)-10, int(sy)+10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
+        cv2.putText(
+            final_img,
+            f"{t.id}",
+            (int(sx) - 10, int(sy) + 10),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.5,
+            (255, 255, 255),
+            1,
+        )
 
     # Draw raycasting lines from Best Apex to target boundary
     apex_scale = map_scale / engine.svg_to_mask_scale
@@ -273,13 +295,15 @@ def run_test_case(case_path: str):
     for p in res.npc_pixels:
         tx_px, ty_px = int(p[0] * apex_scale), int(p[1] * apex_scale)
         # Recalculate status for color
-        status = _numba_trace_path(int(p[0]), int(p[1]), int(res.best_apex[0]), int(res.best_apex[1]), engine.blocker_mask)
-        if status == 0: # CLEAR
-            color = (0, 255, 0, 100) # Green
-        elif status == 2: # OBSCURED
-            color = (0, 255, 255, 100) # Yellow
-        else: # BLOCKED
-            color = (0, 0, 255, 100) # Red
+        status = _numba_trace_path(
+            int(p[0]), int(p[1]), int(res.best_apex[0]), int(res.best_apex[1]), engine.blocker_mask
+        )
+        if status == 0:  # CLEAR
+            color = (0, 255, 0, 100)  # Green
+        elif status == 2:  # OBSCURED
+            color = (0, 255, 255, 100)  # Yellow
+        else:  # BLOCKED
+            color = (0, 0, 255, 100)  # Red
 
         cv2.line(final_img, (ax_px, ay_px), (tx_px, ty_px), color[:3], 1)
 
@@ -302,6 +326,7 @@ def run_test_case(case_path: str):
         print(f"FAIL: {case_name} (JSON mismatch)")
         # Simple diff print could be added here
         return False
+
 
 def main():
     cases_dir = "tests/tactical_cases"
@@ -327,6 +352,7 @@ def main():
         sys.exit(1)
     else:
         print("\nAll tactical tests passed.")
+
 
 if __name__ == "__main__":
     main()

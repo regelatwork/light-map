@@ -21,9 +21,7 @@ def test_compute_projector_homography_success(monkeypatch):
 
     # Mock findChessboardCorners
     # Corners are [u, v]
-    mock_corners = np.array(
-        [[[20, 20]], [[30, 20]], [[20, 30]], [[30, 30]]], dtype=np.float32
-    )
+    mock_corners = np.array([[[20, 20]], [[30, 20]], [[20, 30]], [[30, 30]]], dtype=np.float32)
 
     def mock_find_corners(gray, size, corners):
         assert size == (2, 2)
@@ -36,9 +34,7 @@ def test_compute_projector_homography_success(monkeypatch):
 
     def mock_find_homography(src, dst):
         # Verify mapping logic
-        expected_dst = np.array(
-            [[200, 200], [300, 200], [200, 300], [300, 300]], dtype=np.float32
-        )
+        expected_dst = np.array([[200, 200], [300, 200], [200, 300], [300, 300]], dtype=np.float32)
         assert np.allclose(dst, expected_dst)
         return mock_H, None
 

@@ -33,9 +33,7 @@ def run_calibration_sequence(
         )
 
         win.update_image(pattern_img)
-        logging.info(
-            "Displaying pattern. Waiting 2 seconds for projector/camera to settle..."
-        )
+        logging.info("Displaying pattern. Waiting 2 seconds for projector/camera to settle...")
 
         for _ in range(20):
             win.update_image(pattern_img)
@@ -62,9 +60,7 @@ def run_calibration_sequence(
         aruco_corners, aruco_ids, _ = detector.detectMarkers(gray)
 
         if aruco_ids is not None:
-            logging.info(
-                f"Detected ArUco markers: {aruco_ids.flatten()}. Using for orientation."
-            )
+            logging.info(f"Detected ArUco markers: {aruco_ids.flatten()}. Using for orientation.")
 
         return compute_projector_homography(
             frame, params, aruco_corners=aruco_corners, aruco_ids=aruco_ids
@@ -212,9 +208,7 @@ def calibrate_extrinsics(
             else:
                 # Fallback to homography projection for each corner
                 pts_cam = corners_cam.reshape(-1, 1, 2).astype(np.float32)
-                pts_proj = cv2.perspectiveTransform(pts_cam, projector_matrix).reshape(
-                    -1, 2
-                )
+                pts_proj = cv2.perspectiveTransform(pts_cam, projector_matrix).reshape(-1, 2)
 
                 for j in range(4):
                     px, py = pts_proj[j]
@@ -280,9 +274,7 @@ def calibrate_extrinsics(
             err = np.mean(np.linalg.norm(image_points - proj.reshape(-1, 2), axis=1))
 
             candidates.append({"rv": rv, "tv": tv, "cc": cc, "err": err, "index": i})
-            logging.info(
-                f"  Sol {i}: cc_z={cc[2]:.1f}, tv_z={tv[2][0]:.1f}, err={err:.2f}"
-            )
+            logging.info(f"  Sol {i}: cc_z={cc[2]:.1f}, tv_z={tv[2][0]:.1f}, err={err:.2f}")
 
         # Selection Strategy:
         # 1. MUST have tz > 0 (Points in front of camera)
@@ -296,9 +288,7 @@ def calibrate_extrinsics(
         for c in candidates:
             if c["cc"][2] > 0 and c["tv"][2] > 0:
                 best_ret = (c["rv"], c["tv"])
-                logging.info(
-                    f"Extrinsics: Selected Above-Table solution (err={c['err']:.2f})"
-                )
+                logging.info(f"Extrinsics: Selected Above-Table solution (err={c['err']:.2f})")
                 break
 
         # Pass 2: Fallback (Below-Table AND in front)
@@ -306,9 +296,7 @@ def calibrate_extrinsics(
             for c in candidates:
                 if c["tv"][2] > 0:
                     best_ret = (c["rv"], c["tv"])
-                    logging.info(
-                        f"Extrinsics: Selected Below-Table solution (err={c['err']:.2f})"
-                    )
+                    logging.info(f"Extrinsics: Selected Below-Table solution (err={c['err']:.2f})")
                     break
 
     if best_ret:
@@ -351,14 +339,10 @@ def calibrate_projector_3d(
     # We explicitly reshape to (-1, 1, 3) and (-1, 1, 2) as this is the most robust format
     # that handles both list-of-lists and flattening issues in cv2.
     object_points = [
-        np.ascontiguousarray([c[0] for c in correspondences], dtype=np.float32).reshape(
-            -1, 1, 3
-        )
+        np.ascontiguousarray([c[0] for c in correspondences], dtype=np.float32).reshape(-1, 1, 3)
     ]
     image_points = [
-        np.ascontiguousarray([c[1] for c in correspondences], dtype=np.float32).reshape(
-            -1, 1, 2
-        )
+        np.ascontiguousarray([c[1] for c in correspondences], dtype=np.float32).reshape(-1, 1, 2)
     ]
 
     # Final count validation before OpenCV call
@@ -379,9 +363,7 @@ def calibrate_projector_3d(
             dtype=np.float32,
         )
     else:
-        initial_intrinsic_matrix = np.ascontiguousarray(
-            initial_intrinsic_matrix, dtype=np.float32
-        )
+        initial_intrinsic_matrix = np.ascontiguousarray(initial_intrinsic_matrix, dtype=np.float32)
 
     if initial_distortion_coefficients is None:
         initial_distortion_coefficients = np.zeros(5, dtype=np.float32)

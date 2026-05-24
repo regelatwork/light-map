@@ -67,9 +67,7 @@ class MainLoopController:
                 if shm_view is not None:
                     ts_shm_pushed = producer.get_shm_pushed_timestamp()
                     if ts_shm_pushed:
-                        self.instrument.record_interval(
-                            "capture_to_shm", ts_shm_pushed - ts
-                        )
+                        self.instrument.record_interval("capture_to_shm", ts_shm_pushed - ts)
                         self.instrument.record_interval(
                             "shm_transit_to_main",
                             time.perf_counter_ns() - ts_shm_pushed,
@@ -150,9 +148,7 @@ class MainLoopController:
                     md = res.metadata
                     ts = res.timestamp
                     if "ts_shm_pushed" in md:
-                        self.instrument.record_interval(
-                            "capture_to_shm", md["ts_shm_pushed"] - ts
-                        )
+                        self.instrument.record_interval("capture_to_shm", md["ts_shm_pushed"] - ts)
                     if "ts_shm_pulled" in md and "ts_shm_pushed" in md:
                         self.instrument.record_interval(
                             "shm_transit_to_worker",

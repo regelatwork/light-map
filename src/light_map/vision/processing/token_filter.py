@@ -49,9 +49,7 @@ class TokenFilter:
             # Masking check: filter out tokens outside map boundaries if provided
             if map_bounds is not None:
                 min_x, min_y, max_x, max_y = map_bounds
-                if not (
-                    min_x <= token.world_x <= max_x and min_y <= token.world_y <= max_y
-                ):
+                if not (min_x <= token.world_x <= max_x and min_y <= token.world_y <= max_y):
                     # If this token was previously tracked, purge it immediately
                     # as it is now in a "forbidden" zone.
                     if token.id in self.last_seen_tokens:
@@ -66,12 +64,8 @@ class TokenFilter:
             if token.id in self.last_seen_tokens:
                 last_token = self.last_seen_tokens[token.id]
                 # Apply Alpha-Beta (simple Alpha here for now)
-                token.world_x = (
-                    last_token.world_x * (1.0 - self.alpha) + token.world_x * self.alpha
-                )
-                token.world_y = (
-                    last_token.world_y * (1.0 - self.alpha) + token.world_y * self.alpha
-                )
+                token.world_x = last_token.world_x * (1.0 - self.alpha) + token.world_x * self.alpha
+                token.world_y = last_token.world_y * (1.0 - self.alpha) + token.world_y * self.alpha
 
             self.last_seen_tokens[token.id] = token
             self.last_seen_times[token.id] = current_time

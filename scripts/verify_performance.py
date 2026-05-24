@@ -34,9 +34,7 @@ def verify():
     ]
 
     print(f"Starting application from {project_root}: {' '.join(cmd)}")
-    process = subprocess.Popen(
-        cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
-    )
+    process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
 
     base_url = "http://127.0.0.1:8000"
 

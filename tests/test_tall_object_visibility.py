@@ -39,9 +39,7 @@ def test_tall_object_first_exit_logic():
 
     target_mx = int(12.0 * engine.svg_to_mask_scale)
     target_my = int(12.0 * engine.svg_to_mask_scale)
-    assert mask_visible[target_my, target_mx] == 255, (
-        "Plateau top should be visible from ground"
-    )
+    assert mask_visible[target_my, target_mx] == 255, "Plateau top should be visible from ground"
 
     # Scenario 2: Ground -> Behind (Blocked)
     # Viewer at (5, 5), Target at (20, 20)
@@ -121,7 +119,5 @@ def test_tall_object_multiple_exit_blocking():
     assert mask[my1, mx1] == 255, (
         "Gap between tall objects should be visible from first tall object"
     )
-    assert mask[my2, mx2] == 255, (
-        "Second tall object top should be visible from first tall object"
-    )
+    assert mask[my2, mx2] == 255, "Second tall object top should be visible from first tall object"
     assert mask[my3, mx3] == 0, "Area beyond second tall object should be blocked"

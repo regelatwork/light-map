@@ -57,9 +57,7 @@ class TestSVGLoaderPerformance(unittest.TestCase):
         img1 = self.loader.render(100, 100, scale_factor=1.00001)
         img2 = self.loader.render(100, 100, scale_factor=1.00002)
 
-        self.assertIs(
-            img1, img2, "Quantization should map slight variations to same cache entry"
-        )
+        self.assertIs(img1, img2, "Quantization should map slight variations to same cache entry")
 
         # Large variation should differ
         img3 = self.loader.render(100, 100, scale_factor=1.1)

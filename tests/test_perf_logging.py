@@ -106,8 +106,6 @@ def test_no_perf_logging_when_debug_inactive():
         controller.tick()
         # Filter out other logs if any
         perf_logs = [
-            arg[0]
-            for arg, _ in mock_log.call_args_list
-            if "Performance Report" in str(arg)
+            arg[0] for arg, _ in mock_log.call_args_list if "Performance Report" in str(arg)
         ]
         assert len(perf_logs) == 0

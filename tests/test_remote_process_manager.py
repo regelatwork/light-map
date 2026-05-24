@@ -32,9 +32,7 @@ def test_process_manager_remote_exclusive_tokens():
 
 def test_process_manager_remote_ignore():
     """Verify that remote driver is NOT spawned if both modes are ignore."""
-    manager = VisionProcessManager(
-        remote_mode_hands="ignore", remote_mode_tokens="ignore"
-    )
+    manager = VisionProcessManager(remote_mode_hands="ignore", remote_mode_tokens="ignore")
     manager.start()
 
     process_names = [p.name for p in manager.processes]

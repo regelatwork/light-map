@@ -41,9 +41,7 @@ class AppContext:
     show_tokens: bool = True
     debug_mode: bool = False
     last_camera_frame: np.ndarray | None = None
-    raw_aruco: dict[str, Any] = field(
-        default_factory=lambda: {"corners": [], "ids": []}
-    )
+    raw_aruco: dict[str, Any] = field(default_factory=lambda: {"corners": [], "ids": []})
     raw_tokens: list[Any] = field(default_factory=list)
     state: WorldState | None = None
     layer_manager: Any | None = None  # Avoid circular import

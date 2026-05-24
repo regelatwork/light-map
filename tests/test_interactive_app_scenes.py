@@ -24,9 +24,7 @@ def app(tmp_path):
     )
     # Patch all scenes to avoid complex initialization
     with (
-        patch(
-            "light_map.core.scene_manager.SceneManager._initialize_scenes"
-        ) as mock_init,
+        patch("light_map.core.scene_manager.SceneManager._initialize_scenes") as mock_init,
         patch(
             "light_map.interactive_app.InteractiveApp._load_camera_calibration",
             return_value=(
@@ -119,9 +117,7 @@ def test_process_state_layer_filtering(app):
     app.current_scene = current_scene
 
     # Mock renderer to verify what layers it receives
-    app.renderer.render = MagicMock(
-        return_value=np.zeros((100, 100, 3), dtype=np.uint8)
-    )
+    app.renderer.render = MagicMock(return_value=np.zeros((100, 100, 3), dtype=np.uint8))
 
     # Mock other methods to avoid side effects
     app.input_processor.convert_mediapipe_to_inputs = MagicMock(return_value=[])

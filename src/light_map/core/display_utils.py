@@ -76,9 +76,7 @@ class ProjectorWindow:
             # It sometimes returns -1 if the property is not yet available or during transients.
             prop = cv2.getWindowProperty(self.name, cv2.WND_PROP_VISIBLE)
             if prop == 0:
-                logging.info(
-                    f"Window closure detected via getWindowProperty (prop={prop})"
-                )
+                logging.info(f"Window closure detected via getWindowProperty (prop={prop})")
                 self.closed = True
         except Exception as e:
             # Only treat exceptions as closure if they persist or indicate invalid window handle
@@ -162,9 +160,7 @@ def draw_text_with_background(
 
     # Draw text
     full_text_color = (
-        color
-        if len(color) == channels
-        else (tuple(color) + (255,) if channels == 4 else color[:3])
+        color if len(color) == channels else (tuple(color) + (255,) if channels == 4 else color[:3])
     )
     cv2.putText(img, text, (x, y), font, scale, full_text_color, thickness)
 
@@ -251,9 +247,7 @@ def draw_dashed_circle(
         )
 
 
-def parse_color(
-    color_str: str | None, default=(255, 255, 0)
-) -> tuple[int, int, int]:
+def parse_color(color_str: str | None, default=(255, 255, 0)) -> tuple[int, int, int]:
     """
     Parses a color string (e.g. '#RRGGBB' or 'red') into a BGR tuple.
     Returns default if parsing fails or input is None.

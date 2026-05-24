@@ -24,9 +24,7 @@ class MockResults:
         labels=None,
     ):
         if hands_landmarks:
-            self.multi_hand_landmarks = [
-                MagicMock(landmark=lm) for lm in hands_landmarks
-            ]
+            self.multi_hand_landmarks = [MagicMock(landmark=lm) for lm in hands_landmarks]
             self.multi_handedness = []
             for label in labels or ["Right"] * len(hands_landmarks):
                 classification = MagicMock()
@@ -107,17 +105,13 @@ def test_draw_ghost_tokens_unknown(app):
     # Mock resolve_token_profile
     app.app_context.map_config_manager.resolve_token_profile.side_effect = [
         ResolvedToken(name="Fighter", type="PC", size=1, height_mm=10.0, is_known=True),
-        ResolvedToken(
-            name="Unknown Token #2", type="NPC", size=1, height_mm=10.0, is_known=False
-        ),
+        ResolvedToken(name="Unknown Token #2", type="NPC", size=1, height_mm=10.0, is_known=False),
     ]
 
     with (
         patch("cv2.circle") as mock_circle,
         patch("cv2.putText") as mock_putText,
-        patch(
-            "light_map.rendering.overlay_renderer.draw_dashed_circle"
-        ) as mock_dashed_circle,
+        patch("light_map.rendering.overlay_renderer.draw_dashed_circle") as mock_dashed_circle,
     ):
         # Trigger a render via OverlayLayer
         ws = WorldState()
@@ -144,8 +138,8 @@ def test_draw_ghost_tokens_duplicate(app):
     app.map_system.world_to_screen = MagicMock(side_effect=[(100, 100), (300, 300)])
 
     # Mock resolve_token_profile
-    app.app_context.map_config_manager.resolve_token_profile.return_value = (
-        ResolvedToken(name="Goblin", type="NPC", size=1, height_mm=10.0, is_known=True)
+    app.app_context.map_config_manager.resolve_token_profile.return_value = ResolvedToken(
+        name="Goblin", type="NPC", size=1, height_mm=10.0, is_known=True
     )
 
     ws = WorldState()
@@ -154,9 +148,7 @@ def test_draw_ghost_tokens_duplicate(app):
     with (
         patch("cv2.circle") as mock_circle,
         patch("cv2.putText"),
-        patch(
-            "light_map.rendering.overlay_renderer.draw_dashed_circle"
-        ) as mock_dashed_circle,
+        patch("light_map.rendering.overlay_renderer.draw_dashed_circle") as mock_dashed_circle,
     ):
         app.token_layer.state = ws
         app.token_layer.render()[0]
@@ -177,10 +169,8 @@ def test_token_name_position(app):
     app.app_context.map_config_manager.get_ppi.return_value = 100.0
 
     # Resolved token info (size 1 inch = 100 pixels, so radius = 50)
-    app.app_context.map_config_manager.resolve_token_profile.return_value = (
-        ResolvedToken(
-            name="Test Hero", type="PC", size=1, height_mm=25.0, is_known=True
-        )
+    app.app_context.map_config_manager.resolve_token_profile.return_value = ResolvedToken(
+        name="Test Hero", type="PC", size=1, height_mm=25.0, is_known=True
     )
 
     ws = WorldState()

@@ -86,9 +86,7 @@ def test_intrinsics_calibration_capture_and_process(
             )
 
 
-def test_intrinsics_calibration_process_failure(
-    intrinsics_calib_scene, mock_app_context
-):
+def test_intrinsics_calibration_process_failure(intrinsics_calib_scene, mock_app_context):
     """Verify error notification on calibration failure."""
     intrinsics_calib_scene.on_enter()
     mock_app_context.notifications.reset_mock()  # Reset mock calls after on_enter

@@ -35,9 +35,7 @@ class TemporalEventManager:
             new_time = self.state.system_time + dt
             self.state._system_time_atom.update(new_time)
 
-    def schedule(
-        self, delay: float, callback: Callable[[], Any], key: Hashable | None = None
-    ):
+    def schedule(self, delay: float, callback: Callable[[], Any], key: Hashable | None = None):
         """
         Schedules a callback to be executed after `delay` seconds.
         If a key is provided and already exists, the old event is effectively replaced.
@@ -128,8 +126,6 @@ class TemporalEventManager:
     def clear(self):
         """Clears all pending events."""
         if self._events or self._keys:
-            logging.debug(
-                f"TemporalEventManager: Clearing all events (count={len(self._events)})"
-            )
+            logging.debug(f"TemporalEventManager: Clearing all events (count={len(self._events)})")
         self._events.clear()
         self._keys.clear()

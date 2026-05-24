@@ -11,9 +11,7 @@ from light_map.rendering.projection import (
 
 def test_projection_service_parallax_logic():
     # Setup: Camera at (0, 0, 1000) looking straight down (Z forward is World -Z)
-    camera_matrix = np.array(
-        [[1000, 0, 500], [0, 1000, 500], [0, 0, 1]], dtype=np.float32
-    )
+    camera_matrix = np.array([[1000, 0, 500], [0, 1000, 500], [0, 0, 1]], dtype=np.float32)
     dist_coeffs = np.zeros(5, dtype=np.float32)
     # Camera R: looking down. World Z+ is up. Camera Z+ is forward (down).
     # So Camera X=World X, Camera Y=World -Y, Camera Z=World -Z
@@ -96,9 +94,7 @@ def test_projection_service_parallax_logic():
 
 def test_projection_service_homography_parallax():
     # Same setup but using Homography
-    camera_matrix = np.array(
-        [[1000, 0, 500], [0, 1000, 500], [0, 0, 1]], dtype=np.float32
-    )
+    camera_matrix = np.array([[1000, 0, 500], [0, 1000, 500], [0, 0, 1]], dtype=np.float32)
     dist_coeffs = np.zeros(5, dtype=np.float32)
     rotation_matrix = np.array([[1, 0, 0], [0, -1, 0], [0, 0, -1]], dtype=np.float32)
     rvec, _ = cv2.Rodrigues(rotation_matrix)
@@ -128,9 +124,7 @@ def test_projection_service_homography_parallax():
     service = ProjectionService(camera_model, projector_model)
 
     # --- TEST: Object at height 100mm, we want to hit it ---
-    cam_pixels = np.array(
-        [[500, 500]], dtype=np.float32
-    )  # Camera sees top of token at (0,0,100)
+    cam_pixels = np.array([[500, 500]], dtype=np.float32)  # Camera sees top of token at (0,0,100)
     # Correct projector pixel to hit (0,0,100) is 277.77 (from previous test)
     proj_pixels = service.project_camera_to_projector(
         cam_pixels, height_mm=100, target_z=100, prefer_homography=True

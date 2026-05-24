@@ -26,22 +26,15 @@ class EnvironmentManager:
         state = state or self.state
         map_path = state.map_render_state.filepath
 
-        if (
-            self.visibility_engine
-            and self.fow_manager
-            and map_path
-            and state is not None
-        ):
+        if self.visibility_engine and self.fow_manager and map_path and state is not None:
             # Calculate latest vision mask on-demand
-            combined_pc_mask, disc_ids = (
-                self.visibility_engine.get_aggregate_vision_mask(
-                    state.tokens,
-                    self.context.map_config_manager,
-                    self.fow_manager.width,
-                    self.fow_manager.height,
-                    vision_range_grid=25.0,
-                    grid_type=state.grid_type,
-                )
+            combined_pc_mask, disc_ids = self.visibility_engine.get_aggregate_vision_mask(
+                state.tokens,
+                self.context.map_config_manager,
+                self.fow_manager.width,
+                self.fow_manager.height,
+                vision_range_grid=25.0,
+                grid_type=state.grid_type,
             )
 
             if combined_pc_mask is not None:
@@ -52,9 +45,7 @@ class EnvironmentManager:
                 self.fow_manager.set_visible_mask(combined_pc_mask)
 
                 # 3. Save both to stable storage
-                self.context.map_config_manager.save_fow_masks(
-                    map_path, self.fow_manager
-                )
+                self.context.map_config_manager.save_fow_masks(map_path, self.fow_manager)
 
                 # 4. Update VisibilityLayer (the highlight)
                 state.visibility_mask = combined_pc_mask.copy()
@@ -116,9 +107,7 @@ class EnvironmentManager:
             self.fow_manager = FogOfWarManager(mask_w, mask_h)
             self.fow_manager.is_disabled = entry.fow_disabled
             if current_map_path:
-                self.context.map_config_manager.load_fow_masks(
-                    current_map_path, self.fow_manager
-                )
+                self.context.map_config_manager.load_fow_masks(current_map_path, self.fow_manager)
 
         # Sync blockers to state
         self.sync_blockers_to_state()
@@ -168,9 +157,7 @@ class EnvironmentManager:
         state = state or self.state
         if self.fow_manager and current_map_path:
             self.fow_manager.reset()
-            self.context.map_config_manager.save_fow_masks(
-                current_map_path, self.fow_manager
-            )
+            self.context.map_config_manager.save_fow_masks(current_map_path, self.fow_manager)
             state.fow_mask = self.fow_manager.explored_mask.copy()
             self.context.notifications.add_notification("Fog of War Reset")
 

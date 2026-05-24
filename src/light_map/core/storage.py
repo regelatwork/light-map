@@ -26,9 +26,7 @@ class StorageManager:
             # Default to XDG structures
             home = Path.home()
             xdg_config = os.environ.get("XDG_CONFIG_HOME")
-            self.config_dir = (
-                Path(xdg_config) if xdg_config else home / ".config"
-            ) / "light_map"
+            self.config_dir = (Path(xdg_config) if xdg_config else home / ".config") / "light_map"
 
             xdg_data = os.environ.get("XDG_DATA_HOME")
             self.data_dir = (

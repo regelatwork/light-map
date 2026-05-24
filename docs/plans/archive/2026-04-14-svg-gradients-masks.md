@@ -4,18 +4,20 @@
 
 **Goal:** Add support for radial gradients and masking in the SVG renderer to fix rendering issues in `maps/fortunes-hart-space.svg`.
 
-**Architecture:** 
+**Architecture:**
+
 - Enhance SVG parsing to capture nested `mask` and `gradient` structures.
 - Implement a radial gradient generator using NumPy/OpenCV.
 - Implement a masking pass in the SVG traversal that renders mask contents and applies them to the target element's alpha channel.
 
 **Tech Stack:** Python, svgelements, OpenCV, NumPy.
 
----
+______________________________________________________________________
 
 ### Task 1: Update SVG library to capture nested structures
 
 **Files:**
+
 - Modify: `/home/rchandia/light_map/.venv/lib/python3.12/site-packages/svgelements/svgelements.py` (ALREADY DONE)
 
 **Note:** This task is already completed by the previous `replace` call. It ensures `mask`, `radialGradient`, and `linearGradient` are parsed as `Group` objects.
@@ -23,6 +25,7 @@
 ### Task 2: Update Renderer Signatures to include SVG root
 
 **Files:**
+
 - Modify: `src/light_map/rendering/svg/renderer.py`
 - Modify: `src/light_map/rendering/svg/loader.py`
 
@@ -51,11 +54,13 @@ git commit -m "refactor: pass SVG root to rendering functions for resource looku
 ### Task 3: Implement Radial Gradient Rendering
 
 **Files:**
+
 - Modify: `src/light_map/rendering/svg/renderer.py`
 
 **Step 1: Implement `get_gradient_stops(gradient_elem, svg)` to resolve stops (including `xlink:href` references).**
 
 **Step 2: Implement `render_radial_gradient(element, gradient_id, svg, shape_mask, final_vp_matrix)`.**
+
 - Create a grayscale/RGBA buffer.
 - Map pixels to gradient space.
 - Apply `gradientTransform`.
@@ -75,6 +80,7 @@ git commit -m "feat: implement radial gradient rendering"
 ### Task 4: Implement Masking Support
 
 **Files:**
+
 - Modify: `src/light_map/rendering/svg/loader.py`
 - Modify: `src/light_map/rendering/svg/renderer.py`
 
@@ -83,6 +89,7 @@ git commit -m "feat: implement radial gradient rendering"
 **Step 2: Implement a way to render an element (and its children) into a temporary buffer.**
 
 **Step 3: Implement `render_mask(mask_id, svg, width, height, final_vp_matrix)`.**
+
 - Traverse and render the children of the mask group into a grayscale image.
 
 **Step 4: Combine element buffer with mask buffer using alpha multiplication.**

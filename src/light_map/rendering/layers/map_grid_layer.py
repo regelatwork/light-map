@@ -141,25 +141,15 @@ class MapGridLayer(Layer):
                         continue
 
                     # Draw cross with outline
-                    cv2.line(
-                        buffer, (x - cross_size, y), (x + cross_size, y), color_black, 3
-                    )
-                    cv2.line(
-                        buffer, (x - cross_size, y), (x + cross_size, y), grid_color, 1
-                    )
+                    cv2.line(buffer, (x - cross_size, y), (x + cross_size, y), color_black, 3)
+                    cv2.line(buffer, (x - cross_size, y), (x + cross_size, y), grid_color, 1)
 
-                    cv2.line(
-                        buffer, (x, y - cross_size), (x, y + cross_size), color_black, 3
-                    )
-                    cv2.line(
-                        buffer, (x, y - cross_size), (x, y + cross_size), grid_color, 1
-                    )
+                    cv2.line(buffer, (x, y - cross_size), (x, y + cross_size), color_black, 3)
+                    cv2.line(buffer, (x, y - cross_size), (x, y + cross_size), grid_color, 1)
         else:
             # Hex Grid
             hex_geo = (
-                PointyTopHex(spacing)
-                if grid.type == GridType.HEX_POINTY
-                else FlatTopHex(spacing)
+                PointyTopHex(spacing) if grid.type == GridType.HEX_POINTY else FlatTopHex(spacing)
             )
 
             # Offset center for vertices
@@ -225,9 +215,7 @@ class MapGridLayer(Layer):
         import re
 
         # Handle rgba(r, g, b, a)
-        rgba_match = re.match(
-            r"rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\)", color_str
-        )
+        rgba_match = re.match(r"rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\)", color_str)
         if rgba_match:
             r, g, b = map(int, rgba_match.groups()[:3])
             a = float(rgba_match.group(4)) if rgba_match.group(4) else 1.0

@@ -163,9 +163,7 @@ def test_menu_scene_handles_non_transition_action(mock_app_context):
 def test_menu_scene_scan_fails_without_map(mock_app_context):
     """Verify SCAN_SESSION action fails and sends notification if no map is loaded."""
     # Arrange
-    mock_app_context.map_system.is_map_loaded.return_value = (
-        False  # Override for this test
-    )
+    mock_app_context.map_system.is_map_loaded.return_value = False  # Override for this test
     scene = MenuScene(mock_app_context)
     mock_menu_state = MenuState(
         current_menu_title="",

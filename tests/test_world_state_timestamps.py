@@ -85,9 +85,7 @@ def test_hands_version_idempotency():
 
 def test_gesture_timestamp_idempotency():
     ws = WorldState()
-    res = DetectionResult(
-        timestamp=100, type=ResultType.GESTURE, data={"gesture": "OPEN_PALM"}
-    )
+    res = DetectionResult(timestamp=100, type=ResultType.GESTURE, data={"gesture": "OPEN_PALM"})
     ws.apply(res)
     ts_after_first = ws.hands_version
 

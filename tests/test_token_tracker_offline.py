@@ -80,9 +80,7 @@ def test_token_tracker_offline_detection():
         # Simple list filtering to properly count matches
         if exp["grid_x"] is not None:
             candidates = [
-                t
-                for t in tokens
-                if t.grid_x == exp["grid_x"] and t.grid_y == exp["grid_y"]
+                t for t in tokens if t.grid_x == exp["grid_x"] and t.grid_y == exp["grid_y"]
             ]
             if candidates:
                 found_count += 1
@@ -100,9 +98,7 @@ def test_token_tracker_offline_detection():
             else:
                 print("  [FAIL] Missing Unsnapped Token")
 
-    assert found_count == len(expected), (
-        f"Expected {len(expected)} tokens, found {found_count}"
-    )
+    assert found_count == len(expected), f"Expected {len(expected)} tokens, found {found_count}"
 
 
 if __name__ == "__main__":

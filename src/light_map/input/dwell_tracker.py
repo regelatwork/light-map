@@ -68,9 +68,7 @@ class DwellTracker:
             self.target_id = target_id
             self.is_triggered = False
             self._just_triggered = False
-            self.events.schedule(
-                self.dwell_time_threshold, self._trigger, key=self._event_key
-            )
+            self.events.schedule(self.dwell_time_threshold, self._trigger, key=self._event_key)
             return False
 
         # Calculate distance
@@ -80,18 +78,14 @@ class DwellTracker:
 
         if dist <= self.radius_pixels:
             if not self.is_triggered and not self.events.has_event(self._event_key):
-                self.events.schedule(
-                    self.dwell_time_threshold, self._trigger, key=self._event_key
-                )
+                self.events.schedule(self.dwell_time_threshold, self._trigger, key=self._event_key)
         else:
             # Reset if moved outside radius
             self.last_point = point
             self.is_triggered = False
             self._just_triggered = False
             self.events.cancel(self._event_key)
-            self.events.schedule(
-                self.dwell_time_threshold, self._trigger, key=self._event_key
-            )
+            self.events.schedule(self.dwell_time_threshold, self._trigger, key=self._event_key)
 
         return False
 

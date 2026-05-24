@@ -15,9 +15,7 @@ def test_map_svg_caching(tmp_path):
 
     # Create a dummy map file
     map_path = tmp_path / "test_map.svg"
-    map_path.write_text(
-        '<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100"></svg>'
-    )
+    map_path.write_text('<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100"></svg>')
 
     state_mirror = {"config": {"current_map_path": str(map_path)}}
 
@@ -39,9 +37,7 @@ def test_map_svg_caching(tmp_path):
     # We must ensure mtime changes. On some systems granularity is 1s.
     # Alternatively, we can manually set mtime if needed, but sleep is simpler for now.
     time.sleep(1.1)
-    map_path.write_text(
-        '<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200"></svg>'
-    )
+    map_path.write_text('<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200"></svg>')
 
     # Conditional request (after modification)
     response_changed = client.get("/map/svg", headers={"If-None-Match": etag})

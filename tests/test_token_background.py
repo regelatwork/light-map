@@ -24,9 +24,7 @@ def test_draw_text_with_background_calls_rectangle_and_puttext():
 def test_draw_text_with_background_clipping():
     img = np.zeros((50, 50, 3), dtype=np.uint8)
     # Draw text near the edge
-    draw_text_with_background(
-        img, "Long text that will definitely be clipped", (40, 40)
-    )
+    draw_text_with_background(img, "Long text that will definitely be clipped", (40, 40))
     # Should not crash
 
 

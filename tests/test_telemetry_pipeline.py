@@ -63,21 +63,12 @@ def test_telemetry_pipeline_integration():
     report = controller.instrument.get_report()
 
     # Interval checks
+    assert report["capture_to_shm"]["avg_ms"] == (ts_shm_pushed - ts_capture) / 1_000_000.0
     assert (
-        report["capture_to_shm"]["avg_ms"] == (ts_shm_pushed - ts_capture) / 1_000_000.0
+        report["shm_transit_to_worker"]["avg_ms"] == (ts_shm_pulled - ts_shm_pushed) / 1_000_000.0
     )
-    assert (
-        report["shm_transit_to_worker"]["avg_ms"]
-        == (ts_shm_pulled - ts_shm_pushed) / 1_000_000.0
-    )
-    assert (
-        report["worker_proc_time"]["avg_ms"]
-        == (ts_work_done - ts_shm_pulled) / 1_000_000.0
-    )
-    assert (
-        report["queue_wait_worker"]["avg_ms"]
-        == (ts_queue_pushed - ts_work_done) / 1_000_000.0
-    )
+    assert report["worker_proc_time"]["avg_ms"] == (ts_work_done - ts_shm_pulled) / 1_000_000.0
+    assert report["queue_wait_worker"]["avg_ms"] == (ts_queue_pushed - ts_work_done) / 1_000_000.0
     assert "queue_transit_to_main" in report
 
 

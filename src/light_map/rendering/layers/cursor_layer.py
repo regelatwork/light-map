@@ -1,4 +1,3 @@
-
 import cv2
 import numpy as np
 
@@ -73,9 +72,7 @@ class CursorLayer(Layer):
                 1,
             )
 
-            patches.append(
-                ImagePatch(x=cx - w // 2, y=cy - h // 2, width=w, height=h, data=buffer)
-            )
+            patches.append(ImagePatch(x=cx - w // 2, y=cy - h // 2, width=w, height=h, data=buffer))
 
         self._last_cursor_positions = current_positions
         return patches

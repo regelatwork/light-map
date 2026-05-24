@@ -109,7 +109,10 @@ export const PlayerApp: React.FC = () => {
           Visible Targets
         </h2>
         {tacticalState?.targets && tacticalState.targets.length > 0 ? (
-          <TacticalList targets={tacticalState.targets} onPing={triggerPing} />
+          <TacticalList
+            targets={tacticalState.targets.map((t) => ({ ...t, id: String(t.id) }))}
+            onPing={triggerPing}
+          />
         ) : (
           <div className="bg-slate-800/50 border border-slate-700 rounded-lg p-8 text-center text-slate-500 italic">
             No enemies currently in sight.

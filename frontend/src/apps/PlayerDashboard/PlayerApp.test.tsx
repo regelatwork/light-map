@@ -105,7 +105,7 @@ describe('PlayerApp', () => {
     const toggleButton = screen.getByText('ENABLE EXCLUSIVE VISION');
     fireEvent.click(toggleButton);
 
-    expect(global.fetch).toHaveBeenCalledWith(
+    expect(fetch).toHaveBeenCalledWith(
       expect.stringContaining('/actions/exclusive-vision'),
       expect.objectContaining({
         method: 'POST',

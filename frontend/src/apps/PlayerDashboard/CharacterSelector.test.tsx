@@ -17,7 +17,7 @@ describe('CharacterSelector', () => {
 
   it('renders loading state initially', async () => {
     // Return a promise that does not resolve immediately to keep loading = true
-    vi.mocked(global.fetch).mockReturnValue(new Promise(() => {}));
+    vi.mocked(fetch).mockReturnValue(new Promise(() => {}));
 
     render(<CharacterSelector onSelect={mockOnSelect} />);
 
@@ -36,7 +36,7 @@ describe('CharacterSelector', () => {
       },
     };
 
-    vi.mocked(global.fetch).mockResolvedValue({
+    vi.mocked(fetch).mockResolvedValue({
       json: async () => mockConfig,
     } as Response);
 
@@ -67,7 +67,7 @@ describe('CharacterSelector', () => {
       },
     };
 
-    vi.mocked(global.fetch).mockResolvedValue({
+    vi.mocked(fetch).mockResolvedValue({
       json: async () => mockConfig,
     } as Response);
 
@@ -91,7 +91,7 @@ describe('CharacterSelector', () => {
   });
 
   it('renders fallback manual input when fetch fails', async () => {
-    vi.mocked(global.fetch).mockRejectedValue(new Error('Network error'));
+    vi.mocked(fetch).mockRejectedValue(new Error('Network error'));
 
     render(<CharacterSelector onSelect={mockOnSelect} />);
 

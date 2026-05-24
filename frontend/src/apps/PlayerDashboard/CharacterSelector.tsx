@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { API_BASE_URL } from '../../services/config';
-import { ArucoDefinition } from '../../types/schema.generated';
+import type { ArucoDefinition } from '../../types/schema.generated';
 
 interface CharacterSelectorProps {
   onSelect: (id: string) => void;

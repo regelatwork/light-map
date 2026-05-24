@@ -79,7 +79,6 @@ class ExclusiveVisionScene(BaseMapScene):
             mask = self.context.state.inspected_token_mask
 
         if mask is not None:
-            lm.exclusive_vision_layer.set_mask(mask)
             stack.append(lm.exclusive_vision_layer)
 
         # Standard UI stack, ensuring ArucoMaskLayer is TOPMOST

@@ -888,7 +888,7 @@ class WorldState:
             "projector_pose": self.projector_pose.to_list(),
             "tactical": {
                 "attacker_id": self.selection.id if self.selection.id else None,
-                "is_exclusive_active": self.current_scene_name == "EXCLUSIVE_VISION",
+                "is_exclusive_active": self.current_scene_name == "ExclusiveVisionScene",
                 "targets": [
                     {
                         "id": target_id,

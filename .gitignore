@@ -30,3 +30,7 @@ docs/whitepaper/*.toc
 .worktrees/
 src/light_map.egg-info/
 tags
+
+# Gas City
+.beads/*
+!.beads/identity.toml

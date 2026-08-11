@@ -64,7 +64,23 @@ describe('PlayerApp', () => {
           attacker_id: '42',
           is_exclusive_active: false,
           targets: [
-            { id: 99, name: 'Orc Warrior', ac_bonus: 2, reflex_bonus: 0, reason: 'Partial Cover' },
+            {
+              id: 101,
+              name: 'Orc Apprentice',
+              ac_bonus: 1,
+              reflex_bonus: 0,
+              reason: 'Cover',
+              type: 'NPC',
+            },
+            {
+              id: 99,
+              name: 'Orc Warrior',
+              ac_bonus: 2,
+              reflex_bonus: 0,
+              reason: 'Partial Cover',
+              type: 'NPC',
+            },
+            { id: 100, name: 'Hero', ac_bonus: 1, reflex_bonus: 1, reason: 'None', type: 'PC' },
           ],
         },
       },
@@ -74,8 +90,10 @@ describe('PlayerApp', () => {
 
     // Dashboard should update to show target list
     await waitFor(() => {
-      expect(screen.getByText('Orc Warrior')).toBeInTheDocument();
-      expect(screen.queryByText('No enemies currently in sight.')).not.toBeInTheDocument();
+      const targets = screen.getAllByRole('heading', { level: 3 });
+      expect(targets[0]).toHaveTextContent('Orc Apprentice');
+      expect(targets[1]).toHaveTextContent('Orc Warrior');
+      expect(targets[2]).toHaveTextContent('Hero');
     });
   });
 

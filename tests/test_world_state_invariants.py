@@ -80,3 +80,31 @@ def test_version_setters_removed():
         ws.visibility_version = 1
     with pytest.raises(AttributeError):
         ws.notifications_version = 1
+
+
+def test_to_dict_tactical_type():
+    from light_map.core.common_types import CoverResult, Token
+
+    token = Token(id=1, world_x=1.0, world_y=2.0, type="PC")
+    ws = WorldState()
+    ws.tokens = [token]
+    ws.tactical_bonuses = {
+        1: CoverResult(
+            ac_bonus=10,
+            reflex_bonus=5,
+            best_apex=(0, 0),
+            segments=[],
+            npc_pixels=np.array([]),
+            total_ratio=0.5,
+            wall_ratio=0.3,
+            soft_ratio=0.2,
+            explanation="Test",
+        )
+    }
+
+    result = ws.to_dict()
+    tactical = result["tactical"]
+
+    assert len(tactical["targets"]) == 1
+    assert tactical["targets"][0]["id"] == 1
+    assert tactical["targets"][0]["type"] == "PC"

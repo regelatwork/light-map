@@ -9,6 +9,7 @@ interface TacticalTarget {
   ac_bonus: number;
   reflex_bonus: number;
   reason: string;
+  type?: string;
 }
 
 interface TacticalState {

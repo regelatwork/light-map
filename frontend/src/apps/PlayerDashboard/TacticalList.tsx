@@ -6,6 +6,7 @@ interface Target {
   ac_bonus: number;
   reflex_bonus: number;
   reason: string;
+  type?: string;
 }
 
 interface TacticalListProps {
@@ -14,9 +15,21 @@ interface TacticalListProps {
 }
 
 export const TacticalList: React.FC<TacticalListProps> = ({ targets, onPing }) => {
+  const sortedTargets = [...targets].sort((a, b) => {
+    const aIsNPC = a.type === 'NPC';
+    const bIsNPC = b.type === 'NPC';
+
+    if (aIsNPC && !bIsNPC) return -1;
+    if (!aIsNPC && bIsNPC) return 1;
+
+    const nameA = a.name || '';
+    const nameB = b.name || '';
+    return nameA.localeCompare(nameB);
+  });
+
   return (
     <div className="space-y-3">
-      {targets.map((target) => (
+      {sortedTargets.map((target) => (
         <div
           key={target.id}
           className="bg-slate-800 border border-slate-700 rounded-xl overflow-hidden shadow-md"

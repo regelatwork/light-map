@@ -873,7 +873,12 @@ class WorldState:
                 "targets": [
                     {
                         "id": target_id,
-                        "name": next((t.name for t in self.tokens if t.id == target_id), target_id),
+                        "name": next(
+                            (t.name for t in self.tokens if str(t.id) == str(target_id)), target_id
+                        ),
+                        "type": next(
+                            (t.type for t in self.tokens if str(t.id) == str(target_id)), "NPC"
+                        ),
                         "ac_bonus": result.ac_bonus,
                         "reflex_bonus": result.reflex_bonus,
                         "reason": result.explanation,

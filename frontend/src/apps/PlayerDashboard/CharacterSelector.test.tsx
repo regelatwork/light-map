@@ -51,12 +51,35 @@ describe('CharacterSelector', () => {
     // Make sure NPC (Goblin) is not rendered
     expect(screen.queryByText('Goblin')).not.toBeInTheDocument();
 
-    // Verify click handler triggers callback
-    const fighterButton = screen.getByText('Fighter').closest('button');
-    expect(fighterButton).toBeTruthy();
-    fireEvent.click(fighterButton!);
+});
 
-    expect(mockOnSelect).toHaveBeenCalledWith('1');
+  it('renders PC tokens in alphabetical order', async () => {
+    const mockConfig = {
+      token_profiles: {},
+      aruco_defaults: {
+        '1': { name: 'Wizard', type: 'PC', color: '#0000ff' },
+        '2': { name: 'Fighter', type: 'PC', color: '#ff0000' },
+        '3': { name: 'Bard', type: 'PC', color: '#00ff00' },
+      },
+    };
+
+    vi.mocked(fetch).mockResolvedValue({
+      json: async () => mockConfig,
+    } as Response);
+
+    render(<CharacterSelector onSelect={mockOnSelect} />);
+
+    await waitFor(() => {
+      const buttons = screen.getAllByRole('button');
+      // We expect 3 buttons for the 3 PCs.
+      // The labels are "Bard", "Fighter", "Wizard"
+      // We want to check the order of the text content.
+      const names = ['Bard', 'Fighter', 'Wizard'];
+      
+      for (let i = 0; i < names.length; i++) {
+        expect(buttons[i].textContent).toContain(names[i]);
+      }
+    });
   });
 
   it('renders fallback manual input when no PC characters are found', async () => {

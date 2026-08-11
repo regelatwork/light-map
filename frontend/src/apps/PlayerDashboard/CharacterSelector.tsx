@@ -22,7 +22,12 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({ onSelect }
         const tokens = (config.aruco_defaults || {}) as Record<string, ArucoDefinition>;
         const pcs = Object.entries(tokens)
           .filter(([, t]) => t.type === 'PC')
-          .map(([id, t]) => ({ id, ...t }));
+          .map(([id, t]) => ({ id, ...t }))
+          .sort((a, b) => {
+            const nameA = a.name || `Token ${a.id}`;
+            const nameB = b.name || `Token ${b.id}`;
+            return nameA.localeCompare(nameB, undefined, { numeric: true });
+          });
 
         setPcTokens(pcs);
       } catch (e) {

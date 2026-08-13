@@ -50,8 +50,7 @@ describe('CharacterSelector', () => {
 
     // Make sure NPC (Goblin) is not rendered
     expect(screen.queryByText('Goblin')).not.toBeInTheDocument();
-
-});
+  });
 
   it('renders PC tokens in alphabetical order', async () => {
     const mockConfig = {
@@ -75,7 +74,7 @@ describe('CharacterSelector', () => {
       // The labels are "Bard", "Fighter", "Wizard"
       // We want to check the order of the text content.
       const names = ['Bard', 'Fighter', 'Wizard'];
-      
+
       for (let i = 0; i < names.length; i++) {
         expect(buttons[i].textContent).toContain(names[i]);
       }

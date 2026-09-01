@@ -28,8 +28,32 @@ docs/whitepaper/*.pdf
 docs/whitepaper/*.gz
 docs/whitepaper/*.toc
 .worktrees/
+worktrees/
 src/light_map.egg-info/
 tags
+
+# Test & TDD Calibration Binary Artifacts
+*.npz
+!projector_calibration.npz
+!tests/tactical_cases/golden/*.npz
+test_cam_calib.npz
+test_cam_ext.npz
+test_fov_cam_calib.npz
+test_fov_cam_ext.npz
+tdd_*.npz
+
+# Python Coverage & Caches
+.coverage
+.coverage.*
+htmlcov/
+.pytest_cache/
+.ruff_cache/
+
+# Gas City & OpenCode Runtime Metadata
+.gc/
+.opencode/
+.agents/
+beads_*/
 
 # Gas City
 .beads/*

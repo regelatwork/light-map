@@ -23,6 +23,7 @@ class WedgeSegment:
     end_idx: int
     status: int  # 0: Clear, 2: Obscured (1: Blocked is filtered out)
 
+
 @dataclass
 class CoverResult:
     ac_bonus: int

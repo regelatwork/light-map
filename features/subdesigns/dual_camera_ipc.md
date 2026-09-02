@@ -6,7 +6,7 @@ This sub-design specifies the multi-process inter-process communication (IPC) an
 
 The architecture isolates hardware frame capture into two dedicated producer processes (`CameraOperator(id="left")` and `CameraOperator(id="right")`), delivering zero-copy frame access to downstream detector processes while supporting **dynamic capture mode changes** (switching between full-frame 12MP calibration and high-speed cropped ROI sensor streams).
 
----
+______________________________________________________________________
 
 ## 2. Multi-Process Topology & Supervision (`MultiCameraManager`)
 
@@ -35,22 +35,27 @@ The architecture isolates hardware frame capture into two dedicated producer pro
 ```
 
 ### 2.1 Process Supervisor Responsibilities & Memory Safety
-To prevent shared memory leaks in `/dev/shm` on Raspberry Pi 5 if a child process crashes or receives `SIGKILL`:
-1. `MultiCameraManager` (Main Process) creates all `multiprocessing.shared_memory.SharedMemory` segments (`shm_camera_left`, `shm_camera_right`).
-2. Passes shared memory names to child processes (`CameraOperator` and `FrameProducer`).
-3. Instantiates a **single shared `multiprocessing.Lock()`** per camera pipeline and passes it to both `CameraOperator` and `FrameProducer` to guarantee cross-process lock synchronization.
-4. Registers robust cleanup (`atexit` & `SIGINT` signal handlers) so `shm.close()` and `shm.unlink()` are guaranteed to execute in the main process upon exit.
 
----
+To prevent shared memory leaks in `/dev/shm` on Raspberry Pi 5 if a child process crashes or receives `SIGKILL`:
+
+1. `MultiCameraManager` (Main Process) creates all `multiprocessing.shared_memory.SharedMemory` segments (`shm_camera_left`, `shm_camera_right`).
+1. Passes shared memory names to child processes (`CameraOperator` and `FrameProducer`).
+1. Instantiates a **single shared `multiprocessing.Lock()`** per camera pipeline and passes it to both `CameraOperator` and `FrameProducer` to guarantee cross-process lock synchronization.
+1. Registers robust cleanup (`atexit` & `SIGINT` signal handlers) so `shm.close()` and `shm.unlink()` are guaranteed to execute in the main process upon exit.
+
+______________________________________________________________________
 
 ## 3. Shared Memory Layout & Dynamic Buffer Strategy
 
 ### 3.1 Max Payload Pre-Allocation
-To support dynamic resolution switches (e.g. from $1920 \times 1080$ up to full 12MP $4608 \times 2592$) without reallocating OS shared memory segments during runtime:
-* Each shared memory segment (`shm_camera_left` and `shm_camera_right`) is allocated to hold an $N+2$ ring buffer sized for the **maximum uncropped sensor payload** ($4608 \times 2592 \times 3 \text{ bytes} \approx 35.8\text{ MB}$ per slot).
-* Ring buffer depth $N=3$ slots per camera stream.
+
+To support dynamic resolution switches (e.g. from $1920 \\times 1080$ up to full 12MP $4608 \\times 2592$) without reallocating OS shared memory segments during runtime:
+
+- Each shared memory segment (`shm_camera_left` and `shm_camera_right`) is allocated to hold an $N+2$ ring buffer sized for the **maximum uncropped sensor payload** ($4608 \\times 2592 \\times 3 \\text{ bytes} \\approx 35.8\\text{ MB}$ per slot).
+- Ring buffer depth $N=3$ slots per camera stream.
 
 ### 3.2 Dynamic Frame Header Schema
+
 Every buffer slot in shared memory begins with a 64-byte binary control header:
 
 ```python
@@ -68,17 +73,19 @@ header_struct = struct.Struct("<qqiiiii")
 ```
 
 ### 3.3 Zero-Copy Consumer View (`FrameProducer`)
+
 When a consumer process calls `frame_producer.get_latest_frame()`:
+
 1. Acquires the shared pipeline `mp.Lock()`.
-2. Unpacks `frame_index`, `timestamp_ns`, `width`, `height`, `channels`, `roi_offset_x`, `roi_offset_y` from the 64-byte header.
-3. Constructs a zero-copy numpy slice view over the active payload:
+1. Unpacks `frame_index`, `timestamp_ns`, `width`, `height`, `channels`, `roi_offset_x`, `roi_offset_y` from the 64-byte header.
+1. Constructs a zero-copy numpy slice view over the active payload:
    ```python
    raw_bytes = shm.buf[slot_data_offset : slot_data_offset + (height * width * channels)]
    frame_view = np.ndarray((height, width, channels), dtype=np.uint8, buffer=raw_bytes)
    ```
-4. Attaches metadata attributes (`frame_view.meta.roi_offset = (roi_offset_x, roi_offset_y)`).
+1. Attaches metadata attributes (`frame_view.meta.roi_offset = (roi_offset_x, roi_offset_y)`).
 
----
+______________________________________________________________________
 
 ## 4. Inbound Control Command Queue (`CameraControlQueue`)
 
@@ -94,9 +101,11 @@ class SetRoiCommand:
     crop_w: int
     crop_h: int
 
+
 @dataclass
 class SetFullFrameCommand:
     pass
+
 
 @dataclass
 class ShutdownCommand:
@@ -104,25 +113,27 @@ class ShutdownCommand:
 ```
 
 ### 4.2 Mode Transition & Crop Workflow
-1. **Full-Resolution Capture Invariant:** Both cameras continuously capture at full sensor resolution (12MP mode) to maintain maximum pixel density for distant ArUco marker detection, with frame rate adapting naturally to hardware capability on Raspberry Pi 5.
-2. **ROI Crop Stream:** During normal gameplay, `CameraOperator` applies the sensor ROI crop (`[crop_x, crop_y, crop_w, crop_h]`) to isolate the active table volume ($Z=0$ to $Z=200\text{mm}$), streaming only the cropped play area pixels into shared memory to eliminate unnecessary memory bandwidth.
-3. **Calibration Reversion:** When entering the calibration wizard, `MultiCameraManager` sends `SetFullFrameCommand()`, directing `CameraOperator` to stream uncropped full-sensor frames until the active table bounding envelope is recalculated.
-4. **Stream Pause during Transition:** When switching ROI modes, `CameraOperator` temporarily flags the stream status in shared memory as "transitioning", allowing `FrameProducer` to cleanly pause returning frames for 1–2 cycles without throwing exception errors.
 
----
+1. **Full-Resolution Capture Invariant:** Both cameras continuously capture at full sensor resolution (12MP mode) to maintain maximum pixel density for distant ArUco marker detection, with frame rate adapting naturally to hardware capability on Raspberry Pi 5.
+1. **ROI Crop Stream:** During normal gameplay, `CameraOperator` applies the sensor ROI crop (`[crop_x, crop_y, crop_w, crop_h]`) to isolate the active table volume ($Z=0$ to $Z=200\\text{mm}$), streaming only the cropped play area pixels into shared memory to eliminate unnecessary memory bandwidth.
+1. **Calibration Reversion:** When entering the calibration wizard, `MultiCameraManager` sends `SetFullFrameCommand()`, directing `CameraOperator` to stream uncropped full-sensor frames until the active table bounding envelope is recalculated.
+1. **Stream Pause during Transition:** When switching ROI modes, `CameraOperator` temporarily flags the stream status in shared memory as "transitioning", allowing `FrameProducer` to cleanly pause returning frames for 1–2 cycles without throwing exception errors.
+
+______________________________________________________________________
 
 ## 5. Projection Model Coordinate Reconstruction
 
 To map cropped sensor pixels back to the full camera intrinsics matrix $K$:
-* Full-sensor pixel coordinates are reconstructed by adding the ROI offset:
-  $$u_{\text{full}} = u_{\text{crop}} + \text{roi\_offset\_x}$$
-  $$v_{\text{full}} = v_{\text{crop}} + \text{roi\_offset\_y}$$
-* Alternatively, `CameraProjectionModel` adjusts optical centers dynamically:
-  $$c_x' = c_x - \text{roi\_offset\_x}, \quad c_y' = c_y - \text{roi\_offset\_y}$$
+
+- Full-sensor pixel coordinates are reconstructed by adding the ROI offset:
+  $$u\_{\\text{full}} = u\_{\\text{crop}} + \\text{roi_offset_x}$$
+  $$v\_{\\text{full}} = v\_{\\text{crop}} + \\text{roi_offset_y}$$
+- Alternatively, `CameraProjectionModel` adjusts optical centers dynamically:
+  $$c_x' = c_x - \\text{roi_offset_x}, \\quad c_y' = c_y - \\text{roi_offset_y}$$
 
 This ensures 3D ray back-projection and stereo triangulation compute mathematically exact 3D coordinates from cropped frames without requiring lens re-calibration or causing distortion artifacts.
 
----
+______________________________________________________________________
 
 ## 6. Verification Criteria
 
@@ -131,4 +142,4 @@ This ensures 3D ray back-projection and stereo triangulation compute mathematica
 - [ ] Frame headers store dynamic `width`, `height`, `roi_offset_x`, `roi_offset_y` accurately.
 - [ ] `FrameProducer` creates valid zero-copy numpy views for both cropped and uncropped frames.
 - [ ] Mode switching via `SetFullFrameCommand()` and `SetRoiCommand()` cleanly pauses frames during V4L2 transition without IPC crashes.
-- [ ] Coordinate reconstruction ($u_{\text{full}} = u_{\text{crop}} + \text{roi\_offset\_x}$) produces identical 3D ray vectors for targets in cropped vs full-frame mode.
+- [ ] Coordinate reconstruction ($u\_{\\text{full}} = u\_{\\text{crop}} + \\text{roi_offset_x}$) produces identical 3D ray vectors for targets in cropped vs full-frame mode.

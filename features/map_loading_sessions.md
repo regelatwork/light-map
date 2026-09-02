@@ -115,7 +115,7 @@ class MapConfigManager:
 
     def scan_for_maps(self, patterns: List[str]) -> List[str]:
         """
-        Expands globs in patterns, checks for existence, 
+        Expands globs in patterns, checks for existence,
         adds new maps to config, and removes missing maps.
         Returns the updated list of known map filenames.
         """
@@ -126,7 +126,7 @@ class MapConfigManager:
         Returns {'calibrated': bool, 'has_session': bool}
         """
         pass
-        
+
     def forget_map(self, filename: str):
         """Removes map from config."""
         pass

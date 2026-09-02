@@ -42,7 +42,7 @@ class VersionedAtom(Generic[T]):
 
     def update(self, new_value: T) -> bool:
         """
-        Updates the data. 
+        Updates the data.
         Returns True and refreshes timestamp ONLY if the change is meaningful.
         """
         if not self._equality_fn(self._value, new_value):
@@ -67,11 +67,11 @@ class WorldState:
         self.viewport = VersionedAtom(ViewportState(), "viewport")
         self.tokens = VersionedAtom([], "tokens", equality_fn=self._tokens_equal)
         self.blockers = VersionedAtom([], "blockers")
-        self.system_time = VersionedAtom(0.0, "system_time") # Managed by Temporal Manager
+        self.system_time = VersionedAtom(0.0, "system_time")  # Managed by Temporal Manager
         self.scene_metadata = VersionedAtom({}, "scene_metadata")
-        
+
         # Aggregate logic
-        self.visibility_timestamp = 0 # Computed via max() of relevant atoms
+        self.visibility_timestamp = 0  # Computed via max() of relevant atoms
 ```
 
 ______________________________________________________________________

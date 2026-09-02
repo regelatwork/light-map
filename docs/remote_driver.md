@@ -252,14 +252,10 @@ resp = httpx.get(f"{BASE_URL}/state/menu")
 print(f"Active Menu: {resp.json().get('title')}")
 
 # 2. Trigger a "Click" (Pointing gesture)
-httpx.post(f"{BASE_URL}/input/hands", json=[
-    {"x": 500, "y": 300, "gesture": "Pointing"}
-])
+httpx.post(f"{BASE_URL}/input/hands", json=[{"x": 500, "y": 300, "gesture": "Pointing"}])
 
 # 3. Simulate a Token appearing
-httpx.post(f"{BASE_URL}/input/tokens", json=[
-    {"id": 10, "x": 50.0, "y": 50.0}
-])
+httpx.post(f"{BASE_URL}/input/tokens", json=[{"id": 10, "x": 50.0, "y": 50.0}])
 ```
 
 ## 4. Performance Monitoring and Diagnostics

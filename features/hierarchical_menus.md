@@ -74,16 +74,18 @@ class GestureType(StrEnum):
     CLOSED_FIST = "Closed Fist"
     # ...
 
+
 class MenuActions(StrEnum):
     TOGGLE_DEBUG = "TOGGLE_DEBUG"
     EXIT = "EXIT"
     # ...
 
+
 @dataclass
 class MenuItem:
     title: str
     action_id: Optional[str] = None
-    children: List['MenuItem'] = ...
+    children: List["MenuItem"] = ...
 ```
 
 #### Application Orchestrator (`src/light_map/interactive_app.py`)
@@ -96,13 +98,14 @@ class AppConfig:
     projector_matrix: np.ndarray
     root_menu: MenuItem
 
+
 class InteractiveApp:
     def __init__(self, config: AppConfig, time_provider=time.monotonic):
         """
         Initialize all sub-components (InputManager, MenuSystem, Renderer).
         """
         pass
-        
+
     def set_debug_mode(self, enabled: bool):
         """Enable/Disable on-screen debug stats and instructions."""
         pass
@@ -114,11 +117,11 @@ class InteractiveApp:
     def process_frame(self, frame: np.ndarray, results: Any) -> Tuple[np.ndarray, List[str]]:
         """
         Core loop logic.
-        
+
         Args:
             frame: Raw BGR image from camera.
             results: MediaPipe Hands results object.
-            
+
         Returns:
             output_image: BGR image to be projected (same dims as config.width/height).
             actions: List of action_id strings triggered this frame (e.g., ["EXIT"]).
@@ -149,7 +152,8 @@ class InputManager:
 @dataclass
 class MenuState:
     # ... fields for renderer ...
-    just_triggered_action: Optional[str] # The action triggered THIS frame
+    just_triggered_action: Optional[str]  # The action triggered THIS frame
+
 
 class MenuSystem:
     def update(self, x: int, y: int, gesture: GestureType) -> MenuState:

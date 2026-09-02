@@ -58,15 +58,18 @@ def _numba_trace_path(x1, y1, x2, y2, blocker_mask):
     dx = abs(x2 - x1)
     dy = abs(y2 - y1)
     num_steps = dx if dx > dy else dy
-    if num_steps == 0: return 0
-    
+    if num_steps == 0:
+        return 0
+
     found_low = False
     for i in range(num_steps):
         t = i / num_steps
-        px, py = int(round(x1 + t*(x2-x1))), int(round(y1 + t*(y2-y1)))
+        px, py = int(round(x1 + t * (x2 - x1))), int(round(y1 + t * (y2 - y1)))
         val = blocker_mask[py, px]
-        if val >= 200: return 1 # Wall/Door
-        if val == 50: found_low = True
+        if val >= 200:
+            return 1  # Wall/Door
+        if val == 50:
+            found_low = True
     return 2 if found_low else 0
 ```
 

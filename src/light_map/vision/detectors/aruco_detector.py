@@ -161,7 +161,7 @@ class ArucoTokenDetector:
         # Group by ID and find best marker (largest area)
         detections_by_id = {}
         for i, marker_id_arr in enumerate(ids):
-            marker_id = int(marker_id_arr[0])
+            marker_id = int(marker_id_arr[0]) if isinstance(marker_id_arr, (np.ndarray, list)) else int(marker_id_arr)
             # corners[i] is (1, 4, 2)
             marker_corners = corners[i][0].copy()
 

@@ -48,7 +48,7 @@ A dataclass to decouple logic from raw MediaPipe dictionaries.
 class HandInput:
     gesture: GestureType
     proj_pos: Tuple[int, int]  # (x, y) in projector space
-    raw_landmarks: Any         # MediaPipe landmarks
+    raw_landmarks: Any  # MediaPipe landmarks
 ```
 
 #### `SceneAction` (Transition Protocol)
@@ -58,8 +58,8 @@ Defines how a scene requests a state change.
 ```python
 @dataclass
 class SceneTransition:
-    target_scene: Type['Scene']  # or Enum if preferred, but Class is flexible
-    payload: Any = None          # e.g., map filename
+    target_scene: Type["Scene"]  # or Enum if preferred, but Class is flexible
+    payload: Any = None  # e.g., map filename
     reset_history: bool = False  # Clear stack?
 ```
 
@@ -143,7 +143,9 @@ A helper class to centralize pan/zoom math, used by both `MapScene` and `Calibra
 
 ```python
 class MapInteractionController:
-    def process_gestures(self, inputs: List[HandInput], map_system: MapSystem, current_time: float) -> bool:
+    def process_gestures(
+        self, inputs: List[HandInput], map_system: MapSystem, current_time: float
+    ) -> bool:
         # Returns True if interaction occurred (pan/zoom)
         # Handles 2-hand zoom math and 1-hand pan math
         pass

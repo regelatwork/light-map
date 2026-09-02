@@ -132,11 +132,18 @@ class InputProcessor:
             handedness = results.multi_handedness[i]
             gesture = detect_gesture(landmarks.landmark, handedness.classification[0].label)
 
-            tip_landmark = landmarks.landmark[mp.solutions.hands.HandLandmark.INDEX_FINGER_TIP]
+            # MediaPipe landmark indices are fixed:
+            # INDEX_FINGER_TIP = 8, INDEX_FINGER_PIP = 6
+            tip_landmark = landmarks.landmark[8]
             camera_point = np.array(
                 [[tip_landmark.x * frame_shape[1], tip_landmark.y * frame_shape[0]]],
                 dtype=np.float32,
             )
+
+            # Apply crop_offset if it exists in projector_pose
+            if projector_pose is not None and hasattr(projector_pose, "crop_offset") and projector_pose.crop_offset:
+                camera_point[0] += projector_pose.crop_offset[0]
+                camera_point[1] += projector_pose.crop_offset[1]
 
             projector_point = self._project_to_projector(
                 camera_point, frame_shape, projector_pose=projector_pose
@@ -149,7 +156,7 @@ class InputProcessor:
             unit_x, unit_y = 0.0, 0.0
             if gesture == GestureType.POINTING:
                 # Calculate direction from PIP to TIP
-                pip_landmark = landmarks.landmark[mp.solutions.hands.HandLandmark.INDEX_FINGER_PIP]
+                pip_landmark = landmarks.landmark[6]
 
                 # Direction in camera coordinates (normalized)
                 dx_camera = tip_landmark.x - pip_landmark.x
@@ -182,7 +189,7 @@ class InputProcessor:
                         unit_x = pdx / pmagnitude
                         unit_y = pdy / pmagnitude
 
-            # --- VIRTUAL CURSOR POSITION ---
+            # --- Virtual Cursor Position ---
             cursor_pos = None
             if gesture == GestureType.POINTING:
                 ppi = getattr(self.config, "projector_ppi", 96.0)

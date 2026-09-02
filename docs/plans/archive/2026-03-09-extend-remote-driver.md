@@ -23,6 +23,7 @@ Add to `src/light_map/vision/remote_driver.py` with logging and robust disconnec
 from fastapi import WebSocket
 import logging
 
+
 class ConnectionManager:
     def __init__(self):
         self.active_connections: list[WebSocket] = []
@@ -52,6 +53,7 @@ Modify `create_app` in `src/light_map/vision/remote_driver.py` to include the `/
 ```python
 manager = ConnectionManager()
 
+
 @app.websocket("/ws/state")
 async def websocket_endpoint(websocket: WebSocket):
     await manager.connect(websocket)
@@ -80,6 +82,7 @@ Modify `create_app` to start an `asyncio` task on startup that broadcasts `state
 ```python
 import asyncio
 
+
 @app.on_event("startup")
 async def startup_event():
     async def broadcast_loop():
@@ -93,7 +96,7 @@ async def startup_event():
                     "timestamp": time.monotonic(),
                 }
                 await manager.broadcast(state)
-            await asyncio.sleep(0.033) # ~30Hz
+            await asyncio.sleep(0.033)  # ~30Hz
         logging.info("WebSocket state broadcast loop stopped.")
 
     asyncio.create_task(broadcast_loop())
@@ -123,7 +126,9 @@ if os.path.exists(frontend_dist):
     # html=True ensures index.html is served for the root path
     app.mount("/", StaticFiles(directory=frontend_dist, html=True), name="frontend")
 else:
-    logging.warning(f"Frontend dist directory not found at {frontend_dist}. Dashboard UI will not be available.")
+    logging.warning(
+        f"Frontend dist directory not found at {frontend_dist}. Dashboard UI will not be available."
+    )
 ```
 
 **Step 2: Commit**

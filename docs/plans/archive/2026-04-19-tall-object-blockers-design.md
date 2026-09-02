@@ -51,19 +51,19 @@ The `viewer_starts_in_tall` flag is calculated once per calculation using the vi
 def _numba_is_line_obstructed(x1, y1, x2, y2, blocker_mask, viewer_starts_in_tall):
     # If viewer starts on ground, they have already 'exited' the tall zone
     has_exited_initial_tall_zone = not viewer_starts_in_tall
-    
+
     # ... step through pixels along line ...
     val = blocker_mask[py, px]
-    
-    if val == 255 or val == 200: # WALL or DOOR_CLOSED
+
+    if val == 255 or val == 200:  # WALL or DOOR_CLOSED
         return True
-    
-    if val == 0: # OPEN SPACE
+
+    if val == 0:  # OPEN SPACE
         has_exited_initial_tall_zone = True
-    elif val == 100: # TALL OBJECT
+    elif val == 100:  # TALL OBJECT
         if has_exited_initial_tall_zone:
-            return True # Blocked: Exit from ground or second exit
-            
+            return True  # Blocked: Exit from ground or second exit
+
     return False
 ```
 

@@ -27,6 +27,7 @@ In `src/light_map/vision/remote/remote_driver.py`, define:
 class PingRequest(BaseModel):
     token_id: str  # The ID of the token being pinged
 
+
 class VisionRequest(BaseModel):
     token_id: str | None  # ID of PC to lock vision on, or None to clear
 ```

@@ -832,7 +832,7 @@ def create_app(
 
         index_path = os.path.join(frontend_dist, "index.html")
         if os.path.exists(index_path):
-            return FileResponse(index_path)
+            return FileResponse(index_path, media_type='text/html')
         return {"error": "Frontend build not found"}
 
     if os.path.exists(frontend_dist):

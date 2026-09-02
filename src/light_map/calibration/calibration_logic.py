@@ -98,12 +98,12 @@ def calculate_ppi_from_frame(
 
     ids = aruco_ids.flatten()
 
-    # Check for ID 0 and ID 1
-    if 0 not in ids or 1 not in ids:
+    # Check for ID 40 and ID 41
+    if 40 not in ids or 41 not in ids:
         return None
 
-    idx0 = np.where(ids == 0)[0][0]
-    idx1 = np.where(ids == 1)[0][0]
+    idx0 = np.where(ids == 40)[0][0]
+    idx1 = np.where(ids == 41)[0][0]
 
     # Get centers
     # corners[i] is (1, 4, 2)
@@ -247,7 +247,7 @@ def calibrate_extrinsics(
     else:
         # SQPNP only returns 1 solution
         # Note: We don't use useExtrinsicGuess here because we want to see the
-        # actual raw solutions from the solver before filtering.
+        # raw solutions from the solver before filtering.
         ret, rvecs, tvecs, errs = cv2.solvePnPGeneric(
             object_points,
             image_points,
@@ -309,121 +309,143 @@ def calibrate_extrinsics(
 def calibrate_projector_3d(
     correspondences: list[tuple[np.ndarray, np.ndarray]],
     projector_resolution: tuple[int, int],
-    initial_intrinsic_matrix: np.ndarray | None = None,
-    initial_distortion_coefficients: np.ndarray | None = None,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, float] | None:
     """
-    Computes Projector Intrinsics and Extrinsics using 3D-to-2D correspondences.
+    Estimates projector intrinsics and extrinsics from 3D-to-2D correspondences.
 
     Args:
-        correspondences: List of (world_point_3d, projector_point_2d) tuples.
-                         world_point_3d is (3,) array [X, Y, Z] in mm.
-                         projector_point_2d is (2,) array [u, v] in pixels.
+        correspondences: List of (3D point, 2D point) pairs.
         projector_resolution: (width, height) of the projector.
-        initial_intrinsic_matrix: Optional initial intrinsic matrix.
-        initial_distortion_coefficients: Optional initial distortion coefficients.
 
     Returns:
-        (intrinsic_matrix, distortion_coefficients, rotation_vector, translation_vector, rms) or None if calibration fails.
+        (intrinsic_matrix, distortion_coefficients, rotation_vector, translation_vector, rms)
     """
-    if len(correspondences) < 10:
-        logging.warning(
-            "calibrate_projector_3d: Not enough points (need at least 10 for stability, got %d).",
-            len(correspondences),
-        )
+    logging.info("Projector3DCalibrationScene: Starting solvePnP for 3D projector calibration.")
+
+    # Extract points
+    object_points = np.array([pair[0] for pair in correspondences], dtype=np.float32)
+    image_points = np.array([pair[1] for pair in correspondences], dtype=np.float32)
+
+    # We need a minimum number of points for stability
+    if len(object_points) < 10:
+        logging.error("calibrate_projector_3d: Not enough points (need at least 10 for stability, got %d).", len(object_points))
         return None
 
-    # OpenCV calibrateCamera expects a list of views.
-    # Each view should be a (N, 3) or (N, 2) float32 array.
-    # We use ascontiguousarray to ensure the memory layout matches C++ expectations.
-    # We explicitly reshape to (-1, 1, 3) and (-1, 1, 2) as this is the most robust format
-    # that handles both list-of-lists and flattening issues in cv2.
-    object_points = [
-        np.ascontiguousarray([c[0] for c in correspondences], dtype=np.float32).reshape(-1, 1, 3)
-    ]
-    image_points = [
-        np.ascontiguousarray([c[1] for c in correspondences], dtype=np.float32).reshape(-1, 1, 2)
-    ]
+    # Initial guess for intrinsics: focal lengths = resolution
+    # This is a much better starting point for the solver.
+    intrinsic_matrix = np.array(
+        [[projector_resolution[0], 0, projector_resolution[0] / 2],
+         [0, projector_resolution[1], projector_resolution[1] / 2],
+         [0, 0, 1]], dtype=np.float32
+    )
+    distortion_coefficients = np.zeros(5, dtype=np.float32)
 
-    # Final count validation before OpenCV call
-    for i in range(len(object_points)):
-        if object_points[i].shape[0] != image_points[i].shape[0]:
-            raise ValueError(
-                f"Point count mismatch in View {i}: object_points has {object_points[i].shape[0]}, "
-                f"image_points has {image_points[i].shape[0]}. Check for NumPy broadcasting errors."
-            )
+    # Solver: SQPNP is robust to non-planar configurations.
+    # Since these are 3D points, we use solvePnPGeneric.
+    # This will find the R and t that best match the correspondences given the initial K.
+    ret, rvecs, tvecs, errs = cv2.solvePnPGeneric(
+        object_points,
+        image_points,
+        intrinsic_matrix,
+        distortion_coefficients,
+        flags=cv2.SOLVEPNP_SQPNP,
+    )
 
-    if initial_intrinsic_matrix is None:
-        # Provide a reasonable initial guess for the intrinsic matrix
-        # f = max(width, height), principal point = center
-        width, height = projector_resolution
-        focal_length = max(width, height)
-        initial_intrinsic_matrix = np.array(
-            [[focal_length, 0, width / 2], [0, focal_length, height / 2], [0, 0, 1]],
-            dtype=np.float32,
-        )
-    else:
-        initial_intrinsic_matrix = np.ascontiguousarray(initial_intrinsic_matrix, dtype=np.float32)
+    if not ret or len(rvecs) == 0:
+        logging.error("calibrate_projector_3d: Solver failed to find a solution.")
+        return None
 
-    if initial_distortion_coefficients is None:
-        initial_distortion_coefficients = np.zeros(5, dtype=np.float32)
-    else:
-        initial_distortion_coefficients = np.ascontiguousarray(
-            initial_distortion_coefficients, dtype=np.float32
-        )
+    # Pick best solution (smallest error)
+    best_idx = -1
+    min_err = float("inf")
+    for i, err in enumerate(errs):
+        if err < min_err:
+            min_err = err
+            best_idx = i
 
-    flags = cv2.CALIB_USE_INTRINSIC_GUESS
+    rotation_vector = rvecs[best_idx]
+    translation_vector = tvecs[best_idx]
 
-    # For projectors, we often assume no skew and potentially fx=fy
-    # flags |= cv2.CALIB_FIX_ASPECT_RATIO
+    # Now that we have a decent R and t, we can refine K.
+    # The 3D points (X, Y, Z) are in world space.
+    # The camera's rotation and translation define the mapping from world to camera.
+    # We want to find K such that for each point:
+    # image_pixels = K * [R * world_point + t]
+    # Since R and t are known, we can project the 3D points to the camera frame.
 
-    try:
-        # Using positional arguments for the matrices can be more robust in some cv2 versions
-        (
-            ret,
-            intrinsic_matrix,
-            distortion_coefficients,
-            rotation_vectors,
-            translation_vectors,
-        ) = cv2.calibrateCamera(
-            object_points,
-            image_points,
-            projector_resolution,
-            initial_intrinsic_matrix,
-            initial_distortion_coefficients,
-            flags=flags,
-        )
+    rmat, _ = cv2.Rodrigues(rotation_vector)
+    # camera_center_world = -R^T * t
+    camera_center_world = (-rmat.T @ translation_vector).flatten()
 
-        if ret:
-            # calibrateCamera returns a list of rvecs/tvecs (one per 'view').
-            # Since we treat all points as one 'view', we take the first one.
-            rotation_vector = rotation_vectors[0]
-            translation_vector = translation_vectors[0]
+    # We can use a simple iterative approach or just a linear solve.
+    # Let's try a simple iterative refinement:
+    for _ in range(10):
+        # Project the 3D points using current R, t, and K
+        # Note: we use the world_point directly because we want to find K
+        # that maps world_point -> image_pixels
+        # However, solvePnPGeneric assumes the 3D points are in the CAMERA frame.
+        # Our object_points are in WORLD frame.
+        # Let's convert them to camera frame.
+        points_in_camera = (rmat @ object_points.T + translation_vector.reshape(3, 1)).T
 
-            # Physical Plausibility: Ensure t.z is positive (Table in front of projector)
-            # This is the ONLY invariant we can strictly enforce without manual mirroring.
-            if translation_vector[2] < 0:
-                logging.warning(
-                    "calibrate_projector_3d: Inverted orientation detected (tz < 0). Attempting 180-flip."
-                )
-                # Proper rotation flip (not reflection)
-                rotation_matrix_flip = np.array(
-                    [[1, 0, 0], [0, -1, 0], [0, 0, -1]], dtype=np.float32
-                )
-                rotation_matrix, _ = cv2.Rodrigues(rotation_vector)
-                rotation_matrix = rotation_matrix_flip @ rotation_matrix
-                rotation_vector, _ = cv2.Rodrigues(rotation_matrix)
-                translation_vector = rotation_matrix_flip @ translation_vector
+        # Now we have (X_c, Y_c, Z_c) and (u, v).
+        # u = fx * (X_c / Z_c) + cx
+        # v = fy * (Y_c / Z_c) + cy
+        # Since we want to find K = [fx, 0, cx; 0, fy, cy; 0, 0, 1]
+        # We can use least squares:
+        # fx = sum((u - cx) * (X_c / Z_c)) / sum((X_c / Z_c)^2)
+        # fy = sum((v - cy) * (Y_c / Z_c)) / sum((Y_c / Z_c)^2)
 
-            return (
-                intrinsic_matrix,
-                distortion_coefficients,
-                rotation_vector,
-                translation_vector,
-                ret,
-            )
+        cx = projector_resolution[0] / 2
+        cy = projector_resolution[1] / 2
 
-    except Exception as e:
-        logging.error("calibrate_projector_3d: Error during calibration: %s", e)
+        # Avoid division by zero
+        mask = points_in_camera[:, 2] > 0.1
+        points_c = points_in_camera[mask]
 
-    return None
+        x_c_over_z_c = points_c[:, 0] / points_c[:, 2]
+        y_c_over_z_c = points_c[:, 1] / points_c[:, 2]
+
+        fx = np.sum((image_points[mask, 0] - cx) * x_c_over_z_c) / (np.sum(x_c_over_z_c**2) + 1e-6)
+        fy = np.sum((image_points[mask, 1] - cy) * y_c_over_z_c) / (np.sum(y_c_over_z_c**2) + 1e-6)
+
+        # Update K
+        intrinsic_matrix[0, 0] = fx
+        intrinsic_matrix[1, 1] = fy
+        intrinsic_matrix[0, 2] = cx
+        intrinsic_matrix[1, 2] = cy
+
+        logging.info("Refinement Iteration: fx=%.2f, fy=%.2f, cx=%.2f, cy=%.2f", fx, fy, cx, cy)
+
+    # Final solve to get the best R, t for the refined K
+    ret, rvecs, tvecs, errs = cv2.solvePnPGeneric(
+        object_points,
+        image_points,
+        intrinsic_matrix,
+        distortion_coefficients,
+        flags=cv2.SOLVEPNP_SQPNP,
+    )
+    
+    if not ret or len(rvecs) == 0:
+        return None
+
+    best_idx = -1
+    min_err = float("inf")
+    for i, err in enumerate(errs):
+        if err < min_err:
+            min_err = err
+            best_idx = i
+
+    rotation_vector = rvecs[best_idx]
+    translation_vector = tvecs[best_idx]
+
+    logging.info("Projector3DCalibrationScene: Final solved K: [%.1f, %.1f]", fx, fy)
+    logging.info("Projector3DCalibrationScene: Final solved R: [%.2f, %.2f, %.2f], t: [%.2f, %.2f, %.2f], RMS: %.4f", rotation_vector.flatten(), translation_vector.flatten(), min_err)
+
+    return (
+        intrinsic_matrix,
+        distortion_coefficients,
+        rotation_vector,
+        translation_vector,
+        min_err,
+    )

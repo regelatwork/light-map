@@ -16,12 +16,6 @@ def tags_file():
         "-R",
         "-f",
         tags_path,
-        "--exclude=node_modules",
-        "--exclude=.venv",
-        "--exclude=.git",
-        "--exclude=dist",
-        "--exclude=build",
-        "--langmap=TypeScript:+.tsx",
         ".",
     ]
 

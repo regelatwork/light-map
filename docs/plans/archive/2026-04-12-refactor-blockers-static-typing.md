@@ -20,24 +20,20 @@ ______________________________________________________________________
 Ensure it accepts an optional `state` and uses `list()` for versioning.
 
 ```python
-    def _sync_blockers_to_state(self, state: Optional["WorldState"] = None):
-        """Synchronizes visibility engine blockers to the public state."""
-        # Use list() to create a NEW instance, ensuring VersionedAtom detects the change
-        # even if we mutated the blockers in-place.
-        blockers = list(self.visibility_engine.blockers)
-        self.state.blockers = blockers
-        if state is not None and state is not self.state:
-            state.blockers = blockers
+def _sync_blockers_to_state(self, state: Optional["WorldState"] = None):
+    """Synchronizes visibility engine blockers to the public state."""
+    # Use list() to create a NEW instance, ensuring VersionedAtom detects the change
+    # even if we mutated the blockers in-place.
+    blockers = list(self.visibility_engine.blockers)
+    self.state.blockers = blockers
+    if state is not None and state is not self.state:
+        state.blockers = blockers
 
-        # Ensure visibility mask is updated to trigger re-render if blockers changed
-        if self.state.visibility_mask is not None:
-            self.state.visibility_mask = self.state.visibility_mask.copy()
-        if (
-            state is not None
-            and state is not self.state
-            and state.visibility_mask is not None
-        ):
-            state.visibility_mask = state.visibility_mask.copy()
+    # Ensure visibility mask is updated to trigger re-render if blockers changed
+    if self.state.visibility_mask is not None:
+        self.state.visibility_mask = self.state.visibility_mask.copy()
+    if state is not None and state is not self.state and state.visibility_mask is not None:
+        state.visibility_mask = state.visibility_mask.copy()
 ```
 
 **Step 2: Fix load_map call site**

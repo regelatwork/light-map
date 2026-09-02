@@ -6,42 +6,72 @@ This sub-design specifies the backend Pydantic configuration schemas, Action Dis
 
 It adheres strictly to `light_map`'s **Typed Config Synchronization** architecture (SSOT in Python Pydantic models, auto-generated TypeScript interfaces, and metadata-driven React UI components).
 
----
+______________________________________________________________________
 
 ## 2. Backend Pydantic Schemas (`src/light_map/core/config_schema.py`)
 
 ### 2.1 Camera Device Schema
+
 ```python
 class CameraDeviceSchema(BaseModel):
-    device_path: str = Field(default="/dev/video0", title="Device Path", description="V4L2 device file path")
+    device_path: str = Field(
+        default="/dev/video0", title="Device Path", description="V4L2 device file path"
+    )
     role: str = Field(default="left", title="Role", description="Camera role (left or right)")
-    intrinsics_file: str = Field(default="camera_calibration.npz", title="Intrinsics File", description="Camera lens distortion parameters file")
-    crop_roi: list[int] | None = Field(default=None, title="Sensor Crop ROI", description="Hardware selection crop [x, y, w, h]")
+    intrinsics_file: str = Field(
+        default="camera_calibration.npz",
+        title="Intrinsics File",
+        description="Camera lens distortion parameters file",
+    )
+    crop_roi: list[int] | None = Field(
+        default=None, title="Sensor Crop ROI", description="Hardware selection crop [x, y, w, h]"
+    )
 ```
 
 ### 2.2 Stereo Vision Configuration Schema
+
 ```python
 class StereoVisionConfigSchema(BaseModel):
-    enabled: bool = Field(default=True, title="Enable Stereo Vision", description="Master toggle for dual-camera stereographic tracking")
-    baseline_separation_mm: float = Field(default=128.0, title="Baseline Separation (mm)", description="Distance between camera optical centers in mm")
-    cameras: list[CameraDeviceSchema] = Field(default_factory=list, title="Camera Devices", description="Configured camera sensors")
-    max_parallax_margin_mm: float = Field(default=200.0, title="Max Parallax Margin (mm)", description="Vertical 3D volume envelope for sensor ROI calculation")
-    reprojection_error_threshold: float = Field(default=3.0, title="Reprojection Threshold (px)", description="Maximum allowed reprojection error for 3D triangulation")
+    enabled: bool = Field(
+        default=True,
+        title="Enable Stereo Vision",
+        description="Master toggle for dual-camera stereographic tracking",
+    )
+    baseline_separation_mm: float = Field(
+        default=128.0,
+        title="Baseline Separation (mm)",
+        description="Distance between camera optical centers in mm",
+    )
+    cameras: list[CameraDeviceSchema] = Field(
+        default_factory=list, title="Camera Devices", description="Configured camera sensors"
+    )
+    max_parallax_margin_mm: float = Field(
+        default=200.0,
+        title="Max Parallax Margin (mm)",
+        description="Vertical 3D volume envelope for sensor ROI calculation",
+    )
+    reprojection_error_threshold: float = Field(
+        default=3.0,
+        title="Reprojection Threshold (px)",
+        description="Maximum allowed reprojection error for 3D triangulation",
+    )
 ```
 
 ### 2.3 SSOT Global Embedding (`GlobalConfigSchema`)
+
 To integrate with state synchronization and storage persistence, `GlobalConfigSchema` embeds the stereo schema:
+
 ```python
 class GlobalConfigSchema(BaseModel):
     # Existing global fields ...
     stereo_vision: StereoVisionConfigSchema = Field(
         default_factory=StereoVisionConfigSchema,
         title="Stereo Vision Settings",
-        description="Configuration for dual-camera stereographic tracking"
+        description="Configuration for dual-camera stereographic tracking",
     )
 ```
 
----
+______________________________________________________________________
 
 ## 3. Action Dispatcher Integration (`src/light_map/action_dispatcher.py`)
 
@@ -50,16 +80,17 @@ Following `light_map`'s WebSocket / Action Dispatcher architecture, stereo contr
 ```python
 # Registered Action Payload Handlers in action_dispatcher.py:
 ActionType.START_STEREO_CALIBRATION = "START_STEREO_CALIBRATION"
-ActionType.SAVE_STEREO_CALIBRATION  = "SAVE_STEREO_CALIBRATION"
-ActionType.UPDATE_STEREO_CONFIG     = "UPDATE_STEREO_CONFIG"
+ActionType.SAVE_STEREO_CALIBRATION = "SAVE_STEREO_CALIBRATION"
+ActionType.UPDATE_STEREO_CONFIG = "UPDATE_STEREO_CONFIG"
 ```
 
 ### 3.1 Handler Behavior
-* **`START_STEREO_CALIBRATION`**: Transitions scene manager to `SceneId.CALIBRATE_STEREO` and signals dual `CameraOperator` processes to revert to uncropped full-frame capture mode.
-* **`SAVE_STEREO_CALIBRATION`**: Saves calculated extrinsics and sensor ROIs to `stereo_calibration.json`, updates `stereo_vision` in global config, and signals `CameraOperator` processes to switch to high-speed cropped ROI mode.
-* **`UPDATE_STEREO_CONFIG`**: Validates incoming Pydantic schema update payload and syncs values to `AppConfig` runtime state.
 
----
+- **`START_STEREO_CALIBRATION`**: Transitions scene manager to `SceneId.CALIBRATE_STEREO` and signals dual `CameraOperator` processes to revert to uncropped full-frame capture mode.
+- **`SAVE_STEREO_CALIBRATION`**: Saves calculated extrinsics and sensor ROIs to `stereo_calibration.json`, updates `stereo_vision` in global config, and signals `CameraOperator` processes to switch to high-speed cropped ROI mode.
+- **`UPDATE_STEREO_CONFIG`**: Validates incoming Pydantic schema update payload and syncs values to `AppConfig` runtime state.
+
+______________________________________________________________________
 
 ## 4. TypeScript Schema Auto-Generation (`scripts/generate_ts_schema.py`)
 
@@ -90,28 +121,33 @@ export interface StereoDiagnostics {
 }
 ```
 
----
+______________________________________________________________________
 
 ## 5. Frontend React Component Architecture (`frontend/src/components/`)
 
 ### 5.1 Stereo Vision Dashboard (`frontend/src/components/StereoVisionDashboard.tsx`)
+
 A dedicated dashboard tab/modal component for live multi-camera monitoring:
-* **Dual Live Video Feeds:** Side-by-side video feeds for Camera Left and Camera Right.
-* **Stereo Diagnostics Card:**
-  * Gauges for Left FPS and Right FPS.
-  * Stereo Pair Match Ratio progress bar (`stereo_match_ratio`).
-  * Active Mode badge (`HIGH_SPEED_ROI` vs `FULL_FRAME`).
+
+- **Dual Live Video Feeds:** Side-by-side video feeds for Camera Left and Camera Right.
+- **Stereo Diagnostics Card:**
+  - Gauges for Left FPS and Right FPS.
+  - Stereo Pair Match Ratio progress bar (`stereo_match_ratio`).
+  - Active Mode badge (`HIGH_SPEED_ROI` vs `FULL_FRAME`).
 
 ### 5.2 Single-Sweep Calibration Wizard (`CalibrationWizard.tsx`)
+
 Adds a `CALIBRATE_STEREO` wizard step:
-* **User Instructions:** *"Place 4 PC tokens (IDs 0–3: Cricket, Lace, Shikra, Verita) on illuminated corner target rings and place physical PPI sheet (IDs 40 & 41) flat on table."*
-* **Action Dispatching:** Dispatches `START_STEREO_CALIBRATION` and `SAVE_STEREO_CALIBRATION` to `/input/action`.
-* **AR Verification Preview:** Renders real-time 3D wireframe box preview over detected physical tokens.
+
+- **User Instructions:** *"Place 4 PC tokens (IDs 0–3: Cricket, Lace, Shikra, Verita) on illuminated corner target rings and place physical PPI sheet (IDs 40 & 41) flat on table."*
+- **Action Dispatching:** Dispatches `START_STEREO_CALIBRATION` and `SAVE_STEREO_CALIBRATION` to `/input/action`.
+- **AR Verification Preview:** Renders real-time 3D wireframe box preview over detected physical tokens.
 
 ### 5.3 Settings & Configuration Controls (`SettingsModal.tsx` & `ConfigurationSidebar.tsx`)
-* Renders metadata-driven form controls for `stereo_vision` fields (`baseline_separation_mm`, camera device path dropdowns, enable toggle) bound directly to `useSystemState()`.
 
----
+- Renders metadata-driven form controls for `stereo_vision` fields (`baseline_separation_mm`, camera device path dropdowns, enable toggle) bound directly to `useSystemState()`.
+
+______________________________________________________________________
 
 ## 6. Verification Criteria
 

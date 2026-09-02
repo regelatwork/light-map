@@ -28,6 +28,7 @@ import logging
 import sys
 from logging.handlers import RotatingFileHandler
 
+
 def setup_logging(level=logging.INFO, log_file=None):
     """Configures the root logger with console and file handlers."""
     if log_file is None:
@@ -51,9 +52,7 @@ def setup_logging(level=logging.INFO, log_file=None):
         log_dir = os.path.dirname(log_file)
         if log_dir:
             os.makedirs(log_dir, exist_ok=True)
-        file_handler = RotatingFileHandler(
-            log_file, maxBytes=10*1024*1024, backupCount=5
-        )
+        file_handler = RotatingFileHandler(log_file, maxBytes=10 * 1024 * 1024, backupCount=5)
         file_handler.setFormatter(formatter)
         root_logger.addHandler(file_handler)
     except Exception as e:

@@ -71,10 +71,10 @@ def generate_target(filename="calibration_target.svg"):
   <!-- Marker 2 (ID 41) Right -->
   <image x="{marker2_x}" y="{marker_y}" width="{marker_size_px}" height="{marker_size_px}" xlink:href="data:image/png;base64,{marker1_base64}" />
 
-  <!-- Text Label -->
-  <text x="{center_x}" y="{center_y + marker_size_px + 20}" font-family="sans-serif" font-size="20" text-anchor="middle" fill="black">
-    Calibration Target (ArUco 4x4 IDs 40 & 41) - Distance: {distance_mm}mm
-  </text>
+    <!-- Text Label -->
+    <text x="{center_x}" y="{center_y + marker_size_px + 20}" font-family="sans-serif" font-size="20" text-anchor="middle" fill="black">
+      Light Map Physical PPI Calibration Ruler (IDs 40 & 41, Distance: 100mm)
+    </text>
 
   <!-- Center Crosshairs for verification -->
   <line x1="{marker1_center_x}" y1="{marker_y}" x2="{marker1_center_x}" y2="{marker_y + marker_size_px}" stroke="red" stroke-width="1" />

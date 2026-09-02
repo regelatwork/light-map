@@ -22,7 +22,7 @@ A new `GridType` enum will be added to `core/common_types.py` and mirrored in th
 class GridType(StrEnum):
     SQUARE = "SQUARE"
     HEX_POINTY = "HEX_POINTY"  # Pointy side up
-    HEX_FLAT = "HEX_FLAT"      # Flat side up
+    HEX_FLAT = "HEX_FLAT"  # Flat side up
 ```
 
 `GridMetadata` will be updated to include the grid type:

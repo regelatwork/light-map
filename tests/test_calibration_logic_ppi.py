@@ -12,10 +12,10 @@ def test_calculate_ppi_success():
 
     aruco_dict = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_4X4_50)
 
-    # Generate Marker 0
-    m0 = cv2.aruco.generateImageMarker(aruco_dict, 0, 40)  # 40px
-    # Generate Marker 1
-    m1 = cv2.aruco.generateImageMarker(aruco_dict, 1, 40)
+    # Generate Marker 40
+    m0 = cv2.aruco.generateImageMarker(aruco_dict, 40, 40)  # 40px
+    # Generate Marker 41
+    m1 = cv2.aruco.generateImageMarker(aruco_dict, 41, 40)
 
     # Convert to BGR
     m0 = cv2.cvtColor(m0, cv2.COLOR_GRAY2BGR)

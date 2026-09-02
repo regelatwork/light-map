@@ -12,12 +12,14 @@ from light_map.visibility.visibility_types import VisibilityBlocker, VisibilityT
 
 
 # Optional Numba support
+HAS_NUMBA = False
 try:
     from numba import njit
-
     HAS_NUMBA = True
 except ImportError:
     HAS_NUMBA = False
+
+
 
 # Blocker Mask Constants
 MASK_VALUE_NONE = 0

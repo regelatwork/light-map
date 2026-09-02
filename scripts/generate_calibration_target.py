@@ -13,10 +13,10 @@ def generate_target(filename="calibration_target.svg"):
     aruco_dict = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_4X4_50)
 
     # Generate Marker Images (200px for high res)
-    # ID 0
-    marker0_image = cv2.aruco.generateImageMarker(aruco_dict, 0, 200)
-    # ID 1
-    marker1_image = cv2.aruco.generateImageMarker(aruco_dict, 1, 200)
+    # ID 40
+    marker0_image = cv2.aruco.generateImageMarker(aruco_dict, 40, 200)
+    # ID 41
+    marker1_image = cv2.aruco.generateImageMarker(aruco_dict, 41, 200)
 
     # Convert to Base64 for embedding
     def img_to_b64(img):
@@ -50,11 +50,11 @@ def generate_target(filename="calibration_target.svg"):
     center_x = width_px / 2
     center_y = height_px / 2
 
-    # Marker 1 Center (ID 0)
+    # Marker 1 Center (ID 40)
     marker1_center_x = center_x - (distance_px / 2)
     marker1_x = marker1_center_x - (marker_size_px / 2)
 
-    # Marker 2 Center (ID 1)
+    # Marker 2 Center (ID 41)
     marker2_center_x = center_x + (distance_px / 2)
     marker2_x = marker2_center_x - (marker_size_px / 2)
 
@@ -65,15 +65,15 @@ def generate_target(filename="calibration_target.svg"):
   <!-- Background for visibility -->
   <rect x="0" y="0" width="{width_px}" height="{height_px}" fill="white" />
 
-  <!-- Marker 1 (ID 0) Left -->
+  <!-- Marker 1 (ID 40) Left -->
   <image x="{marker1_x}" y="{marker_y}" width="{marker_size_px}" height="{marker_size_px}" xlink:href="data:image/png;base64,{marker0_base64}" />
 
-  <!-- Marker 2 (ID 1) Right -->
+  <!-- Marker 2 (ID 41) Right -->
   <image x="{marker2_x}" y="{marker_y}" width="{marker_size_px}" height="{marker_size_px}" xlink:href="data:image/png;base64,{marker1_base64}" />
 
   <!-- Text Label -->
   <text x="{center_x}" y="{center_y + marker_size_px + 20}" font-family="sans-serif" font-size="20" text-anchor="middle" fill="black">
-    Calibration Target (ArUco 4x4 IDs 0 & 1) - Distance: {distance_mm}mm
+    Calibration Target (ArUco 4x4 IDs 40 & 41) - Distance: {distance_mm}mm
   </text>
 
   <!-- Center Crosshairs for verification -->

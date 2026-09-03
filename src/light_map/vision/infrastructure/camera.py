@@ -21,6 +21,7 @@ class Camera:
 
     def __init__(self, index=0, width=4608, height=2592, framerate=8):
         self.index = index
+        self.id = str(index)
         self.width = width
         self.height = height
         self.framerate = framerate

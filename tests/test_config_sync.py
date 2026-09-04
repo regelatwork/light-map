@@ -95,16 +95,16 @@ def test_aruco_defaults_int_keys():
     from light_map.core.config_schema import TokenConfigSchema
 
     # 1. Loading from JSON-like payload (string keys)
-    payload = {"aruco_defaults": {"42": {"name": "Test Token", "type": "PC"}}}
+    payload = {"aruco_defaults": {"39": {"name": "Test Token", "type": "PC"}}}
     config = TokenConfigSchema(**payload)
 
     # Pydantic should have cast key to int
-    assert 42 in config.aruco_defaults
+    assert 39 in config.aruco_defaults
     assert isinstance(list(config.aruco_defaults.keys())[0], int)
-    assert config.aruco_defaults[42].name == "Test Token"
+    assert config.aruco_defaults[39].name == "Test Token"
 
     # 2. Dumping to JSON (string keys)
     # mode='json' converts types to JSON-compatible ones
     json_data = config.model_dump(mode="json")
-    assert "42" in json_data["aruco_defaults"]
+    assert "39" in json_data["aruco_defaults"]
     assert isinstance(list(json_data["aruco_defaults"].keys())[0], str)

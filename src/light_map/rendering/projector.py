@@ -94,25 +94,34 @@ def compute_projector_homography(
 
     # --- ORIENTATION CORRECTION ---
     # Use ArUco marker 0's internal orientation to determine table axes in camera space.
+    ret, corners = cv2.findChessboardCorners(gray, board_size, None)
+    
+    if not ret:
+        raise RuntimeError("Chessboard pattern not detected in the captured image.")
+    
+    camera_points = corners.reshape(-1, 2)
+    
+    # --- ORIENTATION CORRECTION ---
+    # Use ArUco marker 0's internal orientation to determine table axes in camera space.
     if aruco_ids is not None and 0 in aruco_ids.flatten():
         idx0 = np.where(aruco_ids.flatten() == 0)[0][0]
         # ArUco corners are TL, TR, BR, BL relative to the marker's own orientation.
         m_corners = aruco_corners[idx0][0]
         m_tl, m_tr, m_bl = m_corners[0], m_corners[1], m_corners[3]
-
+        
         # Table axes in camera pixel space
         table_right = m_tr - m_tl
         table_down = m_bl - m_tl
-
+        
         # Grid axes (from first few corners)
         # Point 0: TL, Point 1: TR of first row, Point cols: TL of second row
         g_tl = camera_points[0]
         g_tr = camera_points[1]
         g_bl = camera_points[board_size[0]]
-
+        
         grid_right = g_tr - g_tl
         grid_down = g_bl - g_tl
-
+        
         # 1. Check for 180-degree rotation (Both axes inverted)
         if np.dot(table_right, grid_right) < 0 and np.dot(table_down, grid_down) < 0:
             logging.info("Orientation: 180-degree rotation detected. Correcting grid.")
@@ -129,8 +138,10 @@ def compute_projector_homography(
             # Flip rows vertically
             camera_points = camera_points.reshape(board_size[1], board_size[0], 2)
             camera_points = np.flip(camera_points, axis=0).reshape(-1, 2)
-
+    
     # Prepare screen points (where we drew the corners)
+    # ... (rest of the code)
+
     screen_points = []
     sq_size = pattern_params["square_size"]
     start_x = pattern_params.get("start_x", pattern_params.get("border_size", 0))

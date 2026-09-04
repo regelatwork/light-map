@@ -10,8 +10,10 @@ from light_map.vision.infrastructure.camera import Camera
 from light_map.calibration.calibration_logic import (
     calculate_ppi_from_frame,
     calibrate_extrinsics,
-    compute_projector_homography
+    compute_projector_homography,
+    solve_joint_extrinsics
 )
+
 from light_map.rendering.projector import generate_calibration_pattern
 
 logger = logging.getLogger(__name__)
@@ -42,18 +44,22 @@ class StereoCalibrationWizard:
     def get_valid_tokens(self) -> Dict[int, float]:
         """
         Filters tokens from tokens.json to only those with positive heights.
+        Resolves profile references to height_mm.
         """
         valid_tokens = {}
         profiles = self.token_data.get("token_profiles", {})
         defaults = self.token_data.get("aruco_defaults", {})
 
-        for token_id, data in defaults.items():
-            token_id = int(token_id)
-            profile_name = data.get("profile")
-            if profile_name in profiles:
-                height = profiles[profile_name].get("height_mm", 0.0)
-                if height > 0:
-                    valid_tokens[token_id] = height
+        for token_id_str, data in defaults.items():
+            token_id = int(token_id_str)
+            # Only consider IDs 0-39 as user tokens per spec
+            if 0 <= token_id <= 39:
+                profile_name = data.get("profile")
+                if profile_name in profiles:
+                    height = profiles[profile_name].get("height_mm", 0.0)
+                    size = profiles[profile_name].get("size", 1.0)
+                    if height > 0:
+                        valid_tokens[token_id] = {"height": height, "size": size}
         return valid_tokens
 
     def resolve_lens_intrinsics(self, left_id: str, right_id: str):
@@ -70,8 +76,11 @@ class StereoCalibrationWizard:
                     return data.get("K"), data.get("dist")
             return None
 
-        self.camera_left_intrinsics, self.camera_left_dist = _load_npz("camera_left")
-        self.camera_right_intrinsics, self.camera_right_dist = _load_npz("camera_right")
+        res_l = _load_npz("camera_left")
+        self.camera_left_intrinsics, self.camera_left_dist = res_l if res_l is not None else (None, None)
+
+        res_r = _load_npz("camera_right")
+        self.camera_right_intrinsics, self.camera_right_dist = res_r if res_r is not None else (None, None)
 
         if self.camera_left_intrinsics is None or self.camera_right_intrinsics is None:
             logger.warning("Could not resolve lens intrinsics for one or both cameras.")
@@ -87,8 +96,8 @@ class StereoCalibrationWizard:
         return detector.detectMarkers(gray)
 
     def _discover_cameras(self, r_left: np.ndarray, t_left: np.ndarray, 
-                           r_right: np.ndarray, t_right: np.ndarray,
-                           cam_left: Camera, cam_right: Camera) -> tuple[str, str]:
+                               r_right: np.ndarray, t_right: np.ndarray,
+                               cam_left: Camera, cam_right: Camera) -> tuple[str, str]:
         """
         Identifies Left vs Right camera based on translation vector and rotation.
         """
@@ -99,11 +108,18 @@ class StereoCalibrationWizard:
         r_right_mat, _ = cv2.Rodrigues(r_right)
         r_stereo = r_left_mat @ r_right_mat.T
         
+        # Debug print
+        # print(f"DEBUG: r_stereo = {r_stereo}")
+        # print(f"DEBUG: identity = {np.eye(3)}")
+        
         # Check if rotation is small (e.g., < 10 degrees)
+        # 0.17 radians is approx 10 degrees.
         deviation = np.max(np.abs(r_stereo - np.eye(3)))
-        if deviation > 0.1:
-            logger.warning(f"Warning: Significant rotation detected between cameras (deviation: {deviation:.3f})")
+        if deviation > 0.17:
 
+            raise RuntimeError(f"Significant rotation detected between cameras (deviation: {deviation:.3f}). "
+                               "Check camera mounting.")
+        
         # Rule: Camera observing positive +Tx horizontal displacement is assigned camera_right.
         if tx > 0:
             # camera_left is at +X, so it's the right one.
@@ -115,24 +131,27 @@ class StereoCalibrationWizard:
             return cam_left.id, cam_right.id
 
     def _get_ground_points(self, frame: np.ndarray, homography: np.ndarray, ppi: float, 
-                            corners: np.ndarray, ids: np.ndarray) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+                                 corners: np.ndarray, ids: np.ndarray) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
         """
         Phase 1: Table Scale & Z=0 Homography.
-        Detects projected grid (IDs 42-47) and physical PPI sheet (IDs 40 & 41, d=100mm) simultaneously.
+        Detects projected grid (IDs 42–47) and physical PPI sheet (IDs 40 & 41, d=100mm) simultaneously.
         Calculates physical PPI and maps projected marker corners to physical millimeter tabletop coordinates (X, Y, Z=0).
         """
         ids_flat = ids.flatten()
         
         # Find corners for 40 and 41
-        idx40 = np.where(ids_flat == 40)[0][0]
-        idx41 = np.where(ids_flat == 41)[0][0]
+        idx0 = np.where(ids_flat == 40)[0]
+        idx1 = np.where(ids_flat == 41)[0]
         
-        # Get centers of 40 and 41 in camera space
-        c40 = np.mean(corners[idx40][0], axis=0)
-        c41 = np.mean(corners[idx41][0], axis=0)
+        if len(idx0) == 0 or len(idx1) == 0:
+            logger.warning("Phase 1: Marker 40 or 41 not detected. Cannot compute PPI.")
+            return None, None, None
+        
+        c0 = np.mean(corners[idx0[0]][0], axis=0)
+        c1 = np.mean(corners[idx1[0]][0], axis=0)
         
         # Project to tabletop space using homography
-        pts_cam = np.array([c40, c41]).reshape(-1, 1, 2).astype(np.float32)
+        pts_cam = np.array([c0, c1]).reshape(-1, 1, 2)
         pts_table = cv2.perspectiveTransform(pts_cam, homography)
         
         # The distance between 40 and 41 in tabletop space should be 100mm
@@ -144,19 +163,24 @@ class StereoCalibrationWizard:
         grid_corners_world = []
         
         for gid in grid_ids:
-            if gid in ids_flat:
-                idx = np.where(ids_flat == gid)[0][0]
-                c = np.mean(corners[idx][0], axis=0)
-                c_cam = np.array(c).reshape(1, 1, 2).astype(np.float32)
+            idx = np.where(ids_flat == gid)[0]
+            if len(idx) > 0:
+                c = np.mean(corners[idx[0]][0], axis=0)
+                c_cam = np.array(c).reshape(1, 1, 2)
                 c_table = cv2.perspectiveTransform(c_cam, homography)[0][0]
                 grid_corners_cam.append(c)
                 grid_corners_world.append(c_table)
         
-        # If we have at least some grid corners, return them
         if len(grid_corners_world) > 0:
             grid_corners_world = np.array(grid_corners_world, dtype=np.float32)
             grid_corners_cam = np.array(grid_corners_cam, dtype=np.float32)
-            return grid_corners_cam, grid_corners_cam, grid_corners_world
+            
+            # Convert pixels to mm using ppi (pixels per inch)
+            # 1 inch = 25.4 mm
+            ppi_mm = ppi / 25.4
+            grid_corners_world = grid_corners_world / ppi_mm
+            
+            return grid_corners_cam, grid_corners_proj, grid_corners_world
         
         return None, None, None
 
@@ -335,17 +359,26 @@ class StereoCalibrationWizard:
         # Phase 2: Joint Non-Planar Stereo Extrinsics
         logging.info("Phase 2: Solving stereo extrinsics...")
         valid_tokens = self.get_valid_tokens()
+        
+        # Extract heights and sizes
+        token_heights = {tid: data["height"] for tid, data in valid_tokens.items()}
+        token_sizes = {tid: data["size"] for tid, data in valid_tokens.items()}
 
-        r_l, t_l, r_r, t_r, _ = calibrate_extrinsics(
+        r_l, t_l, r_r, t_r, _ = solve_joint_extrinsics(
             frame_l,
+            frame_r,
             self.projector_matrix,
             self.camera_left_intrinsics, self.camera_left_dist,
-            valid_tokens,
+            self.camera_right_intrinsics, self.camera_right_dist,
+            token_heights,
             self.ppi,
-            ground_points_cam=ground_points_cam,
-            ground_points_proj=grid_corners_proj,
-            token_sizes={k: 1 for k in valid_tokens.keys()}
+            aruco_corners_l=corners_l,
+            aruco_ids_l=ids_l,
+            aruco_corners_r=corners_r,
+            aruco_ids_r=ids_r,
+            token_sizes=token_sizes
         )
+
 
         if r_l is None:
             raise RuntimeError("Failed to solve stereo extrinsics.")

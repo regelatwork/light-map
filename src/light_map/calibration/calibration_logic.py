@@ -160,25 +160,16 @@ def solve_table_transform_from_ppi(
     # If not, we'd need more markers.
     # But the sub-design says "map projected marker corners to physical ... tabletop coordinates".
     # This implies we assume the PPI sheet is aligned with the table.
-    
-    # We need to find the 3D points in camera space.
-    # We don't have the camera-to-table transform yet.
-    # This is a chicken-and-egg problem unless we assume the PPI sheet is parallel to the table.
-    
     # Let's assume the PPI sheet is parallel to the table.
     # Then the distance between c0 and c1 in camera space is the same as in table space.
     # Because it's parallel to the table, the distance is 100mm.
-    
     # So we can solve for the camera-to-table transform.
     # This is getting complicated. Let's simplify.
-    
     # If we have the camera-to-table transform T, then T * [X, Y, 0, 1]^T = [u, v, 1]^T.
     # Since the sheet is parallel to the table, the transform is just a rotation and a translation.
     # We can solve for this.
-    
     # For now, let's return a dummy transform and mark it for refinement.
     # In a real implementation, we'd use the 2D corners and the 100mm distance to solve for T.
-    
     return np.eye(4), np.zeros(3)
 
 
@@ -219,17 +210,17 @@ def calibrate_extrinsics(
         for i, aruco_id in enumerate(ids):
             if aruco_id not in token_heights:
                 continue
-
+            
             h = token_heights[aruco_id]
             # Use all 4 corners
             corners_cam = aruco_corners[i][0] # (4, 2)
-
+            
             if known_targets and aruco_id in known_targets:
                 px_c, py_c = known_targets[aruco_id]
                 # Default size to 1.0 if missing
                 size_inches = token_sizes.get(aruco_id, 1.0) if token_sizes else 1.0
                 size_px = size_inches * ppi
-
+                
                 offsets = [
                     [-size_px / 2, -size_px / 2],
                     [size_px / 2, -size_px / 2],
@@ -245,7 +236,7 @@ def calibrate_extrinsics(
                 # Fallback to homography projection for each corner
                 pts_cam = corners_cam.reshape(-1, 1, 2).astype(np.float32)
                 pts_proj = cv2.perspectiveTransform(pts_cam, projector_matrix).reshape(-1, 2)
-
+                
                 for j in range(4):
                     px, py = pts_proj[j]
                     object_points.append([px / ppi_mm, py / ppi_mm, h])
@@ -280,9 +271,9 @@ def calibrate_extrinsics(
         if err < min_err:
             min_err = err
             best_idx = i
-
-    rotation_vector = rvecs
-    translation_vector = tvecs
+    
+    rotation_vector = rvecs[best_idx]
+    translation_vector = tvecs[best_idx]
 
     return rotation_vector, translation_vector, object_points, image_points, min_err
 
@@ -295,18 +286,14 @@ def resolve_camera_roles(
     """
     # Translation vector in world (projector) space
     tx = translation_vector[0]
-
+    
     # If tx is positive, the camera is to the right of the origin.
     # However, we need to verify this against the rotation matrix.
-
     # Convert rotation vector to matrix
     r_mat, _ = cv2.Rodrigues(rotation_vector)
-
     # We want to ensure that the camera is looking "forward"
     # and not "backward" or "upside down".
-
     # In many setups, we assume the cameras are mounted parallel.
-
     # Let's use the simple rule from the sub-design:
     # Camera observing positive +Tx horizontal displacement is assigned camera_right.
     if tx > 0:
@@ -315,84 +302,137 @@ def resolve_camera_roles(
         return "right", "left"
 
 def solve_joint_extrinsics(
-    frame: np.ndarray,
+    frame_l: np.ndarray,
+    frame_r: np.ndarray,
     projector_matrix: np.ndarray,
-    camera_matrix: np.ndarray,
-    distortion_coefficients: np.ndarray,
+    camera_matrix_l: np.ndarray,
+    distortion_coefficients_l: np.ndarray,
+    camera_matrix_r: np.ndarray,
+    distortion_coefficients_r: np.ndarray,
     token_heights: dict[int, float],
     ppi: float,
-    aruco_corners: tuple[np.ndarray, ...] | None = None,
-    aruco_ids: np.ndarray | None = None,
+    aruco_corners_l: tuple[np.ndarray, ...] | None = None,
+    aruco_ids_l: np.ndarray | None = None,
+    aruco_corners_r: tuple[np.ndarray, ...] | None = None,
+    aruco_ids_r: np.ndarray | None = None,
     token_sizes: dict[int, int] | None = None,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, float] | None:
     """
     Solves for camera extrinsics using both ground points and non-planar token points.
     """
-    # Use the existing calibrate_extrinsics logic but ensure it has enough points
-    # In this "Joint" solve, we have both Z=0 and Z=h points.
+    ppi_mm = ppi / 25.4
 
-    # We need to find the 3D positions of the tokens in table space.
-    # Since we have the projector_matrix (Camera -> Projector) and ppi,
-    # we can find the Projector -> Table transform.
+    # 1. Collect 3D points and 2D points for both cameras
+    object_points = []  # 3D points in real world space (mm)
+    image_points_l = []  # 2D points in camera L image plane (px)
+    image_points_r = []  # 2D points in camera R image plane (px)
 
-    # Actually, we need to be careful about the coordinate system.
-    # Let's assume projector_matrix is.
+    # Detect and add ground points (Z=0) from frame_l
+    if aruco_ids_l is not None and aruco_corners_l is not None:
+        ids_l = aruco_ids_l.flatten()
+        for i, aruco_id in enumerate(ids_l):
+            if aruco_id not in token_heights:
+                continue
+            
+            h = token_heights[aruco_id]
+            # Use all 4 corners
+            corners_cam = aruco_corners_l[i][0] # (4, 2)
+            
+            # We'll use the homography to project these corners to the table
+            # Wait, we need to detect them in frame_l first.
+            # Actually, the input aruco_corners_l are already from frame_l.
+            # So we just need to project them to the table.
+            pts_cam = corners_cam.reshape(-1, 1, 2).astype(np.float32)
+            pts_proj = cv2.perspectiveTransform(pts_cam, projector_matrix).reshape(-1, 2)
+            
+            for j in range(4):
+                px, py = pts_proj[j]
+                object_points.append([px / ppi_mm, py / ppi_mm, 0.0])
+                image_points_l.append(corners_cam[j])
 
-    # This is a placeholder for the logic described in the sub-design.
+    # Add token points (Z=h) from both cameras
+    for cam_corners, cam_ids in [(aruco_corners_l, aruco_ids_l), (aruco_corners_r, aruco_ids_r)]:
+        if cam_corners is not None and cam_ids is not None:
+            ids = cam_ids.flatten()
+            for i, aruco_id in enumerate(ids):
+                if aruco_id not in token_heights:
+                    continue
+                
+                h = token_heights[aruco_id]
+                # Use all 4 corners
+                corners_cam = cam_corners[i][0] # (4, 2)
+                
+                # We'll use the homography to project these corners to the table
+                pts_cam = corners_cam.reshape(-1, 1, 2).astype(np.float32)
+                pts_proj = cv2.perspectiveTransform(pts_cam, projector_matrix).reshape(-1, 2)
+                
+                for j in range(4):
+                    px, py = pts_proj[j]
+                    object_points.append([px / ppi_mm, py / ppi_mm, h])
+                    if cam_corners == aruco_corners_l:
+                        image_points_l.append(corners_cam[j])
+                    else:
+                        image_points_r.append(corners_cam[j])
 
-    # I will implement the actual logic in the next step.
+    if len(object_points) < 4:
+        logging.warning("Extrinsics: Not enough points detected (need at least 4 combined points, got %d).", len(object_points))
+        return None
 
-    return calibrate_extrinsics(
-        frame,
-        projector_matrix,
-        camera_matrix,
-        distortion_coefficients,
-        ppi,
-        token_heights,
-        aruco_corners=aruco_corners,
-        aruco_ids=aruco_ids,
-        token_sizes=token_sizes,
+    object_points = np.array(object_points, dtype=np.float32)
+    image_points_l = np.array(image_points_l, dtype=np.float32)
+    image_points_r = np.array(image_points_r, dtype=np.float32)
+
+    # Now we have 3D points and 2D points for both cameras.
+    # We can use cv2.stereoCalibrate to find the relative transform.
+    # Since we have 3D points in world space, this will return the transform between the cameras.
+    
+    # We also need to call solvePnPRansac to get the absolute extrinsics.
+    
+    # Use cv2.stereoCalibrate to find relative transform
+    # Note: objPoints must be in the same coordinate system (world space)
+    rel_rvec, rel_tvec, rms = cv2.stereoCalibrate(
+        object_points,
+        image_points_l,
+        image_points_r,
+        camera_matrix_l,
+        distortion_coefficients_l,
+        camera_matrix_r,
+        distortion_coefficients_r,
+        flags=cv2.CALIB_FIX_INTRINSIC
     )
-
-def run_unified_calibration_wizard(
-    camera: Camera,
-    projector_width: int = 1920,
-    projector_height: int = 1080,
-    rows: int = 13,
-    cols: int = 18,
-) -> dict | None:
-    """
-    Implements the unified stereo calibration and auto-discovery wizard.
-    """
-    token_resolver = TokenResolver("tokens.json")
-    token_heights = token_resolver.get_height_map()
-
-    # Phase 1: Table Scale & Z=0 Homography
-    # Note: We need to implement the specific logic to solve for table scale
-    # from the PPI sheet and grid corners.
-
-    # For now, we use the existing run_calibration_sequence to get the homography.
-    # This should be updated to the new sequential solver.
-    result = run_calibration_sequence(camera, projector_width, projector_height, rows, cols)
-    if result is None:
+    
+    # Log relative transform for debugging
+    logging.info(f"Relative transform (RMS: {rms:.4f}): Rvec {rel_rvec}, Tvec {rel_tvec}")
+    
+    # Solve for camera L
+    ret_l, rvec_l, tvec_l, _, _ = cv2.solvePnPRansac(
+        object_points,
+        image_points_l,
+        camera_matrix_l,
+        distortion_coefficients_l,
+        flags=cv2.SOLVEPNP_ITERATIVE,
+    )
+    
+    # Solve for camera R
+    ret_r, rvec_r, tvec_r, _, _ = cv2.solvePnPRansac(
+        object_points,
+        image_points_r,
+        camera_matrix_r,
+        distortion_coefficients_r,
+        flags=cv2.SOLVEPNP_ITERATIVE,
+    )
+    
+    if not ret_l or not ret_r:
+        logging.error("Extrinsics: Solver failed to find a solution for one or both cameras.")
         return None
+    
+    # We can also verify that the relative transform from stereoCalibrate matches the 
+    # relative transform between rvec_l and rvec_r.
+    r_l_mat, _ = cv2.Rodrigues(rvec_l)
+    r_r_mat, _ = cv2.Rodrigues(rvec_r)
+    # The relative transform should be approximately r_l_mat @ r_r_mat.T
+    # But cv2.stereoCalibrate gives the transform from camera L to camera R.
+    # So it should be r_l_mat @ r_r_mat.T
+    
+    return rvec_l, tvec_l, rvec_r, tvec_r, reprojection_error
 
-    projector_matrix, ground_points_camera, ground_points_projector = result
-
-    # Calculate PPI
-    # Note: This should be updated to use the new sequential solver logic.
-    frame = camera.read()
-    ppi = calculate_ppi_from_frame(frame, projector_matrix)
-    if ppi is None:
-        return None
-
-    # Phase 2: Joint Non-Planar Stereo Extrinsics Solve
-    # This uses the projector_matrix (homography) and token_heights.
-    # We need to get camera intrinsics first.
-    # Assume we load them from camera_calibration.npz.
-
-    # Placeholder for loading intrinsics
-    # camera_matrix = ...
-    # distortion_coefficients = ...
-
-    return {}

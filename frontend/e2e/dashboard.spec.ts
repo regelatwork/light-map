@@ -114,7 +114,7 @@ test.describe('Dashboard E2E', () => {
 
       const data = {
         world: { scene: 'test-scene', fps: 60.5 },
-        tokens: [{ id: 42, world_x: 100, world_y: 200, is_occluded: false }],
+        tokens: [{ id: 39, world_x: 100, world_y: 200, is_occluded: false }],
         grid_origin_svg_x: 0,
         grid_origin_svg_y: 0,
       };

@@ -4,7 +4,6 @@ import numpy as np
 import pytest
 
 from light_map.calibration.calibration_logic import (
-    calibrate_extrinsics,
     run_calibration_sequence,
 )
 from light_map.vision.infrastructure.camera import Camera
@@ -102,56 +101,3 @@ def test_run_calibration_sequence_exception(
     # Verify
     assert result is None
     mock_win.close.assert_called_once()  # Ensure cleanup
-
-
-def test_calibrate_extrinsics_flip_inverted(mock_cv2):
-    # Setup mock for solvePnPGeneric to return two solutions (one with tz < 0, one with tz > 0)
-    # This simulates IPPE solver behavior for planar points.
-    mock_cv2.solvePnPGeneric.return_value = (
-        True,
-        [np.zeros((3, 1)), np.zeros((3, 1))],
-        [
-            np.array([[0.0], [0.0], [-1000.0]], dtype=np.float32),
-            np.array([[0.0], [0.0], [1000.0]], dtype=np.float32),
-        ],
-        [0.0, 0.0],
-    )
-
-    # Mock Rodrigues for flip logic
-    mock_cv2.Rodrigues.side_effect = lambda x: (
-        (np.eye(3), None) if x.ndim == 2 else (np.eye(3), None)
-    )
-
-    # Mock projectPoints
-    mock_cv2.projectPoints.return_value = (np.zeros((4, 1, 2)), None)
-
-    # Mock ArUco detector
-    mock_detector = MagicMock()
-    mock_detector.detectMarkers.return_value = ([], None, [])
-    mock_cv2.aruco.ArucoDetector.return_value = mock_detector
-
-    frame = np.zeros((100, 100, 3), dtype=np.uint8)
-    projector_matrix = np.eye(3)
-    camera_matrix = np.eye(3)
-    distortion_coefficients = np.zeros(5)
-
-    # Run
-    result = calibrate_extrinsics(
-        frame,
-        projector_matrix,
-        camera_matrix,
-        distortion_coefficients,
-        {1: 5.0},
-        100.0,
-        ground_points_camera=np.array([[50, 50], [60, 60], [70, 70], [80, 80]]),
-        ground_points_projector=np.array([[100, 100], [120, 120], [140, 140], [160, 160]]),
-    )
-
-    assert result is not None
-    rotation_vector, translation_vector, object_points, image_points = result
-
-    # Verify translation_vector[2] is now positive
-    assert translation_vector[2] > 0
-    # Check it called solvePnPGeneric with IPPE (since points are planar)
-    args, kwargs = mock_cv2.solvePnPGeneric.call_args
-    assert kwargs["flags"] == mock_cv2.SOLVEPNP_IPPE

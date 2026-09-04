@@ -71,7 +71,7 @@ def verify():
         # 6. Trigger WorldState change (Simulate Token)
         # This should invalidate some caches (dynamic layers) and trigger at least one re-render.
         print("Injecting virtual token to trigger re-render...")
-        token_data = [{"id": 42, "x": 100.0, "y": 100.0}]
+        token_data = [{"id": 39, "x": 100.0, "y": 100.0}]
         httpx.post(f"{base_url}/input/tokens", json=token_data)
 
         time.sleep(2)

@@ -67,11 +67,11 @@ def test_world_state_apply_results():
     last_ts = last_ts = state.tokens_version  # Actually I'll just keep the structure
 
     # 6. Apply ArUco result (Raw corners) - SHOULD increment raw_aruco_version
-    raw_data = {"corners": [[[0, 0], [1, 0], [1, 1], [0, 1]]], "ids": [42]}
+    raw_data = {"corners": [[[0, 0], [1, 0], [1, 1], [0, 1]]], "ids": [39]}
     result_raw = DetectionResult(timestamp=2050, type=ResultType.ARUCO, data=raw_data)
     last_raw_ts = state.raw_aruco_version
     state.apply(result_raw)
-    assert state.raw_aruco["ids"] == [42]
+    assert state.raw_aruco["ids"] == [39]
     assert state.raw_aruco_version > last_raw_ts
     # Should NOT increment tokens_version
     assert state.tokens_version == last_ts

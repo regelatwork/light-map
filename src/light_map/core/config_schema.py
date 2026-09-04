@@ -105,7 +105,36 @@ class TokenConfigSchema(BaseModel):
     )
 
 
-class ViewportStateSchema(BaseModel):
+class CameraDeviceSchema(BaseModel):
+    device_path: str = Field(..., title="Device Path", description="Path to the camera device.")
+    name: str = Field(default="Camera", title="Name", description="Display name for the camera.")
+    enabled: bool = Field(default=True, title="Enabled", description="Whether the camera is enabled.")
+
+class StereoVisionConfigSchema(BaseModel):
+    enable_stereo: bool = Field(
+        default=False,
+        title="Enable Stereo",
+        description="Toggle for dual-camera stereographic tracking.",
+    )
+    baseline_separation_mm: float = Field(
+        default=128.0,
+        ge=1.0,
+        le=500.0,
+        title="Baseline Separation (mm)",
+        description="Physical distance between the two camera sensors in millimeters.",
+    )
+    camera_left_device: str = Field(
+        default="/dev/video0",
+        title="Left Camera Device",
+        description="Device path for the left camera.",
+    )
+    camera_right_device: str = Field(
+        default="/dev/video1",
+        title="Right Camera Device",
+        description="Device path for the right camera.",
+    )
+
+
     x: float = Field(
         default=0.0, title="X Offset", description="Horizontal pan offset in SVG units."
     )
@@ -365,3 +394,9 @@ class GlobalConfigSchema(BaseModel):
         title="Projector Z Override",
         description="Manually override the projector's Z position (mm).",
     )
+    stereo_vision: StereoVisionConfigSchema = Field(
+        default_factory=StereoVisionConfigSchema,
+        title="Stereo Vision",
+        description="Configuration for dual-camera stereographic tracking.",
+    )
+

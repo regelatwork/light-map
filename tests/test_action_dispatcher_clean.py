@@ -73,10 +73,10 @@ def test_dispatch_toggle_fow(dispatcher, app):
 
 
 def test_dispatch_update_token(dispatcher, app):
-    payload = {"action": "UPDATE_TOKEN", "id": 42, "name": "Hero"}
+    payload = {"action": "UPDATE_TOKEN", "id": 39, "name": "Hero"}
     dispatcher.dispatch(payload)
     app.persistence_service.update_token.assert_called_once_with(
-        42, action="UPDATE_TOKEN", id=42, name="Hero"
+        39, action="UPDATE_TOKEN", id=39, name="Hero"
     )
 
 
@@ -88,12 +88,12 @@ def test_dispatch_update_system_config(dispatcher, app):
 
 
 def test_dispatch_inspect_token(dispatcher, app):
-    payload = {"action": "INSPECT_TOKEN", "payload": "42"}
+    payload = {"action": "INSPECT_TOKEN", "payload": "39"}
     dispatcher.dispatch(payload)
     from light_map.core.common_types import SceneId
 
     app.scene_manager.transition_to.assert_called_once_with(
-        SceneId.EXCLUSIVE_VISION, payload={"token_id": 42}
+        SceneId.EXCLUSIVE_VISION, payload={"token_id": 39}
     )
 
 

@@ -87,14 +87,14 @@ def test_token_vertical_projection():
             ],
             dtype=np.float32,
         )
-        mock_instance.detectMarkers.return_value = ([corners], np.array([[42]]), [])
+        mock_instance.detectMarkers.return_value = ([corners], np.array([[39]]), [])
 
         # ppi=25.4 (1mm = 1px)
         tokens = detector.detect(frame, map_system, ppi=25.4, default_height_mm=50.0)
 
         assert len(tokens) == 1
         token = tokens[0]
-        assert token.id == 42
+        assert token.id == 39
         # Vertical projection to map surface (Z=0)
         assert token.world_x == pytest.approx(100.0, abs=1e-1)
         assert token.world_y == pytest.approx(200.0, abs=1e-1)

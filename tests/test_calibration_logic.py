@@ -1,103 +1,93 @@
-from unittest.mock import MagicMock, patch
+import json
+import os
+import tempfile
+import unittest
 
 import numpy as np
-import pytest
 
 from light_map.calibration.calibration_logic import (
-    run_calibration_sequence,
+    calculate_ppi_from_frame,
+    filter_candidate_tokens,
+    resolve_lens_intrinsics,
+    solve_joint_extrinsics,
 )
-from light_map.vision.infrastructure.camera import Camera
 
 
-@pytest.fixture
-def mock_cv2():
-    with patch("light_map.calibration.calibration_logic.cv2") as mock:
-        yield mock
+class TestCalibrationLogic(unittest.TestCase):
+    def test_filter_candidate_tokens(self):
+        path = tempfile.mkdtemp()
+        data = {
+            "token_profiles": {"pc": {"size": 1, "height_mm": 50.0}},
+            "aruco_defaults": {
+                str(i): {"name": f"Token {i}", "type": "PC", "profile": "pc", "height_mm": 10.0}
+                for i in range(8)
+            },
+        }
+        with open(os.path.join(path, "tokens.json"), "w") as f:
+            json.dump(data, f)
+
+        tokens_path = os.path.join(path, "tokens.json")
+        candidates = filter_candidate_tokens(tokens_path)
+        self.assertEqual(len(candidates), 8)
+        for c in candidates:
+            self.assertGreater(c["height_mm"], 0)
+
+    def test_resolve_lens_intrinsics_fail(self):
+        with self.assertRaises(FileNotFoundError):
+            resolve_lens_intrinsics("unknown")
+
+    def test_calculate_ppi_from_frame_basic(self):
+        # Mock projector matrix (Identity for simplicity)
+        # Note: cv2.perspectiveTransform expects a 3x4 matrix
+        proj_matrix = np.array([[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 0, 1]], dtype=np.float32)
+        # Mock frame
+        frame = np.zeros((480, 640, 3), dtype=np.uint8)
+
+        # Mock aruco_ids and corners
+        # We need to make sure the corners are in the correct format (1, 4, 2)
+        aruco_ids = np.array([40, 41])
+        aruco_corners = (
+            np.array([[[10, 10], [20, 10], [20, 20], [10, 20]]], dtype=np.float32),  # ID 40
+            np.array([[[30, 30], [40, 30], [40, 40], [30, 40]]], dtype=np.float32),  # ID 41
+        )
+
+        # p1_cam = [10, 10], p2_cam = [30, 30]
+        # pts_proj = p1_cam, p2_cam (since proj_matrix is identity)
+        # dist_px = sqrt(20^2 + 20^2) = 28.284
+        # dist_inches = 100 / 25.4 = 3.937
+        # ppi = 28.284 / 3.937 = 7.18
+        ppi = calculate_ppi_from_frame(
+            frame,
+            proj_matrix,
+            target_dist_mm=100.0,
+            aruco_corners=aruco_corners,
+            aruco_ids=aruco_ids,
+        )
+        self.assertAlmostEqual(ppi, 7.18, places=2)
+
+    def test_solve_joint_extrinsics_insufficient_points(self):
+        # Should return None if not enough points
+        res = solve_joint_extrinsics(
+            np.zeros((480, 640, 3)),
+            np.zeros((480, 640, 3)),
+            np.eye(3, 4).astype(np.float32),
+            np.eye(3, 4).astype(np.float32),
+            np.eye(3, 4).astype(np.float32),
+            np.eye(3, 4).astype(np.float32),
+            np.eye(3, 4).astype(np.float32),
+            {1: 10.0, 2: 20.0},
+            100.0,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+        )
+        self.assertIsNone(res)
 
 
-@pytest.fixture
-def mock_camera():
-    mock = MagicMock(spec=Camera)
-    # Mock return value for read()
-    mock.read.return_value = np.zeros((100, 100, 3), dtype=np.uint8)
-    return mock
-
-
-@pytest.fixture
-def mock_projector_utils():
-    with (
-        patch("light_map.calibration.calibration_logic.generate_calibration_pattern") as mock_gen,
-        patch(
-            "light_map.calibration.calibration_logic.compute_projector_homography"
-        ) as mock_compute,
-    ):
-        mock_gen.return_value = (np.zeros((100, 100, 3), dtype=np.uint8), "params")
-        mock_compute.return_value = np.eye(3)
-        yield mock_gen, mock_compute
-
-
-@pytest.fixture
-def mock_projector_window():
-    with patch("light_map.calibration.calibration_logic.ProjectorWindow") as mock:
-        instance = mock.return_value
-        instance.is_closed.return_value = False
-        yield mock
-
-
-def test_run_calibration_sequence_success(
-    mock_cv2, mock_camera, mock_projector_utils, mock_projector_window
-):
-    mock_gen, mock_compute = mock_projector_utils
-    mock_win = mock_projector_window.return_value
-
-    # Mock ArUco detector return values
-    mock_detector = MagicMock()
-    mock_detector.detectMarkers.return_value = ([], None, [])
-    mock_cv2.aruco.ArucoDetector.return_value = mock_detector
-
-    # Run
-    result = run_calibration_sequence(mock_camera, projector_width=1920, projector_height=1080)
-
-    # Verify
-    assert result is not None
-    assert np.array_equal(result, np.eye(3))
-
-    # Interactions
-    mock_projector_window.assert_called_once()
-    assert mock_win.update_image.call_count >= 21  # 1 initial + 20 in loop
-    # We expect read() to be called: 5 flush + 1 capture
-    assert mock_camera.read.call_count >= 6
-    mock_cv2.imwrite.assert_called_once()
-    mock_compute.assert_called_once()
-    mock_win.close.assert_called_once()
-
-
-def test_run_calibration_sequence_capture_failure(
-    mock_cv2, mock_camera, mock_projector_utils, mock_projector_window
-):
-    mock_gen, mock_compute = mock_projector_utils
-    mock_camera.read.return_value = None  # Fail capture
-    mock_win = mock_projector_window.return_value
-
-    # Run
-    result = run_calibration_sequence(mock_camera)
-
-    # Verify
-    assert result is None
-    mock_compute.assert_not_called()
-    mock_win.close.assert_called_once()  # Ensure cleanup
-
-
-def test_run_calibration_sequence_exception(
-    mock_cv2, mock_camera, mock_projector_utils, mock_projector_window
-):
-    mock_gen, mock_compute = mock_projector_utils
-    mock_compute.side_effect = ValueError("Calculation error")
-    mock_win = mock_projector_window.return_value
-
-    # Run
-    result = run_calibration_sequence(mock_camera)
-
-    # Verify
-    assert result is None
-    mock_win.close.assert_called_once()  # Ensure cleanup
+if __name__ == "__main__":
+    unittest.main()

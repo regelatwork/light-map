@@ -1,334 +1,115 @@
-import logging
-import json
-import os
+"""
+Module for the unified stereo calibration wizard.
+"""
+
 import numpy as np
 import cv2
-import time
-from typing import Optional, Dict, Tuple, List
-
-from light_map.vision.infrastructure.camera import Camera
-from light_map.calibration.calibration_logic import (
-    calculate_ppi_from_frame,
-    calibrate_extrinsics,
-    compute_projector_homography,
-    solve_joint_extrinsics
-)
-from light_map.calibration.token_resolver import TokenResolver
-from light_map.calibration.lens_resolver import resolve_lens_intrinsics
-from light_map.calibration.roi import calculate_sensor_rois
-
-logger = logging.getLogger(__name__)
+from pathlib import Path
+from typing import List, Tuple, Dict
+from .token_manager import TokenManager
+from .intrinsics_loader import load_intrinsics
+from .marker_detector import MarkerDetector
+from .sequential_solver import SequentialSolver
+from .roi_calculator import compute_roi_pass1, compute_roi_pass2
 
 class StereoCalibrationWizard:
-    def __init__(self, tokens_path: str = "tokens.json"):
-        self.tokens_path = tokens_path
-        self.token_resolver = TokenResolver(tokens_path)
-        self.token_data = None
-        self.projector_matrix = None
-        self.camera_left_intrinsics = None
-        self.camera_right_intrinsics = None
-        self.camera_left_dist = None
-        self.camera_right_dist = None
-        self.ppi = None
-        self.roi_left = None
-        self.roi_right = None
-        self.camera_left_id = None
-        self.camera_right_id = None
-        self.grid_corners_world = None
-
-    def resolve_lens_intrinsics(self, left_id: str, right_id: str):
-        """
-        Resolves intrinsics with fallback order:
-        Camera Left: camera_left_calibration.npz -> camera_calibration.npz
-        Camera Right: camera_right_calibration.npz -> camera_calibration.npz
-        """
-        self.camera_left_intrinsics, self.camera_left_dist = resolve_lens_intrinsics("left")
-        self.camera_right_intrinsics, self.camera_right_dist = resolve_lens_intrinsics("right")
-
-        if self.camera_left_intrinsics is None or self.camera_right_intrinsics is None:
-            logger.warning("Could not resolve lens intrinsics for one or both cameras.")
-
-    def _detect_markers(self, frame: np.ndarray) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
-        """
-        Detects ArUco markers in the given frame.
-        """
-        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-        aruco_dict = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_4X4_50)
-        parameters = cv2.aruco.DetectorParameters()
-        detector = cv2.aruco.ArucoDetector(aruco_dict, parameters)
-        return detector.detectMarkers(gray)
-
-    def _discover_cameras(self, r_left: np.ndarray, t_left: np.ndarray, 
-                            r_right: np.ndarray, t_right: np.ndarray,
-                            cam_left: Camera, cam_right: Camera) -> tuple[str, str]:
-        """
-        Identifies Left vs Right camera based on translation vector and rotation.
-        """
-        tx = t_left[0]
+    def __init__(self, tokens_path: str, base_path: str):
+        self.token_manager = TokenManager(tokens_path)
+        self.base_path = Path(base_path)
+        self.marker_detector = MarkerDetector()
+        self.projector_ppi = 0.0
         
-        # Verify rotation alignment: R_left * R_right^T should be close to identity
-        r_left_mat, _ = cv2.Rodrigues(r_left)
-        r_right_mat, _ = cv2.Rodrigues(r_right)
-        r_stereo = r_left_mat @ r_right_mat.T
+        # Intrinsics
+        self.k_left, self.dist_left = load_intrinsics("left", self.base_path)
+        self.k_right, self.dist_right = load_intrinsics("right", self.base_path)
         
-        # Check if rotation is small (e.g., < 10 degrees)
-        # 0.17 radians is approx 10 degrees.
-        deviation = np.max(np.abs(r_stereo - np.eye(3)))
-        if deviation > 0.17:
-            raise RuntimeError(f"Significant rotation detected between cameras (deviation: {deviation:.3f}). "
-                               "Check camera mounting.")
+        # Solver
+        self.solver = SequentialSolver(self.token_manager, self.projector_ppi)
+        self.solver.k_left = self.k_left
+        self.solver.dist_left = self.dist_left
+        self.solver.k_right = self.k_right
+        self.solver.dist_right = self.dist_right
         
-        # Rule: Camera observing positive +Tx horizontal displacement is assigned camera_right.
-        if tx > 0:
-            # camera_left is at +X, so it's the right one.
-            # So the left one is camera_right.
-            return cam_right.id, cam_left.id
-        else:
-            # camera_left is at -X (or 0), so it's the left one.
-            # So the right one is camera_right.
-            return cam_left.id, cam_right.id
-    
-    def _get_ground_points(self, frame: np.ndarray, homography: np.ndarray, ppi: float, 
-                                  corners: np.ndarray, ids: np.ndarray) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
-        """
-        Phase 1: Table Scale & Z=0 Homography.
-        Detects projected grid (IDs 42–47) and physical PPI sheet (IDs 40 & 41, d=100mm) simultaneously.
-        Calculates physical PPI and maps projected marker corners to physical millimeter tabletop coordinates (X, Y, Z=0).
-        """
-        ids_flat = ids.flatten()
+    def run_calibration(self, left_image: np.ndarray, right_image: np.ndarray) -> Dict:
+        # 1. Detect markers in both images
+        left_markers = self.marker_detector.detect(left_image)
+        right_markers = self.marker_detector.detect(right_image)
         
-        # Find corners for 40 and 41
-        idx0 = np.where(ids_flat == 40)[0]
-        idx1 = np.where(ids_flat == 41)[0]
+        # 2. Filter tokens.json for candidates (IDs 0-39)
+        candidate_tokens = self.token_manager.get_candidate_tokens(range(40))
+        token_heights = {t.id: t.height_mm for t in candidate_tokens}
         
-        if len(idx0) == 0 or len(idx1) == 0:
-            logger.warning("Phase 1: Marker 40 or 41 not detected. Cannot compute PPI.")
-            return None, None, None
+        # 3. Phase 1: Table Scale & Z=0 Homography
+        # Need to find markers 40 and 41
+        ruler_left = [m for m in left_markers if m[0] in [40, 41]]
+        ruler_right = [m for m in right_markers if m[0] in [40, 41]]
         
-        c0 = np.mean(corners[idx0[0]][0], axis=0)
-        c1 = np.mean(corners[idx1[0]][0], axis=0)
-        
-        # Project to tabletop space using homography
-        pts_cam = np.array([c0, c1]).reshape(-1, 1, 2)
-        pts_table = cv2.perspectiveTransform(pts_cam, homography)
-        
-        # The distance between 40 and 41 in tabletop space should be 100mm
-        dist_table = np.linalg.norm(pts_table[0][0] - pts_table[1][0])
-        
-        # Grid corners (IDs 42-47)
-        grid_ids = [42, 43, 44, 45, 46, 47]
-        grid_corners_cam = []
-        grid_corners_world = []
-        
-        for gid in grid_ids:
-            idx = np.where(ids_flat == gid)[0]
-            if len(idx) > 0:
-                c = np.mean(corners[idx[0]][0], axis=0)
-                c_cam = np.array(c).reshape(1, 1, 2)
-                c_table = cv2.perspectiveTransform(c_cam, homography)[0][0]
-                grid_corners_cam.append(c)
-                grid_corners_world.append(c_table)
-        
-        if len(grid_corners_world) > 0:
-            grid_corners_world = np.array(grid_corners_world, dtype=np.float32)
-            grid_corners_cam = np.array(grid_corners_cam, dtype=np.float32)
+        if len(ruler_left) < 2 or len(ruler_right) < 2:
+            raise ValueError("Ruler markers not found in both images.")
             
-            # Convert pixels to mm using ppi (pixels per inch)
-            # 1 inch = 25.4 mm
-            ppi_mm = ppi / 25.4
-            grid_corners_world = grid_corners_world / ppi_mm
+        m40_left = next(m[1] for m in ruler_left if m[0] == 40)
+        m41_left = next(m[1] for m in ruler_left if m[0] == 41)
+        
+        self.solver.solve_phase1_table_scale(None, [m40_left, m41_left], ruler_distance_mm=100.0)
+        
+        # 4. Phase 2: Joint Non-Planar Stereo Extrinsics Solve
+        # We need 12 points: 8 grid corners (42-49) + 4 tokens (0-3)
+        # The order in solver.grid_corners_3d is IDs 42, 43, 44, 45, 46, 47, 48, 49.
+        # Followed by 0, 1, 2, 3.
+        
+        l_corners_final = []
+        r_corners_final = []
+        
+        # IDs in order
+        target_ids = [42, 43, 44, 45, 46, 47, 48, 49, 0, 1, 2, 3]
+        
+        for tid in target_ids:
+            l_m = next((m[1] for m in left_markers if m[0] == tid), None)
+            r_m = next((m[1] for m in right_markers if m[0] == tid), None)
             
-            return grid_corners_cam, grid_corners_cam, grid_corners_world
+            if l_m is not None and r_m is not None:
+                l_corners_final.append(l_m)
+                r_corners_final.append(r_m)
+            else:
+                # If a point is missing, we have a problem.
+                # For now, let's just raise an error.
+                raise ValueError(f"Marker ID {tid} not found in one or both cameras.")
         
-        return None, None, None
-    
-    def _find_checkerboard_corners(self, frame: np.ndarray) -> Optional[np.ndarray]:
-        """
-        Detects checkerboard corners in the frame.
-        """
-        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-        aruco_dict = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_4X4_50)
-        parameters = cv2.aruco.DetectorParameters()
-        detector = cv2.aruco.ArucoDetector(aruco_dict, parameters)
-        corners, ids, _ = detector.detectMarkers(gray)
-        
-        if ids is not None:
-            ids_flat = ids.flatten()
-            grid_ids = [42, 43, 44, 45, 46, 47]
-            grid_corners = []
-            for gid in grid_ids:
-                if gid in ids_flat:
-                    idx = np.where(ids_flat == gid)[0][0]
-                    grid_corners.append(corners[idx][0])
-            if len(grid_corners) > 0:
-                return np.array(grid_corners)
-        return None
-    
-    def _compute_roi(self, frame: np.ndarray, r_left: np.ndarray, t_left: np.ndarray, 
-                          r_right: np.ndarray, t_right: np.ndarray, k_left: np.ndarray, 
-                          k_right: np.ndarray, dist_left: np.ndarray, dist_right: np.ndarray, 
-                          ppi: float) -> tuple[np.ndarray, np.ndarray]:
-        """
-        Calculates the sensor ROIs based on the calibration parameters.
-        """
-        return calculate_sensor_rois(
-            r_left, t_left, r_right, t_right,
-            k_left, dist_left, k_right, dist_right,
-            {"grid_corners_world": self.grid_corners_world},
-            img_size=(1920, 1080)
+        self.solver.solve_phase2_stereo_extrinsics(
+            l_corners_final, r_corners_final, token_heights
         )
-
-    def get_valid_tokens(self) -> Dict[int, float]:
-        """
-        Returns a mapping of token IDs to their heights.
-        """
-        if hasattr(self, "token_data") and self.token_data:
-            # If token_data is manually set (e.g. in tests), use it.
-            height_map = {}
-            for tid_str, entry in self.token_data.get("aruco_defaults", {}).items():
-                try:
-                    t_id = int(tid_str)
-                    if 0 <= t_id <= 39:
-                        profile_name = entry.get("profile")
-                        if profile_name and profile_name in self.token_data.get("token_profiles", {}):
-                            height = float(self.token_data["token_profiles"][profile_name].get("height_mm", 0.0))
-                            if height > 0:
-                                height_map[t_id] = height
-                        else:
-                            height_mm = entry.get("height_mm")
-                            if height_mm is not None and float(height_mm) > 0:
-                                height_map[t_id] = float(height_mm)
-                except ValueError:
-                    continue
-            return height_map
         
-        return self.token_resolver.get_height_map()
-
-        """
-        Saves the calibration results to a JSON file.
-        """
-        data = {
-            "camera_left_id": self.camera_left_id,
-            "camera_right_id": self.camera_right_id,
-            "roi_left": self.roi_left.tolist(),
-            "roi_right": self.roi_right.tolist(),
-            "ppi": self.ppi,
-            "projector_matrix": self.projector_matrix.tolist(),
-            "camera_left_intrinsics": self.camera_left_intrinsics.tolist(),
-            "camera_left_dist": self.camera_left_dist.tolist(),
-            "camera_right_intrinsics": self.camera_right_intrinsics.tolist(),
-            "camera_right_dist": self.camera_right_dist.tolist(),
-            "r_left": r_left.tolist(),
-            "t_left": t_left.tolist(),
-            "r_right": r_right.tolist(),
-            "t_right": t_right.tolist(),
+        # 5. Phase 3: Auto-Discovery & Orientation Verification
+        
+        
+        # 6. ROI Calculation
+        h_l, w_l = left_image.shape[:2]
+        h_r, w_r = right_image.shape[:2]
+        
+        roi_l = compute_roi_pass2(
+            (h_l, w_l), 
+            self.solver.camera_left_extrinsics, self.solver.camera_left_t,
+            self.solver.camera_right_extrinsics, self.solver.camera_right_t, 200.0,
+            corners_3d=self.solver.grid_corners_3d,
+            k_left=self.k_left,
+            k_right=self.k_right
+        )
+        roi_r = compute_roi_pass2(
+            (h_r, w_r), 
+            self.solver.camera_left_extrinsics, self.solver.camera_left_t,
+            self.solver.camera_right_extrinsics, self.solver.camera_right_t, 200.0,
+            corners_3d=self.solver.grid_corners_3d,
+            k_left=self.k_left,
+            k_right=self.k_right
+        )
+        
+        left_id, right_id = self.solver.solve_phase3_auto_discovery()
+        
+        return {
+            "roi_left": roi_l,
+            "roi_right": roi_r,
+            "r_stereo": self.solver.r_stereo,
+            "t_stereo": self.solver.t_stereo,
+            "left_id": left_id,
+            "right_id": right_id
         }
-        
-        with open(filepath, "w") as f:
-            json.dump(data, f, indent=4)
-        logger.info(f"Calibration saved to {filepath}")
-    
-    def run_calibration(self, camera_left: Camera, camera_right: Camera) -> Dict:
-        """
-        Executes the unified stereo calibration procedure.
-        """
-        self.camera_left = camera_left
-        self.camera_right = camera_right
-        
-        # Resolve Intrinsics
-        self.resolve_lens_intrinsics(camera_left.id, camera_right.id)
-        
-        # Phase 1: Table Scale & Z=0 Homography
-        logging.info("Phase 1: Detecting PPI markers (IDs 40, 41)...")
-        
-        best_homography = None
-        best_ppi = None
-        ground_points_cam = None
-        ground_points_proj = None
-        
-        pattern_params = {"square_size": 100, "rows": 13, "cols": 18, "start_x": 100, "start_y": 100}
-        
-        for _ in range(100):
-            frame_l = camera_left.read()
-            frame_r = camera_right.read()
-            
-            if frame_l is None or frame_r is None:
-                continue
-            
-            corners_l, ids_l, _ = self._detect_markers(frame_l)
-            corners_r, ids_r, _ = self._detect_markers(frame_r)
-            
-            if ids_l is not None and 40 in ids_l.flatten() and 41 in ids_l.flatten():
-                best_homography = compute_projector_homography(
-                    frame_l,
-                    pattern_params,
-                    self.camera_left_intrinsics, self.camera_left_dist,
-                    aruco_corners=corners_l, aruco_ids=ids_l
-                )
-                
-                best_ppi = calculate_ppi_from_frame(
-                    frame_l, best_homography,
-                    aruco_corners=corners_l, aruco_ids=ids_l
-                )
-                
-                ground_points_cam, grid_corners_proj, grid_corners_world = self._get_ground_points(
-                    frame_l, best_homography, best_ppi, corners_l, ids_l
-                )
-                break
-            
-            time.sleep(0.1)
-        
-        if not best_homography or not best_ppi:
-            raise RuntimeError("Failed to complete Phase 1: Markers 40/41 not detected.")
-        
-        self.projector_matrix = best_homography
-        self.ppi = best_ppi
-        self.grid_corners_world = grid_corners_world
-        
-        # Phase 2: Joint Non-Planar Stereo Extrinsics
-        logging.info("Phase 2: Solving stereo extrinsics...")
-        valid_tokens = self.token_resolver.get_height_map()
-        token_sizes = self.token_resolver.get_token_sizes()
-        
-        token_heights = {tid: float(h) for tid, h in valid_tokens.items()}
-        
-        r_l, t_l, r_r, t_r, _ = solve_joint_extrinsics(
-            frame_l,
-            frame_r,
-            self.projector_matrix,
-            self.camera_left_intrinsics, self.camera_left_dist,
-            self.camera_right_intrinsics, self.camera_right_dist,
-            token_heights,
-            self.ppi,
-            aruco_corners_l=corners_l,
-            aruco_ids_l=ids_l,
-            aruco_corners_r=corners_r,
-            aruco_ids_r=ids_r,
-            token_sizes=token_sizes,
-            grid_corners_l=None,
-            grid_corners_r=None,
-            grid_corners_world=self.grid_corners_world
-        )
-        
-        if r_l is None:
-            raise RuntimeError("Failed to solve stereo extrinsics.")
-        
-        # Phase 3: Auto-Discovery
-        logging.info("Phase 3: Auto-discovering camera roles...")
-        left_id_name, right_id_name = self._discover_cameras(r_l, t_l, r_r, t_r, camera_left, camera_right)
-        self.camera_left_id = left_id_name
-        self.camera_right_id = right_id_name
-        
-        # Phase 4: Two-Pass ROI Calculation
-        logging.info("Phase 4: Computing ROIs...")
-        self.roi_left, self.roi_right = calculate_sensor_rois(
-            r_l, t_l, r_r, t_r,
-            self.camera_left_intrinsics, self.camera_left_dist,
-            self.camera_right_intrinsics, self.camera_right_dist,
-            {"grid_corners_world": self.grid_corners_world},
-            img_size=(1920, 1080)
-        )
-        
-        logging.info(f"Calibration complete. Left: {self.camera_left_id}, Right: {self.camera_right_id}")
-        self.save_calibration(r_l, t_l, r_r, t_r)
-        return {"status": "success", "left": self.camera_left_id, "right": self.camera_right_id}

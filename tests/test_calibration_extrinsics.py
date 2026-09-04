@@ -114,8 +114,8 @@ def test_calibrate_extrinsics_synthetic():
             projector_matrix,
             camera_matrix,
             distortion_coefficients,
-            token_heights,
             ppi,
+            token_heights,
             known_targets=known_targets,
             token_sizes=token_sizes,
         )

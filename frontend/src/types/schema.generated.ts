@@ -125,6 +125,7 @@ export interface GlobalConfig {
   projector_pos_x_override: any;
   projector_pos_y_override: any;
   projector_pos_z_override: any;
+  stereo_vision: StereoVisionConfig;
 }
 
 export interface WedgeSegment {
@@ -218,13 +219,13 @@ export const TOKENCONFIG_METADATA: Record<keyof TokenConfig, FieldMetadata> = {
 
 export const VIEWPORTSTATE_METADATA: Record<keyof ViewportState, FieldMetadata> = {
   "x": {
-    "title": "X Offset",
-    "description": "Horizontal pan offset in SVG units.",
+    "title": "X",
+    "description": "Horizontal pan offset.",
     "default": 0.0
   },
   "y": {
-    "title": "Y Offset",
-    "description": "Vertical pan offset in SVG units.",
+    "title": "Y",
+    "description": "Vertical pan offset.",
     "default": 0.0
   },
   "zoom": {
@@ -586,6 +587,10 @@ export const GLOBALCONFIG_METADATA: Record<keyof GlobalConfig, FieldMetadata> = 
   "projector_pos_z_override": {
     "title": "Projector Z Override",
     "description": "Manually override the projector's Z position (mm)."
+  },
+  "stereo_vision": {
+    "title": "Stereo Vision",
+    "description": "Configuration for dual-camera stereographic tracking."
   }
 };
 

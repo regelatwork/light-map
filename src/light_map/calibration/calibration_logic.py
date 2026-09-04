@@ -189,9 +189,8 @@ def calibrate_extrinsics(
     """
     Estimates Camera Extrinsics (R, t) relative to the projector's world space.
     """
-    # 1. Collect 3D points in World Space (Projector Space)
-    object_points = []  # 3D points in real world space (mm)
-    image_points = []  # 2D points in camera image plane (px)
+    ppi_mm = ppi / 25.4
+
 
     ppi_mm = ppi / 25.4
 

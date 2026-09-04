@@ -110,6 +110,7 @@ class CameraDeviceSchema(BaseModel):
     name: str = Field(default="Camera", title="Name", description="Display name for the camera.")
     enabled: bool = Field(default=True, title="Enabled", description="Whether the camera is enabled.")
 
+
 class StereoVisionConfigSchema(BaseModel):
     enable_stereo: bool = Field(
         default=False,
@@ -133,7 +134,6 @@ class StereoVisionConfigSchema(BaseModel):
         title="Right Camera Device",
         description="Device path for the right camera.",
     )
-
 
     x: float = Field(
         default=0.0, title="X Offset", description="Horizontal pan offset in SVG units."
@@ -226,6 +226,13 @@ class TokenSchema(BaseModel):
     height_mm: float | None = Field(
         default=None, title="Height (mm)", description="Resolved height in mm."
     )
+
+
+class ViewportStateSchema(BaseModel):
+    x: float = Field(default=0.0, title="X", description="Horizontal pan offset.")
+    y: float = Field(default=0.0, title="Y", description="Vertical pan offset.")
+    zoom: float = Field(default=1.0, title="Zoom", description="Zoom level (1.0 = 100%).")
+    rotation: float = Field(default=0.0, title="Rotation", description="Rotation in degrees.")
 
 
 class SessionDataSchema(BaseModel):
@@ -399,4 +406,5 @@ class GlobalConfigSchema(BaseModel):
         title="Stereo Vision",
         description="Configuration for dual-camera stereographic tracking.",
     )
+
 

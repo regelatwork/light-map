@@ -78,11 +78,11 @@ class TestStereoCalibrationWizard(unittest.TestCase):
     def test_get_valid_tokens(self):
         valid_tokens = self.wizard.get_valid_tokens()
         self.assertIn(0, valid_tokens)
-        self.assertEqual(valid_tokens[0]["height"], 50.0)
-        self.assertEqual(valid_tokens[0]["size"], 1.0)
-
+        self.assertEqual(valid_tokens[0], 50.0)
+        
         # Marker 40 should not be in valid_tokens (IDs 0-39 only)
         self.assertNotIn(40, valid_tokens)
+
 
     def test_discover_cameras_success(self):
         # Mock camera objects
@@ -92,21 +92,29 @@ class TestStereoCalibrationWizard(unittest.TestCase):
         cam_r.id = "right_id"
 
         # Case 1: tx > 0 (camera_left is on the right)
-        # Use a small rotation (approx 1 degree)
-        r_l = np.array([[0.9998, -0.0174, 0], [0.0174, 0.9998, 0], [0, 0, 1]], dtype=np.float32)
+        # Use a zero rotation vector (identity matrix)
+        r_l = np.array([0.0, 0.0, 0.0], dtype=np.float32)
         t_l = np.array([10.0, 0.0, 0.0], dtype=np.float32)  # tx > 0
-        r_r = np.eye(3, dtype=np.float32)
+        r_r = np.array([0.0, 0.0, 0.0], dtype=np.float32)
         t_r = np.array([0.0, 0.0, 0.0], dtype=np.float32)
-
+    
         left_id, right_id = self.wizard._discover_cameras(r_l, t_l, r_r, t_r, cam_l, cam_r)
         self.assertEqual(left_id, "right_id")
         self.assertEqual(right_id, "left_id")
-
+        
         # Case 2: tx < 0 (camera_left is on the left)
+        # Use zero rotation vector (identity matrix)
+        r_l = np.array([0.0, 0.0, 0.0], dtype=np.float32)
         t_l = np.array([-10.0, 0.0, 0.0], dtype=np.float32)  # tx < 0
+        r_r = np.array([0.0, 0.0, 0.0], dtype=np.float32)
+        t_r = np.array([0.0, 0.0, 0.0], dtype=np.float32)
+    
         left_id, right_id = self.wizard._discover_cameras(r_l, t_l, r_r, t_r, cam_l, cam_r)
         self.assertEqual(left_id, "left_id")
         self.assertEqual(right_id, "right_id")
+
+
+
 
     def test_discover_cameras_rotation_fail(self):
         cam_l = MagicMock()

@@ -172,7 +172,6 @@ def solve_table_transform_from_ppi(
     # In a real implementation, we'd use the 2D corners and the 100mm distance to solve for T.
     return np.eye(4), np.zeros(3)
 
-
 def calibrate_extrinsics(
     frame: np.ndarray,
     projector_matrix: np.ndarray,
@@ -200,9 +199,9 @@ def calibrate_extrinsics(
     if ground_points_camera is not None and ground_points_projector is not None:
         for i in range(len(ground_points_camera)):
             px, py = ground_points_projector[i]
-            wx, wy = px / ppi_mm, py / ppi_mm
+            wx, wy = px, py
             object_points.append([wx, wy, 0.0])
-            image_points.append(ground_points_camera[i])
+            image_points_l.append(ground_points_camera[i])
 
     # Add token points (Z=h)
     if aruco_ids is not None and aruco_corners is not None:
@@ -274,7 +273,7 @@ def calibrate_extrinsics(
     
     rotation_vector = rvecs[best_idx]
     translation_vector = tvecs[best_idx]
-
+    
     return rotation_vector, translation_vector, object_points, image_points, min_err
 
 def resolve_camera_roles(
@@ -316,6 +315,9 @@ def solve_joint_extrinsics(
     aruco_corners_r: tuple[np.ndarray, ...] | None = None,
     aruco_ids_r: np.ndarray | None = None,
     token_sizes: dict[int, int] | None = None,
+    grid_corners_l: tuple[np.ndarray, ...] | None = None,
+    grid_corners_r: tuple[np.ndarray, ...] | None = None,
+    grid_corners_world: np.ndarray | None = None,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, float] | None:
     """
     Solves for camera extrinsics using both ground points and non-planar token points.
@@ -327,52 +329,45 @@ def solve_joint_extrinsics(
     image_points_l = []  # 2D points in camera L image plane (px)
     image_points_r = []  # 2D points in camera R image plane (px)
 
-    # Detect and add ground points (Z=0) from frame_l
-    if aruco_ids_l is not None and aruco_corners_l is not None:
-        ids_l = aruco_ids_l.flatten()
-        for i, aruco_id in enumerate(ids_l):
-            if aruco_id not in token_heights:
-                continue
-            
-            h = token_heights[aruco_id]
-            # Use all 4 corners
-            corners_cam = aruco_corners_l[i][0] # (4, 2)
-            
-            # We'll use the homography to project these corners to the table
-            # Wait, we need to detect them in frame_l first.
-            # Actually, the input aruco_corners_l are already from frame_l.
-            # So we just need to project them to the table.
-            pts_cam = corners_cam.reshape(-1, 1, 2).astype(np.float32)
-            pts_proj = cv2.perspectiveTransform(pts_cam, projector_matrix).reshape(-1, 2)
-            
-            for j in range(4):
-                px, py = pts_proj[j]
-                object_points.append([px / ppi_mm, py / ppi_mm, 0.0])
-                image_points_l.append(corners_cam[j])
-
-    # Add token points (Z=h) from both cameras
-    for cam_corners, cam_ids in [(aruco_corners_l, aruco_ids_l), (aruco_corners_r, aruco_ids_r)]:
-        if cam_corners is not None and cam_ids is not None:
-            ids = cam_ids.flatten()
-            for i, aruco_id in enumerate(ids):
-                if aruco_id not in token_heights:
-                    continue
-                
-                h = token_heights[aruco_id]
-                # Use all 4 corners
-                corners_cam = cam_corners[i][0] # (4, 2)
-                
-                # We'll use the homography to project these corners to the table
-                pts_cam = corners_cam.reshape(-1, 1, 2).astype(np.float32)
-                pts_proj = cv2.perspectiveTransform(pts_cam, projector_matrix).reshape(-1, 2)
-                
-                for j in range(4):
-                    px, py = pts_proj[j]
-                    object_points.append([px / ppi_mm, py / ppi_mm, h])
-                    if cam_corners == aruco_corners_l:
-                        image_points_l.append(corners_cam[j])
-                    else:
-                        image_points_r.append(corners_cam[j])
+    # Add ground points (Z=0)
+    if grid_corners_world is not None:
+        # Use pre-computed ground points from Phase 1
+        for i in range(len(grid_corners_world)):
+            object_points.append([grid_corners_world[i][0], grid_corners_world[i][1], 0.0])
+            if grid_corners_l is not None:
+                image_points_l.append(grid_corners_l[i])
+            if grid_corners_r is not None:
+                image_points_r.append(grid_corners_r[i])
+    else:
+        # Detect and add points from markers
+        for cam_corners, cam_ids, target_img_pts in [
+            (aruco_corners_l, aruco_ids_l, image_points_l),
+            (aruco_corners_r, aruco_ids_r, image_points_r)
+        ]:
+            if cam_corners is not None and cam_ids is not None:
+                ids = cam_ids.flatten()
+                for i, aruco_id in enumerate(ids):
+                    # If it's a token, use its height
+                    if aruco_id in token_heights:
+                        h = token_heights[aruco_id]
+                        corners_cam = cam_corners[i][0] # (4, 2)
+                        pts_cam = corners_cam.reshape(-1, 1, 2).astype(np.float32)
+                        pts_proj = cv2.perspectiveTransform(pts_cam, projector_matrix).reshape(-1, 2)
+                        
+                        for j in range(4):
+                            px, py = pts_proj[j]
+                            object_points.append([px / ppi_mm, py / ppi_mm, h])
+                            target_img_pts.append(corners_cam[j])
+                    # If it's a ground point (IDs 42-47), use Z=0
+                    elif 42 <= aruco_id <= 47:
+                        corners_cam = cam_corners[i][0] # (4, 2)
+                        pts_cam = corners_cam.reshape(-1, 1, 2).astype(np.float32)
+                        pts_proj = cv2.perspectiveTransform(pts_cam, projector_matrix).reshape(-1, 2)
+                        
+                        for j in range(4):
+                            px, py = pts_proj[j]
+                            object_points.append([px / ppi_mm, py / ppi_mm, 0.0])
+                            target_img_pts.append(corners_cam[j])
 
     if len(object_points) < 4:
         logging.warning("Extrinsics: Not enough points detected (need at least 4 combined points, got %d).", len(object_points))
@@ -385,8 +380,6 @@ def solve_joint_extrinsics(
     # Now we have 3D points and 2D points for both cameras.
     # We can use cv2.stereoCalibrate to find the relative transform.
     # Since we have 3D points in world space, this will return the transform between the cameras.
-    
-    # We also need to call solvePnPRansac to get the absolute extrinsics.
     
     # Use cv2.stereoCalibrate to find relative transform
     # Note: objPoints must be in the same coordinate system (world space)
@@ -426,13 +419,4 @@ def solve_joint_extrinsics(
         logging.error("Extrinsics: Solver failed to find a solution for one or both cameras.")
         return None
     
-    # We can also verify that the relative transform from stereoCalibrate matches the 
-    # relative transform between rvec_l and rvec_r.
-    r_l_mat, _ = cv2.Rodrigues(rvec_l)
-    r_r_mat, _ = cv2.Rodrigues(rvec_r)
-    # The relative transform should be approximately r_l_mat @ r_r_mat.T
-    # But cv2.stereoCalibrate gives the transform from camera L to camera R.
-    # So it should be r_l_mat @ r_r_mat.T
-    
-    return rvec_l, tvec_l, rvec_r, tvec_r, reprojection_error
-
+    return rvec_l, tvec_l, rvec_r, tvec_r, rms

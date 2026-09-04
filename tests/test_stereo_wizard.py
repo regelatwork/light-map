@@ -1,9 +1,12 @@
-import unittest
-import numpy as np
-import os
 import json
-from unittest.mock import MagicMock, patch
+import os
+import unittest
+from unittest.mock import patch
+
+import numpy as np
+
 from light_map.calibration.wizard import StereoCalibrationWizard
+
 
 class TestStereoCalibrationWizard(unittest.TestCase):
     def setUp(self):
@@ -11,7 +14,7 @@ class TestStereoCalibrationWizard(unittest.TestCase):
         self.test_tokens = {
             "token_profiles": {
                 "pc": {"size": 1, "height_mm": 50.0},
-                "small": {"size": 1, "height_mm": 15.0}
+                "small": {"size": 1, "height_mm": 15.0},
             },
             "aruco_defaults": {
                 "0": {"name": "Token 0", "type": "PC", "profile": "pc"},
@@ -19,7 +22,7 @@ class TestStereoCalibrationWizard(unittest.TestCase):
                 "40": {"name": "Ruler 1", "type": "Ruler", "profile": "large"},
                 "41": {"name": "Ruler 2", "type": "Ruler", "profile": "large"},
                 "42": {"name": "Arena 1", "type": "Arena", "profile": "medium"},
-            }
+            },
         }
         with open(self.tokens_path, "w") as f:
             json.dump(self.test_tokens, f)
@@ -46,9 +49,9 @@ class TestStereoCalibrationWizard(unittest.TestCase):
         mock_exists.side_effect = lambda p: "calibration" in p
         mock_data = {"K": np.eye(3), "dist": np.zeros(5)}
         mock_load.return_value = mock_data
-        
+
         self.wizard.resolve_lens_intrinsics("camera_left", "camera_right")
-        
+
         np.testing.assert_array_equal(self.wizard.camera_left_intrinsics, mock_data["K"])
         np.testing.assert_array_equal(self.wizard.camera_right_intrinsics, mock_data["K"])
 
@@ -58,15 +61,17 @@ class TestStereoCalibrationWizard(unittest.TestCase):
         # camera_left_calibration.npz does not exist, but camera_calibration.npz does
         def exists_side_effect(p):
             return p == "camera_calibration.npz"
+
         mock_exists.side_effect = exists_side_effect
-        
+
         mock_data = {"K": np.eye(3), "dist": np.zeros(5)}
         mock_load.return_value = mock_data
-        
+
         self.wizard.resolve_lens_intrinsics("camera_left", "camera_right")
-        
+
         np.testing.assert_array_equal(self.wizard.camera_left_intrinsics, mock_data["K"])
         np.testing.assert_array_equal(self.wizard.camera_right_intrinsics, mock_data["K"])
+
 
 if __name__ == "__main__":
     unittest.main()

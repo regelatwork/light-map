@@ -98,7 +98,6 @@ class TestStereoCalibrationWizard(unittest.TestCase):
         r_r = np.eye(3, dtype=np.float32)
         t_r = np.array([0.0, 0.0, 0.0], dtype=np.float32)
 
-
         left_id, right_id = self.wizard._discover_cameras(r_l, t_l, r_r, t_r, cam_l, cam_r)
         self.assertEqual(left_id, "right_id")
         self.assertEqual(right_id, "left_id")

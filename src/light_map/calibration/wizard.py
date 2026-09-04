@@ -180,7 +180,8 @@ class StereoCalibrationWizard:
             ppi_mm = ppi / 25.4
             grid_corners_world = grid_corners_world / ppi_mm
             
-            return grid_corners_cam, grid_corners_proj, grid_corners_world
+            return grid_corners_cam, grid_corners_cam, grid_corners_world
+
         
         return None, None, None
 

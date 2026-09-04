@@ -1,5 +1,7 @@
 import cv2
 import numpy as np
+
+
 r_l = np.eye(3, dtype=np.float32)
 r_l_mat, _ = cv2.Rodrigues(r_l)
 print(f"r_l_mat:\n{r_l_mat}")

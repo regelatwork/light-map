@@ -22,7 +22,7 @@ class TestStereoCalibrationWizard(unittest.TestCase):
                 "1": {"name": "Token 1", "type": "PC", "profile": "pc"},
                 "40": {"name": "Ruler 1", "type": "Ruler", "profile": "large"},
                 "41": {"name": "Ruler 2", "type": "Ruler", "profile": "large"},
-                "42": {"name": "Arena 2", "type": "Arena", "profile": "medium"},
+                "5": {"name": "Arena 2", "type": "Arena", "profile": "medium"},
             },
         }
         with patch(

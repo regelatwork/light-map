@@ -16,7 +16,7 @@ def mock_wizard(tmp_path):
     # Create dummy tokens.json
     with open(tokens_path, "w") as f:
         f.write(
-            '{"token_profiles": {"pc": {"height_mm": 50.0}}, "aruco_defaults": {"0": {"profile": "pc", "height_mm": 50.0}, "1": {"profile": "pc", "height_mm": 50.0}, "2": {"profile": "pc", "height_mm": 50.0}, "3": {"profile": "pc", "height_mm": 50.0}, "40": {"profile": "pc", "height_mm": 50.0}, "41": {"profile": "pc", "height_mm": 50.0}, "42": {"profile": "pc", "height_mm": 50.0}, "43": {"profile": "pc", "height_mm": 50.0}, "44": {"profile": "pc", "height_mm": 50.0}, "45": {"profile": "pc", "height_mm": 50.0}, "46": {"profile": "pc", "height_mm": 50.0}, "47": {"profile": "pc", "height_mm": 50.0}, "48": {"profile": "pc", "height_mm": 50.0}, "49": {"profile": "pc", "height_mm": 50.0}}}'
+            '{"token_profiles": {"pc": {"height_mm": 50.0}}, "aruco_defaults": {"0": {"profile": "pc", "height_mm": 50.0}, "1": {"profile": "pc", "height_mm": 50.0}, "2": {"profile": "pc", "height_mm": 50.0}, "3": {"profile": "pc", "height_mm": 50.0}, "40": {"profile": "pc", "height_mm": 50.0}, "41": {"profile": "pc", "height_mm": 50.0}, "5": {"profile": "pc", "height_mm": 50.0}, "43": {"profile": "pc", "height_mm": 50.0}, "44": {"profile": "pc", "height_mm": 50.0}, "45": {"profile": "pc", "height_mm": 50.0}, "46": {"profile": "pc", "height_mm": 50.0}, "47": {"profile": "pc", "height_mm": 50.0}, "48": {"profile": "pc", "height_mm": 50.0}, "49": {"profile": "pc", "height_mm": 50.0}}}'
         )
 
     with patch("light_map.calibration.wizard.load_intrinsics") as mock_load:
@@ -33,7 +33,7 @@ def mock_wizard(tmp_path):
                 (1, np.array([[6, 6], [7, 7]])),
                 (2, np.array([[8, 8], [9, 9]])),
                 (3, np.array([[10, 10], [11, 11]])),
-                (42, np.array([[12, 12], [13, 13]])),
+                (5, np.array([[12, 12], [13, 13]])),
                 (43, np.array([[14, 14], [15, 15]])),
                 (44, np.array([[16, 16], [17, 17]])),
                 (45, np.array([[18, 18], [19, 19]])),

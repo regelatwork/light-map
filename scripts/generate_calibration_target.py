@@ -81,30 +81,24 @@ def generate_target(filename="calibration_target.svg"):
     # SVG content
     svg_content = f"""<?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <svg width="{width_mm}mm" height="{height_mm}mm" viewBox="0 0 {width_px} {height_px}" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
-  <!-- Background for visibility -->
-  <rect x="0" y="0" width="{width_px}" height="{height_px}" fill="white" />
-  
-  <!-- Marker 1 (ID 40) Left -->
-  <image x="{marker1_x}" y="{marker_y}" width="{marker_size_px}" height="{marker_size_px}" xlink:href="data:image/png;base64,{marker40_base64}" />
-  
-  <!-- Marker 2 (ID 41) Right -->
-  <image x="{marker2_x}" y="{marker_y}" width="{marker_size_px}" height="{marker_size_px}" xlink:href="data:image/png;base64,{marker41_base64}" />
-  
-  <!-- Arena Markers (IDs 42-49) -->
-  {chr(10).join([f'<image x="{pos[0] - marker_size_px / 2}" y="{pos[1] - marker_size_px / 2}" width="{marker_size_px}" height="{marker_size_px}" xlink:href="data:image/png;base64,{arena_markers_base64[i]}" />' for i, pos in enumerate(arena_marker_positions)])}
-  
-  <!-- Text Label -->
-  <text x="{center_x}" y="{center_y + marker_size_px + 20}" font-family="sans-serif" font-size="20" text-anchor="middle" fill="black">
-    Light Map Physical PPI Calibration Ruler (IDs 40 & 41, Distance: 100mm)
-  </text>
-  
-  <!-- Center Crosshairs for verification -->
-  <line x1="{marker1_center_x}" y1="{marker_y}" x2="{marker1_center_x}" y2="{marker_y + marker_size_px}" stroke="red" stroke-width="1" />
-  <line x1="{marker1_x}" y1="{center_y}" x2="{marker1_x + marker_size_px}" y2="{center_y}" stroke="red" stroke-width="1" />
-  
-  <line x1="{marker2_center_x}" y1="{marker_y}" x2="{marker2_center_x}" y2="{marker_y + marker_size_px}" stroke="red" stroke-width="1" />
-  <line x1="{marker2_x}" y1="{center_y}" x2="{marker2_x + marker_size_px}" y2="{center_y}" stroke="red" stroke-width="1" />
-  
+   <!-- Background for visibility -->
+   <rect x="0" y="0" width="{width_px}" height="{height_px}" fill="white" />
+   <!-- Marker 1 (ID 40) Left -->
+   <image x="{marker1_x}" y="{marker_y}" width="{marker_size_px}" height="{marker_size_px}" xlink:href="data:image/png;base64,{marker40_base64}" />
+   <!-- Marker 2 (ID 41) Right -->
+   <image x="{marker2_x}" y="{marker_y}" width="{marker_size_px}" height="{marker_size_px}" xlink:href="data:image/png;base64,{marker41_base64}" />
+   <!-- Arena Markers (IDs 42-49) -->
+   {chr(10).join([f'<image x="{pos[0] - marker_size_px / 2}" y="{pos[1] - marker_size_px / 2}" width="{marker_size_px}" height="{marker_size_px}" xlink:href="data:image/png;base64,{arena_markers_base64[i]}" />' for i, pos in enumerate(arena_marker_positions)])}
+   <!-- Text Label -->
+   <text x="{center_x}" y="{center_y + marker_size_px + 20}" font-family="sans-serif" font-size="20" text-anchor="middle" fill="black">
+     Light Map Physical PPI Calibration Ruler (IDs 40 & 41, Distance: 100mm)
+   </text>
+   <!-- Center Crosshairs for verification -->
+   <line x1="{marker1_center_x}" y1="{marker_y}" x2="{marker1_center_x}" y2="{marker_y + marker_size_px}" stroke="red" stroke-width="1" />
+   <line x1="{marker1_x}" y1="{center_y}" x2="{marker1_x + marker_size_px}" y2="{center_y}" stroke="red" stroke-width="1" />
+   <line x1="{marker2_center_x}" y1="{marker_y}" x2="{marker2_center_x}" y2="{marker_y + marker_size_px}" stroke="red" stroke-width="1" />
+   <line x1="{marker2_x}" y1="{center_y}" x2="{marker2_x + marker_size_px}" y2="{center_y}" stroke="red" stroke-width="1" />
+
 </svg>
 """
     with open(filename, "w") as f:

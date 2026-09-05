@@ -83,7 +83,7 @@ def test_aruco_defaults_and_overrides(tmp_path):
     tokens_data = {
         "token_profiles": {"small": {"size": 1, "height_mm": 15.0}},
         "aruco_defaults": {
-            "42": {
+            "10": {
                 "name": "Global Token",
                 "type": "NPC",
                 "profile": "small",
@@ -100,7 +100,7 @@ def test_aruco_defaults_and_overrides(tmp_path):
         "global": {"projector_ppi": 100.0},
         "maps": {
             map_abs_path: {
-                "aruco_overrides": {"42": {"name": "Map Override Token", "type": "PC", "size": 2}}
+                "aruco_overrides": {"10": {"name": "Map Override Token", "type": "PC", "size": 2}}
             }
         },
     }
@@ -110,7 +110,7 @@ def test_aruco_defaults_and_overrides(tmp_path):
     manager = MapConfigManager(config_file)
 
     # Verify Global Defaults (if resolved without map)
-    resolved_global = manager.resolve_token_profile(42)
+    resolved_global = manager.resolve_token_profile(10)
     assert resolved_global.name == "Global Token"
     assert resolved_global.type == "NPC"
     assert resolved_global.size == 1
@@ -118,7 +118,7 @@ def test_aruco_defaults_and_overrides(tmp_path):
     assert resolved_global.color == "red"
 
     # Verify Map Overrides
-    resolved_map = manager.resolve_token_profile(42, map_name=map_abs_path)
+    resolved_map = manager.resolve_token_profile(10, map_name=map_abs_path)
     assert resolved_map.name == "Map Override Token"
     assert resolved_map.type == "PC"
     assert resolved_map.size == 2

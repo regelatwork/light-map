@@ -166,7 +166,8 @@ You can override a global marker definition for a specific map (e.g., if a playe
 "maps": {
   "/home/user/light_map/maps/dungeon.svg": {
     "aruco_overrides": {
-      "42": {
+      "41": {
+
         "name": "Polymorphed Wizard (Sheep)",
         "type": "PC",
         "profile": "small"

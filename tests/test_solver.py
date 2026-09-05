@@ -33,9 +33,9 @@ def test_solve_phase_1_ppi(solver):
         {"id": 41, "side": "left", "points": [[277.35, 277.35], [377.35, 377.35]]},
     ]
 
-        ppi, table_points, homography = solver._solve_phase_1(grid_dets, ruler_dets)
-    
-        assert abs(ppi - 100.0) < 1.0
+    ppi, table_points, homography = solver._solve_phase_1(grid_dets, ruler_dets)
+
+    assert abs(ppi - 100.0) < 1.0
     assert len(table_points) == 8
     assert homography.shape == (3, 3)
 

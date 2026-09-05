@@ -19,19 +19,6 @@ def test_solve_integration():
     # and 4 tokens at the corners of that grid at Z=50.
 
     # 3D points:
-    # 42: (0, 0, 0)
-    # 43: (100, 0, 0)
-    # 44: (200, 0, 0)
-    # 45: (300, 0, 0)
-    # 46: (0, 100, 0)
-    # 47: (100, 100, 0)
-    # 48: (200, 100, 0)
-    # 49: (300, 100, 0)
-    # 0: (0, 0, 50)
-    # 1: (300, 0, 50)
-    # 2: (0, 100, 50)
-    # 3: (300, 100, 50)
-
     pts_3d = {
         42: np.array([0, 0, 0], dtype=np.float32),
         43: np.array([100, 0, 0], dtype=np.float32),

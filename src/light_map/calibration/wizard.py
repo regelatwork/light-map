@@ -47,15 +47,12 @@ class StereoCalibrationWizard:
         if len(ruler_left) < 2 or len(ruler_right) < 2:
             raise ValueError("Ruler markers not found in both images.")
             
-        m40_left = next(m[1] for m in ruler_left if m[0] == 40)
-        m41_left = next(m[1] for m in ruler_left if m[0] == 41)
-        
-        self.solver.solve_phase1_table_scale(None, [m40_left, m41_left], ruler_distance_mm=100.0)
+        self.solver.solve_phase1_table_scale(None, ruler_left, ruler_right, ruler_distance_mm=100.0)
         
         # 4. Phase 2: Joint Non-Planar Stereo Extrinsics Solve
         # We need 12 points: 8 grid corners (42-49) + 4 tokens (0-3)
-        # The order in solver.grid_corners_3d is IDs 42, 43, 44, 45, 46, 47, 48, 49.
-        # Followed by 0, 1, 2, 3.
+        # The order in solver.grid_corners_3d is IDs 42-49.
+        # Followed by 0-3.
         
         l_corners_final = []
         r_corners_final = []
@@ -113,3 +110,4 @@ class StereoCalibrationWizard:
             "left_id": left_id,
             "right_id": right_id
         }
+

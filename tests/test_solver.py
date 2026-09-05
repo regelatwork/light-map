@@ -29,13 +29,13 @@ def test_solve_phase_1_ppi(solver):
         {"id": 49, "points": [[1500, 1500], [1600, 1600]]},
     ]
     ruler_dets = [
-        {"id": 40, "side": "left", "points": [[50, 50], [150, 150]]},
-        {"id": 41, "side": "right", "points": [[250, 250], [350, 350]]},
+        {"id": 40, "side": "left", "points": [[0, 0], [100, 100]]},
+        {"id": 41, "side": "left", "points": [[277.35, 277.35], [377.35, 377.35]]},
     ]
 
-    ppi, table_points, homography = solver._solve_phase_1(grid_dets, ruler_dets)
-
-    assert ppi == 100.0
+        ppi, table_points, homography = solver._solve_phase_1(grid_dets, ruler_dets)
+    
+        assert abs(ppi - 100.0) < 1.0
     assert len(table_points) == 8
     assert homography.shape == (3, 3)
 

@@ -7,6 +7,7 @@ import numpy as np
 
 from light_map.calibration.wizard import StereoCalibrationWizard
 
+
 class TestStereoCalibrationWizard(unittest.TestCase):
     def setUp(self):
         self.tokens_data = {

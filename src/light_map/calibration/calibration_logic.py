@@ -126,18 +126,14 @@ def calculate_ppi_from_frame(
         # Assume z=0 for points on the table
         pts_cam = np.array([[p1_cam[0], p1_cam[1], 0.0],
                              [p2_cam[0], p2_cam[1], 0.0]]).reshape(-1, 1, 3).astype(np.float32)
-        # Use dot product for 3x4 projection
-        pts_proj_hom = np.dot(pts_cam.reshape(-1, 3), projector_matrix)
-        # pts_proj_hom is (N, 4)
-        # Divide by w to get 2D points (u/w, v/w)
-        pts_proj = pts_proj_hom[:, :2] / (pts_proj_hom[:, 3:4] + 1e-8)
+        pts_proj = cv2.perspectiveTransform(pts_cam, projector_matrix.astype(np.float32)).reshape(-1, 2)
     else:
         # Homography matrix: needs 2D points (x, y)
         pts_cam = np.array([p1_cam, p2_cam]).reshape(-1, 1, 2).astype(np.float32)
-        pts_proj = cv2.perspectiveTransform(pts_cam, projector_matrix.astype(np.float32))
+        pts_proj = cv2.perspectiveTransform(pts_cam, projector_matrix.astype(np.float32)).reshape(-1, 2)
 
-    p1_proj = pts_proj[0][0]
-    p2_proj = pts_proj[1][0]
+    p1_proj = pts_proj[0]
+    p2_proj = pts_proj[1]
 
     dist_px = np.linalg.norm(p1_proj - p2_proj)
 
@@ -405,7 +401,6 @@ def solve_joint_extrinsics(
     # We can use cv2.stereoCalibrate to find the relative transform.
     # Since we have 3D points in world space, this will return the transform between the cameras.
     # Use cv2.stereoCalibrate to find relative transform
-    # Note: objPoints must be in the same coordinate system (world space)
     rel_rvec, rel_tvec, rms = cv2.stereoCalibrate(
         object_points,
         image_points_l,

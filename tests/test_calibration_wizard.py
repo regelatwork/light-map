@@ -7,7 +7,6 @@ import numpy as np
 
 from light_map.calibration.wizard import StereoCalibrationWizard
 
-
 class TestStereoCalibrationWizard(unittest.TestCase):
     def setUp(self):
         self.tokens_data = {
@@ -160,9 +159,8 @@ class TestStereoCalibrationWizard(unittest.TestCase):
         pts_r_proj, _ = cv2.projectPoints(world_pts, r_r, t_r, k_r, dist_r)
 
         # Add a small amount of noise to the "measured" points
-        noise = np.random.normal(0, 0.1, pts_l_proj.shape).astype(np.float32)
-        # measured_l = pts_l_proj + noise
-        # measured_r = pts_r_proj + noise
+        # measured_l = pts_l_proj + np.random.normal(0, 0.1, pts_l_proj.shape).astype(np.float32)
+        # measured_r = pts_r_proj + np.random.normal(0, 0.1, pts_r_proj.shape).astype(np.float32)
 
         # Triangulate the points
         # In a real scenario, we'd use cv2.triangulatePoints or something similar
@@ -173,6 +171,7 @@ class TestStereoCalibrationWizard(unittest.TestCase):
 
         # We'll simulate the triangulation by just using the world_pts.
         # And verify that the error is within 2mm.
+
         triangulated_pts = world_pts
 
         # Check distance

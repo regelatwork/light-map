@@ -48,8 +48,8 @@ class StereoCalibrationWizard:
         # Need to find markers 40, 41 (ruler) and 42-47 (grid)
         ruler_left = [m for m in left_markers if m[0] in [40, 41]]
         ruler_right = [m for m in right_markers if m[0] in [40, 41]]
-        grid_left = [m for m in left_markers if m[0] in [42, 43, 44, 45, 46, 47]]
-        grid_right = [m for m in right_markers if m[0] in [42, 43, 44, 45, 46, 47]]
+        grid_left = [m for m in left_markers if m[0] in [42, 43, 44, 45, 46, 47, 48, 49]]
+        grid_right = [m for m in right_markers if m[0] in [42, 43, 44, 45, 46, 47, 48, 49]]
         
         if len(ruler_left) < 2 or len(ruler_right) < 2:
             raise ValueError("Ruler markers not found in both images.")
@@ -65,7 +65,7 @@ class StereoCalibrationWizard:
         r_corners_final = []
         
         # IDs in order
-        target_ids = [42, 43, 44, 45, 46, 47, 0, 1, 2, 3]
+        target_ids = [42, 43, 44, 45, 46, 47, 48, 49, 0, 1, 2, 3]
         
         for tid in target_ids:
             l_m = next((m[1] for m in left_markers if m[0] == tid), None)
@@ -100,6 +100,11 @@ class StereoCalibrationWizard:
         )
         
         left_id, right_id = self.solver.solve_phase3_auto_discovery()
+        
+        # If tx < 0, the camera that produced right_image is the left camera.
+        # So roi_r is the left ROI, and roi_l is the right ROI.
+        if self.solver.t_stereo[0] < 0:
+            roi_l, roi_r = roi_r, roi_l
         
         return {
             "roi_left": roi_l,

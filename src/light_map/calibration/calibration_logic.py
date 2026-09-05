@@ -127,10 +127,10 @@ def calculate_ppi_from_frame(
         pts_cam = np.array([[p1_cam[0], p1_cam[1], 0.0],
                              [p2_cam[0], p2_cam[1], 0.0]]).reshape(-1, 1, 3).astype(np.float32)
         # Use dot product for 3x4 projection
-        pts_proj_hom = np.dot(pts_cam.reshape(-1, 3), projector_matrix.T)
-        # pts_proj_hom is (N, 3), e.g., [u, v, w]
+        pts_proj_hom = np.dot(pts_cam.reshape(-1, 3), projector_matrix)
+        # pts_proj_hom is (N, 4)
         # Divide by w to get 2D points (u/w, v/w)
-        pts_proj = pts_proj_hom[:, :2] / (pts_proj_hom[:, 2:3] + 1e-8)
+        pts_proj = pts_proj_hom[:, :2] / (pts_proj_hom[:, 3:4] + 1e-8)
     else:
         # Homography matrix: needs 2D points (x, y)
         pts_cam = np.array([p1_cam, p2_cam]).reshape(-1, 1, 2).astype(np.float32)
@@ -215,7 +215,7 @@ def calibrate_extrinsics(
     if ground_points_camera is not None and ground_points_projector is not None:
         for i in range(len(ground_points_camera)):
             px, py = ground_points_projector[i]
-            wx, wy = px, py
+            wx, wy = px / ppi_mm, py / ppi_mm
             object_points.append([wx, wy, 0.0])
             image_points.append(ground_points_camera[i])
 
@@ -274,31 +274,31 @@ def calibrate_extrinsics(
     image_points = np.array(image_points, dtype=np.float32)
 
     # Solve PnP
-    ret, rvecs, tvecs, inliers, reprojection_errors = cv2.solvePnPRansac(
+    ret, rvecs, tvecs, *rest = cv2.solvePnPRansac(
         object_points,
         image_points,
         camera_matrix,
         distortion_coefficients,
         flags=cv2.SOLVEPNP_ITERATIVE,
     )
-
-    if not ret or len(rvecs) == 0:
+    
+    if not ret or rvecs is None or tvecs is None:
         logging.error("Extrinsics: Solver failed to find a solution.")
         return None
-
-    # Pick best solution
-    # Note: solvePnPRansac returns one solution (rvec, tvec) and a list of reprojection errors.
-    # We'll use the minimum error from the reprojection errors.
-    best_idx = -1
+    
+    # solvePnPRansac might return (success, rvec, tvec, inliers, reproj_errors) 
+    # or (success, rvec, tvec, reproj_errors) depending on OpenCV version.
+    
+    rotation_vector = rvecs
+    translation_vector = tvecs
     min_err = float("inf")
-    for i, err in enumerate(reprojection_errors):
-        if err < min_err:
-            min_err = err
-            best_idx = i
-
-    rotation_vector = rvecs[best_idx]
-    translation_vector = tvecs[best_idx]
-
+    
+    if len(rest) > 0:
+        # rest[0] is usually reprojection_errors
+        reprojection_errors = rest[0]
+        if isinstance(reprojection_errors, (list, np.ndarray)) and len(reprojection_errors) > 0:
+            min_err = float(np.min(reprojection_errors))
+    
     return rotation_vector, translation_vector, object_points, image_points, min_err
 
 def resolve_camera_roles(
@@ -482,4 +482,3 @@ def filter_candidate_tokens(tokens_path: str) -> list[dict]:
                 candidates.append({"id": int(aruco_id), **info})
 
     return candidates
-"""

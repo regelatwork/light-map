@@ -13,7 +13,7 @@ from .sequential_solver import SequentialSolver
 from .roi_calculator import compute_roi_pass1, compute_roi_pass2
 
 class StereoCalibrationWizard:
-    def __init__(self, tokens_path: str, base_path: str):
+    def __init__(self, tokens_path: str, base_path: str, projector_matrix: np.ndarray = None, pattern_params: dict = None):
         self.token_manager = TokenManager(tokens_path)
         self.base_path = Path(base_path)
         self.marker_detector = MarkerDetector()
@@ -24,7 +24,12 @@ class StereoCalibrationWizard:
         self.k_right, self.dist_right = load_intrinsics("right", self.base_path)
         
         # Solver
-        self.solver = SequentialSolver(self.token_manager, self.projector_ppi)
+        self.solver = SequentialSolver(
+            self.token_manager,
+            self.projector_ppi,
+            projector_matrix if projector_matrix is not None else np.eye(3),
+            pattern_params if pattern_params is not None else {}
+        )
         self.solver.k_left = self.k_left
         self.solver.dist_left = self.dist_left
         self.solver.k_right = self.k_right
@@ -40,25 +45,27 @@ class StereoCalibrationWizard:
         token_heights = {t.id: t.height_mm for t in candidate_tokens}
         
         # 3. Phase 1: Table Scale & Z=0 Homography
-        # Need to find markers 40 and 41
+        # Need to find markers 40, 41 (ruler) and 42-47 (grid)
         ruler_left = [m for m in left_markers if m[0] in [40, 41]]
         ruler_right = [m for m in right_markers if m[0] in [40, 41]]
+        grid_left = [m for m in left_markers if m[0] in [42, 43, 44, 45, 46, 47]]
+        grid_right = [m for m in right_markers if m[0] in [42, 43, 44, 45, 46, 47]]
         
         if len(ruler_left) < 2 or len(ruler_right) < 2:
             raise ValueError("Ruler markers not found in both images.")
             
-        self.solver.solve_phase1_table_scale(None, ruler_left, ruler_right, ruler_distance_mm=100.0)
+        self.solver.solve_phase1_table_scale(ruler_left + grid_left, ruler_right + grid_right, ruler_distance_mm=100.0)
         
         # 4. Phase 2: Joint Non-Planar Stereo Extrinsics Solve
-        # We need 12 points: 8 grid corners (42-49) + 4 tokens (0-3)
-        # The order in solver.grid_corners_3d is IDs 42-49.
+        # We need 10 points: 6 grid corners (42-47) + 4 tokens (0-3)
+        # The order in solver.grid_corners_3d is IDs 42-47.
         # Followed by 0-3.
         
         l_corners_final = []
         r_corners_final = []
         
         # IDs in order
-        target_ids = [42, 43, 44, 45, 46, 47, 48, 49, 0, 1, 2, 3]
+        target_ids = [42, 43, 44, 45, 46, 47, 0, 1, 2, 3]
         
         for tid in target_ids:
             l_m = next((m[1] for m in left_markers if m[0] == tid), None)
@@ -83,16 +90,8 @@ class StereoCalibrationWizard:
         h_l, w_l = left_image.shape[:2]
         h_r, w_r = right_image.shape[:2]
         
-        roi_l = compute_roi_pass2(
+        roi_l, roi_r = compute_roi_pass2(
             (h_l, w_l), 
-            self.solver.camera_left_extrinsics, self.solver.camera_left_t,
-            self.solver.camera_right_extrinsics, self.solver.camera_right_t, 200.0,
-            corners_3d=self.solver.grid_corners_3d,
-            k_left=self.k_left,
-            k_right=self.k_right
-        )
-        roi_r = compute_roi_pass2(
-            (h_r, w_r), 
             self.solver.camera_left_extrinsics, self.solver.camera_left_t,
             self.solver.camera_right_extrinsics, self.solver.camera_right_t, 200.0,
             corners_3d=self.solver.grid_corners_3d,
@@ -110,4 +109,3 @@ class StereoCalibrationWizard:
             "left_id": left_id,
             "right_id": right_id
         }
-

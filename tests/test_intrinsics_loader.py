@@ -2,7 +2,6 @@
 Test suite for intrinsics_loader.
 """
 
-
 import numpy as np
 import pytest
 

@@ -82,7 +82,6 @@ class TestStereoCalibrationWizard(unittest.TestCase):
         self.wizard.solver.r_stereo = r_l
         self.wizard.solver.t_stereo = t_l
 
-
         left_id, right_id = self.wizard.solver.solve_phase3_auto_discovery()
 
         self.assertEqual(left_id, "camera_0")
@@ -185,7 +184,6 @@ class TestStereoCalibrationWizard(unittest.TestCase):
         r_l = np.eye(3, dtype=np.float32)
         t_l = np.zeros(3, dtype=np.float32)
         r_r = np.eye(3, dtype=np.float32)
-        t_r = np.zeros(3, dtype=np.float32)
 
         # We'll use the solver's current state
         self.wizard.solver.camera_left_extrinsics = r_l

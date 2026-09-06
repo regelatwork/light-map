@@ -2,40 +2,47 @@
 Module for the unified stereo calibration wizard.
 """
 
-import numpy as np
-import cv2
 from pathlib import Path
-from typing import List, Tuple, Dict
-from .token_manager import TokenManager
+
+import numpy as np
+
 from .intrinsics_loader import load_intrinsics
 from .marker_detector import MarkerDetector
+from .roi_calculator import compute_roi_pass2
 from .sequential_solver import SequentialSolver
-from .roi_calculator import compute_roi_pass1, compute_roi_pass2
+from .token_manager import TokenManager
+
 
 class StereoCalibrationWizard:
-    def __init__(self, tokens_path: str, base_path: str, projector_matrix: np.ndarray = None, pattern_params: dict = None):
+    def __init__(
+        self,
+        tokens_path: str,
+        base_path: str,
+        projector_matrix: np.ndarray = None,
+        pattern_params: dict = None,
+    ):
         self.token_manager = TokenManager(tokens_path)
         self.base_path = Path(base_path)
         self.marker_detector = MarkerDetector()
         self.projector_ppi = 0.0
-        
+
         # Intrinsics
         self.k_left, self.dist_left = load_intrinsics("left", self.base_path)
         self.k_right, self.dist_right = load_intrinsics("right", self.base_path)
-        
+
         # Solver
         self.solver = SequentialSolver(
             self.token_manager,
             self.projector_ppi,
             projector_matrix if projector_matrix is not None else np.eye(3),
-            pattern_params if pattern_params is not None else {}
+            pattern_params if pattern_params is not None else {},
         )
         self.solver.k_left = self.k_left
         self.solver.dist_left = self.dist_left
         self.solver.k_right = self.k_right
         self.solver.dist_right = self.dist_right
-        
-    def run_calibration(self, left_image: np.ndarray, right_image: np.ndarray) -> Dict:
+
+    def run_calibration(self, left_image: np.ndarray, right_image: np.ndarray) -> dict:
         h_l, w_l = left_image.shape[:2]
         h_r, w_r = right_image.shape[:2]
 
@@ -57,7 +64,9 @@ class StereoCalibrationWizard:
         if len(ruler_left) < 2 or len(ruler_right) < 2:
             raise ValueError("Ruler markers not found in both images.")
 
-        self.solver.solve_phase1_table_scale(ruler_left + grid_left, ruler_right + grid_right, ruler_distance_mm=100.0)
+        self.solver.solve_phase1_table_scale(
+            ruler_left + grid_left, ruler_right + grid_right, ruler_distance_mm=100.0
+        )
 
         # 4. Phase 2: Joint Non-Planar Stereo Extrinsics Solve
         # We need 12 points: 8 grid corners (42-49) + 4 tokens (0-3)
@@ -77,20 +86,21 @@ class StereoCalibrationWizard:
             else:
                 raise ValueError(f"Marker ID {tid} not found in one or both cameras.")
 
-        self.solver.solve_phase2_stereo_extrinsics(
-            l_corners_final, r_corners_final, token_heights
-        )
+        self.solver.solve_phase2_stereo_extrinsics(l_corners_final, r_corners_final, token_heights)
 
         # 5. Phase 3: Auto-Discovery & Orientation Verification
 
         # 6. ROI Calculation
         roi_l, roi_r = compute_roi_pass2(
             (h_l, w_l),
-            self.solver.camera_left_extrinsics, self.solver.camera_left_t,
-            self.solver.camera_right_extrinsics, self.solver.camera_right_t, 200.0,
+            self.solver.camera_left_extrinsics,
+            self.solver.camera_left_t,
+            self.solver.camera_right_extrinsics,
+            self.solver.camera_right_t,
+            200.0,
             corners_3d=self.solver.grid_corners_3d,
             k_left=self.k_left,
-            k_right=self.k_right
+            k_right=self.k_right,
         )
 
         left_id, right_id = self.solver.solve_phase3_auto_discovery()
@@ -106,6 +116,5 @@ class StereoCalibrationWizard:
             "r_stereo": self.solver.r_stereo,
             "t_stereo": self.solver.t_stereo,
             "left_id": left_id,
-            "right_id": right_id
+            "right_id": right_id,
         }
-

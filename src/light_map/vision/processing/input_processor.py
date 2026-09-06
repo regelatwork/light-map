@@ -4,7 +4,6 @@ import logging
 from typing import TYPE_CHECKING, Any
 
 import cv2
-import mediapipe as mp
 import numpy as np
 
 from light_map.core.scene import HandInput
@@ -141,7 +140,11 @@ class InputProcessor:
             )
 
             # Apply crop_offset if it exists in projector_pose
-            if projector_pose is not None and hasattr(projector_pose, "crop_offset") and projector_pose.crop_offset:
+            if (
+                projector_pose is not None
+                and hasattr(projector_pose, "crop_offset")
+                and projector_pose.crop_offset
+            ):
                 camera_point[0] += projector_pose.crop_offset[0]
                 camera_point[1] += projector_pose.crop_offset[1]
 

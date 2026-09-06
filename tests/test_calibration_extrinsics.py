@@ -82,6 +82,8 @@ def test_calibrate_extrinsics_synthetic():
         projector_matrix = np.eye(3, dtype=np.float32)
         frame = np.zeros((480, 640, 3), dtype=np.uint8)
 
+        mock_corners = tuple(image_points[i * 4 : (i + 1) * 4].reshape(1, 4, 2) for i in range(4))
+
         # Test 1: Only Tokens (Z > 0) with known_targets
         result = calibrate_extrinsics(
             frame,
@@ -93,12 +95,7 @@ def test_calibrate_extrinsics_synthetic():
             known_targets=known_targets,
             token_sizes=token_sizes,
             aruco_ids=np.array([1, 2, 3, 4]),
-            aruco_corners=(
-                np.array([[[10, 10], [20, 10], [20, 20], [10, 20]]]),
-                np.array([[[30, 30], [40, 30], [40, 40], [30, 40]]]),
-                np.array([[[50, 50], [60, 50], [60, 60], [50, 60]]]),
-                np.array([[[70, 70], [80, 70], [80, 80], [70, 80]]]),
-            ),
+            aruco_corners=mock_corners,
         )
 
         assert result is not None
@@ -108,8 +105,12 @@ def test_calibrate_extrinsics_synthetic():
 
         # Test 2: Combined (Ground + Tokens) with known_targets
         # Ground points are at Z=0
-        ground_points_3d = np.array(projector_coords_px, dtype=np.float32)
-        ground_points_3d[:, 2] = 0
+        ground_points_3d = np.column_stack(
+            [
+                np.array(projector_coords_px, dtype=np.float32),
+                np.zeros(len(projector_coords_px), dtype=np.float32),
+            ]
+        )
         # Convert pixel coordinates to mm for ground points as well
         ground_points_3d *= 25.4 / ppi
 
@@ -134,12 +135,7 @@ def test_calibrate_extrinsics_synthetic():
             known_targets=known_targets,
             token_sizes=token_sizes,
             aruco_ids=np.array([1, 2, 3, 4]),
-            aruco_corners=(
-                np.array([[[10, 10], [20, 10], [20, 20], [10, 20]]]),
-                np.array([[[30, 30], [40, 30], [40, 40], [30, 40]]]),
-                np.array([[[50, 50], [60, 50], [60, 60], [50, 60]]]),
-                np.array([[[70, 70], [80, 70], [80, 80], [70, 80]]]),
-            ),
+            aruco_corners=mock_corners,
         )
 
         assert result_combined is not None

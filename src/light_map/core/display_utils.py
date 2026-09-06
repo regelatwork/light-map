@@ -1,8 +1,13 @@
 import logging
 import os
 import sys
-import tkinter as tk
 from logging.handlers import RotatingFileHandler
+
+
+try:
+    import tkinter as tk
+except ImportError:
+    tk = None
 
 import cv2
 import numpy as np
@@ -215,6 +220,8 @@ def get_screen_resolution() -> tuple[int, int]:
     Returns (width, height).
     """
     try:
+        if tk is None:
+            raise RuntimeError("tkinter is not available")
         root = tk.Tk()
         width = root.winfo_screenwidth()
         height = root.winfo_screenheight()

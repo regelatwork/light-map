@@ -1,11 +1,13 @@
 """
 Module for resolving token metadata from tokens.json, specifically for calibration.
 """
+
 import json
 import logging
-from typing import Dict, List, Optional
+
 
 logger = logging.getLogger(__name__)
+
 
 class TokenResolver:
     def __init__(self, tokens_json_path: str):
@@ -16,14 +18,14 @@ class TokenResolver:
 
     def load_tokens(self):
         try:
-            with open(self.tokens_json_path, "r") as f:
+            with open(self.tokens_json_path) as f:
                 data = json.load(f)
                 self.token_profiles = data.get("token_profiles", {})
                 self.aruco_defaults = data.get("aruco_defaults", {})
         except Exception as e:
             logger.error("Failed to load tokens.json from %s: %s", self.tokens_json_path, e)
 
-    def resolve_height(self, token_id: str) -> Optional[float]:
+    def resolve_height(self, token_id: str) -> float | None:
         """
         Resolves the physical height of a token ID.
         """
@@ -34,19 +36,19 @@ class TokenResolver:
             height_mm = entry.get("height_mm")
             if height_mm is not None:
                 return float(height_mm)
-            
+
             # Otherwise, resolve via profile
             profile_name = entry.get("profile")
             if profile_name and profile_name in self.token_profiles:
                 return float(self.token_profiles[profile_name].get("height_mm", 0.0))
-        
+
         # If it's not in aruco_defaults, maybe it's directly in token_profiles?
         # This depends on how tokens.json is structured.
         # Looking at the current tokens.json, it's only in aruco_defaults.
-        
+
         return None
 
-    def get_candidate_tokens(self) -> List[str]:
+    def get_candidate_tokens(self) -> list[str]:
         """
         Returns a list of token IDs that have a positive height.
         """
@@ -62,7 +64,7 @@ class TokenResolver:
                 continue
         return candidates
 
-    def get_height_map(self) -> Dict[int, float]:
+    def get_height_map(self) -> dict[int, float]:
         """
         Returns a mapping of user token IDs (0-39) to their resolved heights.
         """
@@ -79,7 +81,7 @@ class TokenResolver:
                 continue
         return height_map
 
-    def get_token_sizes(self) -> Dict[int, float]:
+    def get_token_sizes(self) -> dict[int, float]:
         """
         Returns a mapping of user token IDs (0-39) to their resolved sizes.
         """

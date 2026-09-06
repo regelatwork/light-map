@@ -149,6 +149,75 @@ async function mirrorTranscript(directory, client, sessionID) {
 
 export default async function gascityPlugin({ directory, client }) {
   let cachedPrime = null;
+  const editFailureTracker = new Map();
+
+  function sanitizeEdit(fileContent, oldString, newString) {
+    if (fileContent.includes(oldString)) {
+      return { oldString, newString };
+    }
+
+    // 1. Safe Sequential Line Number Stripping
+    const lines = oldString.split("\n");
+    const lineNumRegex = /^\s*(\d+):\s?(.*)$/;
+    let isSequential = lines.length > 1;
+    let expectedNum = null;
+    for (const line of lines) {
+      const match = line.match(lineNumRegex);
+      if (!match) {
+        isSequential = false;
+        break;
+      }
+      const num = parseInt(match[1], 10);
+      if (expectedNum !== null && num !== expectedNum + 1) {
+        isSequential = false;
+        break;
+      }
+      expectedNum = num;
+    }
+    if (isSequential) {
+      const stripped = lines.map(l => l.replace(lineNumRegex, "$2")).join("\n");
+      if (fileContent.includes(stripped)) {
+        return { oldString: stripped, newString };
+      }
+    }
+
+    // 2. Indentation-Delta Fuzzy Matching
+    const normalize = s => s.split("\n").map(l => l.trim()).filter(Boolean).join("\n");
+    const normOld = normalize(oldString);
+    const fileLines = fileContent.split("\n");
+    const oldLines = oldString.split("\n").filter(l => l.trim().length > 0);
+
+    if (oldLines.length > 0) {
+      const firstTrimmed = oldLines[0].trim();
+      const candidateIndices = [];
+      for (let i = 0; i < fileLines.length; i++) {
+        if (fileLines[i].trim() === firstTrimmed) {
+          candidateIndices.push(i);
+        }
+      }
+      if (candidateIndices.length === 1) {
+        const startIdx = candidateIndices[0];
+        const endIdx = startIdx + oldLines.length;
+        if (endIdx <= fileLines.length) {
+          const fileSlice = fileLines.slice(startIdx, endIdx).join("\n");
+          if (normalize(fileSlice) === normOld) {
+            const fileIndent = fileLines[startIdx].match(/^\s*/)[0];
+            const oldIndent = oldLines[0].match(/^\s*/)[0];
+            let adjustedNew = newString;
+            if (fileIndent !== oldIndent && typeof newString === "string") {
+              const delta = fileIndent.length - oldIndent.length;
+              adjustedNew = newString.split("\n").map(l => {
+                if (!l.trim()) return l;
+                return delta > 0 ? " ".repeat(delta) + l : (l.startsWith(" ".repeat(-delta)) ? l.slice(-delta) : l);
+              }).join("\n");
+            }
+            return { oldString: fileSlice, newString: adjustedNew };
+          }
+        }
+      }
+    }
+    return { oldString, newString };
+  }
 
   async function readPrime(force = false, extraEnv = {}) {
     if (force || cachedPrime === null) {
@@ -224,6 +293,66 @@ export default async function gascityPlugin({ directory, client }) {
         );
       } catch {
         return;
+      }
+    },
+
+    "chat.params": async (_input, output) => {
+      output.temperature = 0.1;
+    },
+
+    "tool.definition": async (input, output) => {
+      if (input.toolID === "edit" && output.parameters?.properties) {
+        if (output.parameters.properties.filePath) {
+          output.parameters.properties.filePath.description =
+            "Absolute path to the file (MUST be specified first).";
+        }
+        if (output.parameters.properties.oldString) {
+          output.parameters.properties.oldString.description =
+            "1-3 unique verbatim lines from the file to replace. NEVER include entire functions or line numbers from read.";
+        }
+      }
+    },
+
+    "tool.execute.before": async (input, output) => {
+      if (input.tool !== "edit" || !output.args) return;
+      const { filePath, oldString, newString } = output.args;
+      if (!filePath || typeof oldString !== "string") return;
+
+      const sessionID = input.sessionID || "default";
+      const loopKey = `${sessionID}:${filePath}:${oldString.trim()}`;
+      const failCount = editFailureTracker.get(loopKey) || 0;
+      if (failCount >= 2) {
+        throw new Error(
+          `CIRCUIT BREAKER: You have attempted this exact edit twice and failed. ` +
+          `You are prohibited from retrying the same oldString. ` +
+          `Call 'read' to inspect the actual lines, or use 'write' if rewriting the file.`
+        );
+      }
+
+      try {
+        const targetPath = path.isAbsolute(filePath) ? filePath : path.join(directory, filePath);
+        const fileContent = await fs.readFile(targetPath, "utf-8");
+        const sanitized = sanitizeEdit(fileContent, oldString, newString);
+        output.args.oldString = sanitized.oldString;
+        output.args.newString = sanitized.newString;
+      } catch {
+        // Let standard tool execution handle any file access errors
+      }
+    },
+
+    "tool.execute.after": async (input, output) => {
+      if (input.tool !== "edit" || !output.output) return;
+      if (typeof output.output === "string" && output.output.includes("Could not find oldString")) {
+        const { filePath, oldString } = input.args || {};
+        const sessionID = input.sessionID || "default";
+        const loopKey = `${sessionID}:${filePath}:${(oldString || "").trim()}`;
+        editFailureTracker.set(loopKey, (editFailureTracker.get(loopKey) || 0) + 1);
+
+        output.output +=
+          "\n\n[DIAGNOSTIC ADVICE]:" +
+          "\n- Ensure you did NOT include line numbers (e.g. '42:') from 'read'." +
+          "\n- Keep oldString to only 1-3 unique lines instead of a large block." +
+          "\n- If rewriting a large section or a small file (<80 lines), use the 'write' tool instead.";
       }
     },
   };

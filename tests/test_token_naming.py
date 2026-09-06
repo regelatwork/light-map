@@ -62,7 +62,7 @@ def test_map_config_manager_naming_integration():
     # Default should be SCI_FI
     assert manager.data.global_settings.naming_style == NamingStyle.SCI_FI
 
-    aruco_id = 10
+    aruco_id = 99
     map_name = "test.svg"
 
     # Resolve unknown token

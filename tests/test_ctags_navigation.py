@@ -20,6 +20,9 @@ def tags_file():
     ]
 
     try:
+        proc = subprocess.run(["ctags", "--version"], capture_output=True, text=True)
+        if "Universal Ctags" not in proc.stdout and "Exuberant Ctags" not in proc.stdout:
+            pytest.skip("Universal Ctags not installed")
         subprocess.run(command, check=True, capture_output=True, text=True)
     except subprocess.CalledProcessError as e:
         pytest.fail(f"ctags command failed: {e.stderr}")

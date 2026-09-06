@@ -108,7 +108,9 @@ class TokenConfigSchema(BaseModel):
 class CameraDeviceSchema(BaseModel):
     device_path: str = Field(..., title="Device Path", description="Path to the camera device.")
     name: str = Field(default="Camera", title="Name", description="Display name for the camera.")
-    enabled: bool = Field(default=True, title="Enabled", description="Whether the camera is enabled.")
+    enabled: bool = Field(
+        default=True, title="Enabled", description="Whether the camera is enabled."
+    )
 
 
 class StereoVisionConfigSchema(BaseModel):
@@ -406,5 +408,3 @@ class GlobalConfigSchema(BaseModel):
         title="Stereo Vision",
         description="Configuration for dual-camera stereographic tracking.",
     )
-
-

@@ -1,19 +1,31 @@
-from typing import Dict, List, Tuple
+import logging
+
 import cv2
 import numpy as np
-import logging
 
 from ..core.config_schema import CalibrationConfig
 
+
 class SequentialStereoSolver:
-    def __init__(self, config: CalibrationConfig, camera_left_intrinsics: Tuple[np.ndarray, np.ndarray], camera_right_intrinsics: Tuple[np.ndarray, np.ndarray]):
+    def __init__(
+        self,
+        config: CalibrationConfig,
+        camera_left_intrinsics: tuple[np.ndarray, np.ndarray],
+        camera_right_intrinsics: tuple[np.ndarray, np.ndarray],
+    ):
         self.config = config
         self.camera_left_intrinsics = camera_left_intrinsics
         self.camera_right_intrinsics = camera_right_intrinsics
         self.ppi = None
         self.homography = None
         self.grid_corners_world = None
-        self.pattern_params = {"square_size": 100, "rows": 13, "cols": 18, "start_x": 100, "start_y": 100}
+        self.pattern_params = {
+            "square_size": 100,
+            "rows": 13,
+            "cols": 18,
+            "start_x": 100,
+            "start_y": 100,
+        }
 
     def solve(
         self,
@@ -29,7 +41,7 @@ class SequentialStereoSolver:
         aruco_corners_r: tuple[np.ndarray, ...] | None,
         aruco_ids_r: np.ndarray | None,
         token_sizes: dict[int, int] | None,
-    ) -> Optional[dict]:
+    ) -> dict | None:
         """
         Executes the sequential solver phases.
         """
@@ -38,11 +50,7 @@ class SequentialStereoSolver:
         # Use IDs 40 and 41 to solve for camera-to-table transform and PPI.
         # We assume the PPI sheet is aligned with the table axes.
         transform, ppi = self.solve_phase_1(
-            frame_l,
-            aruco_corners_l,
-            aruco_ids_l,
-            camera_matrix_l,
-            distortion_coefficients_l
+            frame_l, aruco_corners_l, aruco_ids_l, camera_matrix_l, distortion_coefficients_l
         )
 
         if transform is None or ppi is None:
@@ -66,7 +74,7 @@ class SequentialStereoSolver:
             aruco_ids_l,
             aruco_corners_r,
             aruco_ids_r,
-            token_sizes
+            token_sizes,
         )
 
         if rvec_l is None:
@@ -86,7 +94,7 @@ class SequentialStereoSolver:
             camera_matrix_r,
             distortion_coefficients_l,
             distortion_coefficients_r,
-            self.ppi
+            self.ppi,
         )
 
         return {
@@ -99,27 +107,36 @@ class SequentialStereoSolver:
             "roles": roles,
             "transform": transform,
             "roi_left": roi_l,
-            "roi_right": roi_r
+            "roi_right": roi_r,
         }
 
-    def solve_phase_1(self, frame_l: np.ndarray, aruco_corners_l: tuple[np.ndarray, ...] | None, aruco_ids_l: np.ndarray | None, 
-                       camera_matrix_l: np.ndarray, distortion_coefficients_l: np.ndarray) -> Tuple[float, np.ndarray, np.ndarray] | None:
-        from ..calibration.calibration_logic import calculate_ppi_from_frame, compute_projector_homography
+    def solve_phase_1(
+        self,
+        frame_l: np.ndarray,
+        aruco_corners_l: tuple[np.ndarray, ...] | None,
+        aruco_ids_l: np.ndarray | None,
+        camera_matrix_l: np.ndarray,
+        distortion_coefficients_l: np.ndarray,
+    ) -> tuple[float, np.ndarray, np.ndarray] | None:
+        from ..calibration.calibration_logic import (
+            calculate_ppi_from_frame,
+            compute_projector_homography,
+        )
 
         corners_l, ids_l, _ = self._detect_markers(frame_l)
 
         if ids_l is not None and 40 in ids_l.flatten() and 41 in ids_l.flatten():
             self.homography = compute_projector_homography(
-                frame_l, 
+                frame_l,
                 self.pattern_params,
                 camera_matrix_l[0],
                 camera_matrix_l[1],
-                aruco_corners=corners_l, aruco_ids=ids_l
+                aruco_corners=corners_l,
+                aruco_ids=ids_l,
             )
 
             self.ppi = calculate_ppi_from_frame(
-                frame_l, self.homography, 
-                aruco_corners=corners_l, aruco_ids=ids_l
+                frame_l, self.homography, aruco_corners=corners_l, aruco_ids=ids_l
             )
 
             _, _, self.grid_corners_world = self._get_ground_points(
@@ -130,7 +147,7 @@ class SequentialStereoSolver:
 
         raise RuntimeError("Failed to complete Phase 1: Markers 40/41 not detected in frame.")
 
-    def _detect_markers(self, frame: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
+    def _detect_markers(self, frame: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         aruco_dict = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_4X4_50)
         parameters = cv2.aruco.DetectorParameters()
@@ -138,8 +155,14 @@ class SequentialStereoSolver:
         corners, ids, _ = detector.detectMarkers(gray)
         return corners, ids
 
-    def _get_ground_points(self, frame: np.ndarray, homography: np.ndarray, ppi: float, 
-                            corners: np.ndarray, ids: np.ndarray) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+    def _get_ground_points(
+        self,
+        frame: np.ndarray,
+        homography: np.ndarray,
+        ppi: float,
+        corners: np.ndarray,
+        ids: np.ndarray,
+    ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
         grid_corners_cam = []
         for g_id in range(42, 50):
             idx = np.where(ids.flatten() == g_id)[0]
@@ -159,9 +182,9 @@ class SequentialStereoSolver:
             all_grid_corners = np.array(all_grid_corners)
             min_y, max_y = np.min(all_grid_corners[:, 1]), np.max(all_grid_corners[:, 1])
             min_x, max_x = np.min(all_grid_corners[:, 0]), np.max(all_grid_corners[:, 0])
-            grid_corners_cam = np.array([
-                [min_x, min_y], [max_x, min_y], [min_x, max_y], [max_x, max_y]
-            ])
+            grid_corners_cam = np.array(
+                [[min_x, min_y], [max_x, min_y], [min_x, max_y], [max_x, max_y]]
+            )
 
         grid_corners_proj = (homography @ grid_corners_cam.reshape(-1, 1, 2)).reshape(-1, 2)
         ppi_mm = ppi / 25.4
@@ -170,15 +193,21 @@ class SequentialStereoSolver:
 
         return np.array(grid_corners_cam).reshape(4, 2), grid_corners_proj, world_points_3d
 
-    def solve_phase_2(self, frame_l: np.ndarray, frame_r: np.ndarray, 
-                       camera_matrix_l: np.ndarray, distortion_coefficients_l: np.ndarray,
-                       camera_matrix_r: np.ndarray, distortion_coefficients_r: np.ndarray,
-                       token_heights: dict[int, float],
-                       aruco_corners_l: tuple[np.ndarray, ...] | None,
-                       aruco_ids_l: np.ndarray | None,
-                       aruco_corners_r: tuple[np.ndarray, ...] | None,
-                       aruco_ids_r: np.ndarray | None,
-                       token_sizes: dict[int, int] | None) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, float] | None:
+    def solve_phase_2(
+        self,
+        frame_l: np.ndarray,
+        frame_r: np.ndarray,
+        camera_matrix_l: np.ndarray,
+        distortion_coefficients_l: np.ndarray,
+        camera_matrix_r: np.ndarray,
+        distortion_coefficients_r: np.ndarray,
+        token_heights: dict[int, float],
+        aruco_corners_l: tuple[np.ndarray, ...] | None,
+        aruco_ids_l: np.ndarray | None,
+        aruco_corners_r: tuple[np.ndarray, ...] | None,
+        aruco_ids_r: np.ndarray | None,
+        token_sizes: dict[int, int] | None,
+    ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, float] | None:
         from ..calibration.calibration_logic import solve_joint_extrinsics
 
         return solve_joint_extrinsics(
@@ -196,12 +225,14 @@ class SequentialStereoSolver:
             aruco_corners_r,
             aruco_ids_r,
             token_sizes,
-            None, # grid_corners_l
-            None, # grid_corners_r
-            self.grid_corners_world
+            None,  # grid_corners_l
+            None,  # grid_corners_r
+            self.grid_corners_world,
         )
 
-    def solve_phase_3(self, r_l: np.ndarray, t_l: np.ndarray, r_r: np.ndarray, t_r: np.ndarray) -> tuple[str, str]:
+    def solve_phase_3(
+        self, r_l: np.ndarray, t_l: np.ndarray, r_r: np.ndarray, t_r: np.ndarray
+    ) -> tuple[str, str]:
         """
         Discovers Left vs Right camera assignments based on T_x displacement.
         Verifies rotation alignment R_stereo.
@@ -221,15 +252,25 @@ class SequentialStereoSolver:
         angle_deg = np.degrees(angle_rad)
 
         if angle_deg > 10.0:
-            logging.warning(f"Rotation alignment verification failed: {angle_deg:.2f} degrees > 10.0 degrees.")
+            logging.warning(
+                f"Rotation alignment verification failed: {angle_deg:.2f} degrees > 10.0 degrees."
+            )
 
         return left_id, right_id
 
-    def solve_phase_4(self, frame_l: np.ndarray, r_l: np.ndarray, t_l: np.ndarray, 
-                       r_r: np.ndarray, t_r: np.ndarray, 
-                       k_l: np.ndarray, k_r: np.ndarray, 
-                       dist_l: np.ndarray, dist_r: np.ndarray, 
-                       ppi: float) -> tuple[np.ndarray, np.ndarray]:
+    def solve_phase_4(
+        self,
+        frame_l: np.ndarray,
+        r_l: np.ndarray,
+        t_l: np.ndarray,
+        r_r: np.ndarray,
+        t_r: np.ndarray,
+        k_l: np.ndarray,
+        k_r: np.ndarray,
+        dist_l: np.ndarray,
+        dist_r: np.ndarray,
+        ppi: float,
+    ) -> tuple[np.ndarray, np.ndarray]:
         """
         Computes the sensor ROIs with 200mm parallax margin using a Two-Pass approach.
         """
@@ -249,7 +290,9 @@ class SequentialStereoSolver:
             ret, corners = cv2.findChessboardCorners(gray, board_size, None)
 
         if not ret:
-            logging.warning("Pass 1: Could not detect checkerboard corners for uncalibrated bounds.")
+            logging.warning(
+                "Pass 1: Could not detect checkerboard corners for uncalibrated bounds."
+            )
             # Fallback to default ROI if detection fails
             return np.array([0, 0, 1920, 1080]), np.array([0, 0, 1920, 1080])
 
@@ -265,7 +308,7 @@ class SequentialStereoSolver:
         grid_corners_200 = self.grid_corners_world.copy()
         grid_corners_200[:, 2] += 200.0
 
-        points_to_project = np.vstack([grid_corners_0, grid_corners_200]) # (8, 3)
+        points_to_project = np.vstack([grid_corners_0, grid_corners_200])  # (8, 3)
 
         pts_l, _ = cv2.projectPoints(points_to_project, r_l, t_l, k_l, dist_l)
         pts_l = pts_l.reshape(-1, 2)
@@ -285,12 +328,7 @@ class SequentialStereoSolver:
             margin_x = width * 0.05
             margin_y = height * 0.05
 
-            roi = np.array([
-                min_x - margin_x,
-                min_y - margin_y,
-                max_x + margin_x,
-                max_y + margin_y
-            ])
+            roi = np.array([min_x - margin_x, min_y - margin_y, max_x + margin_x, max_y + margin_y])
 
             roi[0] = max(0, min(roi[0], img_size[0]))
             roi[1] = max(0, min(roi[1], img_size[1]))

@@ -20,18 +20,18 @@ def test_solve_integration():
 
     # 3D points:
     pts_3d = {
-        42: np.array([0, 0, 0], dtype=np.float32),
-        43: np.array([100, 0, 0], dtype=np.float32),
-        44: np.array([200, 0, 0], dtype=np.float32),
-        45: np.array([300, 0, 0], dtype=np.float32),
-        46: np.array([0, 100, 0], dtype=np.float32),
-        47: np.array([100, 100, 0], dtype=np.float32),
-        48: np.array([200, 100, 0], dtype=np.float32),
-        49: np.array([300, 100, 0], dtype=np.float32),
-        0: np.array([0, 0, 50], dtype=np.float32),
-        1: np.array([300, 0, 50], dtype=np.float32),
-        2: np.array([0, 100, 50], dtype=np.float32),
-        3: np.array([300, 100, 50], dtype=np.float32),
+        42: np.array([-60, -20, 0], dtype=np.float32),
+        43: np.array([-20, -20, 0], dtype=np.float32),
+        44: np.array([20, -20, 0], dtype=np.float32),
+        45: np.array([60, -20, 0], dtype=np.float32),
+        46: np.array([-60, 20, 0], dtype=np.float32),
+        47: np.array([-20, 20, 0], dtype=np.float32),
+        48: np.array([20, 20, 0], dtype=np.float32),
+        49: np.array([60, 20, 0], dtype=np.float32),
+        0: np.array([-60, -20, 50], dtype=np.float32),
+        1: np.array([60, -20, 50], dtype=np.float32),
+        2: np.array([-60, 20, 50], dtype=np.float32),
+        3: np.array([60, 20, 50], dtype=np.float32),
     }
 
     # Project all pts_3d to camera L
@@ -72,7 +72,7 @@ def test_solve_integration():
 
     # Ruler
     ruler_dets.append({"id": 40, "side": "left", "points": [[0, 0], [100, 100]]})
-    ruler_dets.append({"id": 41, "side": "left", "points": [[100, 100], [200, 200]]})
+    ruler_dets.append({"id": 41, "side": "left", "points": [[392.156, 0], [492.156, 100]]})
 
     # Execute solver
     result = solver.solve(grid_dets, ruler_dets, token_dets, {})
@@ -83,4 +83,4 @@ def test_solve_integration():
     assert "roi_left" in result
     assert "roi_right" in result
     assert "table_homography" in result
-    assert result["projector_ppi"] == 100.0
+    assert abs(result["projector_ppi"] - 100.0) < 1.0

@@ -70,31 +70,25 @@ def compute_roi_pass2(
     all_corners_3d = np.vstack([corners_3d, corners_3d_max])
 
     def project_points(points_3d, r, t, k):
-        # P = K * [R | t] * [X, Y, Z, 1]^T
-        # We use the provided K, or fallback to identity.
-        # If K is not identity, this is more accurate.
         K = k if k is not None else np.eye(3)
-        # Add homogeneous coordinate
         hom_points = np.hstack([points_3d, np.ones((points_3d.shape[0], 1))])
-        # Project
-        # Need to make t into (3, 1) for hstack
         t_hom = t.reshape(3, 1)
-        projected = (K @ np.hstack([r, t_hom]) @ hom_points.T).T
-        # Normalize by Z
-        projected_2d = projected[:, :2] / (projected[:, 2:3] + 1e-6)
+        p_cam = (np.hstack([r, t_hom]) @ hom_points.T).T
+        # Discard points behind or too close to camera plane (Z_cam <= 10.0mm)
+        valid = p_cam[:, 2] > 10.0
+        if not np.any(valid):
+            return np.zeros((0, 2), dtype=np.float32)
+        projected = (K @ p_cam[valid].T).T
+        projected_2d = projected[:, :2] / projected[:, 2:3]
         return projected_2d
 
     # Project points for both cameras
-    # We need to handle the fact that the extrinsics are (R, t) such that
-    # P_cam = R * P_world + t
-
-    # For left camera
     pts_l = project_points(all_corners_3d, r_left, t_left, k_left)
-    # For right camera
     pts_r = project_points(all_corners_3d, r_right, t_right, k_right)
 
     def get_bbox(pts, img_w, img_h):
-        # pts is (N, 2)
+        if pts.shape[0] == 0:
+            return (0, 0, img_w, img_h)
         min_x = np.min(pts[:, 0])
         max_x = np.max(pts[:, 0])
         min_y = np.min(pts[:, 1])

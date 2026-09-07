@@ -24,15 +24,74 @@ def test_compute_roi_pass1():
     assert roi == (0, 0, 440, 220)
 
 
-def test_compute_roi_pass2_placeholder():
-    # Since it's a placeholder, it might not do anything yet.
-    # I'll update it with logic first.
+def test_compute_roi_pass2_downward_camera():
     image_shape = (1080, 1920)
-    r_left = np.eye(3)
-    t_left = np.zeros(3)
-    r_right = np.eye(3)
-    t_right = np.zeros(3)
+    # Downward-looking camera: R = diag(1, -1, -1)
+    r_down = np.array([[1.0, 0, 0], [0, -1.0, 0], [0, 0, -1.0]], dtype=np.float32)
+    t_cam = np.array([0.0, 0.0, 1000.0], dtype=np.float32)
+    K = np.array([[800.0, 0, 960.0], [0, 800.0, 540.0], [0, 0, 1.0]], dtype=np.float32)
 
-    roi_left, roi_right = compute_roi_pass2(image_shape, r_left, t_left, r_right, t_right)
-    assert isinstance(roi_left, tuple)
-    assert isinstance(roi_right, tuple)
+    corners_3d = np.array(
+        [[-300.0, -200.0, 0.0], [300.0, -200.0, 0.0], [300.0, 200.0, 0.0], [-300.0, 200.0, 0.0]],
+        dtype=np.float32,
+    )
+
+    # 1. Flat tabletop (Z = 0)
+    roi_l_flat, roi_r_flat = compute_roi_pass2(
+        image_shape,
+        r_down,
+        t_cam,
+        r_down,
+        t_cam,
+        max_height_mm=0.0,
+        corners_3d=corners_3d,
+        k_left=K,
+        k_right=K,
+    )
+
+    # 2. Elevated tabletop with 200mm vertical parallax volume
+    roi_l_200, roi_r_200 = compute_roi_pass2(
+        image_shape,
+        r_down,
+        t_cam,
+        r_down,
+        t_cam,
+        max_height_mm=200.0,
+        corners_3d=corners_3d,
+        k_left=K,
+        k_right=K,
+    )
+
+    # Validate coordinate positivity and bounds
+    for roi in [roi_l_flat, roi_r_flat, roi_l_200, roi_r_200]:
+        x, y, w, h = roi
+        assert x >= 0
+        assert y >= 0
+        assert x + w <= 1920
+        assert y + h <= 1080
+        assert w > 0
+        assert h > 0
+
+    # Elevated envelope (Z=200mm closer to camera) must be strictly larger than flat envelope
+    assert roi_l_200[2] > roi_l_flat[2]  # width is larger
+    assert roi_l_200[3] > roi_l_flat[3]  # height is larger
+
+
+def test_compute_roi_pass2_points_behind_camera():
+    image_shape = (1080, 1920)
+    # Camera looking away: t = [0, 0, -1000], points at Z >= 0 are behind camera
+    r_identity = np.eye(3, dtype=np.float32)
+    t_behind = np.array([0.0, 0.0, -1000.0], dtype=np.float32)
+
+    roi_l, roi_r = compute_roi_pass2(
+        image_shape,
+        r_identity,
+        t_behind,
+        r_identity,
+        t_behind,
+        max_height_mm=200.0,
+    )
+
+    # Should safely fallback to full image bounds rather than crashing
+    assert roi_l == (0, 0, 1920, 1080)
+    assert roi_r == (0, 0, 1920, 1080)

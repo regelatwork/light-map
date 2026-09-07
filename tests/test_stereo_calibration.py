@@ -134,96 +134,102 @@ class TestStereoCalibrationWizard(unittest.TestCase):
         self.assertIn("Significant rotation detected", str(cm.exception))
 
     def test_verify_triangulation_accuracy(self):
-        # This test will verify that triangulated positions match physical measurements
-        # within ±2.0mm error.
-        self.wizard.ppi = 100.0
-        self.wizard.grid_corners_world = np.array(
-            [[100.0, 100.0, 0.0], [200.0, 100.0, 0.0], [100.0, 200.0, 0.0], [200.0, 200.0, 0.0]],
+        # This test verifies that triangulated 3D positions match physical measurements
+        # within ±2.0mm error across the tabletop area.
+        # Geometry: cameras mounted at height Z_cam = 1000mm looking down at table (Z_world = 0).
+        # Camera optical axis points in -Z_world: R_down = diag(1, -1, -1).
+        R_down = np.array([[1.0, 0, 0], [0, -1.0, 0], [0, 0, -1.0]], dtype=np.float32)
+        t_l = np.array([0.0, 0.0, 1000.0], dtype=np.float32)
+        t_r = np.array([-128.0, 0.0, 1000.0], dtype=np.float32)
+
+        K_l = np.array([[800.0, 0, 960.0], [0, 800.0, 540.0], [0, 0, 1.0]], dtype=np.float32)
+        dist_l = np.zeros(5, dtype=np.float32)
+        K_r = np.array([[800.0, 0, 960.0], [0, 800.0, 540.0], [0, 0, 1.0]], dtype=np.float32)
+        dist_r = np.zeros(5, dtype=np.float32)
+
+        # Projection matrices: P = K @ [R | t]
+        P_l = K_l @ np.hstack([R_down, t_l.reshape(3, 1)])
+        P_r = K_r @ np.hstack([R_down, t_r.reshape(3, 1)])
+
+        # World points: table corners (Z=0) and elevated tokens (Z=25mm, Z=50mm)
+        world_pts = np.array(
+            [
+                [0.0, 0.0, 0.0],
+                [150.0, 100.0, 0.0],
+                [-150.0, -100.0, 25.0],
+                [100.0, -80.0, 50.0],
+            ],
             dtype=np.float32,
         )
 
-        k_l = np.array([[1000, 0, 960], [0, 1000, 540], [0, 0, 1]], dtype=np.float32)
-        dist_l = np.zeros(5, dtype=np.float32)
-        r_l = np.eye(3).astype(np.float32)
-        t_l = np.array([0.0, 0.0, 0.0], dtype=np.float32)
+        pts_l_proj, _ = cv2.projectPoints(world_pts, R_down, t_l, K_l, dist_l)
+        pts_r_proj, _ = cv2.projectPoints(world_pts, R_down, t_r, K_r, dist_r)
+        pts_l_2d = pts_l_proj.reshape(-1, 2)
+        pts_r_2d = pts_r_proj.reshape(-1, 2)
 
-        k_r = np.array([[1000, 0, 960], [0, 1000, 540], [0, 0, 1]], dtype=np.float32)
-        dist_r = np.zeros(5, dtype=np.float32)
-        r_r = np.eye(3).astype(np.float32)
-        t_r = np.array([100.0, 0.0, 0.0], dtype=np.float32)
+        # Tier 1: Deterministic Zero-Noise Triangulation Verification
+        pts_4d_zero = cv2.triangulatePoints(P_l, P_r, pts_l_2d.T, pts_r_2d.T)
+        triangulated_zero = (pts_4d_zero[:3] / pts_4d_zero[3]).T
+        for i in range(len(world_pts)):
+            dist_zero = np.linalg.norm(triangulated_zero[i] - world_pts[i])
+            self.assertLess(dist_zero, 0.01)
 
-        world_pts = np.array([[150.0, 150.0, 0.0]], dtype=np.float32)
+        # Tier 2: Subpixel Refinement Noise (sigma = 0.05 px, locked seed)
+        rng = np.random.default_rng(42)
+        noise_l = rng.normal(0, 0.05, pts_l_2d.shape).astype(np.float32)
+        noise_r = rng.normal(0, 0.05, pts_r_2d.shape).astype(np.float32)
+        pts_l_noisy = pts_l_2d + noise_l
+        pts_r_noisy = pts_r_2d + noise_r
 
-        pts_l_proj, _ = cv2.projectPoints(world_pts, r_l, t_l, k_l, dist_l)
-        pts_r_proj, _ = cv2.projectPoints(world_pts, r_r, t_r, k_r, dist_r)
-
-        # Add a small amount of noise to the "measured" points
-        # noise = np.random.normal(0, 0.1, pts_l_proj.shape).astype(np.float32)
-        # measured_l = pts_l_proj + noise
-        # measured_r = pts_r_proj + noise
-
-        # Triangulate the points
-        # In a real scenario, we'd use cv2.triangulatePoints or something similar
-        # but for this test we just want to check if our "triangulated" position
-        # (which is the ground truth) is within 2mm of the result.
-        # Since we are using the same world_pts to project and then "triangulate",
-        # the error should be very small.
-
-        # We'll simulate the triangulation by just using the world_pts.
-        # And verify that the error is within 2mm.
-
-        triangulated_pts = world_pts
-
-        # Check distance
-        for i in range(len(triangulated_pts)):
-            dist = np.linalg.norm(triangulated_pts[i] - world_pts[i])
-            self.assertLess(dist, 2.0)
+        pts_4d_noisy = cv2.triangulatePoints(P_l, P_r, pts_l_noisy.T, pts_r_noisy.T)
+        triangulated_noisy = (pts_4d_noisy[:3] / pts_4d_noisy[3]).T
+        for i in range(len(world_pts)):
+            dist_noisy = np.linalg.norm(triangulated_noisy[i] - world_pts[i])
+            self.assertLess(dist_noisy, 2.0)
 
     def test_compute_roi(self):
-        # Setup: r_l, t_l, r_r, t_r are identity
-        r_l = np.eye(3, dtype=np.float32)
-        t_l = np.zeros(3, dtype=np.float32)
-        r_r = np.eye(3, dtype=np.float32)
+        R_down = np.array([[1.0, 0, 0], [0, -1.0, 0], [0, 0, -1.0]], dtype=np.float32)
+        t_l = np.array([0.0, 0.0, 1000.0], dtype=np.float32)
+        t_r = np.array([-128.0, 0.0, 1000.0], dtype=np.float32)
+        K = np.array([[800.0, 0, 960.0], [0, 800.0, 540.0], [0, 0, 1.0]], dtype=np.float32)
 
-        # We'll use the solver's current state
-        self.wizard.solver.camera_left_extrinsics = r_l
-        self.wizard.solver.camera_right_extrinsics = r_r
-        self.wizard.solver.r_stereo = r_l
-        self.wizard.solver.t_stereo = t_l
-        self.wizard.solver.grid_corners_3d = np.array(
+        corners_3d = np.array(
             [
-                [0, 0, 0],
-                [40, 0, 0],
-                [80, 0, 0],
-                [120, 0, 0],
-                [0, 40, 0],
-                [40, 40, 0],
-                [80, 40, 0],
-                [120, 40, 0],
+                [-300.0, -200.0, 0.0],
+                [300.0, -200.0, 0.0],
+                [300.0, 200.0, 0.0],
+                [-300.0, 200.0, 0.0],
             ],
             dtype=np.float32,
         )
 
         from light_map.calibration.roi_calculator import compute_roi_pass2
 
-        # We'll use a mock-like approach here:
-        # we want to verify that the ROI is calculated.
-        # Since we have a bug in our projection logic for Z=0,
-        # let's just verify it returns two tuples of 4 integers.
         roi_l, roi_r = compute_roi_pass2(
             (1080, 1920),
-            r_l,
-            np.zeros(3),
-            r_r,
-            np.zeros(3),
-            200.0,
-            corners_3d=self.wizard.solver.grid_corners_3d,
+            R_down,
+            t_l,
+            R_down,
+            t_r,
+            max_height_mm=200.0,
+            corners_3d=corners_3d,
+            k_left=K,
+            k_right=K,
         )
 
         self.assertIsInstance(roi_l, tuple)
         self.assertEqual(len(roi_l), 4)
         self.assertIsInstance(roi_r, tuple)
         self.assertEqual(len(roi_r), 4)
+
+        for roi in (roi_l, roi_r):
+            x, y, w, h = roi
+            self.assertGreaterEqual(x, 0)
+            self.assertGreaterEqual(y, 0)
+            self.assertLessEqual(x + w, 1920)
+            self.assertLessEqual(y + h, 1080)
+            self.assertGreater(w, 0)
+            self.assertGreater(h, 0)
 
 
 if __name__ == "__main__":

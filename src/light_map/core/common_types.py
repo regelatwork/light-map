@@ -393,6 +393,8 @@ class DetectionResult:
     type: ResultType
     data: Any
     metadata: dict[str, int] = field(default_factory=dict)
+    camera_id: str = "left"
+    confidence: float = 1.0
 
 
 class GmPosition(StrEnum):

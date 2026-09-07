@@ -81,3 +81,66 @@ def test_solve_phase_2_basic(solver):
     # This is a problem.
 
     pass
+
+
+def test_compute_rotation_angle_identity():
+    from light_map.core.calibration.solver import compute_rotation_angle
+
+    R = np.eye(3)
+    angle = compute_rotation_angle(R)
+    assert abs(angle) < 1e-6
+
+
+def test_compute_rotation_angle_known_rotations():
+    from light_map.core.calibration.solver import compute_rotation_angle
+
+    # 15 degrees around Y axis
+    theta_15 = np.deg2rad(15.0)
+    R_15 = np.array(
+        [
+            [np.cos(theta_15), 0, np.sin(theta_15)],
+            [0, 1, 0],
+            [-np.sin(theta_15), 0, np.cos(theta_15)],
+        ]
+    )
+    angle_15 = compute_rotation_angle(R_15)
+    assert abs(np.rad2deg(angle_15) - 15.0) < 1e-4
+
+    # 5 degrees around Z axis
+    theta_5 = np.deg2rad(5.0)
+    R_5 = np.array(
+        [
+            [np.cos(theta_5), -np.sin(theta_5), 0],
+            [np.sin(theta_5), np.cos(theta_5), 0],
+            [0, 0, 1],
+        ]
+    )
+    angle_5 = compute_rotation_angle(R_5)
+    assert abs(np.rad2deg(angle_5) - 5.0) < 1e-4
+
+
+def test_compute_rotation_angle_boundary_clamping():
+    from light_map.core.calibration.solver import compute_rotation_angle
+
+    # Slight overshoot beyond 3.0 due to float precision
+    R_overshoot = np.eye(3) * 1.0000001
+    # normalize determinant to keep it positive
+    R_overshoot /= np.linalg.det(R_overshoot) ** (1 / 3)
+    angle_zero = compute_rotation_angle(R_overshoot)
+    assert not np.isnan(angle_zero)
+    assert abs(angle_zero) < 1e-3
+
+    # 180 degrees around Z axis
+    R_180 = np.array([[-1.0, 0, 0], [0, -1.0, 0], [0, 0, 1.0]])
+    angle_180 = compute_rotation_angle(R_180)
+    assert not np.isnan(angle_180)
+    assert abs(angle_180 - np.pi) < 1e-4
+
+
+def test_compute_rotation_angle_reflection_rejected():
+    from light_map.core.calibration.solver import compute_rotation_angle
+
+    # Improper rotation (det = -1)
+    R_reflection = -np.eye(3)
+    with pytest.raises(ValueError, match="Improper rotation matrix"):
+        compute_rotation_angle(R_reflection)

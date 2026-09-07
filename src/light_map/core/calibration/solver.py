@@ -14,6 +14,19 @@ from light_map.core.calibration.utils import compute_roi_pass2, get_marker_parti
 logger = logging.getLogger(__name__)
 
 
+def compute_rotation_angle(R: np.ndarray) -> float:
+    """
+    Computes the rotation angle in radians from a 3x3 rotation matrix using Rodrigues' trace theorem:
+    cos(theta) = (Tr(R) - 1) / 2
+    """
+    R_3x3 = np.asarray(R[:3, :3], dtype=np.float64)
+    if np.linalg.det(R_3x3) < 0:
+        raise ValueError("Improper rotation matrix (reflection detected, det < 0)")
+    trace = float(np.trace(R_3x3))
+    cos_theta = float(np.clip((trace - 1.0) / 2.0, -1.0, 1.0))
+    return float(np.arccos(cos_theta))
+
+
 class SequentialSolver:
     """
     Implements a multi-phase solver for stereo calibration.
@@ -88,15 +101,14 @@ class SequentialSolver:
         T_stereo_raw = extrinsics["t"]
 
         # Verify rotation angle
-        angle = np.arccos(
-            np.clip(
-                (R_stereo_raw[0, 0] + R_stereo_raw[1, 1] + R_stereo_raw[2, 2] - 3) / 3, -1.0, 1.0
-            )
-        )
-        if angle > np.radians(10):
-            logger.warning(
-                "Large rotation angle detected between cameras: %f degrees", np.degrees(angle)
-            )
+        try:
+            angle = compute_rotation_angle(R_stereo_raw)
+            if angle > np.radians(10):
+                logger.warning(
+                    "Large rotation angle detected between cameras: %f degrees", np.degrees(angle)
+                )
+        except ValueError as e:
+            logger.warning(f"Error checking rotation angle: {e}")
 
         # Determine camera roles
         R_stereo = R_stereo_raw.copy()

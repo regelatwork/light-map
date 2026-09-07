@@ -109,23 +109,27 @@ def compute_roi_pass2(
     img_pts_r, _ = cv2.projectPoints(pts_3d, r_r, t_r, k_r, dist_r)
     img_pts_r = img_pts_r.reshape(-1, 2)
 
-    # Find bounding box and add margin.
-    margin_px = 200 * (projector_ppi / 25.4)
-
     def get_bbox(pts):
         min_x = np.min(pts[:, 0])
         max_x = np.max(pts[:, 0])
         min_y = np.min(pts[:, 1])
         max_y = np.max(pts[:, 1])
 
-        w = max_x - min_x
-        h = max_y - min_y
+        x1 = max(0, int(min_x))
+        y1 = max(0, int(min_y))
+        x2 = min(sensor_res[0], int(max_x))
+        y2 = min(sensor_res[1], int(max_y))
 
-        # Add 5% safety margin to width and height
-        w *= 1.05
-        h *= 1.05
+        # Add 5% safety margin
+        margin_x = (x2 - x1) * 0.05
+        margin_y = (y2 - y1) * 0.05
 
-        return (int(min_x - margin_px), int(min_y - margin_px), int(w), int(h))
+        x1 = max(0, int(x1 - margin_x))
+        y1 = max(0, int(y1 - margin_y))
+        x2 = min(sensor_res[0], int(x2 + margin_x))
+        y2 = min(sensor_res[1], int(y2 + margin_y))
+
+        return (x1, y1, x2 - x1, y2 - y1)
 
     roi_l = get_bbox(img_pts_l)
     roi_r = get_bbox(img_pts_r)

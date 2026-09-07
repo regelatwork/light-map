@@ -43,9 +43,9 @@ class StereoTriangulator:
         self.dist_R = camera_right_dist
 
         self.R_L = rotation_left
-        self.t_L = translation_left
+        self.t_L = translation_left.reshape(3, 1) if translation_left.ndim == 1 else translation_left
         self.R_R = rotation_right
-        self.t_R = translation_right
+        self.t_R = translation_right.reshape(3, 1) if translation_right.ndim == 1 else translation_right
 
         self.roi_L = roi_left
         self.roi_R = roi_right
@@ -123,25 +123,27 @@ class StereoTriangulator:
             pts_R_undist = self._undistort_point(uR, vR, self.K_R, self.dist_R)
 
             # 3. Triangulation
-            pts_4d = cv2.triangulatePoints(self.P_L, self.P_R, pts_L_undist, pts_R_undist)
-            X = pts_4d[0] / pts_4d[3]
-            Y = pts_4d[1] / pts_4d[3]
-            Z_mm = pts_4d[2] / pts_4d[3]
+            pts_L_2d = pts_L_undist.reshape(2, 1)
+            pts_R_2d = pts_R_undist.reshape(2, 1)
+            pts_4d = cv2.triangulatePoints(self.P_L, self.P_R, pts_L_2d, pts_R_2d)
+            X = float(pts_4d[0, 0] / pts_4d[3, 0])
+            Y = float(pts_4d[1, 0] / pts_4d[3, 0])
+            Z_mm = float(pts_4d[2, 0] / pts_4d[3, 0])
 
             # 4. Reprojection Error Filtering
             # Project back to Left camera
-            proj_L = self.P_L @ np.array([X, Y, Z_mm, 1.0])
-            proj_L /= proj_L[3]
+            proj_L_hom = self.P_L @ np.array([X, Y, Z_mm, 1.0])
+            proj_L = proj_L_hom[:2] / proj_L_hom[2]
 
             # Reprojection error
-            err_L = np.linalg.norm(pts_L_undist - proj_L[:2])
+            err_L = np.linalg.norm(pts_L_undist.flatten() - proj_L)
 
             # Project back to Right camera
-            proj_R = self.P_R @ np.array([X, Y, Z_mm, 1.0])
-            proj_R /= proj_R[3]
+            proj_R_hom = self.P_R @ np.array([X, Y, Z_mm, 1.0])
+            proj_R = proj_R_hom[:2] / proj_R_hom[2]
 
             # Reprojection error
-            err_R = np.linalg.norm(pts_R_undist - proj_R[:2])
+            err_R = np.linalg.norm(pts_R_undist.flatten() - proj_R)
 
             if err_L <= 3.0 and err_R <= 3.0:
                 # Update z_last_known if it's a hand
@@ -196,9 +198,9 @@ class StereoTriangulator:
             # s = (h_token - C_L_z) / d_world_z
             # C_L is the camera center in world coords.
             # Since P_L = K_L * [R_L | t_L], the camera center is -R_L^T * t_L
-            C_L = -self.R_L.T @ self.t_L
-            s = (h_token - C_L[2]) / d_world[2]
-            P_table = C_L + s * d_world
+            C_L = (-self.R_L.T @ self.t_L).flatten()
+            s = float((h_token - C_L[2]) / d_world[2])
+            P_table = (C_L + s * d_world).flatten()
 
             return StereoTriangulationResult(
                 world_x=float(P_table[0]),
@@ -215,9 +217,9 @@ class StereoTriangulator:
             d_cam = self.K_L_inv @ np.concatenate([pts_L_undist.flatten(), [1.0]])
             d_world = self.R_L.T @ d_cam
 
-            C_L = -self.R_L.T @ self.t_L
-            s = (self.z_last_known - C_L[2]) / d_world[2]
-            P_table = C_L + s * d_world
+            C_L = (-self.R_L.T @ self.t_L).flatten()
+            s = float((self.z_last_known - C_L[2]) / d_world[2])
+            P_table = (C_L + s * d_world).flatten()
 
             return StereoTriangulationResult(
                 world_x=float(P_table[0]),

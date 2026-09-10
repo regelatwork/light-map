@@ -98,10 +98,13 @@ Detections are represented in `WorldState` as Table-Relative 3D points $(X, Y, Z
 - **$X, Y$ (Tabletop Plane):** Map directly to table space in millimeters, used for map grid snapping, token placement, Fog of War, and distance calculations.
 - **$Z\_{mm}$ (Physical Elevation):** Represents height above the table surface ($Z=0$ is the tabletop). Allows measuring token height, stacked objects, hand/finger elevation, and 3D terrain blocks.
 
-### 4.5 Typed Configuration & Web UI Integration
+### 4.5 Typed Configuration & Web UI / Menu Integration
 
-- **Pydantic Schema:** Introduce `CameraDeviceConfig` and `StereoVisionConfig` in `src/light_map/core/config_schema.py`.
+- **Pydantic Schema:** Introduce `CameraDeviceSchema` and `StereoVisionConfigSchema` in `src/light_map/core/config_schema.py`.
 - **TypeScript Auto-Generation:** Running `scripts/generate_ts_schema.py` produces typed interfaces for the React web interface, enabling real-time preview of Left/Right video streams and triggering stereo calibration wizards.
+- **Dual Trigger Pathways:**
+  - **On-Tabletop Menu:** Accessible via the projected hierarchical menu (`MenuActions.CALIBRATE_STEREO` under the "Calibration" submenu).
+  - **Web Dashboard Panel:** Accessible via the "Calibration Wizards" panel (`CalibrationWizard.tsx`) dispatching `MenuActions.CALIBRATE_STEREO` to `/input/action`.
 
 ### 4.6 Auto-Calculated Sensor ROI & Digital Zoom (200mm Parallax Margin)
 

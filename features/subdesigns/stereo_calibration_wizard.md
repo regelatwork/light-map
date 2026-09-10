@@ -85,6 +85,30 @@ To avoid solving disjoint points with unscaled physical geometry:
    - Sensor ROI is computed as the 2D bounding envelope containing both $Z=0$ and $Z=200\\text{mm}$ projections plus a 5% safety margin.
    - Saved as `roi_left` and `roi_right` in `stereo_calibration.json`.
 
+### 4.3 Invocation Entry Points & Execution Lifecycle
+
+Stereo calibration can be triggered via two distinct user interfaces:
+
+1. **On-Tabletop Projector Menu:**
+
+   - Triggered through the physical projected radial/hierarchical menu using hand gesture or pointer interaction.
+   - Action: `MenuActions.CALIBRATE_STEREO` (menu item `"6. Stereo Vision Calibration"` under `"Calibration"`).
+   - Target scene: `SceneId.CALIBRATE_STEREO`.
+
+1. **Web Dashboard Calibration Wizards Panel:**
+
+   - Triggered remotely by GM or operator on the frontend Calibration Wizards tab (`frontend/src/components/CalibrationWizard.tsx`).
+   - Action: Dispatches `MenuActions.CALIBRATE_STEREO` via POST to `/input/action`.
+   - UI status: Active calibration banner with token positioning instructions and real-time dual-camera feed preview.
+
+**Lifecycle Flow:**
+
+1. **Trigger:** Either entry point dispatches `CALIBRATE_STEREO`.
+1. **Scene Activation:** `SceneManager` switches to `SceneId.CALIBRATE_STEREO` (`StereoCalibrationScene`).
+1. **Capture Mode Reversion:** Dual `CameraOperator` processes transition from cropped ROI mode to uncropped full-frame capture.
+1. **Solve:** When required markers (grid IDs 42–49, ruler IDs 40 & 41, elevated PC tokens IDs 0–3) are visible, the sequential solver executes Phases 1–3 and calculates 3D parallax ROIs.
+1. **Persistence:** Solved parameters saved to `stereo_calibration.json`, runtime config updated, and cameras switched to high-speed cropped streaming.
+
 ______________________________________________________________________
 
 ## 5. Script Updates & Tooling

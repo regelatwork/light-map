@@ -155,6 +155,8 @@ class MenuScene(Scene):
             return SceneTransition(SceneId.CALIBRATE_EXTRINSICS)
         elif action == MenuActions.CALIBRATE_PROJECTOR_3D:
             return SceneTransition(SceneId.CALIBRATE_PROJECTOR_3D)
+        elif action == MenuActions.CALIBRATE_STEREO:
+            return SceneTransition(SceneId.CALIBRATE_STEREO)
         elif action == MenuActions.CALIBRATE_FLASH:
             return SceneTransition(SceneId.CALIBRATE_FLASH)
         elif action == MenuActions.SET_MAP_SCALE:

@@ -1728,3 +1728,30 @@ class Projector3DCalibrationScene(Scene):
         else:
             logging.error("Projector 3D Calibration Failed.")
             self.context.notifications.add_notification("Calibration Failed!")
+
+
+class StereoCalibrationScene(Scene):
+    """Handles unified dual-camera stereo calibration and auto-discovery."""
+
+    def __init__(self, context: AppContext):
+        super().__init__(context)
+        self.stage = "ALIGNMENT"  # ALIGNMENT | SOLVING | VALIDATION | DONE | ERROR
+        self.error_message: str | None = None
+        self.calibration_result: dict[str, Any] | None = None
+
+    def on_enter(self, payload: Any = None) -> None:
+        self.stage = "ALIGNMENT"
+        self.error_message = None
+        self.calibration_result = None
+        logging.info("Entering StereoCalibrationScene")
+
+    def on_exit(self) -> None:
+        logging.info("Exiting StereoCalibrationScene")
+
+    def update(
+        self, inputs: list[HandInput], actions: list[Action], current_time: float
+    ) -> SceneTransition | None:
+        return None
+
+    def render(self, frame: np.ndarray) -> np.ndarray:
+        return frame

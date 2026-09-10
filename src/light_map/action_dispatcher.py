@@ -89,6 +89,7 @@ class ActionDispatcher:
             MenuActions.CALIBRATE_PPI: SceneId.CALIBRATE_PPI,
             MenuActions.CALIBRATE_EXTRINSICS: SceneId.CALIBRATE_EXTRINSICS,
             MenuActions.CALIBRATE_PROJECTOR_3D: SceneId.CALIBRATE_PROJECTOR_3D,
+            MenuActions.CALIBRATE_STEREO: SceneId.CALIBRATE_STEREO,
             MenuActions.CALIBRATE_FLASH: SceneId.CALIBRATE_FLASH,
             MenuActions.SET_MAP_SCALE: SceneId.CALIBRATE_MAP_GRID,
             MenuActions.CALIBRATE_SCALE: SceneId.CALIBRATE_MAP_GRID,
@@ -99,6 +100,13 @@ class ActionDispatcher:
             if action_name == "SCAN_SESSION" and not self.app.map_system.is_map_loaded():
                 self.app.notifications.add_notification("Load a map before scanning.")
                 return None
+            if action_name == MenuActions.CALIBRATE_STEREO:
+                stereo_conf = getattr(self.app.app_config, "stereo_vision", None)
+                if not (stereo_conf and getattr(stereo_conf, "enable_stereo", False)):
+                    self.app.notifications.add_notification(
+                        "Stereo vision calibration requires dual cameras enabled in configuration."
+                    )
+                    return None
             return SceneTransition(scene_map[action_name])
 
         return None

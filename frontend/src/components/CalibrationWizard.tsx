@@ -3,7 +3,7 @@ import { useSystemState } from '../hooks/useSystemState';
 import { SceneId, MenuActions } from '../types/system';
 
 export const CalibrationWizard: React.FC = () => {
-  const { world } = useSystemState();
+  const { world, config } = useSystemState();
 
   const handleStartCalibration = async (actionId: MenuActions) => {
     try {
@@ -23,17 +23,48 @@ export const CalibrationWizard: React.FC = () => {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
         <div className="lg:col-span-2 bg-black rounded-lg overflow-hidden flex items-center justify-center min-h-[300px]">
-          <img
-            src="/video_feed"
-            alt="Live Camera Feed"
-            className="w-full h-auto object-contain max-h-[600px]"
-            onError={(e) => {
-              e.currentTarget.style.display = 'none';
-              if (e.currentTarget.nextElementSibling) {
-                (e.currentTarget.nextElementSibling as HTMLElement).style.display = 'block';
-              }
-            }}
-          />
+          {world.scene === SceneId.CALIBRATE_STEREO ? (
+            <div className="grid grid-cols-2 gap-2 w-full h-full p-2">
+              <div className="relative">
+                <span className="absolute top-2 left-2 bg-black/70 text-white text-xs px-2 py-1 rounded">
+                  Camera Left
+                </span>
+                <img
+                  src="/video_feed?camera=left"
+                  alt="Camera Left Feed"
+                  className="w-full h-auto object-contain max-h-[600px]"
+                  onError={(e) => {
+                    (e.currentTarget as HTMLImageElement).src = '/video_feed';
+                  }}
+                />
+              </div>
+              <div className="relative">
+                <span className="absolute top-2 left-2 bg-black/70 text-white text-xs px-2 py-1 rounded">
+                  Camera Right
+                </span>
+                <img
+                  src="/video_feed?camera=right"
+                  alt="Camera Right Feed"
+                  className="w-full h-auto object-contain max-h-[600px]"
+                  onError={(e) => {
+                    (e.currentTarget as HTMLImageElement).src = '/video_feed';
+                  }}
+                />
+              </div>
+            </div>
+          ) : (
+            <img
+              src="/video_feed"
+              alt="Live Camera Feed"
+              className="w-full h-auto object-contain max-h-[600px]"
+              onError={(e) => {
+                e.currentTarget.style.display = 'none';
+                if (e.currentTarget.nextElementSibling) {
+                  (e.currentTarget.nextElementSibling as HTMLElement).style.display = 'block';
+                }
+              }}
+            />
+          )}
           <div className="text-gray-500 hidden text-center p-4">
             <p>Video Feed Not Available</p>
             <p className="text-sm">Ensure the Light Map backend is running with a camera.</p>
@@ -76,6 +107,31 @@ export const CalibrationWizard: React.FC = () => {
           </button>
 
           <button
+            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-left transition-colors"
+            onClick={() => handleStartCalibration(MenuActions.CALIBRATE_PROJECTOR_3D)}
+            disabled={isCalibrating}
+          >
+            5. Projector 3D Pose
+          </button>
+
+          <button
+            className={`px-4 py-2 text-white rounded text-left transition-colors ${
+              !config.stereo_vision?.enable_stereo
+                ? 'bg-gray-400 cursor-not-allowed'
+                : 'bg-blue-600 hover:bg-blue-700'
+            }`}
+            onClick={() => handleStartCalibration(MenuActions.CALIBRATE_STEREO)}
+            disabled={isCalibrating || !config.stereo_vision?.enable_stereo}
+            title={
+              !config.stereo_vision?.enable_stereo
+                ? 'Enable Stereo Vision in Settings to calibrate dual cameras'
+                : 'Launch single-sweep stereo calibration'
+            }
+          >
+            6. Stereo Vision Calibration
+          </button>
+
+          <button
             className="px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700 text-left mt-4 transition-colors"
             onClick={() => handleStartCalibration(MenuActions.CALIBRATE_FLASH)}
             disabled={isCalibrating}
@@ -113,6 +169,33 @@ export const CalibrationWizard: React.FC = () => {
             Place two tokens next to a ruler or known measurement. The system will detect them. Use
             gestures to confirm the scale.
           </p>
+        )}
+        {world.scene === SceneId.CALIBRATE_PROJECTOR_3D && (
+          <p className="text-gray-600">
+            Place the 3D calibration target at the indicated tabletop positions. The system will capture
+            points to compute projector extrinsics.
+          </p>
+        )}
+        {world.scene === SceneId.CALIBRATE_STEREO && (
+          <div className="space-y-2 text-gray-600">
+            <p className="font-medium text-gray-800">Single-Sweep Stereo Calibration Active:</p>
+            <ul className="list-disc pl-5 space-y-1">
+              <li>
+                Place 4 elevated PC tokens (IDs 0–3: Cricket, Lace, Shikra, Verita) on the illuminated
+                corner target rings.
+              </li>
+              <li>
+                Place the physical PPI sheet (IDs 40 & 41) flat on the table within both camera views.
+              </li>
+              <li>
+                Ensure projected grid markers (IDs 42–49) are unobstructed on the table surface.
+              </li>
+            </ul>
+            <p className="text-sm text-gray-500">
+              The system will solve relative camera translation (+Tx), rotation, table homography, and
+              digital sensor crops in a single pass.
+            </p>
+          </div>
         )}
         {world.scene === SceneId.MENU && (
           <p className="text-gray-600">

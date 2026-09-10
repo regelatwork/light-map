@@ -53,6 +53,7 @@ from light_map.calibration.calibration_scenes import (
     PpiCalibrationScene,
     Projector3DCalibrationScene,
     ProjectorCalibrationScene,
+    StereoCalibrationScene,
 )
 from light_map.input.input_coordinator import InputCoordinator
 from light_map.map.map_scene import MapScene, ViewingScene
@@ -147,6 +148,7 @@ class InteractiveApp:
             SceneId.CALIBRATE_PROJECTOR: ProjectorCalibrationScene,
             SceneId.CALIBRATE_EXTRINSICS: ExtrinsicsCalibrationScene,
             SceneId.CALIBRATE_PROJECTOR_3D: Projector3DCalibrationScene,
+            SceneId.CALIBRATE_STEREO: StereoCalibrationScene,
         }
         self.scene_manager = SceneManager(self.app_context, self.state, scene_classes=scene_classes)
 
@@ -558,6 +560,7 @@ class InteractiveApp:
             SceneId.CALIBRATE_PROJECTOR: ProjectorCalibrationScene,
             SceneId.CALIBRATE_EXTRINSICS: ExtrinsicsCalibrationScene,
             SceneId.CALIBRATE_PROJECTOR_3D: Projector3DCalibrationScene,
+            SceneId.CALIBRATE_STEREO: StereoCalibrationScene,
         }
         self.scene_manager = SceneManager(self.app_context, self.state, scene_classes=scene_classes)
         self.current_scene.on_enter()

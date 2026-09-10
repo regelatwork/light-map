@@ -11,6 +11,7 @@ from light_map.calibration.calibration_scenes import (
     PpiCalibrationScene,
     Projector3DCalibrationScene,
     ProjectorCalibrationScene,
+    StereoCalibrationScene,
 )
 from light_map.core.common_types import SceneId
 from light_map.map.map_scene import MapScene, ViewingScene
@@ -64,6 +65,7 @@ class SceneManager:
             SceneId.CALIBRATE_PROJECTOR: ProjectorCalibrationScene(self.context),
             SceneId.CALIBRATE_EXTRINSICS: ExtrinsicsCalibrationScene(self.context),
             SceneId.CALIBRATE_PROJECTOR_3D: Projector3DCalibrationScene(self.context),
+            SceneId.CALIBRATE_STEREO: StereoCalibrationScene(self.context),
         }
 
     def transition_to(self, target_id: SceneId, payload: Any = None):

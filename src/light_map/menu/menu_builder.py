@@ -228,6 +228,11 @@ def build_root_menu(
                         action_id=MenuActions.CALIBRATE_PROJECTOR_3D,
                         should_close_on_trigger=True,
                     ),
+                    MenuItem(
+                        title="6. Stereo Vision Calibration",
+                        action_id=MenuActions.CALIBRATE_STEREO,
+                        should_close_on_trigger=True,
+                    ),
                 ],
             ),
             MenuItem(

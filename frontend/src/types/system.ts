@@ -12,10 +12,11 @@ import type {
   Token,
   SizeProfile as TokenProfile,
   ArucoDefinition as ArucoDefault,
+  StereoVisionConfig,
 } from './schema.generated';
 
 export { GmPosition, TokenDetectionAlgorithm, NamingStyle, GridType };
-export type { ViewportState, Token, TokenProfile, ArucoDefault };
+export type { ViewportState, Token, TokenProfile, ArucoDefault, StereoVisionConfig };
 
 export enum VisibilityType {
   WALL = 'wall',
@@ -56,6 +57,7 @@ export enum SceneId {
   CALIBRATE_PROJECTOR = 'CALIBRATE_PROJECTOR',
   CALIBRATE_EXTRINSICS = 'CALIBRATE_EXTRINSICS',
   CALIBRATE_PROJECTOR_3D = 'CALIBRATE_PROJECTOR_3D',
+  CALIBRATE_STEREO = 'CALIBRATE_STEREO',
   EXCLUSIVE_VISION = 'EXCLUSIVE_VISION',
 }
 
@@ -76,6 +78,7 @@ export enum MenuActions {
   CALIBRATE_PPI = 'CALIBRATE_PPI',
   CALIBRATE_EXTRINSICS = 'CALIBRATE_EXTRINSICS',
   CALIBRATE_PROJECTOR_3D = 'CALIBRATE_PROJECTOR_3D',
+  CALIBRATE_STEREO = 'CALIBRATE_STEREO',
   NAV_BACK = 'NAV_BACK',
   MAP_CONTROLS = 'MAP_CONTROLS',
   ROTATE_CW = 'ROTATE_CW',
@@ -146,6 +149,7 @@ export interface SystemConfig {
   map_height?: number;
   token_profiles?: Record<string, TokenProfile>;
   aruco_defaults?: Record<number, ArucoDefault>;
+  stereo_vision?: StereoVisionConfig;
   [key: string]: unknown;
 }
 

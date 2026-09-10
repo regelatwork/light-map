@@ -1,3 +1,4 @@
+import json
 import logging
 import os
 from dataclasses import replace
@@ -386,3 +387,28 @@ class PersistenceService:
             return new_pos
         except (ValueError, KeyError):
             return None
+
+    def save_stereo_calibration(self, calibration_data: dict) -> str:
+        """
+        Saves stereo calibration results to stereo_calibration.json.
+        """
+        if hasattr(self.app, "config") and getattr(self.app.config, "storage_manager", None):
+            output_file = self.app.config.storage_manager.get_data_path("stereo_calibration.json")
+        elif hasattr(self.app, "storage") and self.app.storage:
+            output_file = self.app.storage.get_data_path("stereo_calibration.json")
+        else:
+            output_file = "stereo_calibration.json"
+
+        os.makedirs(os.path.dirname(os.path.abspath(output_file)), exist_ok=True)
+
+        clean_data = {}
+        for k, v in calibration_data.items():
+            if hasattr(v, "tolist"):
+                clean_data[k] = v.tolist()
+            else:
+                clean_data[k] = v
+
+        with open(output_file, "w") as f:
+            json.dump(clean_data, f, indent=2)
+
+        return output_file

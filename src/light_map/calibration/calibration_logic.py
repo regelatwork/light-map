@@ -470,16 +470,25 @@ def resolve_lens_intrinsics(camera_side: str) -> tuple[np.ndarray, np.ndarray]:
             os.path.join(base_path, "camera_left_calibration.npz"),
             os.path.join(base_path, "camera_calibration.npz"),
         ]
-    else:
+    elif camera_side == "right":
         files = [
             os.path.join(base_path, "camera_right_calibration.npz"),
             os.path.join(base_path, "camera_calibration.npz"),
         ]
+    else:
+        raise FileNotFoundError(f"Invalid camera side: {camera_side}")
 
     for f in files:
         if os.path.exists(f):
-            data = np.load(f, allow_pickle=True).item()
-            return data["matrix"], data["dist"]
+            data = np.load(f, allow_pickle=True)
+            if hasattr(data, "item"):
+                try:
+                    data = data.item()
+                except Exception:
+                    pass
+            matrix = data["matrix"] if "matrix" in data else data["camera_matrix"]
+            dist = data["dist"] if "dist" in data else data["distortion_coefficients"]
+            return matrix, dist
 
     raise FileNotFoundError(f"Could not find calibration file for {camera_side}")
 

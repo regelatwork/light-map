@@ -85,7 +85,78 @@ To avoid solving disjoint points with unscaled physical geometry:
    - Sensor ROI is computed as the 2D bounding envelope containing both $Z=0$ and $Z=200\\text{mm}$ projections plus a 5% safety margin.
    - Saved as `roi_left` and `roi_right` in `stereo_calibration.json`.
 
-### 4.3 Invocation Entry Points & Execution Lifecycle
+### 4.3 StereoCalibrationScene State Machine & Lifecycle
+
+The routine is encapsulated in `StereoCalibrationScene` (inheriting from `Scene`), structured around a multi-stage interactive state machine:
+
+```
+[ ENTRY / CALIBRATE_STEREO ]
+              │
+              ▼
+   ┌─────────────────────┐
+   │      ALIGNMENT      │◄──────────┐ (Fist Gesture / Retry)
+   │  Live Marker Audit  │           │
+   └──────────┬──────────┘           │
+              │ Victory Hold (1.0s) / Web Trigger
+              ▼                      │
+   ┌─────────────────────┐           │
+   │       SOLVING       │           │
+   │ run_calibration()   │           │
+   └──────────┬──────────┘           │
+              │ Solved               │
+              ▼                      │
+   ┌─────────────────────┐           │
+   │     VALIDATION      │───────────┘
+   │ 3D Wireframe Render │
+   └──────────┬──────────┘
+              │ Victory Hold (1.0s) / Web Confirm
+              ▼
+   ┌─────────────────────┐
+   │        DONE         │
+   │ PersistenceService  │
+   └──────────┬──────────┘
+              │ Timer (3.0s)
+              ▼
+   [ SceneTransition(MENU) ]
+```
+
+#### Detailed Stages:
+
+1. **`ALIGNMENT` (Interactive Setup & Projection):**
+
+   - Renders `CalibrationLayer` compositing:
+     - 8 ArUco grid markers (IDs 42–49) at known physical tabletop coordinates ($Z=0$).
+     - 4 illuminated corner target rings with token labels and expected heights ($Z=h$, IDs 0–3).
+     - Placement boundary for the physical PPI ruler sheet (IDs 40 & 41).
+   - Real-Time Feedback: Continuously checks incoming dual frames and renders status badges:
+     - Green indicator when a marker is detected in both Camera Left and Camera Right.
+     - Yellow/Red indicator when a marker is occluded or visible in only one camera view.
+   - Stage Advance: Once all 14 required markers (8 grid + 2 ruler + 4 tokens) are locked, prompts operator for a 1.0s Victory gesture hold or remote Web UI confirmation.
+
+1. **`SOLVING` (Sequential Optimization):**
+
+   - Mode Switch IPC: Issues IPC control signal to dual `CameraOperator` processes to ensure uncropped full-frame sensor capture.
+   - Executes `StereoCalibrationWizard.run_calibration(frame_left, frame_right)`.
+   - Error Handling: If solve fails or reprojection error exceeds threshold ($> 3.0\\text{px}$), transitions to `ERROR` stage with clear visual diagnostic instructions.
+
+1. **`VALIDATION` (Visual AR Verification):**
+
+   - Renders 3D wireframe boxes projected directly over physical tokens at physical heights ($Z=h$) to provide intuitive physical/digital alignment verification.
+   - Displays measured metrics: Baseline separation ($T_x$), RMS reprojection error, and left/right orientation assignment.
+   - Operator can confirm (Victory hold / "Accept") to persist, or reject (Fist hold / "Retry") to return to `ALIGNMENT`.
+
+1. **`DONE` (Persistence & Re-Arming):**
+
+   - Invokes `self.context.persistence_service.save_stereo_calibration(result)` to record parameters to `stereo_calibration.json` and atomically update `WorldState`.
+   - Signals `CameraOperator` processes to engage high-speed cropped streaming using solved `roi_left` and `roi_right`.
+   - Schedules a 3.0s delay (`TimerKey.CALIBRATION_STAGE`) before transitioning back to `SceneId.MENU`.
+
+### 4.4 IPC Frame Access & Process Coordination
+
+- **Shared Memory Reading:** `StereoCalibrationScene` ingests synchronous frame pairs directly from zero-copy shared memory circular buffers (`shm_camera_left` and `shm_camera_right`) via `FrameProducer.get_latest_frame()`.
+- **Mode Control Channel:** A shared control event/pipe coordinated through `TrackingCoordinator` commands `CameraOperator` instances between full-frame capture and cropped ROI modes without restarting processes.
+
+### 4.5 Invocation Entry Points & Execution Lifecycle
 
 Stereo calibration can be triggered via two distinct user interfaces:
 

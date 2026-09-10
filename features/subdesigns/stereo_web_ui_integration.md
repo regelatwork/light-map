@@ -14,17 +14,10 @@ ______________________________________________________________________
 
 ```python
 class CameraDeviceSchema(BaseModel):
-    device_path: str = Field(
-        default="/dev/video0", title="Device Path", description="V4L2 device file path"
-    )
-    role: str = Field(default="left", title="Role", description="Camera role (left or right)")
-    intrinsics_file: str = Field(
-        default="camera_calibration.npz",
-        title="Intrinsics File",
-        description="Camera lens distortion parameters file",
-    )
-    crop_roi: list[int] | None = Field(
-        default=None, title="Sensor Crop ROI", description="Hardware selection crop [x, y, w, h]"
+    device_path: str = Field(..., title="Device Path", description="Path to the camera device.")
+    name: str = Field(default="Camera", title="Name", description="Display name for the camera.")
+    enabled: bool = Field(
+        default=True, title="Enabled", description="Whether the camera is enabled."
     )
 ```
 
@@ -32,28 +25,27 @@ class CameraDeviceSchema(BaseModel):
 
 ```python
 class StereoVisionConfigSchema(BaseModel):
-    enabled: bool = Field(
-        default=True,
-        title="Enable Stereo Vision",
-        description="Master toggle for dual-camera stereographic tracking",
+    enable_stereo: bool = Field(
+        default=False,
+        title="Enable Stereo",
+        description="Toggle for dual-camera stereographic tracking.",
     )
     baseline_separation_mm: float = Field(
         default=128.0,
+        ge=1.0,
+        le=500.0,
         title="Baseline Separation (mm)",
-        description="Distance between camera optical centers in mm",
+        description="Physical distance between the two camera sensors in millimeters.",
     )
-    cameras: list[CameraDeviceSchema] = Field(
-        default_factory=list, title="Camera Devices", description="Configured camera sensors"
+    camera_left_device: str = Field(
+        default="/dev/video0",
+        title="Left Camera Device",
+        description="Device path for the left camera.",
     )
-    max_parallax_margin_mm: float = Field(
-        default=200.0,
-        title="Max Parallax Margin (mm)",
-        description="Vertical 3D volume envelope for sensor ROI calculation",
-    )
-    reprojection_error_threshold: float = Field(
-        default=3.0,
-        title="Reprojection Threshold (px)",
-        description="Maximum allowed reprojection error for 3D triangulation",
+    camera_right_device: str = Field(
+        default="/dev/video1",
+        title="Right Camera Device",
+        description="Device path for the right camera.",
     )
 ```
 
@@ -108,54 +100,73 @@ The system supports two complementary entry points for launching the unified ste
       return SceneTransition(SceneId.CALIBRATE_STEREO)
   ```
 
-### 3.3 Action Dispatcher Integration (`src/light_map/action_dispatcher.py`)
+### 3.3 Action Dispatcher & Defensive Validation (`src/light_map/action_dispatcher.py`)
 
-Following `light_map`'s WebSocket / Action Dispatcher architecture, stereo calibration triggers are handled through `/input/action`:
-
-```python
-# Registered Action Payload Handlers in action_dispatcher.py:
-ActionType.START_STEREO_CALIBRATION = "START_STEREO_CALIBRATION"
-ActionType.SAVE_STEREO_CALIBRATION = "SAVE_STEREO_CALIBRATION"
-ActionType.UPDATE_STEREO_CONFIG = "UPDATE_STEREO_CONFIG"
-```
-
-In `_handle_menu_transition()`:
+Action dispatching routes `MenuActions.CALIBRATE_STEREO` uniformly across both tabletop menu triggers and remote Web UI requests:
 
 ```python
-scene_map = {
-    # Existing calibrations...
-    MenuActions.CALIBRATE_STEREO: SceneId.CALIBRATE_STEREO,
-    ActionType.START_STEREO_CALIBRATION: SceneId.CALIBRATE_STEREO,
-}
+# In ActionDispatcher._handle_menu_transition():
+if action_name == MenuActions.CALIBRATE_STEREO:
+    # Defensive guard: verify stereo vision is configured and enabled
+    if not self.app.app_config.stereo_vision.enable_stereo:
+        self.app.notifications.add_notification(
+            "Stereo vision calibration requires dual cameras enabled in configuration."
+        )
+        return None
+    return SceneTransition(SceneId.CALIBRATE_STEREO)
 ```
 
-### 3.4 Handler Behavior & Scene Lifecycle
+### 3.4 Manager-Only Writes & Persistence (`PersistenceService`)
 
-- **Launch (`CALIBRATE_STEREO` / `START_STEREO_CALIBRATION`)**: Transitions `SceneManager` to `SceneId.CALIBRATE_STEREO`, activating `StereoCalibrationScene`. Signals dual `CameraOperator` processes to revert from hardware ROI cropping to uncropped full-frame capture mode.
-- **Solve & Save (`SAVE_STEREO_CALIBRATION`)**: Invokes `StereoCalibrationWizard.run_calibration()`, writes solved extrinsics and hardware sensor ROIs to `stereo_calibration.json`, updates `stereo_vision` in `GlobalConfig`, and commands `CameraOperator` processes to transition into high-speed cropped ROI mode.
-- **Config Update (`UPDATE_STEREO_CONFIG`)**: Validates incoming Pydantic schema update payload and syncs values to `AppConfig` runtime state.
+In compliance with the project's strict architectural invariants (`AGENTS.md`):
+
+- **No Direct Disk or State Setters:** Neither `ActionDispatcher` nor `StereoCalibrationScene` may write directly to disk or mutate `WorldState` fields directly.
+- **Persistence Delegation:** Saving calibration results is delegated exclusively to `PersistenceService`:
+  ```python
+  # Added to PersistenceService:
+  def save_stereo_calibration(self, calibration_data: dict) -> None:
+      """
+      Persists stereo calibration results to stereo_calibration.json,
+      updates the GlobalConfig stereo_vision settings atomically,
+      and notifies the WorldState.
+      """
+      storage_path = self.storage.get_data_path("stereo_calibration.json")
+      with open(storage_path, "w") as f:
+          json.dump(calibration_data, f, indent=2)
+      # Atomically update global config state through managers
+      self.update_global_config_stereo(...)
+  ```
+
+### 3.5 Scene ID State Synchronization (`SceneManager`)
+
+To fix frontend state inspection (`world.scene === SceneId.CALIBRATE_STEREO`), `SceneManager.transition_to()` must record the canonical `SceneId` value into `_scene_atom` rather than the Python class name:
+
+```python
+# In SceneManager.transition_to():
+self.state._scene_atom.update(self.current_scene_id.value)
+```
+
+This ensures `world.scene` in the React frontend contains `"CALIBRATE_STEREO"`, enabling proper button disabled states and instruction card rendering.
 
 ______________________________________________________________________
 
 ## 4. TypeScript Schema Auto-Generation (`scripts/generate_ts_schema.py`)
 
-The generator script `scripts/generate_ts_schema.py` is updated to include `CameraDeviceSchema` and `StereoVisionConfigSchema` in its `schemas` list, generating types in `frontend/src/types/schema.generated.ts`:
+The generator script `scripts/generate_ts_schema.py` imports `CameraDeviceSchema` and `StereoVisionConfigSchema` and generates their corresponding interfaces and metadata registries in `frontend/src/types/schema.generated.ts`:
 
 ```typescript
 // Auto-generated by scripts/generate_ts_schema.py
-export interface CameraDeviceSchema {
+export interface CameraDevice {
   device_path: string;
-  role: 'left' | 'right';
-  intrinsics_file: string;
-  crop_roi?: [number, number, number, number] | null;
+  name: string;
+  enabled: boolean;
 }
 
-export interface StereoVisionConfigSchema {
-  enabled: boolean;
+export interface StereoVisionConfig {
+  enable_stereo: boolean;
   baseline_separation_mm: number;
-  cameras: CameraDeviceSchema[];
-  max_parallax_margin_mm: number;
-  reprojection_error_threshold: number;
+  camera_left_device: string;
+  camera_right_device: string;
 }
 
 export interface StereoDiagnostics {
@@ -188,14 +199,32 @@ Integrates stereo calibration directly into the web dashboard's Calibration Wiza
   - Adds `CALIBRATE_STEREO = 'CALIBRATE_STEREO'` to `SceneId`.
   - Adds `CALIBRATE_STEREO = 'CALIBRATE_STEREO'` to `MenuActions`.
 - **Launch Button (`CalibrationWizard.tsx`):**
-  Adds a button under the "Launch Calibration" sidebar alongside single-camera routines:
+  Adds buttons aligned 1:1 with the Tabletop Menu:
   ```tsx
+  {/* Existing 1-4... */}
   <button
     className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-left transition-colors"
-    onClick={() => handleStartCalibration(MenuActions.CALIBRATE_STEREO)}
+    onClick={() => handleStartCalibration(MenuActions.CALIBRATE_PROJECTOR_3D)}
     disabled={isCalibrating}
   >
-    5. Stereo Vision Calibration
+    5. Projector 3D Pose
+  </button>
+
+  <button
+    className={`px-4 py-2 text-white rounded text-left transition-colors ${
+      !systemConfig.stereo_vision?.enable_stereo
+        ? 'bg-gray-400 cursor-not-allowed'
+        : 'bg-blue-600 hover:bg-blue-700'
+    }`}
+    onClick={() => handleStartCalibration(MenuActions.CALIBRATE_STEREO)}
+    disabled={isCalibrating || !systemConfig.stereo_vision?.enable_stereo}
+    title={
+      !systemConfig.stereo_vision?.enable_stereo
+        ? 'Enable Stereo Vision in Settings to calibrate dual cameras'
+        : 'Launch single-sweep stereo calibration'
+    }
+  >
+    6. Stereo Vision Calibration
   </button>
   ```
 - **User Instructions Card:**
@@ -215,7 +244,8 @@ Integrates stereo calibration directly into the web dashboard's Calibration Wiza
     </div>
   )}
   ```
-- **Live Stream Preview:** Automatically switches the live feed view or provides side-by-side feeds for dual camera streams.
+- **Dual Camera Video Streaming:**
+  During `CALIBRATE_STEREO`, the camera viewport renders side-by-side video feeds (`/video_feed?camera=left` and `/video_feed?camera=right`) to allow verifying marker visibility in both camera streams simultaneously.
 - **AR Verification Preview:** Renders real-time 3D wireframe box preview over detected physical tokens upon completion.
 
 ### 5.3 Settings & Configuration Controls (`SettingsModal.tsx` & `ConfigurationSidebar.tsx`)
@@ -226,10 +256,12 @@ ______________________________________________________________________
 
 ## 6. Verification Criteria
 
-- [ ] `CameraDeviceSchema` and `StereoVisionConfigSchema` added to `config_schema.py` and embedded in `GlobalConfigSchema`.
-- [ ] `scripts/generate_ts_schema.py` imports new schemas and executes cleanly, updating `schema.generated.ts`.
+- [ ] `CameraDeviceSchema` and `StereoVisionConfigSchema` maintained in `config_schema.py` and embedded in `GlobalConfigSchema`.
+- [ ] `scripts/generate_ts_schema.py` imports schemas and executes cleanly, updating `schema.generated.ts`.
 - [ ] `MenuActions.CALIBRATE_STEREO` and `SceneId.CALIBRATE_STEREO` defined in backend `common_types.py` and frontend `system.ts`.
+- [ ] `SceneManager.transition_to()` records `SceneId` value in `_scene_atom` for consistent frontend state reflection.
 - [ ] Tabletop hierarchical menu (`menu_builder.py` and `menu_scene.py`) contains `"6. Stereo Vision Calibration"` and transitions to `SceneId.CALIBRATE_STEREO`.
-- [ ] Action Dispatcher handles `CALIBRATE_STEREO` / `START_STEREO_CALIBRATION` and `SAVE_STEREO_CALIBRATION` actions via `/input/action`.
-- [ ] `CalibrationWizard.tsx` includes `"5. Stereo Vision Calibration"` button and instructions card, launching the calibration scene remotely.
+- [ ] Action Dispatcher handles `CALIBRATE_STEREO` with defensive guards against disabled stereo configuration.
+- [ ] `PersistenceService.save_stereo_calibration()` serializes `stereo_calibration.json` and updates `GlobalConfig` atomically.
+- [ ] `CalibrationWizard.tsx` includes `"6. Stereo Vision Calibration"` button (disabled when stereo is off), dual-feed rendering, and instructions card.
 - [ ] `StereoVisionDashboard.tsx` renders dual camera feeds and live diagnostic metrics.

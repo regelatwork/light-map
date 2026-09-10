@@ -269,6 +269,11 @@ def build_root_menu(
                         should_close_on_trigger=False,
                     ),
                     MenuItem(
+                        title=f"Stereo Vision: {'ON' if getattr(getattr(map_config.data.global_settings, 'stereo_vision', None), 'enable_stereo', False) else 'OFF'}",
+                        action_id=MenuActions.TOGGLE_STEREO_VISION,
+                        should_close_on_trigger=False,
+                    ),
+                    MenuItem(
                         title="Masking",
                         children=[
                             MenuItem(

@@ -373,6 +373,17 @@ class PersistenceService:
         self.state.config_data += 1
         return gs.enable_hand_masking
 
+    def toggle_stereo_vision(self) -> bool:
+        """Toggles stereo vision mode in global settings."""
+        gs = self.map_config.data.global_settings
+        gs.stereo_vision.enable_stereo = not gs.stereo_vision.enable_stereo
+        self.map_config.save()
+        if hasattr(self.app, "config") and hasattr(self.app.config, "stereo_vision"):
+            self.app.config.stereo_vision.enable_stereo = gs.stereo_vision.enable_stereo
+        if hasattr(self.state, "config_data"):
+            self.state.config_data += 1
+        return gs.stereo_vision.enable_stereo
+
     def set_gm_position(self, position: str):
         """Sets the GM position in global settings."""
         from light_map.core.common_types import GmPosition

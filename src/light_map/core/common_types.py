@@ -252,6 +252,7 @@ class MenuActions(StrEnum):
     TOGGLE_TOKENS = "TOGGLE_TOKENS"
     TOGGLE_GRID = "TOGGLE_GRID"
     SET_GRID_COLOR = "SET_GRID_COLOR"
+    TOGGLE_STEREO_VISION = "TOGGLE_STEREO_VISION"
 
 
 class SceneId(StrEnum):
@@ -427,6 +428,22 @@ class ProjectorPose:
 
 
 @dataclass
+class StereoVisionConfig:
+    enable_stereo: bool = False
+    baseline_separation_mm: float = 128.0
+    camera_left_device: str = "/dev/video0"
+    camera_right_device: str = "/dev/video1"
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "enable_stereo": self.enable_stereo,
+            "baseline_separation_mm": self.baseline_separation_mm,
+            "camera_left_device": self.camera_left_device,
+            "camera_right_device": self.camera_right_device,
+        }
+
+
+@dataclass
 class AppConfig:
     width: int
     height: int
@@ -442,6 +459,7 @@ class AppConfig:
     storage_manager: Any | None = None
     projector_3d_model: Projector3DModel | None = None
     camera_projection_model: CameraProjectionModel | None = None
+    stereo_vision: StereoVisionConfig = field(default_factory=StereoVisionConfig)
     log_level: str = "INFO"
     log_file: str = _DEFAULT_STORAGE.get_state_path("light_map.log")
 
@@ -517,6 +535,26 @@ class AppConfig:
         self.door_thickness_multiplier = getattr(
             gs, "door_thickness_multiplier", self.door_thickness_multiplier
         )
+        if hasattr(gs, "stereo_vision"):
+            stereo_src = gs.stereo_vision
+            if isinstance(stereo_src, StereoVisionConfig):
+                self.stereo_vision.enable_stereo = stereo_src.enable_stereo
+                self.stereo_vision.baseline_separation_mm = stereo_src.baseline_separation_mm
+                self.stereo_vision.camera_left_device = stereo_src.camera_left_device
+                self.stereo_vision.camera_right_device = stereo_src.camera_right_device
+            elif isinstance(stereo_src, dict):
+                self.stereo_vision.enable_stereo = stereo_src.get(
+                    "enable_stereo", self.stereo_vision.enable_stereo
+                )
+                self.stereo_vision.baseline_separation_mm = stereo_src.get(
+                    "baseline_separation_mm", self.stereo_vision.baseline_separation_mm
+                )
+                self.stereo_vision.camera_left_device = stereo_src.get(
+                    "camera_left_device", self.stereo_vision.camera_left_device
+                )
+                self.stereo_vision.camera_right_device = stereo_src.get(
+                    "camera_right_device", self.stereo_vision.camera_right_device
+                )
 
 
 @dataclass

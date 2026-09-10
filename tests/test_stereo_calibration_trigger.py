@@ -124,3 +124,63 @@ def test_scene_manager_reflects_scene_name():
     manager.transition_to(SceneId.CALIBRATE_STEREO)
     assert manager.current_scene_id == SceneId.CALIBRATE_STEREO
     mock_state._scene_atom.update.assert_called_with("StereoCalibrationScene")
+
+
+def test_toggle_stereo_enums_exist():
+    """Verify that TOGGLE_STEREO_VISION is defined in MenuActions."""
+    assert hasattr(MenuActions, "TOGGLE_STEREO_VISION")
+    assert MenuActions.TOGGLE_STEREO_VISION == "TOGGLE_STEREO_VISION"
+
+
+def test_menu_builder_contains_toggle_stereo():
+    """Verify that the Options menu contains the Toggle Stereo Vision item."""
+    map_config = MagicMock(spec=MapConfigManager)
+    map_config.data = MagicMock()
+    map_config.data.maps = {}
+    map_config.data.global_settings.stereo_vision.enable_stereo = False
+    menu = build_root_menu(map_config)
+
+    options_item = next((item for item in menu.children if item.title == "Options"), None)
+    assert options_item is not None, "Options menu item not found"
+
+    stereo_toggle = next(
+        (
+            child
+            for child in options_item.children
+            if getattr(child, "action_id", None) == MenuActions.TOGGLE_STEREO_VISION
+        ),
+        None,
+    )
+    assert stereo_toggle is not None
+    assert "Stereo Vision: OFF" in stereo_toggle.title
+
+
+def test_persistence_service_toggle_stereo_vision():
+    """Verify PersistenceService toggles stereo vision mode and persists."""
+    mock_app = MagicMock()
+    mock_app.config.stereo_vision.enable_stereo = False
+    mock_app.map_config.data.global_settings.stereo_vision.enable_stereo = False
+    service = PersistenceService(mock_app)
+
+    new_val = service.toggle_stereo_vision()
+    assert new_val is True
+    assert mock_app.map_config.data.global_settings.stereo_vision.enable_stereo is True
+    assert mock_app.config.stereo_vision.enable_stereo is True
+    mock_app.map_config.save.assert_called_once()
+
+    new_val2 = service.toggle_stereo_vision()
+    assert new_val2 is False
+    assert mock_app.map_config.data.global_settings.stereo_vision.enable_stereo is False
+    assert mock_app.config.stereo_vision.enable_stereo is False
+
+
+def test_action_dispatcher_toggle_stereo_vision():
+    """Verify ActionDispatcher handles TOGGLE_STEREO_VISION action."""
+    mock_app = MagicMock()
+    mock_app.persistence_service.toggle_stereo_vision.return_value = True
+    dispatcher = ActionDispatcher(mock_app)
+
+    res = dispatcher.dispatch({"action": "TOGGLE_STEREO_VISION"})
+    assert res is None
+    mock_app.persistence_service.toggle_stereo_vision.assert_called_once()
+    mock_app.notifications.add_notification.assert_called_once_with("Stereo Vision ON")

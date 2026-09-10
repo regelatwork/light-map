@@ -105,6 +105,7 @@ export enum MenuActions {
   TOGGLE_TOKENS = 'TOGGLE_TOKENS',
   TOGGLE_GRID = 'TOGGLE_GRID',
   SET_GRID_COLOR = 'SET_GRID_COLOR',
+  TOGGLE_STEREO_VISION = 'TOGGLE_STEREO_VISION',
 }
 
 export interface VisibilityBlocker {
@@ -208,6 +209,12 @@ export const INITIAL_STATE: SystemState = {
     debug_mode: false,
     fow_disabled: false,
     use_projector_3d_model: true,
+    stereo_vision: {
+      enable_stereo: false,
+      baseline_separation_mm: 128.0,
+      camera_left_device: '/dev/video0',
+      camera_right_device: '/dev/video1',
+    },
   },
   maps: {},
   timestamp: 0,

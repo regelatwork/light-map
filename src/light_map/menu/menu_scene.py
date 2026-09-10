@@ -213,6 +213,18 @@ class MenuScene(Scene):
             self.context.map_config_manager.save()
             self.context.app_config.enable_aruco_masking = gs.enable_aruco_masking
             self.on_enter()
+        elif action == MenuActions.TOGGLE_STEREO_VISION:
+            if hasattr(self.context, "persistence_service"):
+                self.context.persistence_service.toggle_stereo_vision()
+            else:
+                gs = self.context.map_config_manager.data.global_settings
+                gs.stereo_vision.enable_stereo = not gs.stereo_vision.enable_stereo
+                self.context.map_config_manager.save()
+                if hasattr(self.context.app_config, "stereo_vision"):
+                    self.context.app_config.stereo_vision.enable_stereo = (
+                        gs.stereo_vision.enable_stereo
+                    )
+            self.on_enter()
         elif action == MenuActions.SET_GM_POSITION:
             from light_map.core.common_types import GmPosition
 

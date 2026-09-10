@@ -159,6 +159,109 @@ export const HardwareAlignment: React.FC = () => {
           </button>
         </div>
       </section>
+
+      <section className="space-y-4">
+        {(() => {
+          const currentStereo = {
+            enable_stereo: config?.stereo_vision?.enable_stereo ?? false,
+            baseline_separation_mm: config?.stereo_vision?.baseline_separation_mm ?? 128.0,
+            camera_left_device: config?.stereo_vision?.camera_left_device ?? '/dev/video0',
+            camera_right_device: config?.stereo_vision?.camera_right_device ?? '/dev/video1',
+          };
+
+          return (
+            <>
+              <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl border border-gray-100">
+                <div>
+                  <h4 className="font-bold text-gray-800">Dual-Camera Stereo Vision</h4>
+                  <p className="text-sm text-gray-500">
+                    Enable dual cameras for stereoscopic height detection and 3D token tracking.
+                  </p>
+                </div>
+                <button
+                  onClick={() =>
+                    updateSystemConfig({
+                      stereo_vision: {
+                        ...currentStereo,
+                        enable_stereo: !currentStereo.enable_stereo,
+                      },
+                    })
+                  }
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none shadow-sm ${
+                    currentStereo.enable_stereo ? 'bg-blue-600' : 'bg-gray-200'
+                  }`}
+                >
+                  <span
+                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                      currentStereo.enable_stereo ? 'translate-x-6' : 'translate-x-1'
+                    }`}
+                  />
+                </button>
+              </div>
+
+              {currentStereo.enable_stereo && (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-gray-50 rounded-xl border border-gray-100">
+                  <div className="space-y-1">
+                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider">
+                      Baseline (mm)
+                    </label>
+                    <input
+                      type="number"
+                      step="1"
+                      value={currentStereo.baseline_separation_mm}
+                      onChange={(e) =>
+                        updateSystemConfig({
+                          stereo_vision: {
+                            ...currentStereo,
+                            baseline_separation_mm: parseFloat(e.target.value) || 128.0,
+                          },
+                        })
+                      }
+                      className="w-full px-3 py-1.5 text-sm border border-gray-200 rounded-lg bg-white"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider">
+                      Left Device
+                    </label>
+                    <input
+                      type="text"
+                      value={currentStereo.camera_left_device}
+                      onChange={(e) =>
+                        updateSystemConfig({
+                          stereo_vision: {
+                            ...currentStereo,
+                            camera_left_device: e.target.value,
+                          },
+                        })
+                      }
+                      className="w-full px-3 py-1.5 text-sm border border-gray-200 rounded-lg bg-white"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider">
+                      Right Device
+                    </label>
+                    <input
+                      type="text"
+                      value={currentStereo.camera_right_device}
+                      onChange={(e) =>
+                        updateSystemConfig({
+                          stereo_vision: {
+                            ...currentStereo,
+                            camera_right_device: e.target.value,
+                          },
+                        })
+                      }
+                      className="w-full px-3 py-1.5 text-sm border border-gray-200 rounded-lg bg-white"
+                    />
+                  </div>
+                </div>
+              )}
+            </>
+          );
+        })()}
+      </section>
     </div>
   );
 };

@@ -16,6 +16,7 @@ from light_map.core.common_types import (
     GmPosition,
     GridType,
     NamingStyle,
+    StereoVisionConfig,
     TokenDetectionAlgorithm,
     ViewportState,
 )
@@ -123,6 +124,7 @@ class GlobalMapConfig:
     pointer_offset_mm: float = DEFAULT_POINTER_OFFSET_MM
     inspection_linger_duration: float = 10.0
     door_thickness_multiplier: float = 3.0
+    stereo_vision: StereoVisionConfig = field(default_factory=StereoVisionConfig)
 
 
 @dataclass

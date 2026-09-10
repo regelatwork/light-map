@@ -57,6 +57,7 @@ class ActionDispatcher:
         self.register("RESET_FOW", handle_reset_fow)
         self.register("TOGGLE_FOW", handle_toggle_fow)
         self.register("TOGGLE_HAND_MASKING", handle_toggle_hand_masking)
+        self.register("TOGGLE_STEREO_VISION", handle_toggle_stereo_vision)
         self.register("SET_GM_POSITION", handle_set_gm_position)
         self.register("SET_SELECTION", handle_set_selection)
         self.register("TOGGLE_DEBUG_MODE", handle_toggle_debug_mode)
@@ -238,6 +239,15 @@ def handle_toggle_hand_masking(
     visible = app.persistence_service.toggle_hand_masking()
     state_str = "ON" if visible else "OFF"
     app.notifications.add_notification(f"Projection Masking {state_str}")
+    return None
+
+
+def handle_toggle_stereo_vision(
+    app: "InteractiveApp", payload: dict[str, Any], state: Optional["WorldState"] = None
+) -> Optional["SceneTransition"]:
+    enabled = app.persistence_service.toggle_stereo_vision()
+    state_str = "ON" if enabled else "OFF"
+    app.notifications.add_notification(f"Stereo Vision {state_str}")
     return None
 
 

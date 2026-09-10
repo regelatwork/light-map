@@ -26,7 +26,7 @@ from light_map.core.common_types import (
     ResultType,
     Token,
 )
-from light_map.core.config_schema import CoverResultSchema
+from light_map.core.config_schema import CoverResultSchema, StereoVisionConfigSchema
 from light_map.core.scene import HandInput
 from light_map.vision.infrastructure.frame_producer import FrameProducer
 
@@ -122,6 +122,7 @@ class SystemConfigUpdate(BaseModel):
     projector_pos_x_override: float | None = None
     projector_pos_y_override: float | None = None
     projector_pos_z_override: float | None = None
+    stereo_vision: StereoVisionConfigSchema | None = None
 
 
 def numpy_to_python(obj: Any) -> Any:
@@ -675,6 +676,8 @@ def create_app(
             data["projector_pos_y_override"] = config.projector_pos_y_override
         if config.projector_pos_z_override is not None:
             data["projector_pos_z_override"] = config.projector_pos_z_override
+        if config.stereo_vision is not None:
+            data["stereo_vision"] = config.stereo_vision.model_dump()
 
         res = DetectionResult(
             timestamp=time.monotonic_ns(),

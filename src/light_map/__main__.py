@@ -329,6 +329,12 @@ def run_app(args):
                     }
                     for k, v in app.map_config.data.global_settings.aruco_defaults.items()
                 },
+                "stereo_vision": {
+                    "enable_stereo": app.config.stereo_vision.enable_stereo,
+                    "baseline_separation_mm": app.config.stereo_vision.baseline_separation_mm,
+                    "camera_left_device": app.config.stereo_vision.camera_left_device,
+                    "camera_right_device": app.config.stereo_vision.camera_right_device,
+                },
             }
 
             # Populate initial state mirror for world, tokens, and menu
@@ -641,6 +647,12 @@ def run_app(args):
                                             "color": v.color,
                                         }
                                         for k, v in app.map_config.data.global_settings.aruco_defaults.items()
+                                    },
+                                    "stereo_vision": {
+                                        "enable_stereo": app.config.stereo_vision.enable_stereo,
+                                        "baseline_separation_mm": app.config.stereo_vision.baseline_separation_mm,
+                                        "camera_left_device": app.config.stereo_vision.camera_left_device,
+                                        "camera_right_device": app.config.stereo_vision.camera_right_device,
                                     },
                                 }
 

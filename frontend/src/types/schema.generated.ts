@@ -109,6 +109,19 @@ export interface MapEntry {
   grid_overlay_color: string;
 }
 
+export interface CameraDevice {
+  device_path: string;
+  name: string;
+  enabled: boolean;
+}
+
+export interface StereoVisionConfig {
+  enable_stereo: boolean;
+  baseline_separation_mm: number;
+  camera_left_device: string;
+  camera_right_device: string;
+}
+
 export interface GlobalConfig {
   projector_ppi: number;
   flash_intensity: number;
@@ -430,6 +443,48 @@ export const MAPENTRY_METADATA: Record<keyof MapEntry, FieldMetadata> = {
     "title": "Grid Overlay Color",
     "description": "CSS color for the grid lines.",
     "default": "rgba(255, 255, 255, 0.5)"
+  }
+};
+
+export const CAMERADEVICE_METADATA: Record<keyof CameraDevice, FieldMetadata> = {
+  "device_path": {
+    "title": "Device Path",
+    "description": "Path to the camera device."
+  },
+  "name": {
+    "title": "Name",
+    "description": "Display name for the camera.",
+    "default": "Camera"
+  },
+  "enabled": {
+    "title": "Enabled",
+    "description": "Whether the camera is enabled.",
+    "default": true
+  }
+};
+
+export const STEREOVISIONCONFIG_METADATA: Record<keyof StereoVisionConfig, FieldMetadata> = {
+  "enable_stereo": {
+    "title": "Enable Stereo",
+    "description": "Toggle for dual-camera stereographic tracking.",
+    "default": false
+  },
+  "baseline_separation_mm": {
+    "title": "Baseline Separation (mm)",
+    "description": "Physical distance between the two camera sensors in millimeters.",
+    "min": 1.0,
+    "max": 500.0,
+    "default": 128.0
+  },
+  "camera_left_device": {
+    "title": "Left Camera Device",
+    "description": "Device path for the left camera.",
+    "default": "/dev/video0"
+  },
+  "camera_right_device": {
+    "title": "Right Camera Device",
+    "description": "Device path for the right camera.",
+    "default": "/dev/video1"
   }
 };
 

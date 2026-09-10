@@ -16,6 +16,7 @@ def generate_target(filename="calibration_target.svg"):
     # PPI Ruler Sheet (IDs 40 & 41)
     marker40_image = cv2.aruco.generateImageMarker(aruco_dict, 40, 200)
     marker41_image = cv2.aruco.generateImageMarker(aruco_dict, 41, 200)
+
     # Convert to Base64 for embedding
     def img_to_b64(img):
         pil_img = Image.fromarray(img)

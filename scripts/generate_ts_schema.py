@@ -7,6 +7,7 @@ from pydantic_core import PydanticUndefined
 
 from light_map.core.config_schema import (
     ArucoDefinitionSchema,
+    CameraDeviceSchema,
     CoverResultSchema,
     GlobalConfigSchema,
     GmPosition,
@@ -15,6 +16,7 @@ from light_map.core.config_schema import (
     NamingStyle,
     SessionDataSchema,
     SizeProfileSchema,
+    StereoVisionConfigSchema,
     TokenConfigSchema,
     TokenDetectionAlgorithm,
     TokenSchema,
@@ -180,6 +182,8 @@ def main():
         ("Token", TokenSchema),
         ("SessionData", SessionDataSchema),
         ("MapEntry", MapEntrySchema),
+        ("CameraDevice", CameraDeviceSchema),
+        ("StereoVisionConfig", StereoVisionConfigSchema),
         ("GlobalConfig", GlobalConfigSchema),
         ("WedgeSegment", WedgeSegmentSchema),
         ("CoverResult", CoverResultSchema),

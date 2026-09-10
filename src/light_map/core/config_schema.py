@@ -137,13 +137,6 @@ class StereoVisionConfigSchema(BaseModel):
         description="Device path for the right camera.",
     )
 
-    x: float = Field(
-        default=0.0, title="X Offset", description="Horizontal pan offset in SVG units."
-    )
-    y: float = Field(default=0.0, title="Y Offset", description="Vertical pan offset in SVG units.")
-    zoom: float = Field(default=1.0, title="Zoom", description="Zoom level (1.0 = 100%).")
-    rotation: float = Field(default=0.0, title="Rotation", description="Rotation in degrees.")
-
 
 class WedgeSegmentSchema(BaseModel):
     start_idx: int = Field(..., title="Start Index")

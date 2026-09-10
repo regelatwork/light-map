@@ -43,9 +43,13 @@ class StereoTriangulator:
         self.dist_R = camera_right_dist
 
         self.R_L = rotation_left
-        self.t_L = translation_left.reshape(3, 1) if translation_left.ndim == 1 else translation_left
+        self.t_L = (
+            translation_left.reshape(3, 1) if translation_left.ndim == 1 else translation_left
+        )
         self.R_R = rotation_right
-        self.t_R = translation_right.reshape(3, 1) if translation_right.ndim == 1 else translation_right
+        self.t_R = (
+            translation_right.reshape(3, 1) if translation_right.ndim == 1 else translation_right
+        )
 
         self.roi_L = roi_left
         self.roi_R = roi_right

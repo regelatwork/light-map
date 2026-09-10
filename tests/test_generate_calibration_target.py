@@ -1,6 +1,7 @@
-import xml.etree.ElementTree as ET
 import sys
+import xml.etree.ElementTree as ET
 from pathlib import Path
+
 
 # Add scripts directory to path to import generate_calibration_target
 scripts_dir = str(Path(__file__).resolve().parent.parent / "scripts")

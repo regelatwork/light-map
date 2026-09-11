@@ -198,12 +198,12 @@ def solve_table_transform_from_ppi(
 
 
 def calibrate_extrinsics(
-    frame: np.ndarray,
+    frame: np.ndarray | None,
     projector_matrix: np.ndarray,
     camera_matrix: np.ndarray,
     distortion_coefficients: np.ndarray,
-    ppi: float,
     token_heights: dict[int, float],
+    ppi: float,
     ground_points_camera: np.ndarray | None = None,
     ground_points_projector: np.ndarray | None = None,
     known_targets: dict[int, tuple[float, float]] | None = None,
@@ -214,6 +214,10 @@ def calibrate_extrinsics(
     """
     Estimates Camera Extrinsics (R, t) relative to the projector's world space.
     """
+    # Defensively handle callers that might pass ppi and token_heights in inverted order
+    if isinstance(token_heights, (int, float)) and isinstance(ppi, dict):
+        token_heights, ppi = ppi, float(token_heights)
+
     ppi_mm = ppi / 25.4
 
     object_points = []

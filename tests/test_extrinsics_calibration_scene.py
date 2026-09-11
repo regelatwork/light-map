@@ -110,6 +110,9 @@ def test_extrinsics_scene_uses_ground_points(mock_exists, mock_load, mock_calibr
     # Verify arguments
     args, kwargs = mock_calibrate.call_args
 
+    assert isinstance(kwargs.get("token_heights"), dict)
+    assert isinstance(kwargs.get("ppi"), (int, float))
+
     # Check that ground points were passed (now at index 7 and 8 due to new aruco params)
     if "ground_points_camera" in kwargs:
         np.testing.assert_array_equal(kwargs["ground_points_camera"], camera_points)

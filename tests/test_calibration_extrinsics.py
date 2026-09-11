@@ -84,14 +84,14 @@ def test_calibrate_extrinsics_synthetic():
 
         mock_corners = tuple(image_points[i * 4 : (i + 1) * 4].reshape(1, 4, 2) for i in range(4))
 
-        # Test 1: Only Tokens (Z > 0) with known_targets
+        # Test 1: Only Tokens (Z > 0) with known_targets (positional token_heights, ppi)
         result = calibrate_extrinsics(
             frame,
             projector_matrix,
             camera_matrix,
             distortion_coefficients,
-            ppi,
             token_heights,
+            ppi,
             known_targets=known_targets,
             token_sizes=token_sizes,
             aruco_ids=np.array([1, 2, 3, 4]),
@@ -103,7 +103,7 @@ def test_calibrate_extrinsics_synthetic():
         assert rotation_vector_diff(rotation_vector_res, rotation_vector_true) < 0.1
         assert np.linalg.norm(translation_vector_res.flatten() - translation_vector_true) < 5.0
 
-        # Test 2: Combined (Ground + Tokens) with known_targets
+        # Test 2: Combined (Ground + Tokens) with known_targets (keyword arguments)
         # Ground points are at Z=0
         ground_points_3d = np.column_stack(
             [
@@ -128,8 +128,8 @@ def test_calibrate_extrinsics_synthetic():
             projector_matrix,
             camera_matrix,
             distortion_coefficients,
-            ppi,
-            token_heights,
+            token_heights=token_heights,
+            ppi=ppi,
             ground_points_camera=image_points_ground,
             ground_points_projector=np.array(projector_coords_px, dtype=np.float32).reshape(-1, 2),
             known_targets=known_targets,
@@ -142,3 +142,41 @@ def test_calibrate_extrinsics_synthetic():
         rotation_vector_comb, translation_vector_comb, _, _ = result_combined
         assert rotation_vector_diff(rotation_vector_comb, rotation_vector_true) < 0.05
         assert np.linalg.norm(translation_vector_comb.flatten() - translation_vector_true) < 1.0
+
+
+def test_calibrate_extrinsics_positional_token_heights_first():
+    camera_matrix = np.eye(3, dtype=np.float32)
+    distortion_coefficients = np.zeros(5, dtype=np.float32)
+    projector_matrix = np.eye(3, dtype=np.float32)
+    ppi = 100.0
+    token_heights = {1: 25.0, 2: 25.0}
+
+    # Call with token_heights as 5th argument and ppi as 6th argument
+    result = calibrate_extrinsics(
+        None,
+        projector_matrix,
+        camera_matrix,
+        distortion_coefficients,
+        token_heights,
+        ppi,
+    )
+    assert result is None
+
+
+def test_calibrate_extrinsics_inverted_positional_arguments():
+    camera_matrix = np.eye(3, dtype=np.float32)
+    distortion_coefficients = np.zeros(5, dtype=np.float32)
+    projector_matrix = np.eye(3, dtype=np.float32)
+    ppi = 100.0
+    token_heights = {1: 25.0, 2: 25.0}
+
+    # Defensively handles callers passing (ppi, token_heights) positionally without crashing
+    result = calibrate_extrinsics(
+        None,
+        projector_matrix,
+        camera_matrix,
+        distortion_coefficients,
+        ppi,  # type: ignore[arg-type]
+        token_heights,  # type: ignore[arg-type]
+    )
+    assert result is None

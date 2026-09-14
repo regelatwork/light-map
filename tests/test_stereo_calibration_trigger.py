@@ -92,6 +92,48 @@ def test_action_dispatcher_calibrate_stereo_disabled():
     assert "Stereo vision" in mock_app.notifications.add_notification.call_args[0][0]
 
 
+def test_action_dispatcher_calibrate_stereo_with_config_attribute():
+    """Verify ActionDispatcher works when app only defines config (e.g. InteractiveApp)."""
+    mock_app = MagicMock(spec=["config", "notifications", "map_system"])
+    mock_app.config.stereo_vision.enable_stereo = True
+    dispatcher = ActionDispatcher(mock_app)
+
+    transition = dispatcher.dispatch({"action": MenuActions.CALIBRATE_STEREO})
+    assert transition is not None
+    assert transition.target_scene == SceneId.CALIBRATE_STEREO
+
+
+def test_interactive_app_app_config_property():
+    """Verify InteractiveApp.app_config returns self.config."""
+    from light_map.interactive_app import InteractiveApp
+
+    mock_config = MagicMock(spec=AppConfig)
+    app = InteractiveApp.__new__(InteractiveApp)
+    app.config = mock_config
+    assert app.app_config is mock_config
+
+
+def test_action_dispatcher_with_interactive_app():
+    """Verify ActionDispatcher works with an InteractiveApp instance for CALIBRATE_STEREO."""
+    from light_map.interactive_app import InteractiveApp
+
+    app = InteractiveApp.__new__(InteractiveApp)
+    app.config = AppConfig(width=1920, height=1080, projector_matrix=np.eye(3))
+    app.notifications = MagicMock()
+    app.map_system = MagicMock()
+    dispatcher = ActionDispatcher(app)
+
+    app.config.stereo_vision.enable_stereo = False
+    transition = dispatcher.dispatch({"action": MenuActions.CALIBRATE_STEREO})
+    assert transition is None
+    app.notifications.add_notification.assert_called_once()
+
+    app.config.stereo_vision.enable_stereo = True
+    transition = dispatcher.dispatch({"action": MenuActions.CALIBRATE_STEREO})
+    assert transition is not None
+    assert transition.target_scene == SceneId.CALIBRATE_STEREO
+
+
 def test_persistence_service_save_stereo_calibration(tmp_path):
     """Verify PersistenceService saves stereo calibration data properly."""
     mock_app = MagicMock()

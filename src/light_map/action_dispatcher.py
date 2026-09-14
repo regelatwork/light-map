@@ -102,7 +102,8 @@ class ActionDispatcher:
                 self.app.notifications.add_notification("Load a map before scanning.")
                 return None
             if action_name == MenuActions.CALIBRATE_STEREO:
-                stereo_conf = getattr(self.app.app_config, "stereo_vision", None)
+                config = getattr(self.app, "app_config", None) or getattr(self.app, "config", None)
+                stereo_conf = getattr(config, "stereo_vision", None) if config else None
                 if not (stereo_conf and getattr(stereo_conf, "enable_stereo", False)):
                     self.app.notifications.add_notification(
                         "Stereo vision calibration requires dual cameras enabled in configuration."

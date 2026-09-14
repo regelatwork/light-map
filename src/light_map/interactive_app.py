@@ -271,6 +271,10 @@ class InteractiveApp:
         )
 
     @property
+    def app_config(self) -> AppConfig:
+        return self.config
+
+    @property
     def fow_manager(self) -> FogOfWarManager:
         if hasattr(self, "environment_manager") and self.environment_manager:
             mgr = self.environment_manager.fow_manager

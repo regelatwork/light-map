@@ -184,6 +184,8 @@ def test_stereo_calibration_scene_properties_and_layers():
     mock_app = MagicMock()
     layers = scene.get_active_layers(mock_app)
     assert mock_app.calibration_layer in layers
+    assert mock_app.instruction_layer in layers
+    assert mock_app.menu_layer not in layers
     assert mock_app.map_layer not in layers
     assert mock_app.background_composite not in layers
 

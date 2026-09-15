@@ -12,11 +12,17 @@ class CalibrationLayer(Layer):
     Matches the CalibrationState fields in common_types.py.
     """
 
-    def __init__(self, state: WorldState, config: AppConfig):
+    def __init__(
+        self,
+        state: WorldState,
+        config: AppConfig,
+        render_instructions: bool = True,
+    ):
         super().__init__(state=state, is_static=False, layer_mode=LayerMode.BLOCKING)
         self.config = config
         self.width = config.width
         self.height = config.height
+        self.render_instructions = render_instructions
 
         # UI Colors (BGR)
         self.target_idle_color = (255, 255, 255)
@@ -157,37 +163,38 @@ class CalibrationLayer(Layer):
             )
 
         # 4. Instructions and Stage
-        if cal.stage:
-            stage_text = f"STAGE: {cal.stage.upper()}"
-            if cal.total_required > 0:
-                stage_text += f" ({cal.captured_count}/{cal.total_required})"
+        if self.render_instructions:
+            if cal.stage:
+                stage_text = f"STAGE: {cal.stage.upper()}"
+                if cal.total_required > 0:
+                    stage_text += f" ({cal.captured_count}/{cal.total_required})"
 
-            draw_text_with_background(
-                canvas,
-                stage_text,
-                (50, 50),
-                cv2.FONT_HERSHEY_SIMPLEX,
-                0.7,
-                (0, 255, 255),  # Yellow
-                2,
-                bg_color=(40, 40, 40),
-            )
+                draw_text_with_background(
+                    canvas,
+                    stage_text,
+                    (50, 50),
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    0.7,
+                    (0, 255, 255),  # Yellow
+                    2,
+                    bg_color=(40, 40, 40),
+                )
 
-        if cal.instruction_text:
-            # Use instruction_pos if provided, otherwise default below stage
-            pos = cal.instruction_pos
-            if pos == (50, 50) and cal.stage:
-                pos = (50, 90)
+            if cal.instruction_text:
+                # Use instruction_pos if provided, otherwise default below stage
+                pos = cal.instruction_pos
+                if pos == (50, 50) and cal.stage:
+                    pos = (50, 90)
 
-            draw_text_with_background(
-                canvas,
-                cal.instruction_text,
-                pos,
-                cv2.FONT_HERSHEY_SIMPLEX,
-                0.8,
-                self.instr_text_color,
-                2,
-            )
+                draw_text_with_background(
+                    canvas,
+                    cal.instruction_text,
+                    pos,
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    0.8,
+                    self.instr_text_color,
+                    2,
+                )
 
         # Only return if visible pixels exist
         if not np.any(canvas[:, :, 3]):

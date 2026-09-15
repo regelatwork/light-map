@@ -10,6 +10,7 @@ from light_map.rendering.layers.door_layer import DoorLayer
 from light_map.rendering.layers.flash_layer import FlashLayer
 from light_map.rendering.layers.fow_layer import FogOfWarLayer
 from light_map.rendering.layers.hand_mask_layer import HandMaskLayer
+from light_map.rendering.layers.instruction_layer import InstructionLayer
 from light_map.rendering.layers.map_grid_layer import MapGridLayer
 from light_map.rendering.layers.map_layer import MapLayer
 from light_map.rendering.layers.menu_layer import MenuLayer
@@ -72,6 +73,7 @@ class LayerStackManager:
         self.flash_layer = FlashLayer(state, config.width, config.height)
         self.map_grid_layer = MapGridLayer(state, config.width, config.height)
         self.calibration_layer = CalibrationLayer(state, self.config)
+        self.instruction_layer = InstructionLayer(state, self.config)
 
         # Visibility and FoW Layers
         self.fow_layer = FogOfWarLayer(state, config.width, config.height)
@@ -160,6 +162,7 @@ class LayerStackManager:
             self.flash_layer,
             self.map_grid_layer,
             self.calibration_layer,
+            self.instruction_layer,
         ]
         if self.fow_layer:
             layers.append(self.fow_layer)

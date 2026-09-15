@@ -392,6 +392,10 @@ class InteractiveApp:
     def exclusive_vision_layer(self):
         return self.layer_manager.exclusive_vision_layer
 
+    @property
+    def instruction_layer(self):
+        return self.layer_manager.instruction_layer
+
     def process_state(
         self, state: WorldState | None = None, actions: list[Action] = None
     ) -> tuple[np.ndarray | None, list[str]]:

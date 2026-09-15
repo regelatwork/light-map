@@ -1768,8 +1768,8 @@ class StereoCalibrationScene(Scene):
         """Returns the layers active during stereo calibration."""
         return [
             app.calibration_layer,
+            app.instruction_layer,
             app.token_layer,
-            app.menu_layer,
             app.cursor_layer,
             app.notification_layer,
         ]
@@ -1779,10 +1779,14 @@ class StereoCalibrationScene(Scene):
         self.error_message = None
         self.calibration_result = None
         logging.info("Entering StereoCalibrationScene")
+        if hasattr(self.context, "layer_manager") and self.context.layer_manager:
+            self.context.layer_manager.calibration_layer.render_instructions = False
         self._sync_calibration_state()
 
     def on_exit(self) -> None:
         logging.info("Exiting StereoCalibrationScene")
+        if hasattr(self.context, "layer_manager") and self.context.layer_manager:
+            self.context.layer_manager.calibration_layer.render_instructions = True
         self.context.state.calibration = CalibrationState()
 
     def _sync_calibration_state(self):

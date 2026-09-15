@@ -23,6 +23,14 @@ The application adheres to a strict access pattern for the `WorldState`:
 - **Manager-Only Writes:** Mutations to the `WorldState` are strictly reserved for specialized Manager classes (`PersistenceService`, `EnvironmentManager`, `SceneManager`).
 - **No Direct Setters:** Never modify `WorldState` attributes directly from handlers or scenes. Always delegate to the appropriate manager to ensure validation, persistence, and atomic updates.
 
+#### 2. Monotonic Timestamp Versioning (No Version Increments)
+
+All versioning across `WorldState`, rendering layers, and configuration MUST use monotonic timestamps (`time.monotonic_ns()`).
+
+- **Never Increment Counters:** Never use `version + 1`, `+= 1`, or integer counter "version bumps".
+- **Timestamp Recording:** When state changes or is invalidated, its version is updated to the current monotonic timestamp (`time.monotonic_ns()`).
+- **Timestamp Comparison:** Layers and renderers track freshness by comparing timestamps (`current_ts != last_ts` or `max(ts_a, ts_b)`). Integer increments break timestamp comparisons and cause subtle caching/invalidation failures.
+
 ### Coding Standards
 
 - **Python Style & Linting**: Use [Ruff](https://beta.ruff.rs/docs/). Run `ruff format .` and `ruff check . --fix`.

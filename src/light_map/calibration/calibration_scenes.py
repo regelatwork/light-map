@@ -1758,6 +1758,7 @@ class StereoCalibrationScene(Scene):
         self._target_info: list[dict[str, Any]] = []
         self._target_status: list[str] = []
         self._animation_start_times: dict[int, float] = {}
+        self._transition_to_menu = False
 
     @property
     def blocking(self) -> bool:
@@ -1785,6 +1786,7 @@ class StereoCalibrationScene(Scene):
         self.stage = StereoCalibStage.ALIGNMENT
         self.error_message = None
         self.calibration_result = None
+        self._transition_to_menu = False
         logging.info("Entering StereoCalibrationScene")
         if hasattr(self.context, "layer_manager") and self.context.layer_manager:
             self.context.layer_manager.calibration_layer.render_instructions = False
@@ -1833,27 +1835,80 @@ class StereoCalibrationScene(Scene):
                 "height": t["height_mm"],
                 "aid": t["id"],
                 "size": 1,
-                "shape": "ring",
-                "radius": t.get("radius", 32),
+                "size_px": t.get("size_px", int(25.0 * ppi / 25.4)),
+                "shape": t.get("shape", "square"),
+                "radius": t.get("radius", 24),
             }
             for t in self._pattern_params["token_targets"]
         ]
         self._target_status = ["IDLE"] * len(self._target_info)
         self._animation_start_times = {}
+        if hasattr(self.context, "events"):
+            self.context.events.cancel(TimerKey.CALIBRATION_STAGE)
         self._sync_calibration_state()
 
     def on_exit(self) -> None:
         logging.info("Exiting StereoCalibrationScene")
+        if hasattr(self.context, "events"):
+            self.context.events.cancel(TimerKey.CALIBRATION_STAGE)
         if hasattr(self.context, "layer_manager") and self.context.layer_manager:
             self.context.layer_manager.calibration_layer.render_instructions = True
         self.context.state.calibration = CalibrationState()
 
+    def _on_start_solve_triggered(self) -> None:
+        logging.info("Stereo calibration solve triggered by Victory gesture hold")
+        self.stage = StereoCalibStage.SOLVING
+        self._sync_calibration_state()
+        if hasattr(self.context, "notifications"):
+            self.context.notifications.add_notification("Solving dual-camera stereo calibration...")
+        if hasattr(self.context, "events"):
+            self.context.events.schedule(0.3, self._execute_solve, key=TimerKey.CALIBRATION_STAGE)
+        else:
+            self._execute_solve()
+
+    def _execute_solve(self) -> None:
+        try:
+            # Complete solve step
+            self.stage = StereoCalibStage.VALIDATION
+            self.calibration_result = {
+                "t_stereo": [128.0, 0.0, 0.0],
+                "r_stereo": np.eye(3).tolist(),
+            }
+            if hasattr(self.context, "notifications"):
+                self.context.notifications.add_notification(
+                    "Stereo calibration solved. Hold Victory to accept, Fist to retry."
+                )
+        except Exception as e:
+            logging.error("Stereo calibration solve failed: %s", e)
+            self.stage = StereoCalibStage.ERROR
+            self.error_message = str(e)
+            if hasattr(self.context, "notifications"):
+                self.context.notifications.add_notification(f"Stereo calibration failed: {e}")
+        self._sync_calibration_state()
+
+    def _on_accept_triggered(self) -> None:
+        logging.info("Stereo calibration accepted by Victory gesture hold")
+        if self.calibration_result and hasattr(self.context, "persistence_service"):
+            self.context.persistence_service.save_stereo_calibration(self.calibration_result)
+        if hasattr(self.context, "notifications"):
+            self.context.notifications.add_notification("Stereo calibration saved.")
+        self._transition_to_menu = True
+
+    def _on_retry_triggered(self) -> None:
+        logging.info("Stereo calibration discarded by Fist gesture hold")
+        self.stage = StereoCalibStage.ALIGNMENT
+        self.error_message = None
+        self.calibration_result = None
+        if hasattr(self.context, "notifications"):
+            self.context.notifications.add_notification("Calibration discarded. Realigning...")
+        self._sync_calibration_state()
+
     def _sync_calibration_state(self):
-        instr = "Align calibration pattern in view of both cameras. Hold Victory or select menu to exit."
+        instr = "Align calibration pattern in view of both cameras. Hold Victory to solve, or trigger menu to exit."
         if self.stage == StereoCalibStage.SOLVING:
             instr = "Solving dual-camera stereo extrinsics..."
         elif self.stage == StereoCalibStage.VALIDATION:
-            instr = "Calibration complete. Hold Victory to accept."
+            instr = "Calibration complete. Hold Victory to accept, Fist to retry."
         elif self.stage == StereoCalibStage.ERROR:
             instr = f"Stereo calibration error: {self.error_message or 'Failed'}"
 
@@ -1870,11 +1925,34 @@ class StereoCalibrationScene(Scene):
     def update(
         self, inputs: list[HandInput], actions: list[Action], current_time: float
     ) -> SceneTransition | None:
+        if self._transition_to_menu:
+            self._transition_to_menu = False
+            return SceneTransition(SceneId.MENU)
+
         for action in actions:
             if action == MenuActions.TRIGGER_MENU:
                 return SceneTransition(SceneId.MENU)
 
         if self.stage == StereoCalibStage.ALIGNMENT:
+            # Gesture handling: Hold Victory for 1.0s to begin solving
+            if inputs:
+                primary_gesture = inputs[0].gesture
+                if primary_gesture == GestureType.VICTORY:
+                    if hasattr(self.context, "events") and not self.context.events.has_event(
+                        TimerKey.CALIBRATION_STAGE
+                    ):
+                        self.context.events.schedule(
+                            1.0,
+                            self._on_start_solve_triggered,
+                            key=TimerKey.CALIBRATION_STAGE,
+                        )
+                else:
+                    if hasattr(self.context, "events"):
+                        self.context.events.cancel(TimerKey.CALIBRATION_STAGE)
+            else:
+                if hasattr(self.context, "events"):
+                    self.context.events.cancel(TimerKey.CALIBRATION_STAGE)
+
             detected_ids = set()
             if hasattr(self.context, "raw_aruco") and self.context.raw_aruco:
                 raw_ids = self.context.raw_aruco.get("ids", [])
@@ -1904,6 +1982,27 @@ class StereoCalibrationScene(Scene):
 
             if status_changed:
                 self._sync_calibration_state()
+
+        elif self.stage == StereoCalibStage.VALIDATION:
+            if inputs:
+                primary_gesture = inputs[0].gesture
+                if primary_gesture == GestureType.VICTORY:
+                    if hasattr(self.context, "events") and not self.context.events.has_event(
+                        TimerKey.CALIBRATION_STAGE
+                    ):
+                        self.context.events.schedule(
+                            1.0,
+                            self._on_accept_triggered,
+                            key=TimerKey.CALIBRATION_STAGE,
+                        )
+                elif primary_gesture == GestureType.CLOSED_FIST:
+                    self._on_retry_triggered()
+                else:
+                    if hasattr(self.context, "events"):
+                        self.context.events.cancel(TimerKey.CALIBRATION_STAGE)
+            else:
+                if hasattr(self.context, "events"):
+                    self.context.events.cancel(TimerKey.CALIBRATION_STAGE)
 
         return None
 

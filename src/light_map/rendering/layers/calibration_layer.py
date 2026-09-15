@@ -81,8 +81,12 @@ class CalibrationLayer(Layer):
                 token_size = info.get("size", 1)
                 rect_size = int(token_size * ppi)
                 half_size = rect_size // 2
-                is_ring = info.get("shape") == "ring"
+                shape = info.get("shape", "rect")
+                is_ring = shape == "ring"
+                is_square = shape in ("square", "custom_square")
                 radius = int(info.get("radius", max(24, half_size)))
+                target_size = int(info.get("size_px", rect_size))
+                half_t_size = target_size // 2
 
                 if is_ring:
                     if status == "VALID":
@@ -105,6 +109,36 @@ class CalibrationLayer(Layer):
                     elif status == "UNKNOWN":
                         cv2.circle(canvas, (int(tx), int(ty)), radius, (150, 150, 150, 255), 2)
                     # Note: in IDLE state, the base pattern image already renders the illuminated rings and labels.
+                elif is_square:
+                    if status == "VALID":
+                        # Filled illuminated green square on lock
+                        bx1 = int(tx - half_t_size)
+                        by1 = int(ty - half_t_size)
+                        bx2 = int(tx + half_t_size)
+                        by2 = int(ty + half_t_size)
+                        cv2.rectangle(canvas, (bx1, by1), (bx2, by2), (0, 220, 0, 255), -1)
+                        cv2.rectangle(canvas, (bx1, by1), (bx2, by2), (0, 160, 0, 255), 3)
+                        cv2.line(canvas, (bx1, int(ty)), (bx2, int(ty)), (255, 255, 255, 255), 2)
+                        cv2.line(canvas, (int(tx), by1), (int(tx), by2), (255, 255, 255, 255), 2)
+                        height = info.get("height", 0.0)
+                        label = info.get("name", "Locked")
+                        draw_text_with_background(
+                            canvas,
+                            f"{label}: {height:.0f}mm LOCKED",
+                            (bx1 - 10, by1 - 20),
+                            cv2.FONT_HERSHEY_SIMPLEX,
+                            0.52,
+                            (0, 255, 0),
+                            2,
+                            bg_color=(20, 60, 20),
+                        )
+                    elif status == "UNKNOWN":
+                        bx1 = int(tx - half_t_size)
+                        by1 = int(ty - half_t_size)
+                        bx2 = int(tx + half_t_size)
+                        by2 = int(ty + half_t_size)
+                        cv2.rectangle(canvas, (bx1, by1), (bx2, by2), (150, 150, 150, 255), 2)
+                    # Note: in IDLE state, base pattern renders the square targets and badges.
                 else:
                     if status == "VALID":
                         color = self.target_valid_color

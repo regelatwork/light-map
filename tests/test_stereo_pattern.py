@@ -42,7 +42,16 @@ def test_generate_stereo_calibration_pattern_dimensions_and_metadata():
     assert token_names == ["Cricket", "Lace", "Shikra", "Verita"]
     for t in tokens:
         assert t["height_mm"] == 50.0
-        assert t["shape"] == "ring"
+        assert t["shape"] == "square"
+        assert t["size_px"] >= 24
+
+    # Verify targets span across the display (at least 70% width and height coverage)
+    xs = [t["x"] for t in tokens]
+    ys = [t["y"] for t in tokens]
+    width_coverage = (max(xs) - min(xs)) / width
+    height_coverage = (max(ys) - min(ys)) / height
+    assert width_coverage >= 0.70, f"Width coverage {width_coverage:.2f} too low"
+    assert height_coverage >= 0.65, f"Height coverage {height_coverage:.2f} too low"
 
 
 def test_generate_stereo_calibration_pattern_optical_markers_detectable():
@@ -61,8 +70,8 @@ def test_generate_stereo_calibration_pattern_optical_markers_detectable():
         assert expected_id in detected_ids, f"Projected marker {expected_id} not detected"
 
 
-def test_calibration_layer_renders_target_rings():
-    """Verify CalibrationLayer renders target rings when shape is ring."""
+def test_calibration_layer_renders_target_squares():
+    """Verify CalibrationLayer renders target squares when shape is square."""
     config = AppConfig(width=800, height=600, projector_matrix=np.eye(3), projector_ppi=96.0)
     state = WorldState()
     layer = CalibrationLayer(state, config, render_instructions=False)
@@ -77,8 +86,8 @@ def test_calibration_layer_renders_target_rings():
                 "height": 50.0,
                 "aid": 0,
                 "size": 1,
-                "shape": "ring",
-                "radius": 30,
+                "shape": "square",
+                "size_px": 40,
             }
         ],
         target_status=["VALID"],
@@ -90,17 +99,19 @@ def test_calibration_layer_renders_target_rings():
     assert canvas.shape == (600, 800, 4)
     center_pixel = canvas[200, 200]
     assert center_pixel[3] == 255  # Alpha channel is solid
+    # When VALID, center area should be illuminated green
+    assert canvas[200, 200][1] > 180  # Green channel active
 
 
-def test_calibration_layer_preserves_idle_pattern_rings():
-    """Verify CalibrationLayer does not overwrite pattern rings in pure white during IDLE."""
+def test_calibration_layer_preserves_idle_pattern_squares():
+    """Verify CalibrationLayer does not overwrite pattern squares in pure white during IDLE."""
     config = AppConfig(width=800, height=600, projector_matrix=np.eye(3), projector_ppi=96.0)
     state = WorldState()
     layer = CalibrationLayer(state, config, render_instructions=False)
 
     base_img = np.full((600, 800, 3), 255, dtype=np.uint8)
-    # Draw a non-white ring on base_img
-    cv2.circle(base_img, (200, 200), 30, (180, 40, 10), 3)
+    # Draw a non-white square on base_img
+    cv2.rectangle(base_img, (180, 180), (220, 220), (180, 40, 10), 3)
 
     state.calibration = CalibrationState(
         stage="ALIGNMENT",
@@ -113,8 +124,8 @@ def test_calibration_layer_preserves_idle_pattern_rings():
                 "height": 50.0,
                 "aid": 0,
                 "size": 1,
-                "shape": "ring",
-                "radius": 30,
+                "shape": "square",
+                "size_px": 40,
             }
         ],
         target_status=["IDLE"],
@@ -122,11 +133,11 @@ def test_calibration_layer_preserves_idle_pattern_rings():
 
     patches = layer._generate_patches(0.0)
     canvas = patches[0].data
-    # Check pixel on the ring edge (200 + 30, 200)
-    ring_pixel = canvas[200, 230]
-    # Ring pixel should NOT be white [255, 255, 255, 255]
-    assert not np.array_equal(ring_pixel[:3], [255, 255, 255])
-    assert np.array_equal(ring_pixel[:3], [180, 40, 10])
+    # Check pixel on the square edge (220, 200)
+    edge_pixel = canvas[200, 220]
+    # Square edge pixel should NOT be white [255, 255, 255, 255]
+    assert not np.array_equal(edge_pixel[:3], [255, 255, 255])
+    assert np.array_equal(edge_pixel[:3], [180, 40, 10])
 
 
 def test_stereo_calibration_scene_populates_pattern_and_targets():
@@ -149,7 +160,7 @@ def test_stereo_calibration_scene_populates_pattern_and_targets():
     assert cal.pattern_image.shape == (1080, 1920, 3)
     assert len(cal.target_info) == 4
     assert [t["aid"] for t in cal.target_info] == [0, 1, 2, 3]
-    assert all(t["shape"] == "ring" for t in cal.target_info)
+    assert all(t["shape"] == "square" for t in cal.target_info)
     assert cal.target_status == ["IDLE", "IDLE", "IDLE", "IDLE"]
 
 
@@ -173,3 +184,40 @@ def test_stereo_calibration_scene_updates_target_status_on_detection():
     assert cal.target_status[1] == "IDLE"
     assert cal.target_status[2] == "VALID"
     assert cal.target_status[3] == "IDLE"
+
+
+def test_stereo_calibration_scene_victory_gesture_triggers_solve():
+    """Verify holding Victory gesture in ALIGNMENT schedules solve and transitions stage."""
+    from unittest.mock import MagicMock
+
+    from light_map.core.common_types import GestureType, TimerKey
+    from light_map.core.scene import HandInput
+
+    mock_context = MagicMock()
+    mock_context.app_config = AppConfig(
+        width=1920, height=1080, projector_matrix=np.eye(3), projector_ppi=96.0
+    )
+    mock_context.state = WorldState()
+    mock_context.events.has_event.return_value = False
+
+    scene = StereoCalibrationScene(mock_context)
+    scene.on_enter()
+
+    hand_input = HandInput(
+        gesture=GestureType.VICTORY,
+        proj_pos=(100, 100),
+        unit_direction=(0.0, 1.0),
+        raw_landmarks=None,
+    )
+    scene.update(inputs=[hand_input], actions=[], current_time=1.0)
+
+    # Verify 1.0s timer was scheduled with CALIBRATION_STAGE key
+    mock_context.events.schedule.assert_called_once()
+    args, kwargs = mock_context.events.schedule.call_args
+    assert args[0] == 1.0
+    assert kwargs["key"] == TimerKey.CALIBRATION_STAGE
+
+    # Trigger callback
+    callback = args[1]
+    callback()
+    assert scene.stage in (StereoCalibStage.SOLVING, StereoCalibStage.VALIDATION)

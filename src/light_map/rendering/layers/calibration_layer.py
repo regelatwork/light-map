@@ -81,6 +81,8 @@ class CalibrationLayer(Layer):
                 token_size = info.get("size", 1)
                 rect_size = int(token_size * ppi)
                 half_size = rect_size // 2
+                is_ring = info.get("shape") == "ring"
+                radius = int(info.get("radius", max(24, half_size)))
 
                 color = self.target_idle_color
                 thickness = 2
@@ -92,10 +94,12 @@ class CalibrationLayer(Layer):
                     label = info.get("name", "Locked")
 
                     height = info.get("height", 0.0)
+                    top_label_y = int(ty - radius - 20) if is_ring else int(ty - half_size - 40)
+                    top_label_x = int(tx - radius) if is_ring else int(tx - half_size)
                     draw_text_with_background(
                         canvas,
                         f"{label}: {height}mm",
-                        (int(tx - half_size), int(ty - half_size - 40)),
+                        (top_label_x, top_label_y),
                         cv2.FONT_HERSHEY_SIMPLEX,
                         0.5,
                         self.success_color,
@@ -108,18 +112,39 @@ class CalibrationLayer(Layer):
                     thickness = 1
 
                 bgra_color = (color[0], color[1], color[2], 255)
-                cv2.rectangle(
-                    canvas,
-                    (int(tx - half_size), int(ty - half_size)),
-                    (int(tx + half_size), int(ty + half_size)),
-                    bgra_color,
-                    thickness,
-                )
+                if is_ring:
+                    if thickness == -1:
+                        # Filled illuminated ring on lock
+                        cv2.circle(canvas, (int(tx), int(ty)), radius, bgra_color, -1)
+                        cv2.circle(canvas, (int(tx), int(ty)), radius // 2, (0, 180, 0, 255), 2)
+                    else:
+                        cv2.circle(canvas, (int(tx), int(ty)), radius, bgra_color, 2)
+                        cv2.circle(canvas, (int(tx), int(ty)), radius // 2, bgra_color, 1)
+                        ch = int(radius * 1.3)
+                        cv2.line(
+                            canvas, (int(tx - ch), int(ty)), (int(tx + ch), int(ty)), bgra_color, 1
+                        )
+                        cv2.line(
+                            canvas, (int(tx), int(ty - ch)), (int(tx), int(ty + ch)), bgra_color, 1
+                        )
+
+                    bottom_label_x = int(tx - radius)
+                    bottom_label_y = int(ty + radius + 30)
+                else:
+                    cv2.rectangle(
+                        canvas,
+                        (int(tx - half_size), int(ty - half_size)),
+                        (int(tx + half_size), int(ty + half_size)),
+                        bgra_color,
+                        thickness,
+                    )
+                    bottom_label_x = int(tx - half_size)
+                    bottom_label_y = int(ty + half_size + 45)
 
                 draw_text_with_background(
                     canvas,
                     label,
-                    (int(tx - half_size), int(ty + half_size) + 45),
+                    (bottom_label_x, bottom_label_y),
                     cv2.FONT_HERSHEY_SIMPLEX,
                     0.5,
                     color if thickness > 0 else self.success_color,
@@ -132,19 +157,28 @@ class CalibrationLayer(Layer):
                     elapsed = current_time - start_time
                     if 0 < elapsed < 0.5:
                         growth = int(20 * (1.0 - elapsed / 0.5))
-                        cv2.rectangle(
-                            canvas,
-                            (
-                                int(tx - half_size - growth),
-                                int(ty - half_size - growth),
-                            ),
-                            (
-                                int(tx + half_size + growth),
-                                int(ty + half_size + growth),
-                            ),
-                            (0, 255, 0, 255),
-                            2,
-                        )
+                        if is_ring:
+                            cv2.circle(
+                                canvas,
+                                (int(tx), int(ty)),
+                                int(radius + growth),
+                                (0, 255, 0, 255),
+                                2,
+                            )
+                        else:
+                            cv2.rectangle(
+                                canvas,
+                                (
+                                    int(tx - half_size - growth),
+                                    int(ty - half_size - growth),
+                                ),
+                                (
+                                    int(tx + half_size + growth),
+                                    int(ty + half_size + growth),
+                                ),
+                                (0, 255, 0, 255),
+                                2,
+                            )
 
         # 3. Reprojection residuals
         if cal.reprojection_error > 0:

@@ -1753,6 +1753,11 @@ class StereoCalibrationScene(Scene):
         self.stage: StereoCalibStage = StereoCalibStage.ALIGNMENT
         self.error_message: str | None = None
         self.calibration_result: dict[str, Any] | None = None
+        self._pattern_image: np.ndarray | None = None
+        self._pattern_params: dict[str, Any] | None = None
+        self._target_info: list[dict[str, Any]] = []
+        self._target_status: list[str] = []
+        self._animation_start_times: dict[int, float] = {}
 
     @property
     def blocking(self) -> bool:
@@ -1775,12 +1780,66 @@ class StereoCalibrationScene(Scene):
         ]
 
     def on_enter(self, payload: Any = None) -> None:
+        from light_map.rendering.stereo_pattern import generate_stereo_calibration_pattern
+
         self.stage = StereoCalibStage.ALIGNMENT
         self.error_message = None
         self.calibration_result = None
         logging.info("Entering StereoCalibrationScene")
         if hasattr(self.context, "layer_manager") and self.context.layer_manager:
             self.context.layer_manager.calibration_layer.render_instructions = False
+
+        w = (
+            self.context.app_config.width
+            if hasattr(self.context, "app_config")
+            and isinstance(self.context.app_config.width, int)
+            else 1920
+        )
+        h = (
+            self.context.app_config.height
+            if hasattr(self.context, "app_config")
+            and isinstance(self.context.app_config.height, int)
+            else 1080
+        )
+        ppi = (
+            getattr(self.context.app_config, "projector_ppi", 96.0)
+            if hasattr(self.context, "app_config")
+            else 96.0
+        )
+        if not isinstance(ppi, (int, float)) or ppi <= 0:
+            ppi = 96.0
+
+        token_names = {}
+        token_heights = {}
+        if hasattr(self.context, "map_config_manager") and self.context.map_config_manager:
+            for aid in range(4):
+                try:
+                    resolved = self.context.map_config_manager.resolve_token_profile(aid)
+                    if isinstance(resolved.name, str):
+                        token_names[aid] = resolved.name
+                    if isinstance(resolved.height_mm, (int, float)):
+                        token_heights[aid] = float(resolved.height_mm)
+                except Exception:
+                    pass
+
+        self._pattern_image, self._pattern_params = generate_stereo_calibration_pattern(
+            w, h, ppi=ppi, token_names=token_names or None, token_heights=token_heights or None
+        )
+        self._target_info = [
+            {
+                "x": t["x"],
+                "y": t["y"],
+                "name": t["name"],
+                "height": t["height_mm"],
+                "aid": t["id"],
+                "size": 1,
+                "shape": "ring",
+                "radius": t.get("radius", 32),
+            }
+            for t in self._pattern_params["token_targets"]
+        ]
+        self._target_status = ["IDLE"] * len(self._target_info)
+        self._animation_start_times = {}
         self._sync_calibration_state()
 
     def on_exit(self) -> None:
@@ -1802,6 +1861,10 @@ class StereoCalibrationScene(Scene):
             stage=self.stage.value,
             instruction_text=instr,
             instruction_pos=(50, 50),
+            pattern_image=self._pattern_image,
+            target_info=self._target_info.copy(),
+            target_status=self._target_status.copy(),
+            animation_start_times=self._animation_start_times.copy(),
         )
 
     def update(
@@ -1810,6 +1873,38 @@ class StereoCalibrationScene(Scene):
         for action in actions:
             if action == MenuActions.TRIGGER_MENU:
                 return SceneTransition(SceneId.MENU)
+
+        if self.stage == StereoCalibStage.ALIGNMENT:
+            detected_ids = set()
+            if hasattr(self.context, "raw_aruco") and self.context.raw_aruco:
+                raw_ids = self.context.raw_aruco.get("ids", [])
+                for mid in raw_ids:
+                    if isinstance(mid, (list, np.ndarray)):
+                        detected_ids.add(int(mid[0]))
+                    else:
+                        detected_ids.add(int(mid))
+            if (
+                hasattr(self.context, "state")
+                and self.context.state
+                and hasattr(self.context.state, "tokens")
+            ):
+                for tok in self.context.state.tokens:
+                    detected_ids.add(tok.id)
+
+            status_changed = False
+            for idx, info in enumerate(self._target_info):
+                aid = info.get("aid")
+                is_detected = aid in detected_ids
+                new_status = "VALID" if is_detected else "IDLE"
+                if new_status != self._target_status[idx]:
+                    self._target_status[idx] = new_status
+                    status_changed = True
+                    if new_status == "VALID":
+                        self._animation_start_times[idx] = current_time
+
+            if status_changed:
+                self._sync_calibration_state()
+
         return None
 
     def render(self, frame: np.ndarray) -> np.ndarray:

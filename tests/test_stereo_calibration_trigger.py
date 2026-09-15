@@ -156,7 +156,7 @@ def test_persistence_service_save_stereo_calibration(tmp_path):
 
 
 def test_scene_manager_reflects_scene_name():
-    """Verify SceneManager records class name in state._scene_atom."""
+    """Verify SceneManager records canonical SceneId value in state._scene_atom."""
     mock_context = MagicMock()
     mock_context.app_config = AppConfig(width=1920, height=1080, projector_matrix=np.eye(3))
     mock_state = MagicMock()
@@ -165,7 +165,34 @@ def test_scene_manager_reflects_scene_name():
     manager = SceneManager(mock_context, mock_state)
     manager.transition_to(SceneId.CALIBRATE_STEREO)
     assert manager.current_scene_id == SceneId.CALIBRATE_STEREO
-    mock_state._scene_atom.update.assert_called_with("StereoCalibrationScene")
+    mock_state._scene_atom.update.assert_called_with(SceneId.CALIBRATE_STEREO.value)
+
+
+def test_stereo_calibration_scene_properties_and_layers():
+    """Verify StereoCalibrationScene blocks background, hides tokens, and provides calibration layers."""
+    from light_map.calibration.calibration_scenes import (
+        StereoCalibrationScene,
+        StereoCalibStage,
+    )
+
+    mock_context = MagicMock()
+    scene = StereoCalibrationScene(mock_context)
+
+    assert scene.blocking is True
+    assert scene.show_tokens is False
+
+    mock_app = MagicMock()
+    layers = scene.get_active_layers(mock_app)
+    assert mock_app.calibration_layer in layers
+    assert mock_app.map_layer not in layers
+    assert mock_app.background_composite not in layers
+
+    scene.on_enter()
+    assert scene.stage == StereoCalibStage.ALIGNMENT
+    mock_context.state.calibration = mock_context.state.calibration
+    assert mock_context.state.calibration is not None
+
+    scene.on_exit()
 
 
 def test_toggle_stereo_enums_exist():

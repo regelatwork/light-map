@@ -86,8 +86,8 @@ class SceneManager:
         self.current_scene = self.scenes[target_id]
         self.current_scene.on_enter(payload)
 
-        # Update WorldState to reflect the new active scene name
-        self.state._scene_atom.update(self.current_scene.__class__.__name__)
+        # Update WorldState to reflect the new active scene name using canonical SceneId
+        self.state._scene_atom.update(self.current_scene_id.value)
 
     def handle_transition(self, transition: SceneTransition):
         """Processes a SceneTransition object requested by a scene."""

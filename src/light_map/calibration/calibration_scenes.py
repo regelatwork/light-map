@@ -4,7 +4,7 @@ import logging
 import math
 import os
 from collections import Counter
-from enum import Enum, auto
+from enum import Enum, StrEnum, auto
 from typing import TYPE_CHECKING, Any
 
 import cv2
@@ -19,7 +19,14 @@ from light_map.calibration.calibration_logic import (
     calculate_ppi_from_frame,
     calibrate_extrinsics,
 )
-from light_map.core.common_types import Action, AppConfig, SceneId, TimerKey
+from light_map.core.common_types import (
+    Action,
+    AppConfig,
+    CalibrationState,
+    MenuActions,
+    SceneId,
+    TimerKey,
+)
 from light_map.core.scene import Scene, SceneTransition
 from light_map.input.gestures import GestureType
 from light_map.input.map_interaction import MapInteractionController
@@ -1730,27 +1737,75 @@ class Projector3DCalibrationScene(Scene):
             self.context.notifications.add_notification("Calibration Failed!")
 
 
+class StereoCalibStage(StrEnum):
+    ALIGNMENT = "ALIGNMENT"
+    SOLVING = "SOLVING"
+    VALIDATION = "VALIDATION"
+    DONE = "DONE"
+    ERROR = "ERROR"
+
+
 class StereoCalibrationScene(Scene):
     """Handles unified dual-camera stereo calibration and auto-discovery."""
 
     def __init__(self, context: AppContext):
         super().__init__(context)
-        self.stage = "ALIGNMENT"  # ALIGNMENT | SOLVING | VALIDATION | DONE | ERROR
+        self.stage: StereoCalibStage = StereoCalibStage.ALIGNMENT
         self.error_message: str | None = None
         self.calibration_result: dict[str, Any] | None = None
 
+    @property
+    def blocking(self) -> bool:
+        """Calibration scenes should have a black background (blocking lower layers)."""
+        return True
+
+    @property
+    def show_tokens(self) -> bool:
+        """Calibration scenes should not show ghost tokens."""
+        return False
+
+    def get_active_layers(self, app: InteractiveApp) -> list[Layer]:
+        """Returns the layers active during stereo calibration."""
+        return [
+            app.calibration_layer,
+            app.token_layer,
+            app.menu_layer,
+            app.cursor_layer,
+            app.notification_layer,
+        ]
+
     def on_enter(self, payload: Any = None) -> None:
-        self.stage = "ALIGNMENT"
+        self.stage = StereoCalibStage.ALIGNMENT
         self.error_message = None
         self.calibration_result = None
         logging.info("Entering StereoCalibrationScene")
+        self._sync_calibration_state()
 
     def on_exit(self) -> None:
         logging.info("Exiting StereoCalibrationScene")
+        self.context.state.calibration = CalibrationState()
+
+    def _sync_calibration_state(self):
+        instr = "Align calibration pattern in view of both cameras. Hold Victory or select menu to exit."
+        if self.stage == StereoCalibStage.SOLVING:
+            instr = "Solving dual-camera stereo extrinsics..."
+        elif self.stage == StereoCalibStage.VALIDATION:
+            instr = "Calibration complete. Hold Victory to accept."
+        elif self.stage == StereoCalibStage.ERROR:
+            instr = f"Stereo calibration error: {self.error_message or 'Failed'}"
+
+        self.context.state.calibration = CalibrationState(
+            stage=self.stage.value,
+            instruction_text=instr,
+            instruction_pos=(50, 50),
+        )
 
     def update(
         self, inputs: list[HandInput], actions: list[Action], current_time: float
     ) -> SceneTransition | None:
+        for action in actions:
+            if action == MenuActions.TRIGGER_MENU:
+                return SceneTransition(SceneId.MENU)
         return None
 
     def render(self, frame: np.ndarray) -> np.ndarray:

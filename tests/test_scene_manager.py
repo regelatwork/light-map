@@ -44,8 +44,8 @@ def test_scene_manager_transition(mock_context, state):
     viewing_scene.on_enter.assert_called_once_with(payload)
     assert manager.current_scene_id == SceneId.VIEWING
     assert manager.current_scene == viewing_scene
-    # Verify WorldState update (class name of MagicMock is 'MagicMock')
-    assert state.current_scene_name == "MagicMock"
+    # Verify WorldState update (canonical SceneId value)
+    assert state.current_scene_name == SceneId.VIEWING.value
 
 
 def test_scene_manager_current_scene_name(mock_context, state):

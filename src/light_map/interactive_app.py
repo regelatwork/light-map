@@ -318,6 +318,10 @@ class InteractiveApp:
 
     @property
     def current_scene_name(self) -> str:
+        if getattr(self, "_current_scene_name_override", None) is not None:
+            return self._current_scene_name_override
+        if hasattr(self, "scene_manager") and self.scene_manager:
+            return self.scene_manager.current_scene_name
         return self.current_scene.__class__.__name__
 
     @current_scene_name.setter
@@ -325,6 +329,7 @@ class InteractiveApp:
         # Legacy support for tests that want to force a scene name
         # We don't actually change the scene class, just the name reported by state
         # if they really want to mock it.
+        self._current_scene_name_override = value
         self.state.current_scene_name = value
 
     @property
@@ -489,7 +494,12 @@ class InteractiveApp:
             rem = self.events.get_remaining_time(TimerKey.SUMMON_MENU_STEP_2)
             summon_p = max(0.0, 1.0 - (rem / config_vars.SUMMON_STEP_2_TIME))
         elif self.events.has_event(TimerKey.SUMMON_MENU):
-            if self.current_scene_name == "MapScene":
+            if self.current_scene_name in (
+                SceneId.MAP,
+                SceneId.VIEWING,
+                "MapScene",
+                "ViewingScene",
+            ):
                 rem = self.events.get_remaining_time(TimerKey.SUMMON_MENU)
                 summon_p = max(0.0, 1.0 - (rem / config_vars.SUMMON_TIME))
         state.summon_progress = summon_p
@@ -511,6 +521,7 @@ class InteractiveApp:
             )
 
     def _switch_scene(self, transition: SceneTransition):
+        self._current_scene_name_override = None
         self.scene_manager.handle_transition(transition)
 
     def _sync_vision(self, state: WorldState):

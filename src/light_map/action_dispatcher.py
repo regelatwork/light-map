@@ -134,6 +134,8 @@ def handle_reset_zoom(
     app: "InteractiveApp", payload: dict[str, Any], state: Optional["WorldState"] = None
 ) -> Optional["SceneTransition"]:
     app.map_system.reset_zoom_to_base()
+    if state is not None:
+        state.update_viewport(app.map_system.state.to_viewport())
     app.notifications.add_notification("Zoom Reset to 1:1")
     return None
 
@@ -207,6 +209,8 @@ def handle_set_viewport(
         app.map_system.state.y = payload["y"]
     if "rotation" in payload:
         app.map_system.state.rotation = payload["rotation"]
+    if state is not None:
+        state.update_viewport(app.map_system.state.to_viewport())
     return None
 
 
@@ -339,6 +343,8 @@ def handle_zoom(
 ) -> Optional["SceneTransition"]:
     delta = payload.get("delta", 0.0)
     app.map_system.zoom_pinned(1.0 + delta, (app.config.width // 2, app.config.height // 2))
+    if state is not None:
+        state.update_viewport(app.map_system.state.to_viewport())
     return None
 
 

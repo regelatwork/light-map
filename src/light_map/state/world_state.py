@@ -361,13 +361,19 @@ class WorldState:
     def config_version(self) -> int:
         return self._config_version_atom.timestamp
 
+    def invalidate_config(self) -> int:
+        """Records a fresh monotonic timestamp for configuration changes."""
+        ts = time.monotonic_ns()
+        self._config_version_atom.update(ts, force_timestamp=ts)
+        return ts
+
     @property
     def config_data(self) -> int:
-        return self._config_version_atom.value
+        return self._config_version_atom.timestamp
 
     @config_data.setter
     def config_data(self, value: int):
-        self._config_version_atom.update(value)
+        self.invalidate_config()
 
     @property
     def projector_pose(self) -> ProjectorPose:

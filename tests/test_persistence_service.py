@@ -49,7 +49,7 @@ def test_load_map_updates_state(mock_app):
 
 def test_update_token_persists_and_updates_version(mock_app):
     service = PersistenceService(mock_app)
-    initial_version = mock_app.state.config_data
+    initial_version = mock_app.state.config_version
 
     token_id = 42
     kwargs = {"name": "New Name", "color": "#FF0000", "is_map_override": False}
@@ -70,12 +70,12 @@ def test_update_token_persists_and_updates_version(mock_app):
         color="#FF0000",
     )
 
-    assert mock_app.state.config_data == initial_version + 1
+    assert mock_app.state.config_version > initial_version
 
 
 def test_update_grid_updates_version(mock_app):
     service = PersistenceService(mock_app)
-    initial_version = mock_app.state.config_data
+    initial_version = mock_app.state.config_version
 
     map_path = "/fake/path/map.svg"
     mock_app.current_map_path = os.path.abspath(map_path)
@@ -91,7 +91,7 @@ def test_update_grid_updates_version(mock_app):
 
     mock_app.map_config.save.assert_called_once()
     mock_app.refresh_base_scale.assert_called_once()
-    assert mock_app.state.config_data == initial_version + 1
+    assert mock_app.state.config_version > initial_version
 
 
 def test_update_grid_invalid_type(mock_app):

@@ -407,15 +407,8 @@ class InteractiveApp:
 
         self.events.advance(dt)
         self.app_context.notifications.get_active_notifications()
-        state.update_viewport(self.map_system.state.to_viewport())
 
-        # Update token screen coordinates
-        for token in state.tokens:
-            token.screen_x, token.screen_y = self.map_system.world_to_screen(
-                token.world_x, token.world_y
-            )
-
-        # Process Remote Actions
+        # Process Remote Actions before viewport and scene updates
         if state.pending_actions:
             for action_data in state.pending_actions:
                 action_name = action_data.get("action")
@@ -425,6 +418,9 @@ class InteractiveApp:
                 elif action_name:
                     actions.append(action_name)
             state.pending_actions.clear()
+
+        # Synchronize viewport and token screen coordinates
+        self._sync_viewport_and_tokens(state)
 
         self.input_coordinator.update(state, current_time)
         self._update_dwell_state(state)
@@ -438,6 +434,9 @@ class InteractiveApp:
         if transition:
             self._handle_payloads(transition.payload, state)
             self._switch_scene(transition)
+
+        # Ensure viewport and tokens remain in sync if scene update modified viewport
+        self._sync_viewport_and_tokens(state)
 
         # Dashboard Tactical View logic: Calculate cover for the selected token
         # if we aren't already in ExclusiveVisionScene (which handles its own).
@@ -507,6 +506,13 @@ class InteractiveApp:
                 opacity=new_opacity,
                 quality=new_quality,
                 filepath=self.current_map_path,
+            )
+
+    def _sync_viewport_and_tokens(self, state: WorldState) -> None:
+        state.update_viewport(self.map_system.state.to_viewport())
+        for token in state.tokens:
+            token.screen_x, token.screen_y = self.map_system.world_to_screen(
+                token.world_x, token.world_y
             )
 
     def _switch_scene(self, transition: SceneTransition):

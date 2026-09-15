@@ -3,6 +3,7 @@ from unittest.mock import MagicMock
 import numpy as np
 import pytest
 
+from light_map.core.common_types import Token
 from light_map.interactive_app import AppConfig, InteractiveApp
 
 
@@ -98,3 +99,50 @@ def test_handle_set_viewport_action_partial(mock_config, monkeypatch):
     assert app.map_system.state.zoom == 1.5
     assert app.map_system.state.x == 0.0  # Unchanged
     assert app.map_system.state.y == 0.0  # Unchanged
+
+
+def test_handle_set_viewport_updates_world_state_in_same_frame(mock_config, monkeypatch):
+    monkeypatch.setattr(
+        InteractiveApp,
+        "_load_camera_calibration",
+        lambda self: (np.eye(3), np.zeros(5), np.zeros(3), np.zeros(3)),
+    )
+
+    app = InteractiveApp(mock_config)
+    ws = app.state
+
+    app.current_scene = MagicMock()
+    app.current_scene.render.return_value = (
+        np.zeros((750, 1000, 3), dtype=np.uint8),
+        1,
+    )
+    app.current_scene.update.return_value = None
+    app.current_scene.get_active_layers.return_value = []
+
+    token = Token(id=1, world_x=100.0, world_y=100.0, screen_x=0, screen_y=0)
+    ws.tokens = [token]
+
+    initial_vp_version = ws.viewport_version
+
+    ws.pending_actions.append(
+        {
+            "action": "SET_VIEWPORT",
+            "x": 500.0,
+            "y": 375.0,
+            "zoom": 2.0,
+            "rotation": 0.0,
+        }
+    )
+
+    app.process_state(ws, [])
+
+    # Assert WorldState viewport was updated in THIS exact render frame!
+    assert ws.viewport.x == 500.0
+    assert ws.viewport.y == 375.0
+    assert ws.viewport.zoom == 2.0
+    assert ws.viewport_version > initial_vp_version
+
+    # Assert token screen coordinates were transformed using the new viewport in this frame!
+    expected_sx, expected_sy = app.map_system.world_to_screen(100.0, 100.0)
+    assert token.screen_x == expected_sx
+    assert token.screen_y == expected_sy

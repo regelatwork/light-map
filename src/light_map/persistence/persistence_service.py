@@ -232,8 +232,8 @@ class PersistenceService:
 
         # Trigger WorldState update for tokens to reflect config changes
         # This assumes WorldState.tokens will be refreshed by the main loop or here.
-        # Force a config version increment in WorldState
-        self.state.config_data += 1
+        # Force a config version update in WorldState via monotonic timestamp
+        self.state.invalidate_config()
 
     def update_grid(self, map_path: str, **kwargs):
         """Updates grid configuration for a map."""
@@ -285,7 +285,7 @@ class PersistenceService:
                 if self.app.environment_manager:
                     self.app.environment_manager.rebuild_visibility_stack(entry, map_path)
 
-            self.state.config_data += 1
+            self.state.invalidate_config()
 
     def toggle_grid(self, map_path: str):
         """Toggles the grid visibility for a map."""
@@ -299,7 +299,7 @@ class PersistenceService:
                 self.state.grid_metadata = replace(
                     self.state.grid_metadata, overlay_visible=entry.grid_overlay_visible
                 )
-            self.state.config_data += 1
+            self.state.invalidate_config()
             return entry.grid_overlay_visible
         return None
 
@@ -313,7 +313,7 @@ class PersistenceService:
 
             if self.app.current_map_path == map_path:
                 self.state.grid_metadata = replace(self.state.grid_metadata, overlay_color=color)
-            self.state.config_data += 1
+            self.state.invalidate_config()
 
     def delete_token_override(self, token_id: int):
         """Deletes a map-specific token override."""
@@ -321,28 +321,28 @@ class PersistenceService:
         if token_id is not None and map_file:
             self.map_config.delete_map_aruco_override(map_file, token_id)
             logging.info(f"PersistenceService: Deleted MAP override for token {token_id}")
-            self.state.config_data += 1
+            self.state.invalidate_config()
 
     def delete_token(self, token_id: int):
         """Deletes a global token definition."""
         if token_id is not None:
             self.map_config.delete_global_aruco_definition(token_id)
             logging.info(f"PersistenceService: Deleted GLOBAL definition for token {token_id}")
-            self.state.config_data += 1
+            self.state.invalidate_config()
 
     def update_token_profile(self, name: str, size: float, height_mm: float):
         """Updates or creates a token profile."""
         if name is not None and size is not None and height_mm is not None:
             self.map_config.set_token_profile(name, size, height_mm)
             logging.info(f"PersistenceService: Updated profile '{name}'")
-            self.state.config_data += 1
+            self.state.invalidate_config()
 
     def delete_token_profile(self, name: str):
         """Deletes a token profile."""
         if name is not None:
             self.map_config.delete_token_profile(name)
             logging.info(f"PersistenceService: Deleted profile '{name}'")
-            self.state.config_data += 1
+            self.state.invalidate_config()
 
     def sync_projector_pose(self) -> None:
         """Calculates and updates WorldState.projector_pose from config overrides or calibration."""
@@ -396,7 +396,7 @@ class PersistenceService:
 
             self.sync_projector_pose()
 
-            self.state.config_data += 1
+            self.state.invalidate_config()
             return True
         except Exception as e:
             logging.error(f"PersistenceService: Failed to update config: {e}")
@@ -408,7 +408,7 @@ class PersistenceService:
         gs.enable_hand_masking = not gs.enable_hand_masking
         self.map_config.save()
         self.app.config.enable_hand_masking = gs.enable_hand_masking
-        self.state.config_data += 1
+        self.state.invalidate_config()
         return gs.enable_hand_masking
 
     def toggle_stereo_vision(self) -> bool:
@@ -418,8 +418,8 @@ class PersistenceService:
         self.map_config.save()
         if hasattr(self.app, "config") and hasattr(self.app.config, "stereo_vision"):
             self.app.config.stereo_vision.enable_stereo = gs.stereo_vision.enable_stereo
-        if hasattr(self.state, "config_data"):
-            self.state.config_data += 1
+        if hasattr(self.state, "invalidate_config"):
+            self.state.invalidate_config()
         return gs.stereo_vision.enable_stereo
 
     def set_gm_position(self, position: str):
@@ -432,7 +432,7 @@ class PersistenceService:
             gs.gm_position = new_pos
             self.map_config.save()
             self.app.config.gm_position = gs.gm_position
-            self.state.config_data += 1
+            self.state.invalidate_config()
             return new_pos
         except (ValueError, KeyError):
             return None

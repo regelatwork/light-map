@@ -69,14 +69,28 @@ export const ConfigurationSidebar: React.FC = () => {
     saveGridConfig(gridX, gridY, undefined, undefined, nextVisible, gridColor);
   };
 
+  useEffect(() => {
+    if (world.viewport) {
+      if (localVpX !== null && Math.abs(world.viewport.x - localVpX) < 0.001) {
+        setLocalVpX(null);
+      }
+      if (localVpY !== null && Math.abs(world.viewport.y - localVpY) < 0.001) {
+        setLocalVpY(null);
+      }
+      if (localVpZoom !== null && Math.abs(world.viewport.zoom - localVpZoom) < 0.001) {
+        setLocalVpZoom(null);
+      }
+    }
+  }, [world.viewport, localVpX, localVpY, localVpZoom]);
+
   const handleViewportSave = async () => {
     try {
       await setViewportConfig(vpX, vpY, vpZoom, vpRotation);
+    } catch (e) {
+      console.error(e);
       setLocalVpX(null);
       setLocalVpY(null);
       setLocalVpZoom(null);
-    } catch (e) {
-      console.error(e);
     }
   };
 

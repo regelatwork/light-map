@@ -103,3 +103,13 @@ def test_viewport_version_idempotency():
     # Update with same viewport
     ws.update_viewport(vp)
     assert ws.viewport_version == ts_after_first
+
+
+def test_config_version_invalidate():
+    ws = WorldState()
+    initial_config_version = ws.config_version
+    assert initial_config_version > 0
+
+    new_ts = ws.invalidate_config()
+    assert ws.config_version > initial_config_version
+    assert ws.config_version == new_ts

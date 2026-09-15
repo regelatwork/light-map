@@ -114,8 +114,8 @@ def test_hand_mask_layer_version_tracks_config_and_projector_pose():
     v2 = layer.get_current_version()
     assert v2 > v1
 
-    # Updating config_data should also bump HandMaskLayer version
-    ws.config_data += 1
+    # Updating config should also refresh HandMaskLayer version
+    ws.invalidate_config()
     v3 = layer.get_current_version()
     assert v3 > v2
 
@@ -128,7 +128,7 @@ def test_door_layer_version_tracks_config_version():
     layer = DoorLayer(ws, 1920, 1080, config=config)
     v1 = layer.get_current_version()
 
-    ws.config_data += 1
+    ws.invalidate_config()
     v2 = layer.get_current_version()
     assert v2 > v1
 

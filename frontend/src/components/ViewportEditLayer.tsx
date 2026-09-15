@@ -30,16 +30,36 @@ export const ViewportEditLayer: React.FC = () => {
     rotation: 0,
   });
   const [fixedPoint, setFixedPoint] = useState<{ x: number; y: number } | null>(null);
+  const [optimisticVp, setOptimisticVp] = useState<{
+    x: number;
+    y: number;
+    zoom: number;
+    rotation: number;
+  } | null>(null);
 
   const currentVp = React.useMemo(
     () => world.viewport || { x: 0, y: 0, zoom: 1.0, rotation: 0 },
     [world.viewport]
   );
 
-  const displayedVp = React.useMemo(
-    () => (interactionMode !== 'IDLE' ? dragState : currentVp),
-    [interactionMode, dragState, currentVp]
-  );
+  // Clear optimistic state when world.viewport updates to match
+  useEffect(() => {
+    if (optimisticVp && world.viewport) {
+      const dx = Math.abs(world.viewport.x - optimisticVp.x);
+      const dy = Math.abs(world.viewport.y - optimisticVp.y);
+      const dz = Math.abs(world.viewport.zoom - optimisticVp.zoom);
+      const dr = Math.abs((world.viewport.rotation || 0) - (optimisticVp.rotation || 0));
+      if (dx < 0.001 && dy < 0.001 && dz < 0.001 && dr < 0.001) {
+        setOptimisticVp(null);
+      }
+    }
+  }, [world.viewport, optimisticVp]);
+
+  const displayedVp = React.useMemo(() => {
+    if (interactionMode !== 'IDLE') return dragState;
+    if (optimisticVp) return optimisticVp;
+    return currentVp;
+  }, [interactionMode, dragState, optimisticVp, currentVp]);
   const safeZoom = Math.max(0.001, displayedVp.zoom || 1.0);
 
   // Use same defaults as SchematicCanvas for consistency
@@ -74,17 +94,19 @@ export const ViewportEditLayer: React.FC = () => {
 
   const handleMouseDownCenter = (e: React.MouseEvent) => {
     e.stopPropagation();
+    setOptimisticVp(null);
     setInteractionMode('PANNING');
     setDragState({
-      x: currentVp.x,
-      y: currentVp.y,
-      zoom: currentVp.zoom,
-      rotation: currentVp.rotation,
+      x: displayedVp.x,
+      y: displayedVp.y,
+      zoom: displayedVp.zoom,
+      rotation: displayedVp.rotation,
     });
   };
 
   const handleMouseDownSide = (e: React.MouseEvent, mode: InteractionMode) => {
     e.stopPropagation();
+    setOptimisticVp(null);
 
     // Fixed screen point for each handle (the opposite side)
     let Sf = { x: centerX, y: centerY };
@@ -94,15 +116,15 @@ export const ViewportEditLayer: React.FC = () => {
     if (mode === 'ZOOMING_RIGHT') Sf = { x: 0, y: centerY };
 
     // Calculate initial world coordinate for this fixed point
-    const Wf = getW(Sf.x, Sf.y, currentVp.x, currentVp.y, currentVp.zoom, currentVp.rotation);
+    const Wf = getW(Sf.x, Sf.y, displayedVp.x, displayedVp.y, displayedVp.zoom, displayedVp.rotation);
 
     setFixedPoint(Wf);
     setInteractionMode(mode);
     setDragState({
-      x: currentVp.x,
-      y: currentVp.y,
-      zoom: currentVp.zoom,
-      rotation: currentVp.rotation,
+      x: displayedVp.x,
+      y: displayedVp.y,
+      zoom: displayedVp.zoom,
+      rotation: displayedVp.rotation,
     });
   };
 
@@ -200,7 +222,8 @@ export const ViewportEditLayer: React.FC = () => {
   const handleMouseUp = useCallback(async () => {
     if (interactionMode === 'IDLE') return;
 
-    const finalState = dragState;
+    const finalState = { ...dragState };
+    setOptimisticVp(finalState);
     setInteractionMode('IDLE');
     setFixedPoint(null);
 
@@ -208,6 +231,7 @@ export const ViewportEditLayer: React.FC = () => {
       await setViewportConfig(finalState.x, finalState.y, finalState.zoom, currentVp.rotation);
     } catch (err) {
       console.error('Failed to save viewport config:', err);
+      setOptimisticVp(null);
     }
   }, [interactionMode, dragState, currentVp.rotation]);
 

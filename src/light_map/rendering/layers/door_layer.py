@@ -1,4 +1,5 @@
 import math
+from typing import Any
 
 import cv2
 import numpy as np
@@ -21,11 +22,13 @@ class DoorLayer(Layer):
         width: int,
         height: int,
         thickness_multiplier: float = 3.0,
+        config: Any | None = None,
     ):
         super().__init__(state=state, is_static=True, layer_mode=LayerMode.NORMAL)
         self.width = width
         self.height = height
         self.thickness_multiplier = thickness_multiplier
+        self.config = config
 
     def get_current_version(self) -> int:
         if self.state is None:
@@ -35,6 +38,7 @@ class DoorLayer(Layer):
             self.state.viewport_version,
             self.state.grid_metadata_version,
             self.state.fow_version,  # To pick up door discovery
+            self.state.config_version,
         )
 
     def _generate_patches(self, current_time: float) -> list[ImagePatch]:
@@ -55,7 +59,12 @@ class DoorLayer(Layer):
         # Dynamic Thickness
         spacing = grid.spacing_svg
         base_wall_thickness = (spacing / 16.0) * vp.zoom
-        yellow_thickness = max(2, int(base_wall_thickness * self.thickness_multiplier))
+        multiplier = (
+            self.config.door_thickness_multiplier
+            if self.config and hasattr(self.config, "door_thickness_multiplier")
+            else self.thickness_multiplier
+        )
+        yellow_thickness = max(2, int(base_wall_thickness * multiplier))
         padding = max(2, int(2.0 * (spacing / 16.0) * vp.zoom))
         black_thickness = yellow_thickness + padding
         circle_radius = max(3, int(yellow_thickness * 0.8))

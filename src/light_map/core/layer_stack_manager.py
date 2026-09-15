@@ -51,6 +51,7 @@ class LayerStackManager:
             config.width,
             config.height,
             thickness_multiplier=config.door_thickness_multiplier,
+            config=config,
         )
         self.hand_mask_layer = HandMaskLayer(
             state, config, projection_service=context.projection_service

@@ -539,6 +539,8 @@ def run_app(args):
                                 state.menu_version,
                                 state.tokens_version,
                                 state.notifications_version,
+                                state.projector_pose_version,
+                                state.config_version,
                             )
 
                             if current_world_ts != last_world_ts:
@@ -595,12 +597,21 @@ def run_app(args):
                             ):
                                 last_projector_pose_ts = state.projector_pose_version
                                 last_config_ts = state.config_version
+                                last_debug_mode = app.debug_mode
+                                last_map_path = app.current_map_path
+                                last_fow_disabled = fow_disabled
+                                last_gm_position = str(app.config.gm_position)
+                                last_hand_masking = app.config.enable_hand_masking
+                                last_aruco_masking = app.config.enable_aruco_masking
                                 last_aruco_intensity = app.config.aruco_mask_intensity
                                 last_aruco_persistence = app.config.aruco_mask_persistence_s
                                 last_pointer_offset = app.config.pointer_offset_mm
                                 calibrated_pos = (
                                     app.config.projector_3d_model.calibrated_projector_center
+                                    if app.config.projector_3d_model
+                                    else None
                                 )
+                                gs = app.map_config.data.global_settings
                                 state_mirror["config"] = {
                                     "cam_res": (
                                         current_camera_width,
@@ -621,11 +632,20 @@ def run_app(args):
                                     "enable_aruco_masking": app.config.enable_aruco_masking,
                                     "aruco_mask_intensity": app.config.aruco_mask_intensity,
                                     "aruco_mask_persistence_s": app.config.aruco_mask_persistence_s,
+                                    "aruco_mask_padding": gs.aruco_mask_padding,
                                     "pointer_offset_mm": app.config.pointer_offset_mm,
                                     "gm_position": str(app.config.gm_position),
                                     "debug_mode": app.debug_mode,
                                     "fow_disabled": fow_disabled,
                                     "projector_ppi": app.config.projector_ppi,
+                                    "use_projector_3d_model": gs.use_projector_3d_model,
+                                    "projector_pos_x_override": gs.projector_pos_x_override,
+                                    "projector_pos_y_override": gs.projector_pos_y_override,
+                                    "projector_pos_z_override": gs.projector_pos_z_override,
+                                    "door_thickness_multiplier": gs.door_thickness_multiplier,
+                                    "inspection_linger_duration": gs.inspection_linger_duration,
+                                    "detection_algorithm": str(gs.detection_algorithm),
+                                    "naming_style": str(gs.naming_style),
                                     "current_map_path": app.current_map_path,
                                     "map_width": app.map_system.svg_loader.width
                                     if app.map_system.svg_loader
@@ -635,7 +655,7 @@ def run_app(args):
                                     else 0.0,
                                     "token_profiles": {
                                         k: {"size": v.size, "height_mm": v.height_mm}
-                                        for k, v in app.map_config.data.global_settings.token_profiles.items()
+                                        for k, v in gs.token_profiles.items()
                                     },
                                     "aruco_defaults": {
                                         str(k): {
@@ -646,7 +666,7 @@ def run_app(args):
                                             "height_mm": v.height_mm,
                                             "color": v.color,
                                         }
-                                        for k, v in app.map_config.data.global_settings.aruco_defaults.items()
+                                        for k, v in gs.aruco_defaults.items()
                                     },
                                     "stereo_vision": {
                                         "enable_stereo": app.config.stereo_vision.enable_stereo,

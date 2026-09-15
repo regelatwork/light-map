@@ -113,12 +113,22 @@ class VisionRequest(BaseModel):
 
 
 class SystemConfigUpdate(BaseModel):
+    model_config = {"extra": "allow"}
+
+    projector_ppi: float | None = None
+    flash_intensity: int | None = None
+    pointer_offset_mm: float | None = None
     enable_hand_masking: bool | None = None
     enable_aruco_masking: bool | None = None
     aruco_mask_intensity: int | None = None
-    pointer_offset_mm: float | None = None
+    aruco_mask_persistence_s: float | None = None
+    aruco_mask_padding: int | None = None
     gm_position: str | None = None
     use_projector_3d_model: bool | None = None
+    inspection_linger_duration: float | None = None
+    door_thickness_multiplier: float | None = None
+    detection_algorithm: str | None = None
+    naming_style: str | None = None
     projector_pos_x_override: float | None = None
     projector_pos_y_override: float | None = None
     projector_pos_z_override: float | None = None
@@ -656,28 +666,7 @@ def create_app(
     def update_system_config(config: SystemConfigUpdate):
         """Update global system settings."""
         data = {"action": "UPDATE_SYSTEM_CONFIG"}
-        if config.enable_hand_masking is not None:
-            data["enable_hand_masking"] = config.enable_hand_masking
-        if config.enable_aruco_masking is not None:
-            data["enable_aruco_masking"] = config.enable_aruco_masking
-        if config.aruco_mask_intensity is not None:
-            data["aruco_mask_intensity"] = config.aruco_mask_intensity
-        if config.pointer_offset_mm is not None:
-            data["pointer_offset_mm"] = config.pointer_offset_mm
-        if config.gm_position is not None:
-            data["gm_position"] = config.gm_position
-        if config.use_projector_3d_model is not None:
-            data["use_projector_3d_model"] = config.use_projector_3d_model
-
-        # Absolute position overrides (can be null to reset)
-        if config.projector_pos_x_override is not None:
-            data["projector_pos_x_override"] = config.projector_pos_x_override
-        if config.projector_pos_y_override is not None:
-            data["projector_pos_y_override"] = config.projector_pos_y_override
-        if config.projector_pos_z_override is not None:
-            data["projector_pos_z_override"] = config.projector_pos_z_override
-        if config.stereo_vision is not None:
-            data["stereo_vision"] = config.stereo_vision.model_dump()
+        data.update(config.model_dump(exclude_unset=True))
 
         res = DetectionResult(
             timestamp=time.monotonic_ns(),

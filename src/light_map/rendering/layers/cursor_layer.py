@@ -26,7 +26,11 @@ class CursorLayer(Layer):
     def get_current_version(self) -> int:
         if self.state is None:
             return 0
-        return max(self.state.hands_version, self.state.projector_pose_version)
+        return max(
+            self.state.hands_version,
+            self.state.projector_pose_version,
+            self.state.config_version,
+        )
 
     def _generate_patches(self, current_time: float) -> list[ImagePatch]:
         if self.state is None or not self.state.inputs:

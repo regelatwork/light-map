@@ -344,19 +344,57 @@ class PersistenceService:
             logging.info(f"PersistenceService: Deleted profile '{name}'")
             self.state.config_data += 1
 
+    def sync_projector_pose(self) -> None:
+        """Calculates and updates WorldState.projector_pose from config overrides or calibration."""
+        from light_map.core.common_types import ProjectorPose
+
+        calibrated_pos = None
+        if hasattr(self.app, "config") and getattr(self.app.config, "projector_3d_model", None):
+            calibrated_pos = self.app.config.projector_3d_model.calibrated_projector_center
+
+        gs = self.map_config.data.global_settings
+        x = (
+            gs.projector_pos_x_override
+            if gs.projector_pos_x_override is not None
+            else (calibrated_pos[0] if calibrated_pos is not None else 0.0)
+        )
+        y = (
+            gs.projector_pos_y_override
+            if gs.projector_pos_y_override is not None
+            else (calibrated_pos[1] if calibrated_pos is not None else 0.0)
+        )
+        z = (
+            gs.projector_pos_z_override
+            if gs.projector_pos_z_override is not None
+            else (calibrated_pos[2] if calibrated_pos is not None else 0.0)
+        )
+
+        if hasattr(self, "state") and self.state:
+            self.state.projector_pose = ProjectorPose(x=float(x), y=float(y), z=float(z))
+
     def update_system_config(self, payload: dict[str, Any]):
         """Updates global system configuration."""
         from light_map.core.config_schema import GlobalConfigSchema
         from light_map.core.config_utils import sync_pydantic_to_dataclass
 
+        config_payload = {k: v for k, v in payload.items() if k != "action"}
+
         try:
-            validated = GlobalConfigSchema(**payload)
-            self.map_config.update_global_settings(payload)
+            validated = GlobalConfigSchema(**config_payload)
+            self.map_config.update_global_settings(config_payload)
             sync_pydantic_to_dataclass(validated, self.app.config)
 
             # Handle side effects
-            if "projector_ppi" in payload:
+            if "projector_ppi" in config_payload:
                 self.app.refresh_base_scale()
+
+            if "use_projector_3d_model" in config_payload:
+                if getattr(self.app.config, "projector_3d_model", None):
+                    self.app.config.projector_3d_model.use_3d = (
+                        self.app.config.use_projector_3d_model
+                    )
+
+            self.sync_projector_pose()
 
             self.state.config_data += 1
             return True

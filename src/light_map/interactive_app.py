@@ -190,22 +190,7 @@ class InteractiveApp:
 
     def _initialize_projector_pose(self):
         """Sets the initial projector pose in the WorldState."""
-        calibrated_pos = self.config.projector_3d_model.calibrated_projector_center
-        if calibrated_pos is not None:
-            from light_map.core.common_types import ProjectorPose
-
-            gs = self.map_config.data.global_settings
-            self.state.projector_pose = ProjectorPose(
-                x=gs.projector_pos_x_override
-                if gs.projector_pos_x_override is not None
-                else calibrated_pos[0],
-                y=gs.projector_pos_y_override
-                if gs.projector_pos_y_override is not None
-                else calibrated_pos[1],
-                z=gs.projector_pos_z_override
-                if gs.projector_pos_z_override is not None
-                else calibrated_pos[2],
-            )
+        self.persistence_service.sync_projector_pose()
 
     def _create_main_context(self) -> MainContext:
         """Creates the full MainContext for the application."""
@@ -564,6 +549,7 @@ class InteractiveApp:
         self.environment_manager.context = self.app_context
         self.layer_manager = LayerStackManager(self.app_context, self.state)
         self.app_context.layer_manager = self.layer_manager
+        self.persistence_service.sync_projector_pose()
 
         # Build scene class map using local names (to support test patching)
         scene_classes = {

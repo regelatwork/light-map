@@ -34,6 +34,7 @@ class HandMaskLayer(Layer):
             self.state.grid_metadata_version,
             self.state.viewport_version,
             self.state.projector_pose_version,
+            self.state.config_version,
         )
 
         # Only include system_time_version if we have lingering hulls (fading out)

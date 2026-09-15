@@ -84,53 +84,49 @@ class CalibrationLayer(Layer):
                 is_ring = info.get("shape") == "ring"
                 radius = int(info.get("radius", max(24, half_size)))
 
-                color = self.target_idle_color
-                thickness = 2
-                label = "Target"
-
-                if status == "VALID":
-                    color = self.target_valid_color
-                    thickness = -1  # Filled
-                    label = info.get("name", "Locked")
-
-                    height = info.get("height", 0.0)
-                    top_label_y = int(ty - radius - 20) if is_ring else int(ty - half_size - 40)
-                    top_label_x = int(tx - radius) if is_ring else int(tx - half_size)
-                    draw_text_with_background(
-                        canvas,
-                        f"{label}: {height}mm",
-                        (top_label_x, top_label_y),
-                        cv2.FONT_HERSHEY_SIMPLEX,
-                        0.5,
-                        self.success_color,
-                        1,
-                    )
-                elif status == "UNKNOWN":
-                    color = (150, 150, 150)
-                    aid = info.get("aid", "???")
-                    label = f"Unknown ID {aid}"
-                    thickness = 1
-
-                bgra_color = (color[0], color[1], color[2], 255)
                 if is_ring:
-                    if thickness == -1:
-                        # Filled illuminated ring on lock
-                        cv2.circle(canvas, (int(tx), int(ty)), radius, bgra_color, -1)
-                        cv2.circle(canvas, (int(tx), int(ty)), radius // 2, (0, 180, 0, 255), 2)
-                    else:
-                        cv2.circle(canvas, (int(tx), int(ty)), radius, bgra_color, 2)
-                        cv2.circle(canvas, (int(tx), int(ty)), radius // 2, bgra_color, 1)
-                        ch = int(radius * 1.3)
-                        cv2.line(
-                            canvas, (int(tx - ch), int(ty)), (int(tx + ch), int(ty)), bgra_color, 1
+                    if status == "VALID":
+                        # Filled illuminated green disc on lock
+                        cv2.circle(canvas, (int(tx), int(ty)), radius, (0, 220, 0, 255), -1)
+                        cv2.circle(canvas, (int(tx), int(ty)), radius, (0, 160, 0, 255), 3)
+                        cv2.circle(canvas, (int(tx), int(ty)), radius // 2, (255, 255, 255, 255), 2)
+                        height = info.get("height", 0.0)
+                        label = info.get("name", "Locked")
+                        draw_text_with_background(
+                            canvas,
+                            f"{label}: {height:.0f}mm LOCKED",
+                            (int(tx - radius - 10), int(ty - radius - 20)),
+                            cv2.FONT_HERSHEY_SIMPLEX,
+                            0.55,
+                            (0, 255, 0),
+                            2,
+                            bg_color=(20, 60, 20),
                         )
-                        cv2.line(
-                            canvas, (int(tx), int(ty - ch)), (int(tx), int(ty + ch)), bgra_color, 1
-                        )
-
-                    bottom_label_x = int(tx - radius)
-                    bottom_label_y = int(ty + radius + 30)
+                    elif status == "UNKNOWN":
+                        cv2.circle(canvas, (int(tx), int(ty)), radius, (150, 150, 150, 255), 2)
+                    # Note: in IDLE state, the base pattern image already renders the illuminated rings and labels.
                 else:
+                    if status == "VALID":
+                        color = self.target_valid_color
+                        thickness = -1  # Filled
+                        label = info.get("name", "Locked")
+                        height = info.get("height", 0.0)
+                        draw_text_with_background(
+                            canvas,
+                            f"{label}: {height}mm",
+                            (int(tx - half_size), int(ty - half_size - 40)),
+                            cv2.FONT_HERSHEY_SIMPLEX,
+                            0.5,
+                            self.success_color,
+                            1,
+                        )
+                    elif status == "UNKNOWN":
+                        color = (150, 150, 150)
+                        aid = info.get("aid", "???")
+                        label = f"Unknown ID {aid}"
+                        thickness = 1
+
+                    bgra_color = (color[0], color[1], color[2], 255)
                     cv2.rectangle(
                         canvas,
                         (int(tx - half_size), int(ty - half_size)),
@@ -138,18 +134,15 @@ class CalibrationLayer(Layer):
                         bgra_color,
                         thickness,
                     )
-                    bottom_label_x = int(tx - half_size)
-                    bottom_label_y = int(ty + half_size + 45)
-
-                draw_text_with_background(
-                    canvas,
-                    label,
-                    (bottom_label_x, bottom_label_y),
-                    cv2.FONT_HERSHEY_SIMPLEX,
-                    0.5,
-                    color if thickness > 0 else self.success_color,
-                    1 if thickness > 0 else 2,
-                )
+                    draw_text_with_background(
+                        canvas,
+                        label,
+                        (int(tx - half_size), int(ty + half_size) + 45),
+                        cv2.FONT_HERSHEY_SIMPLEX,
+                        0.5,
+                        color if thickness > 0 else self.success_color,
+                        1 if thickness > 0 else 2,
+                    )
 
                 # Animation
                 if idx in cal.animation_start_times:

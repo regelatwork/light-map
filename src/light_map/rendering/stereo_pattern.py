@@ -178,11 +178,12 @@ def generate_stereo_calibration_pattern(
     )
 
     # 4. 4 Illuminated Corner Target Rings (IDs 0-3)
-    # Positions in 4 screen quadrants with comfortable margins
-    x_left = max(int(60.0 * scale), int(width * 0.16))
-    x_right = min(width - int(60.0 * scale), int(width * 0.84))
-    y_top = max(int(50.0 * scale), int(height * 0.22))
-    y_bottom = min(height - int(50.0 * scale), int(height * 0.78))
+    # Positioned around the calibration arena (framing grid and ruler)
+    arena_half_w = int(120.0 * scale)
+    x_left = cx - arena_half_w
+    x_right = cx + arena_half_w
+    y_top = cy - int(55.0 * scale)
+    y_bottom = cy + int(105.0 * scale)
 
     ring_positions = [
         (0, x_left, y_top),
@@ -197,45 +198,61 @@ def generate_stereo_calibration_pattern(
     for tid, rx, ry in ring_positions:
         name = token_names.get(tid, f"Token {tid}")
         h_mm = token_heights.get(tid, 50.0)
+        h_val = float(h_mm) if isinstance(h_mm, (int, float)) else 50.0
 
-        # Draw target ring: outer circle, inner circle, crosshairs
-        cv2.circle(img, (rx, ry), ring_radius, (60, 60, 180), 2)  # Dark reddish/blue outer ring
-        cv2.circle(img, (rx, ry), ring_radius // 2, (100, 100, 200), 1)
+        # 1. Contrasting target pad (soft circular background)
+        pad_radius = int(ring_radius * 1.3)
+        cv2.circle(img, (rx, ry), pad_radius, (240, 235, 230), -1)
+        cv2.circle(img, (rx, ry), pad_radius, (170, 170, 170), 1)
 
-        ch = int(ring_radius * 1.35)
-        cv2.line(img, (rx - ch, ry), (rx + ch, ry), (120, 120, 200), 1)
-        cv2.line(img, (rx, ry - ch), (rx, ry + ch), (120, 120, 200), 1)
+        # 2. Outer bold ring (Deep Navy/Blue)
+        cv2.circle(img, (rx, ry), ring_radius, (180, 40, 10), 3)
 
-        # Labels
+        # 3. Middle illuminated ring (Vivid Electric Cyan)
+        mid_r = int(ring_radius * 0.7)
+        cv2.circle(img, (rx, ry), mid_r, (230, 180, 0), 3)
+
+        # 4. Inner bullseye ring and center dot
+        inner_r = max(6, int(ring_radius * 0.35))
+        cv2.circle(img, (rx, ry), inner_r, (180, 40, 10), 2)
+        cv2.circle(img, (rx, ry), 4, (180, 40, 10), -1)
+
+        # 5. Bold crosshairs with gap around center
+        ch = int(ring_radius * 1.25)
+        cv2.line(img, (rx - ch, ry), (rx - inner_r, ry), (180, 40, 10), 2)
+        cv2.line(img, (rx + inner_r, ry), (rx + ch, ry), (180, 40, 10), 2)
+        cv2.line(img, (rx, ry - ch), (rx, ry - inner_r), (180, 40, 10), 2)
+        cv2.line(img, (rx, ry + inner_r), (rx, ry + ch), (180, 40, 10), 2)
+
+        # 6. High-contrast text badges
         t_label = f"Token {tid}: {name}"
         draw_text_with_background(
             img,
             t_label,
-            (rx - ring_radius - 10, ry + ring_radius + 20),
+            (rx - ring_radius - 10, ry + ring_radius + 22),
             cv2.FONT_HERSHEY_SIMPLEX,
-            0.45,
-            (30, 30, 30),
+            0.5,
+            (255, 255, 255),
             1,
-            bg_color=(230, 230, 230),
+            bg_color=(30, 30, 30),
         )
-        h_val = float(h_mm) if isinstance(h_mm, (int, float)) else 50.0
-        sub_label = f"Elevated Ring (Z={h_val:.0f}mm)"
+        sub_label = f"Target Ring (Z={h_val:.0f}mm)"
         draw_text_with_background(
             img,
             sub_label,
-            (rx - ring_radius - 10, ry + ring_radius + 40),
+            (rx - ring_radius - 10, ry + ring_radius + 44),
             cv2.FONT_HERSHEY_SIMPLEX,
-            0.38,
-            (80, 80, 80),
+            0.42,
+            (0, 220, 255),
             1,
-            bg_color=(240, 240, 240),
+            bg_color=(20, 20, 20),
         )
 
         token_targets_meta.append(
             {
                 "id": tid,
                 "name": name,
-                "height_mm": h_mm,
+                "height_mm": h_val,
                 "x": rx,
                 "y": ry,
                 "radius": ring_radius,

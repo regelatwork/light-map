@@ -88,10 +88,45 @@ def test_calibration_layer_renders_target_rings():
     assert len(patches) == 1
     canvas = patches[0].data
     assert canvas.shape == (600, 800, 4)
-    # The canvas should have rendered valid green/highlight around (200, 200)
-    # Center pixel should be filled or colored
     center_pixel = canvas[200, 200]
     assert center_pixel[3] == 255  # Alpha channel is solid
+
+
+def test_calibration_layer_preserves_idle_pattern_rings():
+    """Verify CalibrationLayer does not overwrite pattern rings in pure white during IDLE."""
+    config = AppConfig(width=800, height=600, projector_matrix=np.eye(3), projector_ppi=96.0)
+    state = WorldState()
+    layer = CalibrationLayer(state, config, render_instructions=False)
+
+    base_img = np.full((600, 800, 3), 255, dtype=np.uint8)
+    # Draw a non-white ring on base_img
+    cv2.circle(base_img, (200, 200), 30, (180, 40, 10), 3)
+
+    state.calibration = CalibrationState(
+        stage="ALIGNMENT",
+        pattern_image=base_img,
+        target_info=[
+            {
+                "x": 200,
+                "y": 200,
+                "name": "Cricket",
+                "height": 50.0,
+                "aid": 0,
+                "size": 1,
+                "shape": "ring",
+                "radius": 30,
+            }
+        ],
+        target_status=["IDLE"],
+    )
+
+    patches = layer._generate_patches(0.0)
+    canvas = patches[0].data
+    # Check pixel on the ring edge (200 + 30, 200)
+    ring_pixel = canvas[200, 230]
+    # Ring pixel should NOT be white [255, 255, 255, 255]
+    assert not np.array_equal(ring_pixel[:3], [255, 255, 255])
+    assert np.array_equal(ring_pixel[:3], [180, 40, 10])
 
 
 def test_stereo_calibration_scene_populates_pattern_and_targets():

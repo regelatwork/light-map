@@ -152,3 +152,23 @@ def test_extrinsics_scene_renders_rectangles(mock_rect, mock_context):
                 break
 
     assert found_expected, "Target rectangle not rendered with correct coordinates"
+
+
+def test_calibration_layer_renders_idle_targets(mock_context):
+    """
+    Verifies that CalibrationLayer can render targets in IDLE state without UnboundLocalError.
+    """
+    from light_map.rendering.layers.calibration_layer import CalibrationLayer
+    from light_map.state.world_state import WorldState
+
+    state = WorldState()
+    mock_context.state = state
+
+    scene = ExtrinsicsCalibrationScene(mock_context)
+    scene.on_enter()
+    scene._sync_calibration_state()
+
+    layer = CalibrationLayer(state, mock_context.app_config)
+    # Should render successfully without raising UnboundLocalError for 'color'
+    patches, _ = layer.render(0.0)
+    assert len(patches) > 0

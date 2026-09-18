@@ -140,6 +140,10 @@ class CalibrationLayer(Layer):
                         cv2.rectangle(canvas, (bx1, by1), (bx2, by2), (150, 150, 150, 255), 2)
                     # Note: in IDLE state, base pattern renders the square targets and badges.
                 else:
+                    color = self.target_idle_color
+                    thickness = 2
+                    label = info.get("name", f"T{idx + 1}")
+
                     if status == "VALID":
                         color = self.target_valid_color
                         thickness = -1  # Filled

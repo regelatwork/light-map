@@ -467,7 +467,7 @@ export const STEREOVISIONCONFIG_METADATA: Record<keyof StereoVisionConfig, Field
   "enable_stereo": {
     "title": "Enable Stereo",
     "description": "Toggle for dual-camera stereographic tracking.",
-    "default": false
+    "default": true
   },
   "baseline_separation_mm": {
     "title": "Baseline Separation (mm)",

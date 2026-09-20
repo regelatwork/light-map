@@ -104,17 +104,11 @@ Once installed, you can use the `light-map` command directly or use the `python 
 
 ### 1. Calibration (Initial Setup Only)
 
-1. **Calibrate Camera**:
+Run unified single-sweep stereo calibration from the in-game menu (**Calibration -> Calibrate Table**) or via the Web Dashboard:
 
-   ```bash
-   python scripts/calibrate.py
-   ```
-
-1. **Calibrate Projector**:
-
-   ```bash
-   python scripts/projector_calibration.py
-   ```
+```bash
+light-map --action CALIBRATE_STEREO
+```
 
 ### 2. Standard Execution
 

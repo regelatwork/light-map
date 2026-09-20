@@ -429,7 +429,7 @@ class ProjectorPose:
 
 @dataclass
 class StereoVisionConfig:
-    enable_stereo: bool = False
+    enable_stereo: bool = True
     baseline_separation_mm: float = 128.0
     camera_left_device: str = "/dev/video0"
     camera_right_device: str = "/dev/video1"

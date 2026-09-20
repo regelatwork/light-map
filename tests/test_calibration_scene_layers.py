@@ -3,13 +3,9 @@ from unittest.mock import MagicMock
 import pytest
 
 from light_map.calibration.calibration_scenes import (
-    ExtrinsicsCalibrationScene,
-    FlashCalibrationScene,
     IntrinsicsCalibrationScene,
     MapGridCalibrationScene,
-    PpiCalibrationScene,
-    Projector3DCalibrationScene,
-    ProjectorCalibrationScene,
+    StereoCalibrationScene,
 )
 from light_map.visibility.exclusive_vision_scene import ExclusiveVisionScene
 from light_map.vision.scanning_scene import ScanningScene, ScanStage
@@ -30,6 +26,7 @@ def mock_app():
     app.map_layer = MagicMock(name="map_layer")
     app.map_grid_layer = MagicMock(name="map_grid_layer")
     app.calibration_layer = MagicMock(name="calibration_layer")
+    app.instruction_layer = MagicMock(name="instruction_layer")
     app.flash_layer = MagicMock(name="flash_layer")
     app.door_layer = MagicMock(name="door_layer")
     app.fow_layer = MagicMock(name="fow_layer")
@@ -49,29 +46,14 @@ def mock_context():
     return context
 
 
-def test_extrinsics_calibration_scene_layers(mock_app, mock_context):
-    scene = ExtrinsicsCalibrationScene(mock_context)
+def test_stereo_calibration_scene_layers(mock_app, mock_context):
+    scene = StereoCalibrationScene(mock_context)
     layers = scene.get_active_layers(mock_app)
     assert mock_app.calibration_layer in layers
+    assert mock_app.instruction_layer in layers
     assert mock_app.token_layer in layers
-    assert mock_app.menu_layer in layers
-    assert mock_app.notification_layer not in layers
-    assert mock_app.debug_layer not in layers
-    assert mock_app.selection_progress_layer not in layers
     assert mock_app.cursor_layer in layers
-    assert mock_app.aruco_mask_layer not in layers
-    assert mock_app.hand_mask_layer not in layers
-
-
-def test_ppi_calibration_scene_layers(mock_app, mock_context):
-    scene = PpiCalibrationScene(mock_context)
-    layers = scene.get_active_layers(mock_app)
-    assert mock_app.calibration_layer in layers
-    assert mock_app.token_layer in layers
-    assert mock_app.menu_layer in layers
-    assert mock_app.notification_layer not in layers
-    assert mock_app.debug_layer not in layers
-    assert mock_app.selection_progress_layer not in layers
+    assert mock_app.notification_layer in layers
     assert mock_app.aruco_mask_layer not in layers
     assert mock_app.hand_mask_layer not in layers
 
@@ -82,19 +64,6 @@ def test_intrinsics_calibration_scene_layers(mock_app, mock_context):
     assert mock_app.calibration_layer in layers
     assert mock_app.token_layer in layers
     assert mock_app.menu_layer in layers
-    assert mock_app.notification_layer not in layers
-    assert mock_app.debug_layer not in layers
-    assert mock_app.selection_progress_layer not in layers
-    assert mock_app.aruco_mask_layer not in layers
-    assert mock_app.hand_mask_layer not in layers
-
-
-def test_flash_calibration_scene_layers(mock_app, mock_context):
-    scene = FlashCalibrationScene(mock_context)
-    # Default stage (IDLE)
-    layers = scene.get_active_layers(mock_app)
-    assert mock_app.calibration_layer in layers
-    assert mock_app.token_layer in layers
     assert mock_app.notification_layer not in layers
     assert mock_app.debug_layer not in layers
     assert mock_app.selection_progress_layer not in layers
@@ -113,32 +82,6 @@ def test_map_grid_calibration_scene_layers(mock_app, mock_context):
     assert mock_app.selection_progress_layer not in layers
     assert mock_app.aruco_mask_layer not in layers
     assert mock_app.hand_mask_layer not in layers
-
-
-def test_projector_calibration_scene_layers(mock_app, mock_context):
-    scene = ProjectorCalibrationScene(mock_context)
-    layers = scene.get_active_layers(mock_app)
-    assert mock_app.calibration_layer in layers
-    assert mock_app.token_layer in layers
-    assert mock_app.notification_layer not in layers
-    assert mock_app.debug_layer not in layers
-    assert mock_app.selection_progress_layer not in layers
-    assert mock_app.aruco_mask_layer not in layers
-    assert mock_app.hand_mask_layer not in layers
-
-
-def test_projector_3d_calibration_scene_layers(mock_app, mock_context):
-    # This test was missing in the previous version of the test file
-    scene = Projector3DCalibrationScene(mock_context)
-    layers = scene.get_active_layers(mock_app)
-    assert scene.pattern_layer in layers
-    assert scene.feedback_layer in layers
-    assert mock_app.calibration_layer not in layers
-    assert mock_app.notification_layer in layers
-    assert mock_app.cursor_layer in layers
-
-    assert mock_app.selection_progress_layer not in layers
-    assert mock_app.cursor_layer in layers
 
 
 def test_scanning_scene_layers(mock_app, mock_context):

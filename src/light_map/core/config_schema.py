@@ -115,7 +115,7 @@ class CameraDeviceSchema(BaseModel):
 
 class StereoVisionConfigSchema(BaseModel):
     enable_stereo: bool = Field(
-        default=False,
+        default=True,
         title="Enable Stereo",
         description="Toggle for dual-camera stereographic tracking.",
     )

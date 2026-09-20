@@ -39,19 +39,19 @@ The project uses a `src` layout. Pytest is configured via `pytest.ini` in the pr
 
 The following components are covered by unit tests:
 
+- **`test_stereo_calibration.py`**: Tests `StereoCalibrationWizard` and non-planar stereo calibration solving.
+- **`test_stereo_triangulator.py`**: Tests dual-camera 3D triangulation, single-camera ray-plane occlusion fallbacks, and buffer time-skew handling.
+- **`test_aruco_mask_layer.py`**: Tests 4-corner 3D marker triangulation, occlusion fallbacks, and projector parallax projection.
+- **`test_hand_mask_layer.py`**: Tests dynamic hand elevation from stereo triangulator and projector parallax masking.
 - **`test_camera.py`**: Mocks OpenCV to verify camera initialization, frame reading, and context management.
-- **`test_calibration.py`**: Tests camera calibration logic, including chessboard corner detection and image loading.
-- **`test_calibration_logic.py`**: Tests the high-level projector calibration sequence and hardware orchestration.
 - **`test_gestures.py`**: Verifies the heuristic-based hand gesture recognition (Open Palm, Victory, Gun, etc.).
 - **`test_input_manager.py`**: Tests input smoothing, sticky hand tracking, and flicker recovery.
 - **`test_interactive_app.py`**: Tests the main application orchestrator, including coordinate transformation and gesture processing.
 - **`test_menu_system.py`**: Tests the hierarchical menu state machine, navigation, and selection logic.
-- **`test_projector.py`**: Tests calibration pattern generation and homography computation.
 - **`test_renderer.py`**: Verifies that the menu UI renders correctly onto a BGR image.
 - **`test_svg_loader.py`**: Tests SVG parsing and rendering into OpenCV images using `svgelements`.
 - **`test_map_system.py`**: Verifies map viewport logic (pan, pinned zoom, rotation).
 - **`test_map_config.py`**: Tests JSON persistence for map settings and calibration.
-- **`test_calibration_logic_ppi.py`**: Tests Projector PPI detection from printed ArUco markers.
 - **`test_svg_loader_image.py`**: Tests rendering of SVGs with embedded raster images and fills.
 - **`test_svg_loader_paths.py`**: Tests rendering of discontinuous SVG paths (e.g., handling Move commands).
 - **`test_camera_pipeline.py`**: Tests the multi-threaded camera processing pipeline.

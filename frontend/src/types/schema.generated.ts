@@ -83,6 +83,7 @@ export interface Token {
   profile: any;
   size: any;
   height_mm: any;
+  is_stereo: boolean;
 }
 
 export interface SessionData {
@@ -339,6 +340,11 @@ export const TOKEN_METADATA: Record<keyof Token, FieldMetadata> = {
   "height_mm": {
     "title": "Height (mm)",
     "description": "Resolved height in mm."
+  },
+  "is_stereo": {
+    "title": "Is Stereo",
+    "description": "True if token 3D position is triangulated via stereo cameras.",
+    "default": false
   }
 };
 

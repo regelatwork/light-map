@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
@@ -32,6 +32,7 @@ class TrackingCoordinator:
         map_config: MapConfigManager,
         projector_config: AppConfig,
         projection_service: ProjectionService | None = None,
+        stereo_triangulator: Any | None = None,
     ) -> dict:
         """
         Maps raw ArUco detections (corners, ids) to filtered and snapped Token objects.
@@ -75,6 +76,7 @@ class TrackingCoordinator:
             token_configs=token_configs,
             ppi=map_config.get_ppi(),
             projection_service=projection_service,
+            stereo_triangulator=stereo_triangulator,
         )
 
         # 2. Get Grid Parameters

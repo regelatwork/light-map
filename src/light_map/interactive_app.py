@@ -639,6 +639,7 @@ class InteractiveApp:
                 self.map_config,
                 self.config,
                 projection_service=self.app_context.projection_service,
+                stereo_triangulator=self.app_context.stereo_triangulator,
             )
             return res
 

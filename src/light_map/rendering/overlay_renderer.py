@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 import cv2
 import numpy as np
 
-from light_map.core.common_types import ImagePatch
+from light_map.core.common_types import ImagePatch, Token
 from light_map.core.display_utils import (
     draw_dashed_circle,
     draw_text_with_background,
@@ -131,11 +131,15 @@ class OverlayRenderer:
         fps: float,
         current_scene_name: str,
         inputs: list[HandInput],
+        tokens: list[Token] | None = None,
     ) -> list[ImagePatch]:
         patches = []
 
         # 1. Main Debug info (Top Left)
         text = f"FPS: {int(fps)} | Scene: {current_scene_name}"
+        if tokens:
+            stereo_active = sum(1 for t in tokens if getattr(t, "is_stereo", False))
+            text += f" | Tokens: {len(tokens)} (Stereo: {stereo_active}/{len(tokens)})"
         (tw, th), baseline = cv2.getTextSize(text, cv2.FONT_HERSHEY_SIMPLEX, 0.5, 1)
         debug_w, debug_h = tw + 20, th + baseline + 20
         debug_buffer = np.zeros((debug_h, debug_w, 4), dtype=np.uint8)
@@ -181,6 +185,87 @@ class OverlayRenderer:
                     data=label_buffer,
                 )
             )
+
+        # 3. Token stereo debug indicators
+        if tokens:
+            map_system = self.context.map_system
+            ppi = (
+                self.context.map_config_manager.get_ppi()
+                if self.context.map_config_manager
+                else 55.0
+            )
+            radius = int(ppi) if ppi > 0 else 30
+            ring_r = radius + 6
+
+            for token in tokens:
+                if token.screen_x is not None and token.screen_y is not None:
+                    sx, sy = int(token.screen_x), int(token.screen_y)
+                elif map_system:
+                    wx, wy = token.world_x, token.world_y
+                    sx, sy = map_system.world_to_screen(wx, wy)
+                    sx, sy = int(sx), int(sy)
+                else:
+                    continue
+
+                is_stereo = getattr(token, "is_stereo", False)
+                z_mm = getattr(token, "marker_z", 0.0)
+
+                if is_stereo:
+                    label = f"#{token.id} [STEREO] Z: {z_mm:.1f}mm"
+                    color = (255, 255, 0, 255)  # Cyan
+                    bg_color = (40, 40, 0)
+                else:
+                    label = f"#{token.id} [MONO] Z: {z_mm:.1f}mm"
+                    color = (0, 165, 255, 255)  # Amber / Orange
+                    bg_color = (0, 30, 60)
+
+                (lw, lh), _ = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, 0.5, 1)
+
+                min_x = min(sx - ring_r - 2, sx - lw // 2 - 8)
+                max_x = max(sx + ring_r + 2, sx + lw // 2 + 8)
+                min_y = sy - ring_r - lh - 18
+                max_y = sy + ring_r + 2
+
+                patch_x1 = max(0, min_x)
+                patch_y1 = max(0, min_y)
+                patch_w = max(1, max_x - patch_x1)
+                patch_h = max(1, max_y - patch_y1)
+
+                token_buf = np.zeros((patch_h, patch_w, 4), dtype=np.uint8)
+                lsx = sx - patch_x1
+                lsy = sy - patch_y1
+
+                # Indicator ring
+                if is_stereo:
+                    cv2.circle(token_buf, (lsx, lsy), ring_r, color, 2)
+                    cv2.circle(token_buf, (lsx, lsy), ring_r - 4, color, 1)
+                else:
+                    draw_dashed_circle(token_buf, (lsx, lsy), ring_r, color, 2)
+
+                # Text badge above token
+                text_x = max(2, lsx - lw // 2)
+                text_y = max(lh + 2, lsy - ring_r - 6)
+                draw_text_with_background(
+                    token_buf,
+                    label,
+                    (text_x, text_y),
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    0.5,
+                    color,
+                    1,
+                    bg_color=bg_color,
+                    alpha=0.85,
+                )
+
+                patches.append(
+                    ImagePatch(
+                        x=patch_x1,
+                        y=patch_y1,
+                        width=patch_w,
+                        height=patch_h,
+                        data=token_buf,
+                    )
+                )
 
         return patches
 

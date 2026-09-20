@@ -195,16 +195,22 @@ class ArucoTokenDetector:
         ppi: float = 55.0,
         default_height_mm: float = DEFAULT_TOKEN_HEIGHT_MM,
         projection_service: Optional["ProjectionService"] = None,
+        stereo_triangulator: Any | None = None,
     ) -> list[Token]:
         """
         Maps raw ArUco detections (corners, ids) to Token objects in world coordinates.
         """
-        if self.projection_model is None and projection_service is None:
+        if (
+            self.projection_model is None
+            and projection_service is None
+            and stereo_triangulator is None
+        ):
             logging.debug("ArucoDetector: map_to_tokens missing projection model.")
             return []
 
         corners = raw_data.get("corners", [])
         ids = raw_data.get("ids", [])
+        right_corners_dict = raw_data.get("corners_right_dict", {})
 
         if not ids:
             return []
@@ -225,16 +231,44 @@ class ArucoTokenDetector:
 
             # 1. Reconstruct logical world position (mm) from camera perspective
             # This finds where the token actually is in the real world.
-            if projection_service:
+            right_corners = right_corners_dict.get(marker_id) if right_corners_dict else None
+            is_stereo = False
+            calculated_z = height_mm
+
+            if stereo_triangulator is not None and right_corners is not None:
+                corners_3d = stereo_triangulator.triangulate_corners(marker_corners, right_corners)
+                center_3d = np.mean(corners_3d, axis=0)
+                marker_x_mm, marker_y_mm = float(center_3d[0]), float(center_3d[1])
+                calculated_z = float(center_3d[2])
+                is_stereo = True
+            elif stereo_triangulator is not None and hasattr(
+                stereo_triangulator, "intersect_corners_ray_plane"
+            ):
+                corners_3d = stereo_triangulator.intersect_corners_ray_plane(
+                    marker_corners, height_mm
+                )
+                center_3d = np.mean(corners_3d, axis=0)
+                marker_x_mm, marker_y_mm = float(center_3d[0]), float(center_3d[1])
+                calculated_z = height_mm
+                is_stereo = False
+            elif projection_service:
                 marker_pts_3d = projection_service.camera_model.reconstruct_world_points_3d(
                     np.array([[u, v]], dtype=np.float32), height_mm=height_mm
                 )
-            else:
+                marker_x_mm, marker_y_mm, _ = marker_pts_3d[0]
+                calculated_z = height_mm
+                is_stereo = False
+            elif self.projection_model:
                 marker_pts_3d = self.projection_model.reconstruct_world_points_3d(
                     np.array([[u, v]], dtype=np.float32), height_mm=height_mm
                 )
-
-            marker_x_mm, marker_y_mm, _ = marker_pts_3d[0]
+                marker_x_mm, marker_y_mm, _ = marker_pts_3d[0]
+                calculated_z = height_mm
+                is_stereo = False
+            else:
+                marker_x_mm, marker_y_mm = float(u), float(v)
+                calculated_z = height_mm
+                is_stereo = False
 
             # Map true world position directly to SVG (independent of projector position)
             wx_svg, wy_svg = map_system.world_mm_to_svg(marker_x_mm, marker_y_mm, ppi=ppi)
@@ -252,10 +286,12 @@ class ArucoTokenDetector:
                     world_z=0.0,
                     marker_x=mx_svg,
                     marker_y=my_svg,
-                    marker_z=height_mm,
+                    marker_z=calculated_z,
                     confidence=1.0,
                     is_duplicate=False,
                     type=token_type,
+                    height_mm=height_mm,
+                    is_stereo=is_stereo,
                 )
             )
 
@@ -270,6 +306,7 @@ class ArucoTokenDetector:
         default_height_mm: float = DEFAULT_TOKEN_HEIGHT_MM,
         projector_matrix: np.ndarray | None = None,
         projection_service: Optional["ProjectionService"] = None,
+        stereo_triangulator: Any | None = None,
     ) -> list[Token]:
         """
         Legacy/Combined method for single-threaded use.
@@ -286,6 +323,7 @@ class ArucoTokenDetector:
             ppi=ppi,
             default_height_mm=default_height_mm,
             projection_service=projection_service,
+            stereo_triangulator=stereo_triangulator,
         )
 
     def _get_fov_mask(

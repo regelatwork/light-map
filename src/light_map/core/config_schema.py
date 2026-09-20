@@ -221,6 +221,11 @@ class TokenSchema(BaseModel):
     height_mm: float | None = Field(
         default=None, title="Height (mm)", description="Resolved height in mm."
     )
+    is_stereo: bool = Field(
+        default=False,
+        title="Is Stereo",
+        description="True if token 3D position is triangulated via stereo cameras.",
+    )
 
 
 class ViewportStateSchema(BaseModel):

@@ -596,6 +596,7 @@ class Token:
     profile: str | None = None
     size: int | None = None
     height_mm: float | None = None
+    is_stereo: bool = False
 
     def copy(self) -> Token:
         return replace(self)
@@ -622,6 +623,7 @@ class Token:
             "profile": self.profile,
             "size": self.size,
             "height_mm": self.height_mm,
+            "is_stereo": self.is_stereo,
         }
 
 

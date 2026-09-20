@@ -100,11 +100,14 @@ class DebugLayer(Layer):
         if self.state is None:
             return 0
 
-        # Catch debug toggle in version
-        version = (self.state.hands_version << 1) | (1 if self.context.debug_mode else 0)
-        # Also depend on FPS updates
-        version = max(version, self.state.fps_version)
-        return version
+        # Combined version of all dependencies (hands, fps, tokens)
+        v = max(
+            self.state.hands_version,
+            self.state.fps_version,
+            self.state.tokens_version,
+        )
+        # Catch debug toggle in lowest bit
+        return (v << 1) | (1 if self.context.debug_mode else 0)
 
     def _generate_patches(self, current_time: float) -> list[ImagePatch]:
         if self.state is None or not self.context.debug_mode:
@@ -112,8 +115,14 @@ class DebugLayer(Layer):
             return []
 
         self._last_debug_mode = self.context.debug_mode
+        tokens = self.state.tokens or (
+            self.context.map_system.ghost_tokens
+            if hasattr(self.context, "map_system") and self.context.map_system
+            else []
+        )
         return self.overlay_renderer.draw_debug_overlay(
             self.state.fps,
             self.state.current_scene_name,
             self.state.inputs,
+            tokens=tokens,
         )

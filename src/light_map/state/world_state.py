@@ -660,7 +660,10 @@ class WorldState:
                     # Raw ArUco from workers (corners, ids)
                     new_ids = result.data.get("ids", [])
                     new_corners = result.data.get("corners", [])
-                    tx.update(self._raw_aruco_atom, {"ids": new_ids, "corners": new_corners})
+                    raw_payload = {"ids": new_ids, "corners": new_corners}
+                    if "corners_right_dict" in result.data:
+                        raw_payload["corners_right_dict"] = result.data["corners_right_dict"]
+                    tx.update(self._raw_aruco_atom, raw_payload)
 
             elif result.type == ResultType.HANDS:
                 if (

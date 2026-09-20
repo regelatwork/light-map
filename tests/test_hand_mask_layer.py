@@ -196,3 +196,29 @@ def test_hand_mask_layer_version_with_persistence(mock_config):
     ws._system_time_atom.update(1.6, force_timestamp=v3 + 1000)
     v4 = layer.get_current_version()
     assert v4 == v3
+
+
+def test_hand_mask_layer_dynamic_stereo_elevation(mock_config):
+    """Verifies that HandMaskLayer uses real elevation from stereo triangulator."""
+    ws = WorldState()
+    mock_projection = MagicMock()
+    mock_projection.project_camera_to_projector.return_value = np.array(
+        [[50, 50]], dtype=np.float32
+    )
+
+    mock_triangulator = MagicMock()
+    mock_triangulator.z_last_known = 45.0
+
+    layer = HandMaskLayer(
+        ws,
+        mock_config,
+        projection_service=mock_projection,
+        stereo_triangulator=mock_triangulator,
+    )
+
+    pts = np.array([[0.5, 0.5]], dtype=np.float32)
+    layer._transform_pts(pts)
+
+    mock_projection.project_camera_to_projector.assert_called_once()
+    call_kwargs = mock_projection.project_camera_to_projector.call_args[1]
+    assert call_kwargs["height_mm"] == 45.0

@@ -149,3 +149,39 @@ def test_from_calibration_file(tmp_path):
     assert tri.K_L[0, 0] == 800.0
     assert tri.roi_L == [10, 10, 1000, 800]
     assert tri.roi_R == [20, 20, 1000, 800]
+
+
+def test_triangulate_corners(triangulator):
+    corners_world = np.array(
+        [[100.0, 50.0, 60.0], [120.0, 50.0, 60.0], [120.0, 70.0, 60.0], [100.0, 70.0, 60.0]],
+        dtype=np.float32,
+    )
+    pts_l, _ = cv2.projectPoints(
+        corners_world,
+        triangulator.R_L,
+        triangulator.t_L,
+        triangulator.K_L,
+        triangulator.dist_L,
+    )
+    pts_r, _ = cv2.projectPoints(
+        corners_world,
+        triangulator.R_R,
+        triangulator.t_R,
+        triangulator.K_R,
+        triangulator.dist_R,
+    )
+    corners_L = pts_l.reshape(-1, 2)
+    corners_R = pts_r.reshape(-1, 2)
+
+    corners_3d = triangulator.triangulate_corners(corners_L, corners_R)
+    assert corners_3d.shape == (4, 3)
+    assert np.allclose(corners_3d, corners_world, atol=1.0)
+
+
+def test_intersect_corners_ray_plane(triangulator):
+    corners_L = np.array(
+        [[960.0, 540.0], [980.0, 540.0], [980.0, 560.0], [960.0, 560.0]], dtype=np.float32
+    )
+    pts_3d = triangulator.intersect_corners_ray_plane(corners_L, h_token=45.0)
+    assert pts_3d.shape == (4, 3)
+    assert np.allclose(pts_3d[:, 2], 45.0, atol=1e-3)

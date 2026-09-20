@@ -799,14 +799,24 @@ class WorldState:
 
     def _raw_aruco_equal(self, d1: dict[str, Any], d2: dict[str, Any]) -> bool:
         """Compares raw ArUco results for equality."""
-        if d1["ids"] != d2["ids"]:
+        if d1.get("ids") != d2.get("ids"):
             return False
 
-        if len(d1["corners"]) != len(d2["corners"]):
+        c1 = d1.get("corners", [])
+        c2 = d2.get("corners", [])
+        if len(c1) != len(c2):
             return False
 
-        for old_c, new_c in zip(d1["corners"], d2["corners"], strict=False):
+        for old_c, new_c in zip(c1, c2, strict=False):
             if not np.array_equal(old_c, new_c):
+                return False
+
+        r1 = d1.get("corners_right_dict", {})
+        r2 = d2.get("corners_right_dict", {})
+        if set(r1.keys()) != set(r2.keys()):
+            return False
+        for k in r1:
+            if not np.array_equal(r1[k], r2[k]):
                 return False
 
         return True

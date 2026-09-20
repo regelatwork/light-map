@@ -154,6 +154,46 @@ class StereoTriangulator:
         pts_undist = cv2.undistortPoints(pts, K, dist, P=K)
         return pts_undist[0]
 
+    def triangulate_corners(self, corners_L: np.ndarray, corners_R: np.ndarray) -> np.ndarray:
+        """Triangulates 4 marker corner points in pixel coordinates to 3D world coordinates (mm)."""
+        pts_L = np.asarray(corners_L, dtype=np.float32).reshape(-1, 2)
+        pts_R = np.asarray(corners_R, dtype=np.float32).reshape(-1, 2)
+
+        uL = pts_L[:, 0] + self.roi_L[0]
+        vL = pts_L[:, 1] + self.roi_L[1]
+        uR = pts_R[:, 0] + self.roi_R[0]
+        vR = pts_R[:, 1] + self.roi_R[1]
+
+        undist_L = cv2.undistortPoints(
+            np.column_stack([uL, vL]).reshape(-1, 1, 2), self.K_L, self.dist_L, P=self.K_L
+        ).reshape(-1, 2)
+        undist_R = cv2.undistortPoints(
+            np.column_stack([uR, vR]).reshape(-1, 1, 2), self.K_R, self.dist_R, P=self.K_R
+        ).reshape(-1, 2)
+
+        pts_4d = cv2.triangulatePoints(self.P_L, self.P_R, undist_L.T, undist_R.T)
+        pts_3d = (pts_4d[:3] / pts_4d[3:]).T
+        return pts_3d.astype(np.float32)
+
+    def intersect_corners_ray_plane(self, corners_L: np.ndarray, h_token: float) -> np.ndarray:
+        """Calculates 3D world points for corners using single-camera ray-plane intersection."""
+        pts_L = np.asarray(corners_L, dtype=np.float32).reshape(-1, 2)
+        uL = pts_L[:, 0] + self.roi_L[0]
+        vL = pts_L[:, 1] + self.roi_L[1]
+
+        undist_L = cv2.undistortPoints(
+            np.column_stack([uL, vL]).reshape(-1, 1, 2), self.K_L, self.dist_L, P=self.K_L
+        ).reshape(-1, 2)
+
+        C_L = (-self.R_L.T @ self.t_L).flatten()
+        homog = np.column_stack([undist_L, np.ones(len(undist_L), dtype=np.float32)])
+        d_cam = (self.K_L_inv @ homog.T).T
+        d_world = (self.R_L.T @ d_cam.T).T
+
+        s = (h_token - C_L[2]) / (d_world[:, 2] + 1e-9)
+        pts_3d = C_L.reshape(1, 3) + s.reshape(-1, 1) * d_world
+        return pts_3d.astype(np.float32)
+
     def update_buffers(self, result: DetectionResult):
         """Add new detection to the appropriate buffer and prune old ones."""
         if result.camera_id == "left":

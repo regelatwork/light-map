@@ -261,3 +261,50 @@ def test_aruco_mask_layer_version_with_persistence(mock_state, mock_config):
     mock_state._system_time_atom.update(106.0, force_timestamp=v3 + 1000)
     v4 = layer.get_current_version()
     assert v4 == v3
+
+
+def test_aruco_mask_layer_stereo_triangulation(mock_state, mock_config):
+    """Verifies that stereo triangulator is used when both camera corners are available."""
+    mock_triangulator = MagicMock()
+    mock_triangulator.triangulate_corners.return_value = np.array(
+        [[10.0, 10.0, 50.0], [20.0, 10.0, 50.0], [20.0, 20.0, 50.0], [10.0, 20.0, 50.0]],
+        dtype=np.float32,
+    )
+
+    corners_l = np.array([[100, 100], [200, 100], [200, 200], [100, 200]], dtype=np.float32)
+    corners_r = np.array([[80, 100], [180, 100], [180, 200], [80, 200]], dtype=np.float32)
+
+    mock_state.raw_aruco = {
+        "corners": [corners_l],
+        "ids": [42],
+        "corners_right_dict": {42: corners_r},
+    }
+
+    layer = ArucoMaskLayer(mock_state, mock_config, stereo_triangulator=mock_triangulator)
+    patches = layer._generate_patches(100.0)
+
+    assert len(patches) == 1
+    mock_triangulator.triangulate_corners.assert_called_once()
+
+
+def test_aruco_mask_layer_stereo_fallback(mock_state, mock_config):
+    """Verifies that single camera fallback is used when right camera corners are occluded."""
+    mock_triangulator = MagicMock()
+    mock_triangulator.intersect_corners_ray_plane.return_value = np.array(
+        [[10.0, 10.0, 30.0], [20.0, 10.0, 30.0], [20.0, 20.0, 30.0], [10.0, 20.0, 30.0]],
+        dtype=np.float32,
+    )
+
+    corners_l = np.array([[100, 100], [200, 100], [200, 200], [100, 200]], dtype=np.float32)
+
+    mock_state.raw_aruco = {
+        "corners": [corners_l],
+        "ids": [42],
+        "corners_right_dict": {},  # Occluded in right camera
+    }
+
+    layer = ArucoMaskLayer(mock_state, mock_config, stereo_triangulator=mock_triangulator)
+    patches = layer._generate_patches(100.0)
+
+    assert len(patches) == 1
+    mock_triangulator.intersect_corners_ray_plane.assert_called_once()

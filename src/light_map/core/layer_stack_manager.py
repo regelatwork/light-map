@@ -54,10 +54,16 @@ class LayerStackManager:
             config=config,
         )
         self.hand_mask_layer = HandMaskLayer(
-            state, config, projection_service=context.projection_service
+            state,
+            config,
+            projection_service=context.projection_service,
+            stereo_triangulator=getattr(context, "stereo_triangulator", None),
         )
         self.aruco_mask_layer = ArucoMaskLayer(
-            state, config, projection_service=context.projection_service
+            state,
+            config,
+            projection_service=context.projection_service,
+            stereo_triangulator=getattr(context, "stereo_triangulator", None),
         )
         self.menu_layer = MenuLayer(state)
         self.token_layer = TokenLayer(state, context)

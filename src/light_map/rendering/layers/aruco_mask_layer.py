@@ -21,10 +21,12 @@ class ArucoMaskLayer(Layer):
         state: WorldState,
         config: AppConfig,
         projection_service: ProjectionService | None = None,
+        stereo_triangulator: Any | None = None,
     ):
         super().__init__(state=state, is_static=False, layer_mode=LayerMode.MASKED)
         self.config = config
         self.projection_service = projection_service
+        self.stereo_triangulator = stereo_triangulator
         self.last_corners: dict[int, np.ndarray] = {}
         self.last_seen: dict[int, float] = {}
 
@@ -61,15 +63,70 @@ class ArucoMaskLayer(Layer):
         camera_pixels: Any,
         height_mm: float = 0.0,
         prefer_homography: bool = True,
+        right_camera_pixels: Any | None = None,
     ) -> np.ndarray:
         """
         Transforms camera pixel points to projector space.
-        Uses ProjectionService if available, otherwise falls back to homography.
+        If stereo_triangulator is available, triangulates the 4 corner points (or uses single-camera
+        ray-plane fallback), ray-projects them to tabletop Z=0, and applies homography.
+        Otherwise falls back to ProjectionService or surface homography.
         """
         if isinstance(camera_pixels, list):
             camera_pixels = np.array(camera_pixels, dtype=np.float32)
         else:
             camera_pixels = camera_pixels.astype(np.float32)
+
+        if self.stereo_triangulator:
+            if right_camera_pixels is not None:
+                if isinstance(right_camera_pixels, list):
+                    right_camera_pixels = np.array(right_camera_pixels, dtype=np.float32)
+                corners_3d = self.stereo_triangulator.triangulate_corners(
+                    camera_pixels, right_camera_pixels
+                )
+            else:
+                corners_3d = self.stereo_triangulator.intersect_corners_ray_plane(
+                    camera_pixels, height_mm
+                )
+
+            mount_h = getattr(self.config, "projector_mount_height_mm", 1200.0)
+            if not isinstance(mount_h, (int, float)):
+                mount_h = 1200.0
+            C_proj = np.array(
+                [0.0, 0.0, float(mount_h)],
+                dtype=np.float32,
+            )
+            if self.projection_service and self.projection_service.projector_model:
+                C_proj = self.projection_service.projector_model.get_projector_center(
+                    override=self.state.projector_pose if self.state else None
+                )
+
+            denom = corners_3d[:, 2] - C_proj[2]
+            t = -corners_3d[:, 2] / (denom + 1e-9)
+            pm0 = corners_3d + (corners_3d - C_proj.reshape(1, 3)) * t.reshape(-1, 1)
+
+            if (
+                self.projection_service
+                and self.projection_service.projector_model.homography_matrix is not None
+            ):
+                ground_cam = self.projection_service.camera_model.project_world_to_camera(pm0)
+                ground_cam_reshaped = ground_cam.reshape(-1, 1, 2).astype(np.float32)
+                if self.config.distortion_model:
+                    return self.config.distortion_model.apply_correction(
+                        ground_cam_reshaped
+                    ).reshape(-1, 2)
+                return cv2.perspectiveTransform(
+                    ground_cam_reshaped,
+                    self.projection_service.projector_model.homography_matrix,
+                ).reshape(-1, 2)
+            elif self.config.projector_matrix is not None:
+                if self.projection_service:
+                    ground_cam = self.projection_service.camera_model.project_world_to_camera(pm0)
+                    cam_pts_reshaped = ground_cam.reshape(-1, 1, 2).astype(np.float32)
+                else:
+                    cam_pts_reshaped = camera_pixels.reshape(-1, 1, 2).astype(np.float32)
+                return cv2.perspectiveTransform(
+                    cam_pts_reshaped, self.config.projector_matrix
+                ).reshape(-1, 2)
 
         if self.projection_service:
             return self.projection_service.project_camera_to_projector(
@@ -132,6 +189,7 @@ class ArucoMaskLayer(Layer):
         limit_h = self.config.height
 
         default_height = DEFAULT_TOKEN_HEIGHT_MM
+        right_corners_dict = raw_aruco.get("corners_right_dict", {})
 
         for marker_id, corners in to_render:
             # Determine height
@@ -149,9 +207,13 @@ class ArucoMaskLayer(Layer):
 
             # corners is (4, 2) in camera pixel coordinates.
             # We target the actual height of the token for mask projection.
-            # We prefer homography for masking because it's usually better calibrated for the tabletop.
+            # Triangulate directly if right camera corners exist, otherwise use single-camera fallback.
+            right_corners = right_corners_dict.get(marker_id)
             projector_corners = self._transform_pts(
-                corners, height_mm=height_mm, prefer_homography=True
+                corners,
+                height_mm=height_mm,
+                prefer_homography=True,
+                right_camera_pixels=right_corners,
             )
             projector_corners = np.array(projector_corners, dtype=np.float32).reshape(-1, 2)
 

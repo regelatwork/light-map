@@ -1,3 +1,5 @@
+from typing import Any
+
 import cv2
 import numpy as np
 
@@ -18,10 +20,12 @@ class HandMaskLayer(Layer):
         state: WorldState,
         config: AppConfig,
         projection_service: ProjectionService | None = None,
+        stereo_triangulator: Any | None = None,
     ):
         super().__init__(state=state, is_static=False, layer_mode=LayerMode.MASKED)
         self.config = config
         self.projection_service = projection_service
+        self.stereo_triangulator = stereo_triangulator
         self.hand_masker = HandMasker()
 
     def get_current_version(self) -> int:
@@ -56,14 +60,20 @@ class HandMaskLayer(Layer):
         cam_pts[:, 0] *= frame_w
         cam_pts[:, 1] *= frame_h
 
+        # Determine real elevation from stereo triangulation, or fallback to z_last_known
+        hand_z = 20.0  # Fallback default if uncalibrated
+        if self.stereo_triangulator is not None:
+            z_val = getattr(self.stereo_triangulator, "z_last_known", None)
+            if z_val is not None and z_val > 0:
+                hand_z = float(z_val)
+        elif hasattr(self.state, "hand_elevation_mm") and self.state.hand_elevation_mm is not None:
+            hand_z = float(self.state.hand_elevation_mm)
+
         # Use ProjectionService if available
         if self.projection_service:
-            # Assume hand is slightly above the table (e.g., 20mm)
-            # This helps the mask better align with the physical hand.
-            # We prefer homography for masking because it's usually better calibrated for the tabletop.
             return self.projection_service.project_camera_to_projector(
                 cam_pts,
-                height_mm=20.0,
+                height_mm=hand_z,
                 prefer_homography=True,
                 projector_pose=self.state.projector_pose if self.state else None,
             )

@@ -23,7 +23,7 @@ export const CalibrationWizard: React.FC = () => {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
         <div className="lg:col-span-2 bg-black rounded-lg overflow-hidden flex items-center justify-center min-h-[300px]">
-          {world.scene === SceneId.CALIBRATE_STEREO ? (
+          {world.scene === SceneId.CALIBRATE_STEREO || config.stereo_vision?.enable_stereo !== false ? (
             <div className="grid grid-cols-2 gap-2 w-full h-full p-2">
               <div className="relative">
                 <span className="absolute top-2 left-2 bg-black/70 text-white text-xs px-2 py-1 rounded">
@@ -71,73 +71,74 @@ export const CalibrationWizard: React.FC = () => {
           </div>
         </div>
 
-        <div className="flex flex-col space-y-3">
-          <h3 className="font-semibold text-gray-700 border-b pb-2">Launch Calibration</h3>
+        <div className="flex flex-col space-y-4">
+          <h3 className="font-semibold text-gray-700 border-b pb-2">Table Calibration</h3>
 
           <button
-            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-left transition-colors"
-            onClick={() => handleStartCalibration(MenuActions.CALIBRATE_INTRINSICS)}
-            disabled={isCalibrating}
-          >
-            1. Camera Intrinsics
-          </button>
-
-          <button
-            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-left transition-colors"
-            onClick={() => handleStartCalibration(MenuActions.CALIBRATE_PROJECTOR)}
-            disabled={isCalibrating}
-          >
-            2. Projector Homography
-          </button>
-
-          <button
-            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-left transition-colors"
-            onClick={() => handleStartCalibration(MenuActions.CALIBRATE_PPI)}
-            disabled={isCalibrating}
-          >
-            3. Physical Scale (PPI)
-          </button>
-
-          <button
-            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-left transition-colors"
-            onClick={() => handleStartCalibration(MenuActions.CALIBRATE_EXTRINSICS)}
-            disabled={isCalibrating}
-          >
-            4. Camera Extrinsics
-          </button>
-
-          <button
-            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-left transition-colors"
-            onClick={() => handleStartCalibration(MenuActions.CALIBRATE_PROJECTOR_3D)}
-            disabled={isCalibrating}
-          >
-            5. Projector 3D Pose
-          </button>
-
-          <button
-            className={`px-4 py-2 text-white rounded text-left transition-colors ${
-              !config.stereo_vision?.enable_stereo
-                ? 'bg-gray-400 cursor-not-allowed'
-                : 'bg-blue-600 hover:bg-blue-700'
-            }`}
+            className="px-5 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg shadow-sm text-center transition-colors flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
             onClick={() => handleStartCalibration(MenuActions.CALIBRATE_STEREO)}
-            disabled={isCalibrating || !config.stereo_vision?.enable_stereo}
-            title={
-              !config.stereo_vision?.enable_stereo
-                ? 'Enable Stereo Vision in Settings to calibrate dual cameras'
-                : 'Launch single-sweep stereo calibration'
-            }
-          >
-            6. Stereo Vision Calibration
-          </button>
-
-          <button
-            className="px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700 text-left mt-4 transition-colors"
-            onClick={() => handleStartCalibration(MenuActions.CALIBRATE_FLASH)}
             disabled={isCalibrating}
           >
-            Aux: Flash Calibration
+            <span>Run Table Calibration</span>
           </button>
+          <p className="text-xs text-gray-500 leading-relaxed">
+            Performs unified single-sweep stereo calibration solving camera extrinsics, table homography, and projector alignment.
+          </p>
+
+          <details className="mt-4 pt-2 border-t border-gray-200">
+            <summary className="text-xs font-medium text-gray-500 hover:text-gray-700 cursor-pointer select-none">
+              Advanced / Hardware Maintenance
+            </summary>
+            <div className="flex flex-col space-y-2 mt-3 pl-1">
+              <button
+                className="px-3 py-1.5 text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 rounded text-left transition-colors"
+                onClick={() => handleStartCalibration(MenuActions.CALIBRATE_INTRINSICS)}
+                disabled={isCalibrating}
+              >
+                1. Camera Intrinsics
+              </button>
+
+              <button
+                className="px-3 py-1.5 text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 rounded text-left transition-colors"
+                onClick={() => handleStartCalibration(MenuActions.CALIBRATE_PROJECTOR)}
+                disabled={isCalibrating}
+              >
+                2. Projector Homography
+              </button>
+
+              <button
+                className="px-3 py-1.5 text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 rounded text-left transition-colors"
+                onClick={() => handleStartCalibration(MenuActions.CALIBRATE_PPI)}
+                disabled={isCalibrating}
+              >
+                3. Physical Scale (PPI)
+              </button>
+
+              <button
+                className="px-3 py-1.5 text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 rounded text-left transition-colors"
+                onClick={() => handleStartCalibration(MenuActions.CALIBRATE_EXTRINSICS)}
+                disabled={isCalibrating}
+              >
+                4. Camera Extrinsics
+              </button>
+
+              <button
+                className="px-3 py-1.5 text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 rounded text-left transition-colors"
+                onClick={() => handleStartCalibration(MenuActions.CALIBRATE_PROJECTOR_3D)}
+                disabled={isCalibrating}
+              >
+                5. Projector 3D Pose
+              </button>
+
+              <button
+                className="px-3 py-1.5 text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 rounded text-left transition-colors"
+                onClick={() => handleStartCalibration(MenuActions.CALIBRATE_FLASH)}
+                disabled={isCalibrating}
+              >
+                Aux: Flash Calibration
+              </button>
+            </div>
+          </details>
         </div>
       </div>
 

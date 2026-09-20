@@ -169,11 +169,6 @@ def build_root_menu(
                         should_close_on_trigger=True,
                     ),
                     MenuItem(
-                        title="Calibrate PPI",
-                        action_id=MenuActions.CALIBRATE_SCALE,
-                        should_close_on_trigger=True,
-                    ),
-                    MenuItem(
                         title="Reset Fog of War",
                         action_id=MenuActions.RESET_FOW,
                         should_close_on_trigger=True,
@@ -204,32 +199,7 @@ def build_root_menu(
                 title="Calibration",
                 children=[
                     MenuItem(
-                        title="1. Camera Intrinsics",
-                        action_id=MenuActions.CALIBRATE_INTRINSICS,
-                        should_close_on_trigger=True,
-                    ),
-                    MenuItem(
-                        title="2. Projector Homography",
-                        action_id=MenuActions.CALIBRATE_PROJECTOR,
-                        should_close_on_trigger=True,
-                    ),
-                    MenuItem(
-                        title="3. Physical PPI",
-                        action_id=MenuActions.CALIBRATE_PPI,
-                        should_close_on_trigger=True,
-                    ),
-                    MenuItem(
-                        title="4. Camera Extrinsics",
-                        action_id=MenuActions.CALIBRATE_EXTRINSICS,
-                        should_close_on_trigger=True,
-                    ),
-                    MenuItem(
-                        title="5. Projector 3D Pose",
-                        action_id=MenuActions.CALIBRATE_PROJECTOR_3D,
-                        should_close_on_trigger=True,
-                    ),
-                    MenuItem(
-                        title="6. Stereo Vision Calibration",
+                        title="Calibrate Table",
                         action_id=MenuActions.CALIBRATE_STEREO,
                         should_close_on_trigger=True,
                     ),
@@ -244,19 +214,9 @@ def build_root_menu(
                         should_close_on_trigger=True,
                     ),
                     MenuItem(
-                        title="Calibrate Flash",
-                        action_id=MenuActions.CALIBRATE_FLASH,
-                        should_close_on_trigger=True,
-                    ),
-                    MenuItem(
                         title="Load Last Session",
                         action_id=MenuActions.LOAD_SESSION,
                         should_close_on_trigger=True,
-                    ),
-                    MenuItem(
-                        title=f"Algorithm: {map_config.get_detection_algorithm()}",
-                        action_id=MenuActions.SCAN_ALGORITHM,
-                        should_close_on_trigger=False,
                     ),
                 ],
             ),

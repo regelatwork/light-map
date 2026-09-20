@@ -42,7 +42,7 @@ def test_menu_builder_contains_stereo_calibration():
         None,
     )
     assert stereo_item is not None, "Stereo calibration item not found in Calibration menu"
-    assert "Stereo" in stereo_item.title
+    assert stereo_item.title == "Calibrate Table"
 
 
 def test_menu_scene_handles_calibrate_stereo():

@@ -46,10 +46,8 @@ def test_calibration_submenu(root_menu):
 
     # Verify children
     sub_titles = [c.title for c in calib_menu.children]
-    assert "1. Camera Intrinsics" in sub_titles
-    assert "2. Projector Homography" in sub_titles
-    assert "3. Physical PPI" in sub_titles
-    assert "4. Camera Extrinsics" in sub_titles
+    assert "Calibrate Table" in sub_titles
+    assert len(sub_titles) == 1
 
 
 def test_map_settings_submenu(root_menu):
@@ -61,7 +59,6 @@ def test_map_settings_submenu(root_menu):
     assert "Rotate CW" in sub_titles
     assert "Rotate CCW" in sub_titles
     assert "Reset View" in sub_titles
-    assert "Calibrate PPI" in sub_titles
     assert "Set Scale" in sub_titles
     assert "Zoom 1:1" in sub_titles
 
@@ -70,5 +67,5 @@ def test_session_submenu_items(root_menu):
     session_menu = next(c for c in root_menu.children if c.title == "Session")
     session_titles = [c.title for c in session_menu.children]
     assert "Scan & Save" in session_titles
-    assert "Calibrate Flash" in session_titles
     assert "Load Last Session" in session_titles
+    assert len(session_titles) == 2

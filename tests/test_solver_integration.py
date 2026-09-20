@@ -84,3 +84,13 @@ def test_solve_integration():
     assert "roi_right" in result
     assert "table_homography" in result
     assert abs(result["projector_ppi"] - 100.0) < 1.0
+
+    # Phase 1: Dual table extrinsics verification
+    assert result.r_world_to_l is not None
+    assert result.t_world_to_l is not None
+    assert result.r_world_to_r is not None
+    assert result.t_world_to_r is not None
+    assert result.r_world_to_l.shape == (3, 3)
+    assert result.t_world_to_l.size == 3
+    assert result.r_world_to_r.shape == (3, 3)
+    assert result.t_world_to_r.size == 3

@@ -118,9 +118,9 @@ class SequentialSolver:
             R_stereo = R_stereo_raw.T
             T_stereo = -R_stereo @ T_stereo_raw
 
-        # ROI Calculation
-        roi_left, roi_right = self._calculate_rois(
-            pts_3d, pts_2d_l, pts_2d_r, R_stereo, T_stereo, projector_ppi
+        # ROI & Table Extrinsics Calculation
+        roi_left, roi_right, R_world_to_l, t_world_to_l, R_world_to_r, t_world_to_r = (
+            self._calculate_rois(pts_3d, pts_2d_l, pts_2d_r, R_stereo, T_stereo, projector_ppi)
         )
 
         return CalibrationResult(
@@ -132,6 +132,10 @@ class SequentialSolver:
             roi_right=roi_right,
             table_homography=table_homography,
             scale_factor=projector_ppi,
+            r_world_to_l=R_world_to_l,
+            t_world_to_l=t_world_to_l,
+            r_world_to_r=R_world_to_r,
+            t_world_to_r=t_world_to_r,
         )
 
     def _solve_phase_1(
@@ -312,9 +316,16 @@ class SequentialSolver:
         r_stereo: np.ndarray,
         t_stereo: np.ndarray,
         projector_ppi: float,
-    ) -> tuple[tuple, tuple]:
+    ) -> tuple[
+        tuple[int, int, int, int],
+        tuple[int, int, int, int],
+        np.ndarray,
+        np.ndarray,
+        np.ndarray,
+        np.ndarray,
+    ]:
         """
-        Phase 3 / Two-pass ROI calculation.
+        Phase 3 / Two-pass ROI calculation and table-relative extrinsics derivation.
         """
         # 1. Find the pose of camera L relative to the tabletop.
         # We can use solvePnP with pts_3d and pts_2d_l.
@@ -328,42 +339,50 @@ class SequentialSolver:
         obj_pts = np.array(obj_pts, dtype=np.float32)
         img_pts = np.array(img_pts, dtype=np.float32)
 
-        success, r_world_to_l, t_world_to_l = cv2.solvePnP(obj_pts, img_pts, self.K_L, None)
+        success, rvec_world_to_l, t_world_to_l = cv2.solvePnP(obj_pts, img_pts, self.K_L, None)
         if not success:
             logger.error("Failed to solvePnP for camera L pose.")
-            return (0, 0, 1920, 1080), (0, 0, 1920, 1080)
+            return (
+                (0, 0, 1920, 1080),
+                (0, 0, 1920, 1080),
+                np.eye(3, dtype=np.float32),
+                np.zeros((3, 1), dtype=np.float32),
+                np.eye(3, dtype=np.float32),
+                np.zeros((3, 1), dtype=np.float32),
+            )
 
-        # 2. Project all points to both cameras.
-        # pts_3d contains the 3D points in world coordinates.
+        R_world_to_l, _ = cv2.Rodrigues(rvec_world_to_l)
+        t_world_to_l = t_world_to_l.reshape(3, 1).astype(np.float32)
+
+        # 2. Derive Right Camera Table Extrinsics:
+        # P_R_cam = R_stereo @ P_L_cam + t_stereo
+        # P_L_cam = R_world_to_l @ P_world + t_world_to_l
+        # P_R_cam = (R_stereo @ R_world_to_l) @ P_world + (R_stereo @ t_world_to_l + t_stereo)
+        R_world_to_r = (r_stereo @ R_world_to_l).astype(np.float32)
+        t_world_to_r = (r_stereo @ t_world_to_l + t_stereo.reshape(3, 1)).astype(np.float32)
+        rvec_world_to_r, _ = cv2.Rodrigues(R_world_to_r)
+
+        # 3. Project all points to both cameras for ROI envelope.
         all_3d_pts = np.array(list(pts_3d.values())).reshape(-1, 3, 1).astype(np.float32)
 
         # Project to Camera L
         img_pts_l, _ = cv2.projectPoints(
-            all_3d_pts, r_world_to_l, t_world_to_l, self.K_L, self.dist_L
+            all_3d_pts, rvec_world_to_l, t_world_to_l, self.K_L, self.dist_L
         )
         img_pts_l = img_pts_l.reshape(-1, 2)
 
         # Project to Camera R
-        # P_R_cam = R_stereo @ P_L_cam + t_stereo
-        # P_L_cam = R_world_to_l @ P_world + t_world_to_l
-        # P_R_cam = R_stereo @ (R_world_to_l @ P_world + t_world_to_l) + t_stereo
-        # P_R_cam = (R_stereo @ R_world_to_l) @ P_world + (R_stereo @ t_world_to_l + t_stereo)
-        # Since we are projecting from world to R directly using r_r and t_r:
-        r_world_to_r = r_stereo @ r_world_to_l
-        t_world_to_r = r_stereo @ t_world_to_l + t_stereo
-
         img_pts_r, _ = cv2.projectPoints(
-            all_3d_pts, r_world_to_r, t_world_to_r, self.K_R, self.dist_R
+            all_3d_pts, rvec_world_to_r, t_world_to_r, self.K_R, self.dist_R
         )
         img_pts_r = img_pts_r.reshape(-1, 2)
 
-        # 3. Find bounding box and add margin.
-        # We use the helper function for consistency.
-        return compute_roi_pass2(
+        # 4. Find bounding box and add margin.
+        roi_l, roi_r = compute_roi_pass2(
             sensor_res=(1920, 1080),
-            r_l=r_world_to_l,
+            r_l=rvec_world_to_l,
             t_l=t_world_to_l,
-            r_r=r_world_to_r,
+            r_r=rvec_world_to_r,
             t_r=t_world_to_r,
             projector_ppi=projector_ppi,
             pts_3d=all_3d_pts.reshape(-1, 3),
@@ -372,3 +391,5 @@ class SequentialSolver:
             k_r=self.K_R,
             dist_r=self.dist_R,
         )
+
+        return roi_l, roi_r, R_world_to_l, t_world_to_l, R_world_to_r, t_world_to_r

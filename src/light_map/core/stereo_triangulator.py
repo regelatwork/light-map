@@ -79,6 +79,76 @@ class StereoTriangulator:
         # We'll use the height from the Token object if it exists in the metadata.
         # Or we can use a default.
 
+    @classmethod
+    def from_calibration_dict(
+        cls,
+        data: dict,
+        frame_time: float = 0.033,
+        max_allowed_skew: float = 0.1,
+    ) -> "StereoTriangulator":
+        """Constructs StereoTriangulator from calibration dictionary."""
+
+        def get_mat(k1, k2, default):
+            v = data.get(k1, data.get(k2))
+            return np.array(v, dtype=np.float32) if v is not None else default
+
+        # Left intrinsics
+        k_l_val = data.get("camera_left_intrinsics")
+        if isinstance(k_l_val, dict) and "matrix" in k_l_val:
+            K_L = np.array(k_l_val["matrix"], dtype=np.float32)
+            dist_L = np.array(k_l_val.get("dist", np.zeros(5)), dtype=np.float32)
+        else:
+            K_L = get_mat("camera_left_intrinsics", "k_left", np.eye(3, dtype=np.float32))
+            dist_L = get_mat("camera_left_dist", "dist_left", np.zeros(5, dtype=np.float32))
+
+        # Right intrinsics
+        k_r_val = data.get("camera_right_intrinsics")
+        if isinstance(k_r_val, dict) and "matrix" in k_r_val:
+            K_R = np.array(k_r_val["matrix"], dtype=np.float32)
+            dist_R = np.array(k_r_val.get("dist", np.zeros(5)), dtype=np.float32)
+        else:
+            K_R = get_mat("camera_right_intrinsics", "k_right", np.eye(3, dtype=np.float32))
+            dist_R = get_mat("camera_right_dist", "dist_right", np.zeros(5, dtype=np.float32))
+
+        R_L = get_mat("r_world_to_l", "r_left", np.eye(3, dtype=np.float32))
+        t_L = get_mat("t_world_to_l", "t_left", np.zeros((3, 1), dtype=np.float32))
+        R_R = get_mat("r_world_to_r", "r_right", np.eye(3, dtype=np.float32))
+        t_R = get_mat("t_world_to_r", "t_right", np.zeros((3, 1), dtype=np.float32))
+
+        roi_l = list(data.get("roi_left", [0, 0, 1920, 1080]))
+        roi_r = list(data.get("roi_right", [0, 0, 1920, 1080]))
+
+        return cls(
+            camera_left_intrinsics=K_L,
+            camera_left_dist=dist_L,
+            camera_right_intrinsics=K_R,
+            camera_right_dist=dist_R,
+            rotation_left=R_L,
+            translation_left=t_L,
+            rotation_right=R_R,
+            translation_right=t_R,
+            roi_left=roi_l,
+            roi_right=roi_r,
+            frame_time=frame_time,
+            max_allowed_skew=max_allowed_skew,
+        )
+
+    @classmethod
+    def from_calibration_file(
+        cls,
+        filepath: str,
+        frame_time: float = 0.033,
+        max_allowed_skew: float = 0.1,
+    ) -> "StereoTriangulator":
+        """Constructs StereoTriangulator directly from a JSON calibration file."""
+        import json
+
+        with open(filepath) as f:
+            data = json.load(f)
+        return cls.from_calibration_dict(
+            data, frame_time=frame_time, max_allowed_skew=max_allowed_skew
+        )
+
     def _undistort_point(self, u: float, v: float, K: np.ndarray, dist: np.ndarray) -> np.ndarray:
         pts = np.array([[u, v]], dtype=np.float32)
         pts_undist = cv2.undistortPoints(pts, K, dist, P=K)

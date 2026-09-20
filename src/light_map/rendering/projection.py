@@ -125,11 +125,14 @@ class Projector3DModel:
             R, _ = cv2.Rodrigues(self.rotation_vector)
             self.calibrated_projector_center = -(R.T @ self.translation_vector.flatten())
 
-    def get_projector_center(self, override: ProjectorPose | None = None) -> np.ndarray | None:
-        """Returns the absolute 3D position of the projector center."""
-        if override is not None:
+    def get_projector_center(self, override: ProjectorPose | None = None) -> np.ndarray:
+        """Returns the absolute 3D position of the projector center, falling back to nominal overhead [0, 0, 1200] mm."""
+        if override is not None and (override.x != 0 or override.y != 0 or override.z != 0):
             return np.array([override.x, override.y, override.z], dtype=np.float32)
-        return self.calibrated_projector_center
+        if self.calibrated_projector_center is not None:
+            return self.calibrated_projector_center
+        # Nominal overhead projector position: 1200mm above tabletop center
+        return np.array([0.0, 0.0, 1200.0], dtype=np.float32)
 
     @property
     def projector_center(self) -> np.ndarray | None:

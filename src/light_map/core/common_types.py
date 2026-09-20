@@ -481,6 +481,7 @@ class AppConfig:
     projector_pos_x_override: float | None = None
     projector_pos_y_override: float | None = None
     projector_pos_z_override: float | None = None
+    projector_mount_height_mm: float = 1200.0
 
     aruco_defaults: dict[int, Any] = field(default_factory=dict)
     token_profiles: dict[str, Any] = field(default_factory=dict)

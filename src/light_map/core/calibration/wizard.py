@@ -119,6 +119,15 @@ class CalibrationWizard:
             "scale_factor": result.scale_factor,
         }
 
+        if result.r_world_to_l is not None:
+            data["r_world_to_l"] = result.r_world_to_l.tolist()
+        if result.t_world_to_l is not None:
+            data["t_world_to_l"] = result.t_world_to_l.tolist()
+        if result.r_world_to_r is not None:
+            data["r_world_to_r"] = result.r_world_to_r.tolist()
+        if result.t_world_to_r is not None:
+            data["t_world_to_r"] = result.t_world_to_r.tolist()
+
         store = ConfigStore("stereo_calibration.json")
         store.save(data)
         logger.info("Calibration result saved to stereo_calibration.json")

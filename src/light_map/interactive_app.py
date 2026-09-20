@@ -65,6 +65,9 @@ from light_map.visibility.exclusive_vision_scene import ExclusiveVisionScene
 from light_map.vision.scanning_scene import ScanningScene
 
 
+logger = logging.getLogger(__name__)
+
+
 class InteractiveApp:
     def __init__(
         self,
@@ -115,6 +118,9 @@ class InteractiveApp:
         from light_map.core.analytics import LatencyInstrument
 
         self.instrument = LatencyInstrument()
+
+        # Initialize Stereo Triangulator
+        self.stereo_triangulator = None
 
         # Load and Normalize Calibration
         self._initialize_calibration()
@@ -187,6 +193,29 @@ class InteractiveApp:
         self.tracking_coordinator.token_tracker.set_aruco_calibration(
             camera_matrix, distortion_coefficients, rotation_vector, translation_vector
         )
+        self._initialize_stereo_triangulator()
+
+    def _initialize_stereo_triangulator(self):
+        """Loads StereoTriangulator if stereo_calibration.json is available."""
+        self.stereo_triangulator = None
+        storage = self.config.storage_manager
+        stereo_path = (
+            storage.get_data_path("stereo_calibration.json")
+            if storage
+            else "stereo_calibration.json"
+        )
+        if os.path.exists(stereo_path):
+            try:
+                from light_map.core.stereo_triangulator import StereoTriangulator
+
+                self.stereo_triangulator = StereoTriangulator.from_calibration_file(stereo_path)
+                logger.info("InteractiveApp: Initialized StereoTriangulator from %s", stereo_path)
+            except Exception as e:
+                logger.warning(
+                    "InteractiveApp: Could not load StereoTriangulator from %s: %s",
+                    stereo_path,
+                    e,
+                )
 
     def _initialize_projector_pose(self):
         """Sets the initial projector pose in the WorldState."""
@@ -253,6 +282,7 @@ class InteractiveApp:
             events=self.events,
             time_provider=self.time_provider,
             save_session=self.save_session,
+            stereo_triangulator=self.stereo_triangulator,
         )
 
     @property

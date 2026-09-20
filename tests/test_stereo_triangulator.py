@@ -98,3 +98,54 @@ def test_stereo_triangulator_timestamp_skew_fallback(triangulator):
     result = triangulator.process_left_result(left_det)
     # Should trigger fallback rather than stereo
     assert result.source_type != "stereo"
+
+
+def test_from_calibration_dict():
+    data = {
+        "camera_left_intrinsics": [[800.0, 0, 960.0], [0, 800.0, 540.0], [0, 0, 1.0]],
+        "camera_left_dist": [0, 0, 0, 0, 0],
+        "camera_right_intrinsics": [[800.0, 0, 960.0], [0, 800.0, 540.0], [0, 0, 1.0]],
+        "camera_right_dist": [0, 0, 0, 0, 0],
+        "r_world_to_l": [[1.0, 0, 0], [0, -1.0, 0], [0, 0, -1.0]],
+        "t_world_to_l": [0.0, 0.0, 1000.0],
+        "r_world_to_r": [[1.0, 0, 0], [0, -1.0, 0], [0, 0, -1.0]],
+        "t_world_to_r": [-128.0, 0.0, 1000.0],
+        "roi_left": [0, 0, 1920, 1080],
+        "roi_right": [0, 0, 1920, 1080],
+    }
+
+    tri = StereoTriangulator.from_calibration_dict(data)
+    assert tri.K_L.shape == (3, 3)
+    assert tri.R_L.shape == (3, 3)
+    assert tri.t_L.shape == (3, 1)
+    assert tri.R_R.shape == (3, 3)
+    assert tri.t_R.shape == (3, 1)
+
+
+def test_from_calibration_file(tmp_path):
+    import json
+
+    calib_file = tmp_path / "test_stereo_calib.json"
+    data = {
+        "camera_left_intrinsics": {
+            "matrix": [[800.0, 0, 960.0], [0, 800.0, 540.0], [0, 0, 1.0]],
+            "dist": [0, 0, 0, 0, 0],
+        },
+        "camera_right_intrinsics": {
+            "matrix": [[800.0, 0, 960.0], [0, 800.0, 540.0], [0, 0, 1.0]],
+            "dist": [0, 0, 0, 0, 0],
+        },
+        "r_world_to_l": [[1.0, 0, 0], [0, 1.0, 0], [0, 0, 1.0]],
+        "t_world_to_l": [0.0, 0.0, 1000.0],
+        "r_world_to_r": [[1.0, 0, 0], [0, 1.0, 0], [0, 0, 1.0]],
+        "t_world_to_r": [128.0, 0.0, 1000.0],
+        "roi_left": [10, 10, 1000, 800],
+        "roi_right": [20, 20, 1000, 800],
+    }
+    with open(calib_file, "w") as f:
+        json.dump(data, f)
+
+    tri = StereoTriangulator.from_calibration_file(str(calib_file))
+    assert tri.K_L[0, 0] == 800.0
+    assert tri.roi_L == [10, 10, 1000, 800]
+    assert tri.roi_R == [20, 20, 1000, 800]

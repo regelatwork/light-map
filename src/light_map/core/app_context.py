@@ -48,6 +48,7 @@ class AppContext:
     inspected_token_id: int | None = None
     inspected_token_mask: np.ndarray | None = None
     save_session: Callable[[], None] | None = None
+    stereo_triangulator: Any | None = None
 
 
 @dataclass

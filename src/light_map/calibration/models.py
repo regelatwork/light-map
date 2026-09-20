@@ -35,6 +35,16 @@ class CalibrationResult(BaseModel):
     roi_right: tuple[int, int, int, int]
     table_homography: np.ndarray = Field(..., description="Homography matrix for tabletop Z=0")
     scale_factor: float = Field(..., description="Physical PPI scale factor")
+    r_world_to_l: np.ndarray | None = Field(None, description="World to Left camera rotation (3x3)")
+    t_world_to_l: np.ndarray | None = Field(
+        None, description="World to Left camera translation (3x1)"
+    )
+    r_world_to_r: np.ndarray | None = Field(
+        None, description="World to Right camera rotation (3x3)"
+    )
+    t_world_to_r: np.ndarray | None = Field(
+        None, description="World to Right camera translation (3x1)"
+    )
 
     def __contains__(self, key: str) -> bool:
         if key in ("R", "t"):

@@ -183,3 +183,66 @@ def test_debug_layer_renders_tokens_when_debug_mode_on(mock_app_context):
     mock_app_context.debug_mode = False
     patches_off, _ = layer.render()
     assert len(patches_off) == 0
+
+
+def test_aruco_worker_stereo_detection():
+    import multiprocessing as mp
+
+    import cv2
+
+    from light_map.vision.infrastructure.camera_operator import CameraOperator
+    from light_map.vision.infrastructure.workers import aruco_worker
+
+    w, h = 320, 240
+    op_l = CameraOperator(width=w, height=h, num_consumers=1)
+    op_r = CameraOperator(width=w, height=h, num_consumers=1)
+
+    lock_l = mp.Lock()
+    lock_r = mp.Lock()
+    op_l.lock = lock_l
+    op_r.lock = lock_r
+
+    # Create synthetic image with ArUco marker 5
+    aruco_dict = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_4X4_50)
+    marker_img = cv2.aruco.generateImageMarker(aruco_dict, 5, 80)
+    marker_bgr = cv2.cvtColor(marker_img, cv2.COLOR_GRAY2BGR)
+
+    frame_l = np.full((h, w, 3), 255, dtype=np.uint8)
+    frame_l[50:130, 50:130] = marker_bgr
+
+    frame_r = np.full((h, w, 3), 255, dtype=np.uint8)
+    frame_r[50:130, 40:120] = marker_bgr
+
+    op_l._publish_frame(frame_l, timestamp=1000)
+    op_r._publish_frame(frame_r, timestamp=1000)
+
+    results_queue = mp.Queue()
+    stop_event = mp.Event()
+
+    p = mp.Process(
+        target=aruco_worker,
+        args=(op_l.shm_name, results_queue, lock_l, stop_event),
+        kwargs={
+            "width": w,
+            "height": h,
+            "num_consumers": 1,
+            "shm_name_right": op_r.shm_name,
+            "lock_right": lock_r,
+            "width_right": w,
+            "height_right": h,
+        },
+    )
+    try:
+        p.start()
+        result = results_queue.get(timeout=3.0)
+        assert result is not None
+        assert 5 in result.data["ids"]
+        assert "corners_right_dict" in result.data
+        assert 5 in result.data["corners_right_dict"]
+    finally:
+        stop_event.set()
+        p.join(timeout=1.0)
+        if p.is_alive():
+            p.kill()
+        op_l.cleanup()
+        op_r.cleanup()

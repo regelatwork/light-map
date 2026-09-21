@@ -378,57 +378,92 @@ def run_app(args):
             if args.remote_hands != "ignore" or args.remote_tokens != "ignore":
                 active_consumers += 1
 
-            # Start Process Manager
-            with VisionProcessManager(
-                width=current_camera_width,
-                height=current_camera_height,
-                num_consumers=active_consumers,
-                projector_matrix=app.config.projector_matrix,
-                map_dims=(app.config.width, app.config.height),
-                intrinsics_path=intrinsics_path,
-                extrinsics_path=extrinsics_path,
-                camera_matrix=app.config.camera_matrix,
-                distortion_coefficients=app.config.distortion_coefficients,
-                remote_mode_hands=args.remote_hands,
-                remote_mode_tokens=args.remote_tokens,
-                remote_host=args.remote_host,
-                remote_port=args.remote_port,
-                remote_origins=args.remote_origins,
-                state_mirror=state_mirror,
-            ) as manager:
-                # Use the WorldState instance from InteractiveApp
-                state = app.state
-                producer = FrameProducer(
-                    shm_name=manager.shm_name,
+            # Initialize right camera if stereo vision is enabled and triangulator is available
+            cam_right = None
+            if (
+                app.config.stereo_vision.enable_stereo
+                and getattr(app, "stereo_triangulator", None) is not None
+            ):
+                try:
+                    device_right = app.config.stereo_vision.camera_right_device or "/dev/video1"
+                    cam_right = Camera(
+                        index=1,
+                        width=current_camera_width,
+                        height=current_camera_height,
+                        camera_name=device_right,
+                    )
+                    logger.info("Stereo right camera initialized successfully: %s", device_right)
+                except Exception as e:
+                    logger.warning(
+                        "Could not initialize stereo right camera (falling back to mono): %s", e
+                    )
+                    cam_right = None
+
+            try:
+                # Start Process Manager
+                with VisionProcessManager(
                     width=current_camera_width,
                     height=current_camera_height,
                     num_consumers=active_consumers,
-                )
-                producer.lock = manager.lock
-
-                input_manager = InputManager(
-                    flicker_timeout=1.5,
-                    time_provider=app.time_provider,
-                    events=app.events,
-                )
-                with MainLoopController(
-                    state,
-                    manager,
-                    input_manager,
-                    producer,
-                    aruco_mapper=app.aruco_mapper,
+                    projector_matrix=app.config.projector_matrix,
+                    map_dims=(app.config.width, app.config.height),
+                    intrinsics_path=intrinsics_path,
+                    extrinsics_path=extrinsics_path,
+                    camera_matrix=app.config.camera_matrix,
+                    distortion_coefficients=app.config.distortion_coefficients,
+                    remote_mode_hands=args.remote_hands,
+                    remote_mode_tokens=args.remote_tokens,
+                    remote_host=args.remote_host,
+                    remote_port=args.remote_port,
+                    remote_origins=args.remote_origins,
                     state_mirror=state_mirror,
-                    events=app.events,
-                    time_provider=app.time_provider,
-                ) as ml:
-                    main_loop = ml
-
-                    stop_event = threading.Event()
-                    cam_thread = threading.Thread(
-                        target=camera_capture_loop,
-                        args=(cam, manager.operator, stop_event),
+                    enable_stereo=(cam_right is not None),
+                    width_right=cam_right.width if cam_right else None,
+                    height_right=cam_right.height if cam_right else None,
+                ) as manager:
+                    # Use the WorldState instance from InteractiveApp
+                    state = app.state
+                    producer = FrameProducer(
+                        shm_name=manager.shm_name,
+                        width=current_camera_width,
+                        height=current_camera_height,
+                        num_consumers=active_consumers,
                     )
-                    cam_thread.start()
+                    producer.lock = manager.lock
+
+                    input_manager = InputManager(
+                        flicker_timeout=1.5,
+                        time_provider=app.time_provider,
+                        events=app.events,
+                    )
+                    with MainLoopController(
+                        state,
+                        manager,
+                        input_manager,
+                        producer,
+                        aruco_mapper=app.aruco_mapper,
+                        state_mirror=state_mirror,
+                        events=app.events,
+                        time_provider=app.time_provider,
+                    ) as ml:
+                        main_loop = ml
+
+                        stop_event = threading.Event()
+                        cam_thread = threading.Thread(
+                            target=camera_capture_loop,
+                            args=(cam, manager.operator, stop_event),
+                            name="CamCaptureLeft",
+                        )
+                        cam_thread.start()
+
+                        cam_thread_right = None
+                        if cam_right is not None and manager.operator_right is not None:
+                            cam_thread_right = threading.Thread(
+                                target=camera_capture_loop,
+                                args=(cam_right, manager.operator_right, stop_event),
+                                name="CamCaptureRight",
+                            )
+                            cam_thread_right.start()
 
                     last_map_config_version = -1
                     last_debug_mode = None
@@ -747,13 +782,19 @@ def run_app(args):
                             exc_info=True,
                         )
                     finally:
-                        # 1. Stop Camera Producer Thread
+                        # 1. Stop Camera Producer Thread(s)
                         stop_event.set()
                         cam_thread.join(timeout=2.0)
+                        if cam_thread_right is not None:
+                            cam_thread_right.join(timeout=2.0)
 
                         # 2. Save Session
                         if app.map_system.is_map_loaded():
                             app.save_session()
+            finally:
+                if cam_right is not None:
+                    cam_right.release()
+                    cam_right = None
 
     except Exception as e:
         logger.critical(

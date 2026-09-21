@@ -63,3 +63,39 @@ def test_camera_context_manager(mock_capture):
 
     # Verify
     mock_instance.release.assert_called_once()
+
+
+def test_camera_pi_pipeline_index_0(mock_capture, mock_is_pi):
+    import cv2
+
+    mock_is_pi.return_value = True
+    cam = Camera(index=0)
+    assert cam.cap == mock_capture.return_value
+    args, kwargs = mock_capture.call_args
+    pipeline = args[0]
+    assert "camera-name=/base/axi/pcie@1000120000/rp1/i2c@88000/imx708@1a" in pipeline
+    assert args[1] == cv2.CAP_GSTREAMER
+
+
+def test_camera_pi_pipeline_index_1(mock_capture, mock_is_pi):
+    import cv2
+
+    mock_is_pi.return_value = True
+    cam = Camera(index=1)
+    assert cam.cap is not None
+    args, kwargs = mock_capture.call_args
+    pipeline = args[0]
+    assert "camera-name=/base/axi/pcie@1000120000/rp1/i2c@80000/imx708@1a" in pipeline
+    assert args[1] == cv2.CAP_GSTREAMER
+
+
+def test_camera_pi_pipeline_custom_name(mock_capture, mock_is_pi):
+    import cv2
+
+    mock_is_pi.return_value = True
+    cam = Camera(camera_name="custom_camera_device_path")
+    assert cam.cap is not None
+    args, kwargs = mock_capture.call_args
+    pipeline = args[0]
+    assert "camera-name=custom_camera_device_path" in pipeline
+    assert args[1] == cv2.CAP_GSTREAMER

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import logging
 import multiprocessing as mp
 import time
@@ -25,6 +27,10 @@ def aruco_worker(
     extrinsics_path: str | None = None,
     camera_matrix: np.ndarray | None = None,
     distortion_coefficients: np.ndarray | None = None,
+    shm_name_right: str | None = None,
+    lock_right: mp.Lock | None = None,
+    width_right: int | None = None,
+    height_right: int | None = None,
 ):
     """
     Worker function for ArUco detection. Consumes frames from shared memory,
@@ -35,6 +41,17 @@ def aruco_worker(
         shm_name=shm_name, width=width, height=height, num_consumers=num_consumers
     )
     producer.lock = lock
+
+    producer_right = None
+    if shm_name_right is not None:
+        producer_right = FrameProducer(
+            shm_name=shm_name_right,
+            width=width_right if width_right is not None else width,
+            height=height_right if height_right is not None else height,
+            num_consumers=1,
+        )
+        if lock_right is not None:
+            producer_right.lock = lock_right
 
     # 2. Initialize Detector
     detector = ArucoTokenDetector(
@@ -89,6 +106,17 @@ def aruco_worker(
                 producer.release()
                 frame_view = None
 
+            # Acquire right frame if stereo is enabled
+            frame_right_copy = None
+            if producer_right is not None:
+                try:
+                    frame_right_view = producer_right.get_latest_frame()
+                    if frame_right_view is not None:
+                        frame_right_copy = frame_right_view.copy()
+                finally:
+                    producer_right.release()
+                    frame_right_view = None
+
             # Perform detection outside the lease
             marker_corners, marker_ids = detector.detect_raw(
                 frame_copy,
@@ -96,6 +124,19 @@ def aruco_worker(
                 map_dims=map_dims,
                 crop_offset=crop_offset,
             )
+
+            corners_right_dict: dict[int, list] = {}
+            if frame_right_copy is not None:
+                marker_corners_r, marker_ids_r = detector.detect_raw(
+                    frame_right_copy,
+                    projector_matrix=None,
+                    map_dims=None,
+                    crop_offset=None,
+                )
+                if marker_ids_r:
+                    for mid, cr in zip(marker_ids_r, marker_corners_r):
+                        corners_right_dict[int(mid)] = cr.tolist()
+
             ts_work_done = time.perf_counter_ns()
 
             # Serialize results
@@ -104,6 +145,8 @@ def aruco_worker(
                 "corners": [c.tolist() for c in marker_corners],
                 "ids": marker_ids,
             }
+            if corners_right_dict:
+                detection_data["corners_right_dict"] = corners_right_dict
 
             result = DetectionResult(
                 timestamp=timestamp_to_process,
@@ -127,6 +170,8 @@ def aruco_worker(
         logging.error(f"ArUco Worker error: {e}", exc_info=True)
     finally:
         producer.close()
+        if producer_right is not None:
+            producer_right.close()
         logging.info("ArUco Worker stopped.")
 
 

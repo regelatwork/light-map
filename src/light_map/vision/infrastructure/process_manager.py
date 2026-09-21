@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import logging
 import multiprocessing as mp
 from typing import Any
@@ -32,6 +34,9 @@ class VisionProcessManager:
         remote_port: int = 8000,
         remote_origins: list[str] | None = None,
         state_mirror: dict[str, Any] | None = None,
+        enable_stereo: bool = False,
+        width_right: int | None = None,
+        height_right: int | None = None,
     ):
         self.width = width
         self.height = height
@@ -50,8 +55,15 @@ class VisionProcessManager:
         self.remote_origins = remote_origins
         self.state_mirror = state_mirror
 
+        self.enable_stereo = enable_stereo
+        self.width_right = width_right or width
+        self.height_right = height_right or height
+
         self.operator: CameraOperator | None = None
         self.shm_name: str | None = None
+        self.operator_right: CameraOperator | None = None
+        self.shm_name_right: str | None = None
+        self.lock_right: mp.Lock | None = None
         self.processes: list[mp.Process] = []
 
         # Shared Queues
@@ -77,6 +89,20 @@ class VisionProcessManager:
         # Override operator's lock with our explicitly managed shared lock
         self.operator.lock = self.lock
 
+        if self.enable_stereo:
+            self.lock_right = mp.Lock()
+            self.operator_right = CameraOperator(
+                width=self.width_right,
+                height=self.height_right,
+                num_consumers=1,
+            )
+            self.operator_right.lock = self.lock_right
+            self.shm_name_right = self.operator_right.shm_name
+        else:
+            self.operator_right = None
+            self.shm_name_right = None
+            self.lock_right = None
+
         # 2. Spawn Child Processes
 
         # ArUco Worker (Physical)
@@ -94,6 +120,10 @@ class VisionProcessManager:
                     "extrinsics_path": self.extrinsics_path,
                     "camera_matrix": self.camera_matrix,
                     "distortion_coefficients": self.distortion_coefficients,
+                    "shm_name_right": self.shm_name_right,
+                    "lock_right": self.lock_right,
+                    "width_right": self.width_right,
+                    "height_right": self.height_right,
                 },
                 name="ArucoWorker",
             )
@@ -163,6 +193,10 @@ class VisionProcessManager:
         if self.operator:
             self.operator.cleanup()
             self.operator = None
+
+        if self.operator_right:
+            self.operator_right.cleanup()
+            self.operator_right = None
 
         logging.info("VisionProcessManager stopped.")
 

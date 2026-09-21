@@ -19,12 +19,20 @@ class Camera:
     DO NOT CHANGE THIS RESOLUTION WITHOUT CONSULTING THE USER.
     """
 
-    def __init__(self, index=0, width=4608, height=2592, framerate=8):
+    def __init__(
+        self,
+        index: int = 0,
+        width: int = 4608,
+        height: int = 2592,
+        framerate: int = 8,
+        camera_name: str | None = None,
+    ):
         self.index = index
         self.id = str(index)
         self.width = width
         self.height = height
         self.framerate = framerate
+        self.camera_name = camera_name
         self.cap = None
         self._initialize_camera()
 
@@ -40,8 +48,12 @@ class Camera:
         """
         Returns a GStreamer pipeline string for capturing from a specific Raspberry Pi camera.
         """
-        # Note: This hardcoded path might need to be configurable in the future
-        camera_name = "/base/axi/pcie@1000120000/rp1/i2c@88000/imx708@1a"
+        if self.camera_name is not None and not self.camera_name.startswith("/dev/video"):
+            camera_name = self.camera_name
+        elif self.index == 1 or self.camera_name == "/dev/video1":
+            camera_name = "/base/axi/pcie@1000120000/rp1/i2c@80000/imx708@1a"
+        else:
+            camera_name = "/base/axi/pcie@1000120000/rp1/i2c@88000/imx708@1a"
 
         return (
             f"libcamerasrc camera-name={camera_name} af-mode=continuous ! "

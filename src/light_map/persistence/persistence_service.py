@@ -460,4 +460,13 @@ class PersistenceService:
         with open(output_file, "w") as f:
             json.dump(clean_data, f, indent=2)
 
+        # Also write local copy if running from directory with local files
+        local_path = "stereo_calibration.json"
+        if os.path.abspath(local_path) != os.path.abspath(output_file):
+            try:
+                with open(local_path, "w") as f:
+                    json.dump(clean_data, f, indent=2)
+            except Exception:
+                pass
+
         return output_file

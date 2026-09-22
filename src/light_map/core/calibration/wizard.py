@@ -103,7 +103,7 @@ class CalibrationWizard:
         return result
 
     def _save_calibration_result(self, result: CalibrationResult):
-        """Saves the calibration result to stereo_calibration.json."""
+        """Saves the calibration result to stereo_calibration.json in standard data directory and local copy."""
         # Convert result to dict, handling numpy arrays
         data = {
             "camera_left_intrinsics": result.camera_left_intrinsics.model_dump(),
@@ -128,6 +128,20 @@ class CalibrationWizard:
         if result.t_world_to_r is not None:
             data["t_world_to_r"] = result.t_world_to_r.tolist()
 
-        store = ConfigStore("stereo_calibration.json")
-        store.save(data)
-        logger.info("Calibration result saved to stereo_calibration.json")
+        import os
+
+        from light_map.core.storage import StorageManager
+
+        storage = StorageManager()
+        storage_file = storage.get_data_path("stereo_calibration.json")
+        ConfigStore(storage_file).save(data)
+        logger.info("Calibration result saved to %s", storage_file)
+
+        # Keep local copy in sync if running in project root
+        local_file = "stereo_calibration.json"
+        if os.path.abspath(local_file) != os.path.abspath(storage_file):
+            try:
+                ConfigStore(local_file).save(data)
+                logger.info("Local copy saved to %s", local_file)
+            except Exception:
+                pass

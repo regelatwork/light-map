@@ -199,12 +199,26 @@ class InteractiveApp:
         """Loads StereoTriangulator if stereo_calibration.json is available."""
         self.stereo_triangulator = None
         storage = self.config.storage_manager
-        stereo_path = (
-            storage.get_data_path("stereo_calibration.json")
-            if storage
-            else "stereo_calibration.json"
+        calib_file = getattr(
+            getattr(self.config, "stereo_vision", None),
+            "calibration_file",
+            "stereo_calibration.json",
         )
-        if os.path.exists(stereo_path):
+
+        candidates = []
+        if storage:
+            candidates.append(storage.get_data_path(calib_file))
+            candidates.append(storage.get_data_path("stereo_calibration.json"))
+        candidates.append(calib_file)
+        candidates.append("stereo_calibration.json")
+
+        stereo_path = None
+        for cand in candidates:
+            if cand and os.path.exists(cand):
+                stereo_path = cand
+                break
+
+        if stereo_path:
             try:
                 from light_map.core.stereo_triangulator import StereoTriangulator
 
@@ -216,6 +230,11 @@ class InteractiveApp:
                     stereo_path,
                     e,
                 )
+        else:
+            logger.info(
+                "InteractiveApp: No stereo calibration file found (checked %s). Stereo disabled.",
+                candidates,
+            )
 
     def _initialize_projector_pose(self):
         """Sets the initial projector pose in the WorldState."""

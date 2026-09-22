@@ -380,90 +380,97 @@ def run_app(args):
 
             # Initialize right camera if stereo vision is enabled and triangulator is available
             cam_right = None
-            if (
-                app.config.stereo_vision.enable_stereo
-                and getattr(app, "stereo_triangulator", None) is not None
-            ):
-                try:
-                    device_right = app.config.stereo_vision.camera_right_device or "/dev/video1"
-                    cam_right = Camera(
-                        index=1,
-                        width=current_camera_width,
-                        height=current_camera_height,
-                        camera_name=device_right,
-                    )
-                    logger.info("Stereo right camera initialized successfully: %s", device_right)
-                except Exception as e:
+            if app.config.stereo_vision.enable_stereo:
+                if getattr(app, "stereo_triangulator", None) is not None:
+                    try:
+                        device_right = app.config.stereo_vision.camera_right_device or "/dev/video1"
+                        cam_right = Camera(
+                            index=1,
+                            width=current_camera_width,
+                            height=current_camera_height,
+                            camera_name=device_right,
+                        )
+                        logger.info(
+                            "Stereo right camera initialized successfully: %s", device_right
+                        )
+                    except Exception as e:
+                        logger.warning(
+                            "Could not initialize stereo right camera (falling back to mono): %s", e
+                        )
+                        cam_right = None
+                else:
                     logger.warning(
-                        "Could not initialize stereo right camera (falling back to mono): %s", e
+                        "Stereo vision is enabled in config, but StereoTriangulator could not be loaded. Falling back to mono."
                     )
-                    cam_right = None
+            else:
+                logger.info(
+                    "Stereo vision is disabled in config. Running in single-camera mono mode."
+                )
 
-            try:
-                # Start Process Manager
-                with VisionProcessManager(
+            # Start Process Manager
+            with VisionProcessManager(
+                width=current_camera_width,
+                height=current_camera_height,
+                num_consumers=active_consumers,
+                projector_matrix=app.config.projector_matrix,
+                map_dims=(app.config.width, app.config.height),
+                intrinsics_path=intrinsics_path,
+                extrinsics_path=extrinsics_path,
+                camera_matrix=app.config.camera_matrix,
+                distortion_coefficients=app.config.distortion_coefficients,
+                remote_mode_hands=args.remote_hands,
+                remote_mode_tokens=args.remote_tokens,
+                remote_host=args.remote_host,
+                remote_port=args.remote_port,
+                remote_origins=args.remote_origins,
+                state_mirror=state_mirror,
+                enable_stereo=(cam_right is not None),
+                width_right=cam_right.width if cam_right else None,
+                height_right=cam_right.height if cam_right else None,
+            ) as manager:
+                # Use the WorldState instance from InteractiveApp
+                state = app.state
+                producer = FrameProducer(
+                    shm_name=manager.shm_name,
                     width=current_camera_width,
                     height=current_camera_height,
                     num_consumers=active_consumers,
-                    projector_matrix=app.config.projector_matrix,
-                    map_dims=(app.config.width, app.config.height),
-                    intrinsics_path=intrinsics_path,
-                    extrinsics_path=extrinsics_path,
-                    camera_matrix=app.config.camera_matrix,
-                    distortion_coefficients=app.config.distortion_coefficients,
-                    remote_mode_hands=args.remote_hands,
-                    remote_mode_tokens=args.remote_tokens,
-                    remote_host=args.remote_host,
-                    remote_port=args.remote_port,
-                    remote_origins=args.remote_origins,
+                )
+                producer.lock = manager.lock
+
+                input_manager = InputManager(
+                    flicker_timeout=1.5,
+                    time_provider=app.time_provider,
+                    events=app.events,
+                )
+                with MainLoopController(
+                    state,
+                    manager,
+                    input_manager,
+                    producer,
+                    aruco_mapper=app.aruco_mapper,
                     state_mirror=state_mirror,
-                    enable_stereo=(cam_right is not None),
-                    width_right=cam_right.width if cam_right else None,
-                    height_right=cam_right.height if cam_right else None,
-                ) as manager:
-                    # Use the WorldState instance from InteractiveApp
-                    state = app.state
-                    producer = FrameProducer(
-                        shm_name=manager.shm_name,
-                        width=current_camera_width,
-                        height=current_camera_height,
-                        num_consumers=active_consumers,
-                    )
-                    producer.lock = manager.lock
+                    events=app.events,
+                    time_provider=app.time_provider,
+                ) as ml:
+                    main_loop = ml
 
-                    input_manager = InputManager(
-                        flicker_timeout=1.5,
-                        time_provider=app.time_provider,
-                        events=app.events,
+                    stop_event = threading.Event()
+                    cam_thread = threading.Thread(
+                        target=camera_capture_loop,
+                        args=(cam, manager.operator, stop_event),
+                        name="CamCaptureLeft",
                     )
-                    with MainLoopController(
-                        state,
-                        manager,
-                        input_manager,
-                        producer,
-                        aruco_mapper=app.aruco_mapper,
-                        state_mirror=state_mirror,
-                        events=app.events,
-                        time_provider=app.time_provider,
-                    ) as ml:
-                        main_loop = ml
+                    cam_thread.start()
 
-                        stop_event = threading.Event()
-                        cam_thread = threading.Thread(
+                    cam_thread_right = None
+                    if cam_right is not None and manager.operator_right is not None:
+                        cam_thread_right = threading.Thread(
                             target=camera_capture_loop,
-                            args=(cam, manager.operator, stop_event),
-                            name="CamCaptureLeft",
+                            args=(cam_right, manager.operator_right, stop_event),
+                            name="CamCaptureRight",
                         )
-                        cam_thread.start()
-
-                        cam_thread_right = None
-                        if cam_right is not None and manager.operator_right is not None:
-                            cam_thread_right = threading.Thread(
-                                target=camera_capture_loop,
-                                args=(cam_right, manager.operator_right, stop_event),
-                                name="CamCaptureRight",
-                            )
-                            cam_thread_right.start()
+                        cam_thread_right.start()
 
                     last_map_config_version = -1
                     last_debug_mode = None
@@ -791,10 +798,6 @@ def run_app(args):
                         # 2. Save Session
                         if app.map_system.is_map_loaded():
                             app.save_session()
-            finally:
-                if cam_right is not None:
-                    cam_right.release()
-                    cam_right = None
 
     except Exception as e:
         logger.critical(
@@ -803,6 +806,9 @@ def run_app(args):
             exc_info=True,
         )
     finally:
+        if cam_right is not None:
+            cam_right.release()
+            cam_right = None
         cv2.destroyAllWindows()
 
 

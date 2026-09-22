@@ -231,7 +231,18 @@ class ArucoTokenDetector:
 
             # 1. Reconstruct logical world position (mm) from camera perspective
             # This finds where the token actually is in the real world.
-            right_corners = right_corners_dict.get(marker_id) if right_corners_dict else None
+            right_corners = None
+            if right_corners_dict:
+                if marker_id in right_corners_dict:
+                    right_corners = right_corners_dict[marker_id]
+                elif isinstance(marker_id, int) and str(marker_id) in right_corners_dict:
+                    right_corners = right_corners_dict[str(marker_id)]
+                elif (
+                    isinstance(marker_id, str)
+                    and marker_id.isdigit()
+                    and int(marker_id) in right_corners_dict
+                ):
+                    right_corners = right_corners_dict[int(marker_id)]
             is_stereo = False
             calculated_z = height_mm
 
@@ -241,6 +252,13 @@ class ArucoTokenDetector:
                 marker_x_mm, marker_y_mm = float(center_3d[0]), float(center_3d[1])
                 calculated_z = float(center_3d[2])
                 is_stereo = True
+                logging.debug(
+                    "Token #%d triangulated (stereo): x=%.1f, y=%.1f, z=%.2fmm",
+                    marker_id,
+                    marker_x_mm,
+                    marker_y_mm,
+                    calculated_z,
+                )
             elif stereo_triangulator is not None and hasattr(
                 stereo_triangulator, "intersect_corners_ray_plane"
             ):
@@ -251,6 +269,11 @@ class ArucoTokenDetector:
                 marker_x_mm, marker_y_mm = float(center_3d[0]), float(center_3d[1])
                 calculated_z = height_mm
                 is_stereo = False
+                logging.debug(
+                    "Token #%d ray-plane (mono fallback): z=%.2fmm",
+                    marker_id,
+                    calculated_z,
+                )
             elif projection_service:
                 marker_pts_3d = projection_service.camera_model.reconstruct_world_points_3d(
                     np.array([[u, v]], dtype=np.float32), height_mm=height_mm

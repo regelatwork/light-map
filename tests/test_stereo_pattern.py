@@ -221,3 +221,62 @@ def test_stereo_calibration_scene_victory_gesture_triggers_solve():
     callback = args[1]
     callback()
     assert scene.stage in (StereoCalibStage.SOLVING, StereoCalibStage.VALIDATION)
+
+
+def test_stereo_calibration_scene_solve_pnp_reconstruction():
+    """Verify StereoCalibrationScene solves right camera pose and stereo baseline from marker observations."""
+    from unittest.mock import MagicMock
+
+    mock_context = MagicMock()
+    mock_context.app_config = AppConfig(
+        width=1920, height=1080, projector_matrix=np.eye(3), projector_ppi=96.0
+    )
+    mock_context.app_config.camera_matrix = np.array(
+        [[1450.0, 0, 960.0], [0, 1450.0, 540.0], [0, 0, 1.0]], dtype=np.float32
+    )
+    mock_context.app_config.distortion_coefficients = np.zeros(5, dtype=np.float32)
+    mock_context.app_config.rotation_vector = np.array([0.28, 0.01, -0.01], dtype=np.float32)
+    mock_context.app_config.translation_vector = np.array(
+        [-360.0, -220.0, 1350.0], dtype=np.float32
+    )
+    mock_context.state = WorldState()
+
+    scene = StereoCalibrationScene(mock_context)
+    scene.on_enter()
+
+    # Synthetic detections for left camera and right camera
+    # Left camera corners
+    cl_40 = np.array([[950, 600], [970, 600], [970, 620], [950, 620]], dtype=np.float32)
+    cl_41 = np.array([[1050, 600], [1070, 600], [1070, 620], [1050, 620]], dtype=np.float32)
+    cl_0 = np.array([[600, 350], [620, 350], [620, 370], [600, 370]], dtype=np.float32)
+    cl_1 = np.array([[1350, 350], [1370, 350], [1370, 370], [1350, 370]], dtype=np.float32)
+
+    # Right camera corners with ~160px disparity along X
+    cr_40 = cl_40 + np.array([160, 10], dtype=np.float32)
+    cr_41 = cl_41 + np.array([160, 10], dtype=np.float32)
+    cr_0 = cl_0 + np.array([160, 10], dtype=np.float32)
+    cr_1 = cl_1 + np.array([160, 10], dtype=np.float32)
+
+    mock_context.raw_aruco = {
+        "ids": [40, 41, 0, 1],
+        "corners": [cl_40, cl_41, cl_0, cl_1],
+        "corners_right_dict": {
+            40: cr_40.tolist(),
+            41: cr_41.tolist(),
+            0: cr_0.tolist(),
+            1: cr_1.tolist(),
+        },
+    }
+
+    result = scene._solve_stereo_calibration()
+    assert "camera_left_intrinsics" in result
+    assert "camera_right_intrinsics" in result
+    assert "r_world_to_l" in result
+    assert "t_world_to_l" in result
+    assert "r_world_to_r" in result
+    assert "t_world_to_r" in result
+    assert "r_stereo" in result
+    assert "t_stereo" in result
+    assert "roi_left" in result
+    assert "roi_right" in result
+    assert len(result["t_stereo"]) == 3

@@ -250,7 +250,7 @@ class ArucoTokenDetector:
                 corners_3d = stereo_triangulator.triangulate_corners(marker_corners, right_corners)
                 center_3d = np.mean(corners_3d, axis=0)
                 marker_x_mm, marker_y_mm = float(center_3d[0]), float(center_3d[1])
-                calculated_z = float(center_3d[2])
+                calculated_z = abs(float(center_3d[2]))
                 is_stereo = True
                 logging.debug(
                     "Token #%d triangulated (stereo): x=%.1f, y=%.1f, z=%.2fmm",

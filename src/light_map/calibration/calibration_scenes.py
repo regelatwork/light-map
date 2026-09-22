@@ -565,8 +565,13 @@ class StereoCalibrationScene(Scene):
                     rvec_L = edata.get("rotation_vector", edata.get("rvec"))
                     tvec_L = edata.get("translation_vector", edata.get("tvec"))
 
-                    cam_w = getattr(app_config, "width", 1920)
-                    if K_raw is not None and K_raw[0, 2] > 1500:
+                    cam_res = getattr(app_config, "camera_resolution", None)
+                    if cam_res and cam_res[0] > 0:
+                        cam_w = cam_res[0]
+                    else:
+                        cam_w = 4608
+
+                    if K_raw is not None and K_raw[0, 2] > 1500 and cam_w != 4608:
                         scale = cam_w / 4608.0
                         K_L = K_raw.copy()
                         K_L[0, 0] *= scale
@@ -669,8 +674,11 @@ class StereoCalibrationScene(Scene):
         R_stereo = R_R @ R_L.T
         t_stereo = tvec_R - R_stereo @ tvec_L
 
-        w = getattr(app_config, "width", 1920) if app_config else 1920
-        h_res = getattr(app_config, "height", 1080) if app_config else 1080
+        cam_res = getattr(app_config, "camera_resolution", None)
+        if cam_res and cam_res[0] > 0:
+            w, h_res = cam_res
+        else:
+            w, h_res = 4608, 2592
 
         return {
             "camera_left_intrinsics": K_L.tolist(),

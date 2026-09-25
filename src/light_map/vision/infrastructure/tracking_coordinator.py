@@ -70,6 +70,9 @@ class TrackingCoordinator:
                     resolved_profile = map_config.resolve_token_profile(mid, map_filename)
                     token_configs[mid] = asdict(resolved_profile)
 
+        stereo_cfg = getattr(projector_config, "stereo_vision", None)
+        mono_fallback_timeout_s = getattr(stereo_cfg, "mono_fallback_timeout_s", 2.5)
+
         raw_detections = aruco_detector.map_to_tokens(
             raw_data,
             map_system,
@@ -77,6 +80,8 @@ class TrackingCoordinator:
             ppi=map_config.get_ppi(),
             projection_service=projection_service,
             stereo_triangulator=stereo_triangulator,
+            mono_fallback_timeout_s=mono_fallback_timeout_s,
+            current_time=current_time,
         )
 
         # 2. Get Grid Parameters

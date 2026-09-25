@@ -1,5 +1,6 @@
 import logging
 import os
+import time
 from typing import TYPE_CHECKING, Any, Optional
 
 import cv2
@@ -34,6 +35,10 @@ class ArucoTokenDetector:
         self.target_width = 1920
         self._fov_mask = None
         self._fov_mask_params = None
+
+        # Stereo tracking state cache for fallback hysteresis
+        self._last_stereo_ts: dict[int, float] = {}
+        self._last_stereo_z: dict[int, float] = {}
 
         # Load calibration
         if calibration_file:
@@ -196,6 +201,8 @@ class ArucoTokenDetector:
         default_height_mm: float = DEFAULT_TOKEN_HEIGHT_MM,
         projection_service: Optional["ProjectionService"] = None,
         stereo_triangulator: Any | None = None,
+        mono_fallback_timeout_s: float = 2.5,
+        current_time: float | None = None,
     ) -> list[Token]:
         """
         Maps raw ArUco detections (corners, ids) to Token objects in world coordinates.
@@ -207,6 +214,17 @@ class ArucoTokenDetector:
         ):
             logging.debug("ArucoDetector: map_to_tokens missing projection model.")
             return []
+
+        if current_time is None:
+            current_time = time.monotonic()
+
+        # Prune stale stereo cache entries older than 60s
+        if len(self._last_stereo_ts) > 50:
+            stale_cutoff = current_time - 60.0
+            stale_ids = [mid for mid, ts in self._last_stereo_ts.items() if ts < stale_cutoff]
+            for mid in stale_ids:
+                self._last_stereo_ts.pop(mid, None)
+                self._last_stereo_z.pop(mid, None)
 
         corners = raw_data.get("corners", [])
         ids = raw_data.get("ids", [])
@@ -252,6 +270,8 @@ class ArucoTokenDetector:
                 marker_x_mm, marker_y_mm = float(center_3d[0]), float(center_3d[1])
                 calculated_z = abs(float(center_3d[2]))
                 is_stereo = True
+                self._last_stereo_ts[marker_id] = current_time
+                self._last_stereo_z[marker_id] = calculated_z
                 logging.debug(
                     "Token #%d triangulated (stereo): x=%.1f, y=%.1f, z=%.2fmm",
                     marker_id,
@@ -262,18 +282,39 @@ class ArucoTokenDetector:
             elif stereo_triangulator is not None and hasattr(
                 stereo_triangulator, "intersect_corners_ray_plane"
             ):
-                corners_3d = stereo_triangulator.intersect_corners_ray_plane(
-                    marker_corners, height_mm
-                )
-                center_3d = np.mean(corners_3d, axis=0)
-                marker_x_mm, marker_y_mm = float(center_3d[0]), float(center_3d[1])
-                calculated_z = height_mm
-                is_stereo = False
-                logging.debug(
-                    "Token #%d ray-plane (mono fallback): z=%.2fmm",
-                    marker_id,
-                    calculated_z,
-                )
+                last_stereo_ts = self._last_stereo_ts.get(marker_id)
+                if (
+                    last_stereo_ts is not None
+                    and (current_time - last_stereo_ts) < mono_fallback_timeout_s
+                ):
+                    # Stereo coasting: hold last known stereo elevation
+                    stereo_h = self._last_stereo_z.get(marker_id, height_mm)
+                    corners_3d = stereo_triangulator.intersect_corners_ray_plane(
+                        marker_corners, stereo_h
+                    )
+                    center_3d = np.mean(corners_3d, axis=0)
+                    marker_x_mm, marker_y_mm = float(center_3d[0]), float(center_3d[1])
+                    calculated_z = stereo_h
+                    is_stereo = True
+                    logging.debug(
+                        "Token #%d ray-plane (stereo coasting within %.1fs timeout): z=%.2fmm",
+                        marker_id,
+                        mono_fallback_timeout_s,
+                        calculated_z,
+                    )
+                else:
+                    corners_3d = stereo_triangulator.intersect_corners_ray_plane(
+                        marker_corners, height_mm
+                    )
+                    center_3d = np.mean(corners_3d, axis=0)
+                    marker_x_mm, marker_y_mm = float(center_3d[0]), float(center_3d[1])
+                    calculated_z = height_mm
+                    is_stereo = False
+                    logging.debug(
+                        "Token #%d ray-plane (mono fallback): z=%.2fmm",
+                        marker_id,
+                        calculated_z,
+                    )
             elif projection_service:
                 marker_pts_3d = projection_service.camera_model.reconstruct_world_points_3d(
                     np.array([[u, v]], dtype=np.float32), height_mm=height_mm
@@ -330,6 +371,8 @@ class ArucoTokenDetector:
         projector_matrix: np.ndarray | None = None,
         projection_service: Optional["ProjectionService"] = None,
         stereo_triangulator: Any | None = None,
+        mono_fallback_timeout_s: float = 2.5,
+        current_time: float | None = None,
     ) -> list[Token]:
         """
         Legacy/Combined method for single-threaded use.
@@ -347,6 +390,8 @@ class ArucoTokenDetector:
             default_height_mm=default_height_mm,
             projection_service=projection_service,
             stereo_triangulator=stereo_triangulator,
+            mono_fallback_timeout_s=mono_fallback_timeout_s,
+            current_time=current_time,
         )
 
     def _get_fov_mask(

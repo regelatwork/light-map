@@ -129,6 +129,92 @@ def test_aruco_detector_map_to_tokens_fallback():
     assert t.marker_z == 50.0
 
 
+def test_aruco_detector_mono_fallback_timeout():
+    """Verify that ArucoDetector maintains stereo elevation within timeout before falling back to mono."""
+    detector = ArucoTokenDetector()
+    map_system = MagicMock()
+    map_system.world_mm_to_svg.side_effect = lambda x, y, ppi: (x, y)
+
+    corners_l = np.array([[100, 100], [150, 100], [150, 150], [100, 150]], dtype=np.float32)
+    corners_r = np.array([[90, 100], [140, 100], [140, 150], [90, 150]], dtype=np.float32)
+
+    mock_triangulator = MagicMock()
+    mock_triangulator.triangulate_corners.return_value = np.array(
+        [
+            [10.0, 20.0, 45.5],
+            [20.0, 20.0, 45.5],
+            [20.0, 30.0, 45.5],
+            [10.0, 30.0, 45.5],
+        ],
+        dtype=np.float32,
+    )
+    mock_triangulator.intersect_corners_ray_plane.side_effect = lambda corners, h: np.array(
+        [
+            [10.0, 20.0, h],
+            [20.0, 20.0, h],
+            [20.0, 30.0, h],
+            [10.0, 30.0, h],
+        ],
+        dtype=np.float32,
+    )
+
+    # Frame 1: Detected in both Left & Right at t = 10.0
+    raw_frame_1 = {
+        "ids": [42],
+        "corners": [corners_l],
+        "corners_right_dict": {42: corners_r},
+    }
+    tokens_1 = detector.map_to_tokens(
+        raw_frame_1,
+        map_system,
+        default_height_mm=50.0,
+        stereo_triangulator=mock_triangulator,
+        mono_fallback_timeout_s=2.5,
+        current_time=10.0,
+    )
+    assert len(tokens_1) == 1
+    assert tokens_1[0].is_stereo is True
+    assert tokens_1[0].marker_z == pytest.approx(45.5, rel=1e-2)
+
+    # Frame 2: Right camera drops detection at t = 11.0 (1.0s elapsed < 2.5s timeout)
+    raw_frame_2 = {
+        "ids": [42],
+        "corners": [corners_l],
+        "corners_right_dict": {},
+    }
+    tokens_2 = detector.map_to_tokens(
+        raw_frame_2,
+        map_system,
+        default_height_mm=50.0,
+        stereo_triangulator=mock_triangulator,
+        mono_fallback_timeout_s=2.5,
+        current_time=11.0,
+    )
+    from unittest.mock import ANY
+
+    assert len(tokens_2) == 1
+    # Must maintain stereo state and use learned 45.5mm elevation, NOT 50.0mm nominal
+    assert tokens_2[0].is_stereo is True
+    assert tokens_2[0].marker_z == pytest.approx(45.5, rel=1e-2)
+    mock_triangulator.intersect_corners_ray_plane.assert_called_with(
+        ANY, pytest.approx(45.5, rel=1e-2)
+    )
+
+    # Frame 3: Right camera still missing at t = 13.0 (3.0s elapsed > 2.5s timeout)
+    tokens_3 = detector.map_to_tokens(
+        raw_frame_2,
+        map_system,
+        default_height_mm=50.0,
+        stereo_triangulator=mock_triangulator,
+        mono_fallback_timeout_s=2.5,
+        current_time=13.0,
+    )
+    assert len(tokens_3) == 1
+    # Now timeout expired -> falls back to mono with default 50.0mm nominal height
+    assert tokens_3[0].is_stereo is False
+    assert tokens_3[0].marker_z == 50.0
+
+
 def test_debug_layer_token_versioning(mock_app_context):
     ws = WorldState()
     layer = DebugLayer(ws, mock_app_context)

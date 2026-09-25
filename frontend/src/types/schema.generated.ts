@@ -121,6 +121,7 @@ export interface StereoVisionConfig {
   baseline_separation_mm: number;
   camera_left_device: string;
   camera_right_device: string;
+  mono_fallback_timeout_s: number;
 }
 
 export interface GlobalConfig {
@@ -491,6 +492,13 @@ export const STEREOVISIONCONFIG_METADATA: Record<keyof StereoVisionConfig, Field
     "title": "Right Camera Device",
     "description": "Device path for the right camera.",
     "default": "/dev/video1"
+  },
+  "mono_fallback_timeout_s": {
+    "title": "Mono Fallback Timeout (s)",
+    "description": "Seconds of missing right-camera detection before falling back to mono calculations.",
+    "min": 0.0,
+    "max": 10.0,
+    "default": 2.5
   }
 };
 

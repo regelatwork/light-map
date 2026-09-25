@@ -205,6 +205,17 @@ class ArucoMaskLayer(Layer):
                 elif profile_name in getattr(self.config, "token_profiles", {}):
                     height_mm = self.config.token_profiles[profile_name].height_mm
 
+            # If token is tracked with stereo elevation, use that elevation during fallback
+            if self.state and self.state.tokens:
+                for t in self.state.tokens:
+                    if (
+                        t.id == marker_id
+                        and getattr(t, "is_stereo", False)
+                        and getattr(t, "marker_z", 0.0) > 0
+                    ):
+                        height_mm = t.marker_z
+                        break
+
             # corners is (4, 2) in camera pixel coordinates.
             # We target the actual height of the token for mask projection.
             # Triangulate directly if right camera corners exist, otherwise use single-camera fallback.

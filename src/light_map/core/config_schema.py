@@ -136,6 +136,13 @@ class StereoVisionConfigSchema(BaseModel):
         title="Right Camera Device",
         description="Device path for the right camera.",
     )
+    mono_fallback_timeout_s: float = Field(
+        default=2.5,
+        ge=0.0,
+        le=10.0,
+        title="Mono Fallback Timeout (s)",
+        description="Seconds of missing right-camera detection before falling back to mono calculations.",
+    )
 
 
 class WedgeSegmentSchema(BaseModel):

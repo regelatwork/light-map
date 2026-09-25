@@ -433,6 +433,7 @@ class StereoVisionConfig:
     baseline_separation_mm: float = 128.0
     camera_left_device: str = "/dev/video0"
     camera_right_device: str = "/dev/video1"
+    mono_fallback_timeout_s: float = 2.5
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -440,6 +441,7 @@ class StereoVisionConfig:
             "baseline_separation_mm": self.baseline_separation_mm,
             "camera_left_device": self.camera_left_device,
             "camera_right_device": self.camera_right_device,
+            "mono_fallback_timeout_s": self.mono_fallback_timeout_s,
         }
 
 

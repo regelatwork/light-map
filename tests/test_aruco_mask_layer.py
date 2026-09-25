@@ -308,3 +308,32 @@ def test_aruco_mask_layer_stereo_fallback(mock_state, mock_config):
 
     assert len(patches) == 1
     mock_triangulator.intersect_corners_ray_plane.assert_called_once()
+
+
+def test_aruco_mask_layer_stereo_fallback_uses_stereo_elevation(mock_state, mock_config):
+    """Verifies that ArucoMaskLayer uses learned stereo elevation from tokens if available."""
+    from light_map.core.common_types import Token
+
+    mock_triangulator = MagicMock()
+    mock_triangulator.intersect_corners_ray_plane.return_value = np.array(
+        [[10.0, 10.0, 42.0], [20.0, 10.0, 42.0], [20.0, 20.0, 42.0], [10.0, 20.0, 42.0]],
+        dtype=np.float32,
+    )
+
+    corners_l = np.array([[100, 100], [200, 100], [200, 200], [100, 200]], dtype=np.float32)
+
+    mock_state.raw_aruco = {
+        "corners": [corners_l],
+        "ids": [42],
+        "corners_right_dict": {},  # Right camera missed detection
+    }
+    # State has token with learned stereo elevation 42.5mm
+    mock_state.tokens = [Token(id=42, world_x=10.0, world_y=10.0, is_stereo=True, marker_z=42.5)]
+
+    layer = ArucoMaskLayer(mock_state, mock_config, stereo_triangulator=mock_triangulator)
+    patches = layer._generate_patches(100.0)
+
+    assert len(patches) == 1
+    # Should use 42.5mm from state.tokens, not default 5.0mm or 50.0mm
+    called_h = mock_triangulator.intersect_corners_ray_plane.call_args[0][1]
+    assert called_h == pytest.approx(42.5)

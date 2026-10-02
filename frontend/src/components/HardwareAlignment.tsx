@@ -167,6 +167,7 @@ export const HardwareAlignment: React.FC = () => {
             baseline_separation_mm: config?.stereo_vision?.baseline_separation_mm ?? 128.0,
             camera_left_device: config?.stereo_vision?.camera_left_device ?? '/dev/video0',
             camera_right_device: config?.stereo_vision?.camera_right_device ?? '/dev/video1',
+            mono_fallback_timeout_s: config?.stereo_vision?.mono_fallback_timeout_s ?? 2.0,
           };
 
           return (
@@ -200,7 +201,7 @@ export const HardwareAlignment: React.FC = () => {
               </div>
 
               {currentStereo.enable_stereo && (
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-gray-50 rounded-xl border border-gray-100">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 p-4 bg-gray-50 rounded-xl border border-gray-100">
                   <div className="space-y-1">
                     <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider">
                       Baseline (mm)
@@ -250,6 +251,27 @@ export const HardwareAlignment: React.FC = () => {
                           stereo_vision: {
                             ...currentStereo,
                             camera_right_device: e.target.value,
+                          },
+                        })
+                      }
+                      className="w-full px-3 py-1.5 text-sm border border-gray-200 rounded-lg bg-white"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider">
+                      Fallback (s)
+                    </label>
+                    <input
+                      type="number"
+                      step="0.5"
+                      min="0"
+                      max="60"
+                      value={currentStereo.mono_fallback_timeout_s}
+                      onChange={(e) =>
+                        updateSystemConfig({
+                          stereo_vision: {
+                            ...currentStereo,
+                            mono_fallback_timeout_s: parseFloat(e.target.value) || 2.0,
                           },
                         })
                       }

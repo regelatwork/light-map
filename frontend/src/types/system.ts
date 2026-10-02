@@ -214,6 +214,7 @@ export const INITIAL_STATE: SystemState = {
       baseline_separation_mm: 128.0,
       camera_left_device: '/dev/video0',
       camera_right_device: '/dev/video1',
+      mono_fallback_timeout_s: 2.0,
     },
   },
   maps: {},

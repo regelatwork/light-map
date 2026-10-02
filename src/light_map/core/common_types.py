@@ -433,7 +433,7 @@ class StereoVisionConfig:
     baseline_separation_mm: float = 128.0
     camera_left_device: str = "/dev/video0"
     camera_right_device: str = "/dev/video1"
-    mono_fallback_timeout_s: float = 2.5
+    mono_fallback_timeout_s: float = 2.0
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -545,6 +545,7 @@ class AppConfig:
                 self.stereo_vision.baseline_separation_mm = stereo_src.baseline_separation_mm
                 self.stereo_vision.camera_left_device = stereo_src.camera_left_device
                 self.stereo_vision.camera_right_device = stereo_src.camera_right_device
+                self.stereo_vision.mono_fallback_timeout_s = stereo_src.mono_fallback_timeout_s
             elif isinstance(stereo_src, dict):
                 self.stereo_vision.enable_stereo = stereo_src.get(
                     "enable_stereo", self.stereo_vision.enable_stereo
@@ -557,6 +558,9 @@ class AppConfig:
                 )
                 self.stereo_vision.camera_right_device = stereo_src.get(
                     "camera_right_device", self.stereo_vision.camera_right_device
+                )
+                self.stereo_vision.mono_fallback_timeout_s = stereo_src.get(
+                    "mono_fallback_timeout_s", self.stereo_vision.mono_fallback_timeout_s
                 )
 
 

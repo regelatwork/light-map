@@ -201,7 +201,7 @@ class ArucoTokenDetector:
         default_height_mm: float = DEFAULT_TOKEN_HEIGHT_MM,
         projection_service: Optional["ProjectionService"] = None,
         stereo_triangulator: Any | None = None,
-        mono_fallback_timeout_s: float = 2.5,
+        mono_fallback_timeout_s: float = 2.0,
         current_time: float | None = None,
     ) -> list[Token]:
         """
@@ -371,7 +371,7 @@ class ArucoTokenDetector:
         projector_matrix: np.ndarray | None = None,
         projection_service: Optional["ProjectionService"] = None,
         stereo_triangulator: Any | None = None,
-        mono_fallback_timeout_s: float = 2.5,
+        mono_fallback_timeout_s: float = 2.0,
         current_time: float | None = None,
     ) -> list[Token]:
         """

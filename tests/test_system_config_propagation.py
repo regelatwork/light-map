@@ -173,3 +173,24 @@ def test_remote_driver_config_system_accepts_all_global_settings():
     assert result.data["use_projector_3d_model"] is False
     assert result.data["projector_ppi"] == 120.0
     assert result.data["projector_pos_y_override"] == 75.5
+
+
+def test_app_config_sync_with_global_settings_stereo_timeout():
+    """Verify that AppConfig.sync_with_global_settings propagates mono_fallback_timeout_s."""
+    from light_map.core.common_types import StereoVisionConfig
+    from light_map.map.map_config import GlobalMapConfig
+
+    app_config = AppConfig(
+        width=1920,
+        height=1080,
+        projector_matrix=np.eye(3),
+    )
+    assert app_config.stereo_vision.mono_fallback_timeout_s == 2.0
+
+    gs = GlobalMapConfig()
+    gs.stereo_vision = StereoVisionConfig(
+        enable_stereo=True,
+        mono_fallback_timeout_s=10.0,
+    )
+    app_config.sync_from_global_settings(gs)
+    assert app_config.stereo_vision.mono_fallback_timeout_s == 10.0

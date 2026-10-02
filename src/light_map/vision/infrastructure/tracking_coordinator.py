@@ -71,7 +71,7 @@ class TrackingCoordinator:
                     token_configs[mid] = asdict(resolved_profile)
 
         stereo_cfg = getattr(projector_config, "stereo_vision", None)
-        mono_fallback_timeout_s = getattr(stereo_cfg, "mono_fallback_timeout_s", 2.5)
+        mono_fallback_timeout_s = getattr(stereo_cfg, "mono_fallback_timeout_s", 2.0)
 
         raw_detections = aruco_detector.map_to_tokens(
             raw_data,

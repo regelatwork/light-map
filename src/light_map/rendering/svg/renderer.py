@@ -666,10 +666,9 @@ def render_shape_element(
 
     ppu = (scale_factor * quality) * 0.5
     path = svgelements.Path(element)
-    # Compose local transform with parent matrix
-    path.transform *= current_matrix
-    transformed_path = path
-    transformed_path.reify()
+    # Compose local transform with parent matrix without mutating element's segments in place
+    composed_matrix = path.transform * current_matrix
+    transformed_path = svgelements.Path(*[seg * composed_matrix for seg in path])
     closed, open_paths = convert_path_to_points(transformed_path, element_naturally_closed, ppu)
 
     all_subpaths = closed + open_paths
